@@ -1,6 +1,7 @@
 pub mod opcodes;
 pub use opcodes::*;
 pub mod status_flags;
+pub use status_flags::*;
 
 pub struct CPU {
     /// A (Accumulator) register.
@@ -37,10 +38,13 @@ impl CPU {
     pub fn interpret(&mut self, program: Vec<u8>) {
         self.program_counter = 0;
         loop {
-            let opscode = program[self.program_counter as usize];
+            let opcode = program[self.program_counter as usize];
             self.program_counter += 1;
-            match opscode {
-                0xA9 => self.opcode_a9(program[self.program_counter as usize]),
+            match opcode {
+                // BRK
+                0x00 => return,
+                // LDA
+                0xA9 => self.opcode_lda(program[self.program_counter as usize]),
                 _ => todo!(),
             }
         }

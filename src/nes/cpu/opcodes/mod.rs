@@ -1,2 +1,2 @@
-pub mod a9;
-pub use a9::*;
+pub mod lda;
+pub use lda::*;
