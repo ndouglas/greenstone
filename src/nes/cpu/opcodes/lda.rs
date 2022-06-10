@@ -5,8 +5,7 @@ impl CPU {
     pub fn opcode_lda(&mut self, param: u8) {
         self.program_counter += 1;
         self.a = param;
-        self.set_zero_flag(param == 0);
-        self.set_negative_flag(param & NEGATIVE_FLAG == NEGATIVE_FLAG);
+        self.set_value_flags(param);
     }
 }
 
@@ -19,8 +18,14 @@ mod test {
         let mut cpu = CPU::new();
         cpu.interpret(vec![0xa9, 0x05, 0x00]);
         assert_eq!(cpu.a, 0x05);
-        assert!(cpu.status & NEGATIVE_FLAG == 0);
-        assert!(cpu.status & CARRY_FLAG == 0);
+        assert!(
+            cpu.status & NEGATIVE_FLAG == 0,
+            "LDA #$05 should not set the negative flag."
+        );
+        assert!(
+            cpu.status & CARRY_FLAG == 0,
+            "LDA #$05 should not set the carry flag."
+        );
     }
 
     #[test]

@@ -45,6 +45,8 @@ impl CPU {
                 0x00 => return,
                 // LDA
                 0xA9 => self.opcode_lda(program[self.program_counter as usize]),
+                // TAX
+                0xAA => self.opcode_tax(),
                 _ => todo!(),
             }
         }

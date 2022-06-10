@@ -115,4 +115,10 @@ impl CPU {
     pub fn get_carry_flag(&self) -> bool {
         return self.get_status_flag(StatusFlags::Carry);
     }
+
+    #[inline]
+    pub fn set_value_flags(&mut self, value: u8) {
+        self.set_zero_flag(value == 0);
+        self.set_negative_flag(value & NEGATIVE_FLAG == NEGATIVE_FLAG);
+    }
 }

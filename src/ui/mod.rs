@@ -31,8 +31,7 @@ impl Application for UI {
     fn view(&mut self) -> Element<Message> {
         Column::new()
             .spacing(20)
-            .push(Text::new(
-                "This is kinda baking my brain TBH.",
-            )).into()
+            .push(Text::new("This is kinda baking my brain TBH."))
+            .into()
     }
 }
