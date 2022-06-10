@@ -5,6 +5,7 @@ extern crate log;
 extern crate pretty_env_logger;
 
 pub mod nes;
+pub mod traits;
 pub mod ui;
 
 fn main() {
