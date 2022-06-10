@@ -17,8 +17,14 @@ mod test {
         let mut cpu = CPU::new();
         cpu.interpret(vec![0xa9, 0x05, 0xaa, 0x00]);
         assert_eq!(cpu.x, 0x05);
-        assert!(cpu.status & NEGATIVE_FLAG == 0, "LDA #$05, TAX should not set the negative flag.");
-        assert!(cpu.status & CARRY_FLAG == 0, "LDA #$05, TAX should not set the carry flag.");
+        assert!(
+            cpu.status & NEGATIVE_FLAG == 0,
+            "LDA #$05, TAX should not set the negative flag."
+        );
+        assert!(
+            cpu.status & CARRY_FLAG == 0,
+            "LDA #$05, TAX should not set the carry flag."
+        );
     }
 
     #[test]

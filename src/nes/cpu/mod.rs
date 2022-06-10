@@ -43,6 +43,8 @@ impl CPU {
             match opcode {
                 // BRK
                 0x00 => return,
+                // INX
+                0xE8 => self.opcode_inx(),
                 // LDA
                 0xA9 => self.opcode_lda(program[self.program_counter as usize]),
                 // TAX
