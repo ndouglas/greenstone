@@ -58,4 +58,21 @@ mod test {
             "LDA #$05 should not set the negative flag."
         );
     }
+
+    #[test]
+    fn test_lda_0xa9_from_zero_page() {
+        let mut cpu = CPU::new();
+        cpu.write_u8(0x10, 0x55);
+        cpu.interpret(vec![0xA5, 0x10, 0x00]);
+        assert_eq!(cpu.a, 0x55, "LDA $10 should retrieve $55 from address $0010.");
+    }
+
+    #[test]
+    fn test_lda_0xad_from_absolute_address() {
+        let mut cpu = CPU::new();
+        cpu.write_u8(0x10, 0x55);
+        cpu.interpret(vec![0xAD, 0x10, 0x00, 0x00]);
+        assert_eq!(cpu.a, 0x55, "LDA $10 should retrieve $55 from address $0010.");
+    }
+
 }
