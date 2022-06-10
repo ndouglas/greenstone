@@ -1,8 +1,8 @@
 use iced::executor;
-use iced::{Application, Column, Command, Container, Element, Length, Subscription};
+use iced::{Application, Column, Command, Container, Element, Length, Subscription, Text};
 
-#[derive(Debug, Clone)]
-pub enum Message {}
+pub mod messages;
+pub use messages::*;
 
 pub struct UI {}
 
@@ -29,11 +29,10 @@ impl Application for UI {
     }
 
     fn view(&mut self) -> Element<Message> {
-        let content = Column::new();
-        Container::new(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            //        .style(style::Container)
-            .into()
+        Column::new()
+            .spacing(20)
+            .push(Text::new(
+                "This is kinda baking my brain TBH.",
+            )).into()
     }
 }
