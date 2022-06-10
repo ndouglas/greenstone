@@ -2,10 +2,11 @@ use super::super::*;
 
 impl CPU<'_> {
     #[inline]
-    pub fn opcode_lda(&mut self, param: u8) {
-        self.program_counter += 1;
-        self.a = param;
-        self.set_value_flags(param);
+    pub fn opcode_lda(&mut self, mode: &AddressingMode) {
+        let address = self.get_operand_address(mode);
+        let value = self.read_u8(address);
+        self.a = value;
+        self.set_value_flags(value);
     }
 }
 

@@ -2,6 +2,9 @@ use crate::nes::bus::Bus;
 use crate::nes::simple_memory::SimpleMemory;
 use crate::traits::Addressable;
 
+pub mod addressing_modes;
+pub use addressing_modes::*;
+
 pub mod opcodes;
 pub use opcodes::*;
 
@@ -72,7 +75,18 @@ impl<'a> CPU<'a> {
                 // INX
                 0xE8 => self.opcode_inx(),
                 // LDA
-                0xA9 => self.opcode_lda(self.read_u8(self.program_counter)),
+                0xA5 => {
+                    self.opcode_lda(&AddressingMode::ZeroPage);
+                    self.program_counter += 1;
+                }
+                0xA9 => {
+                    self.opcode_lda(&AddressingMode::Immediate);
+                    self.program_counter += 1;
+                }
+                0xAD => {
+                    self.opcode_lda(&AddressingMode::Absolute);
+                    self.program_counter += 2;
+                }
                 // TAX
                 0xAA => self.opcode_tax(),
                 _ => todo!(),

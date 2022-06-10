@@ -4,7 +4,7 @@ pub trait Addressable {
 
     fn write_u8(&mut self, address: u16, data: u8);
 
-    fn read_u16(&mut self, address: u16) -> u16 {
+    fn read_u16(&self, address: u16) -> u16 {
         let lo = self.read_u8(address) as u16;
         let hi = self.read_u8(address + 1) as u16;
         let result = (hi << 8) | (lo as u16);
