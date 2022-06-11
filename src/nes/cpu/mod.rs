@@ -118,16 +118,14 @@ impl<'a> CPU<'a> {
     self.cycles += opcode_cycles;
   }
 
-//  Opcode::new(0x61, "ADC", 2, 6, AddressingMode::IndirectX, false, false, false, false),
-//  Opcode::new(0x65, "ADC", 2, 3, AddressingMode::ZeroPage, false, false, false, false),
-//  Opcode::new(0x69, "ADC", 2, 2, AddressingMode::Immediate, false, false, false, false),
-//  Opcode::new(0x6D, "ADC", 3, 4, AddressingMode::Absolute, false, false, false, false),
-//  Opcode::new(0x71, "ADC", 2, 5, AddressingMode::IndirectY, false, false, false, true),
-//  Opcode::new(0x75, "ADC", 2, 4, AddressingMode::ZeroPageX, false, false, false, false),
-//  Opcode::new(0x79, "ADC", 3, 4, AddressingMode::AbsoluteY, false, false, false, true),
-//  Opcode::new(0x7D, "ADC", 3, 4, AddressingMode::AbsoluteX, false, false, false, true),
-
-
+  //  Opcode::new(0x61, "ADC", 2, 6, AddressingMode::IndirectX, false, false, false, false),
+  //  Opcode::new(0x65, "ADC", 2, 3, AddressingMode::ZeroPage, false, false, false, false),
+  //  Opcode::new(0x69, "ADC", 2, 2, AddressingMode::Immediate, false, false, false, false),
+  //  Opcode::new(0x6D, "ADC", 3, 4, AddressingMode::Absolute, false, false, false, false),
+  //  Opcode::new(0x71, "ADC", 2, 5, AddressingMode::IndirectY, false, false, false, true),
+  //  Opcode::new(0x75, "ADC", 2, 4, AddressingMode::ZeroPageX, false, false, false, false),
+  //  Opcode::new(0x79, "ADC", 3, 4, AddressingMode::AbsoluteY, false, false, false, true),
+  //  Opcode::new(0x7D, "ADC", 3, 4, AddressingMode::AbsoluteX, false, false, false, true),
 
   pub fn reset(&mut self) {
     self.a = 0x00;

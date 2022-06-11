@@ -7,7 +7,7 @@ authors = ["Nathan Douglas <github@darkdell.net>"]
 [dependencies]
 iced= "0.4.0"
 lazy_static = "1.4.0"
-log = "0.4.17"
+log = { version = "0.4.17", features= ["max_level_trace", "release_max_level_warn"] }
 pretty_env_logger = "0.4.0"
 
 [profile.release]

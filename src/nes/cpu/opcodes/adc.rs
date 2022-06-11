@@ -29,11 +29,17 @@ mod test {
     let mut a = 0x05 as u16;
     let mut m = 0x02 as u16;
     let mut r = 0x80 as u16;
-    assert!(should_overflow(a, m, r), "positive + positive = negative indicates overflow.");
+    assert!(
+      should_overflow(a, m, r),
+      "positive + positive = negative indicates overflow."
+    );
     a = 0x82;
     m = 0x82;
     r = 0x03;
-    assert!(should_overflow(a, m, r), "negative + negative = positive indicates overflow.");
+    assert!(
+      should_overflow(a, m, r),
+      "negative + negative = positive indicates overflow."
+    );
     a = 0x00;
     m = 0x00;
     r = 0x00;
@@ -41,83 +47,88 @@ mod test {
     a = 0x0A;
     m = 0x0A;
     r = 0x14;
-    assert!(!should_overflow(a, m, r), "positive + positive = positive indicates no overflow.");
+    assert!(
+      !should_overflow(a, m, r),
+      "positive + positive = positive indicates no overflow."
+    );
     a = 0x8A;
     m = 0x8A;
     r = 0x84;
-    assert!(!should_overflow(a, m, r), "negative + negative = negative indicates no overflow.");
+    assert!(
+      !should_overflow(a, m, r),
+      "negative + negative = negative indicates no overflow."
+    );
     a = 0x0A;
     m = 0x8A;
     r = 0x14;
-    assert!(!should_overflow(a, m, r), "positive + negative = positive indicates no overflow.");
+    assert!(
+      !should_overflow(a, m, r),
+      "positive + negative = positive indicates no overflow."
+    );
     a = 0x3A;
     m = 0x8A;
     r = 0x84;
-    assert!(!should_overflow(a, m, r), "positive + negative = negative indicates no overflow.");
+    assert!(
+      !should_overflow(a, m, r),
+      "positive + negative = negative indicates no overflow."
+    );
   }
 
   #[test]
   fn test_adc_0x61_add_with_carry() {
     let mut cpu = CPU::new();
-    cpu.interpret(vec![0xA9, 0x01, 0xAA, 0x61, 0x04, 0x00]);
-    assert_eq!(cpu.a, 0x01);
+    cpu.interpret(vec![
+      0xA9, 0x07, 0x85, 0x05, 0xA9, 0x05, 0xAA, 0x85, 0x0A, 0x61, 0x05, 0x00,
+    ]);
+    println!(
+      "{} {} {} {} {} {} {} {}",
+      cpu.read_u8(0),
+      cpu.read_u8(1),
+      cpu.read_u8(2),
+      cpu.read_u8(3),
+      cpu.read_u8(4),
+      cpu.read_u8(5),
+      cpu.read_u8(6),
+      cpu.read_u8(7)
+    );
+    println!(
+      "{} {} {} {} {} {} {} {}",
+      cpu.read_u8(8),
+      cpu.read_u8(9),
+      cpu.read_u8(10),
+      cpu.read_u8(11),
+      cpu.read_u8(12),
+      cpu.read_u8(13),
+      cpu.read_u8(14),
+      cpu.read_u8(15)
+    );
+    assert_eq!(cpu.x, 0x05);
+    assert_eq!(cpu.a, 0x0C);
     assert!(
       cpu.status & NEGATIVE_FLAG == 0,
-      "ADC 0 + 1 should not set the negative flag."
+      "ADC 1 + 1 should not set the negative flag."
     );
-    assert!(cpu.status & CARRY_FLAG == 0, "ADC 0 + 1 should not set the carry flag.");
-  }
-
-//  Opcode::new(0x61, "ADC", 2, 6, AddressingMode::IndirectX, false, false, false, false),
-//  Opcode::new(0x65, "ADC", 2, 3, AddressingMode::ZeroPage, false, false, false, false),
-//  Opcode::new(0x69, "ADC", 2, 2, AddressingMode::Immediate, false, false, false, false),
-//  Opcode::new(0x6D, "ADC", 3, 4, AddressingMode::Absolute, false, false, false, false),
-//  Opcode::new(0x71, "ADC", 2, 5, AddressingMode::IndirectY, false, false, false, true),
-//  Opcode::new(0x75, "ADC", 2, 4, AddressingMode::ZeroPageX, false, false, false, false),
-//  Opcode::new(0x79, "ADC", 3, 4, AddressingMode::AbsoluteY, false, false, false, true),
-//  Opcode::new(0x7D, "ADC", 3, 4, AddressingMode::AbsoluteX, false, false, false, true),
-
-
-  #[test]
-  fn test_lda_0xa9_sets_zero_flag() {
-    let mut cpu = CPU::new();
-    cpu.interpret(vec![0xA9, 0x00, 0x00]);
-    assert!(
-      cpu.status & ZERO_FLAG == ZERO_FLAG,
-      "LDA #$00 should set the zero flag."
-    );
-    cpu.interpret(vec![0xA9, 0x05, 0x00]);
-    assert!(cpu.status & ZERO_FLAG == 0, "LDA #$05 should not set the zero flag.");
+    assert!(cpu.status & CARRY_FLAG == 0, "ADC 1 + 1 should not set the carry flag.");
   }
 
   #[test]
-  fn test_lda_0xa9_sets_negative_flag() {
+  fn test_adc_0x65_add_with_carry() {
     let mut cpu = CPU::new();
-    cpu.interpret(vec![0xA9, 0xFF, 0x00]);
-    assert!(
-      cpu.status & NEGATIVE_FLAG == NEGATIVE_FLAG,
-      "LDA #$FF should set the negative flag."
-    );
-    cpu.interpret(vec![0xA9, 0x05, 0x00]);
+    cpu.interpret(vec![0xA9, 0x05, 0x85, 0x0F, 0x65, 0x0F, 0x00]);
+    assert_eq!(cpu.a, 0x0A);
     assert!(
       cpu.status & NEGATIVE_FLAG == 0,
-      "LDA #$05 should not set the negative flag."
+      "ADC 5 + 5 should not set the negative flag."
     );
+    assert!(cpu.status & CARRY_FLAG == 0, "ADC 5 + 5 should not set the carry flag.");
   }
 
-  #[test]
-  fn test_lda_0xa9_from_zero_page() {
-    let mut cpu = CPU::new();
-    cpu.write_u8(0x10, 0x55);
-    cpu.interpret(vec![0xA5, 0x10, 0x00]);
-    assert_eq!(cpu.a, 0x55, "LDA $10 should retrieve $55 from address $0010.");
-  }
-
-  #[test]
-  fn test_lda_0xad_from_absolute_address() {
-    let mut cpu = CPU::new();
-    cpu.write_u8(0x10, 0x55);
-    cpu.interpret(vec![0xAD, 0x10, 0x00, 0x00]);
-    assert_eq!(cpu.a, 0x55, "LDA $10 should retrieve $55 from address $0010.");
-  }
+  //  Opcode::new(0x61, "ADC", 2, 6, AddressingMode::IndirectX, false, false, false, false),
+  //  Opcode::new(0x65, "ADC", 2, 3, AddressingMode::ZeroPage, false, false, false, false),
+  //  Opcode::new(0x69, "ADC", 2, 2, AddressingMode::Immediate, false, false, false, false),
+  //  Opcode::new(0x6D, "ADC", 3, 4, AddressingMode::Absolute, false, false, false, false),
+  //  Opcode::new(0x71, "ADC", 2, 5, AddressingMode::IndirectY, false, false, false, true),
+  //  Opcode::new(0x75, "ADC", 2, 4, AddressingMode::ZeroPageX, false, false, false, false),
+  //  Opcode::new(0x79, "ADC", 3, 4, AddressingMode::AbsoluteY, false, false, false, true),
+  //  Opcode::new(0x7D, "ADC", 3, 4, AddressingMode::AbsoluteX, false, false, false, true),
 }
