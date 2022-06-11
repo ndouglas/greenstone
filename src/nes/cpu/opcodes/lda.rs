@@ -2,11 +2,12 @@ use super::super::*;
 
 impl CPU<'_> {
   #[inline]
-  pub fn opcode_lda(&mut self, mode: &AddressingMode) {
+  pub fn opcode_lda(&mut self, mode: &AddressingMode) -> bool {
     let (address, cycles) = self.get_operand_address(mode).unwrap();
     let value = self.read_u8(address);
     self.a = value;
     self.set_value_flags(value);
+    false
   }
 }
 

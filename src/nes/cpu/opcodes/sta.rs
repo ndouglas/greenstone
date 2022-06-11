@@ -2,9 +2,10 @@ use super::super::*;
 
 impl CPU<'_> {
   #[inline]
-  pub fn opcode_sta(&mut self, mode: &AddressingMode) {
+  pub fn opcode_sta(&mut self, mode: &AddressingMode) -> bool {
     let (address, cycles) = self.get_operand_address(mode).unwrap();
     self.write_u8(address, self.a);
+    false
   }
 }
 

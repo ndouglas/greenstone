@@ -1,3 +1,11 @@
+// ADC: Add to Accumulator With Carry
+pub mod adc;
+pub use adc::*;
+
+// BRK: Break
+pub mod brk;
+pub use brk::*;
+
 // INX: Increment X
 pub mod inx;
 pub use inx::*;

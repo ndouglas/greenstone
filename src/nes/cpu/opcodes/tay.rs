@@ -2,9 +2,10 @@ use super::super::*;
 
 impl CPU<'_> {
   #[inline]
-  pub fn opcode_tay(&mut self) {
+  pub fn opcode_tay(&mut self, _mode: &AddressingMode) -> bool {
     self.y = self.a;
     self.set_value_flags(self.y);
+    false
   }
 }
 
