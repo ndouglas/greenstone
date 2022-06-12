@@ -92,14 +92,22 @@ impl<'a> CPU<'a> {
     let opcode_length = opcode.length;
     let mut opcode_cycles = opcode.cycles;
     let extra_cycles = match code {
+      // Illegal Opcodes
+      0xEB => false,
       // ADC
       0x61 | 0x65 | 0x69 | 0x6D | 0x71 | 0x75 | 0x79 | 0x7D => self.instruction_adc(&opcode.mode),
       // BRK
       0x00 => self.instruction_brk(&opcode.mode),
+      // CLC
+      0x18 => self.instruction_clc(&opcode.mode),
       // INX
       0xE8 => self.instruction_inx(&opcode.mode),
       // LDA
       0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => self.instruction_lda(&opcode.mode),
+      // SBC
+      0xE1 | 0xE5 | 0xE9 | 0xED | 0xF1 | 0xF5 | 0xF9 | 0xFD => self.instruction_sbc(&opcode.mode),
+      // SEC
+      0x38 => self.instruction_clc(&opcode.mode),
       // STA
       0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => self.instruction_sta(&opcode.mode),
       // TAY
@@ -114,15 +122,6 @@ impl<'a> CPU<'a> {
     }
     self.cycles += opcode_cycles;
   }
-
-  //  Opcode::new(0x61, "ADC", 2, 6, AddressingMode::IndirectX, false, false, false, false),
-  //  Opcode::new(0x65, "ADC", 2, 3, AddressingMode::ZeroPage, false, false, false, false),
-  //  Opcode::new(0x69, "ADC", 2, 2, AddressingMode::Immediate, false, false, false, false),
-  //  Opcode::new(0x6D, "ADC", 3, 4, AddressingMode::Absolute, false, false, false, false),
-  //  Opcode::new(0x71, "ADC", 2, 5, AddressingMode::IndirectY, false, false, false, true),
-  //  Opcode::new(0x75, "ADC", 2, 4, AddressingMode::ZeroPageX, false, false, false, false),
-  //  Opcode::new(0x79, "ADC", 3, 4, AddressingMode::AbsoluteY, false, false, false, true),
-  //  Opcode::new(0x7D, "ADC", 3, 4, AddressingMode::AbsoluteX, false, false, false, true),
 
   pub fn reset(&mut self) {
     self.a = 0x00;

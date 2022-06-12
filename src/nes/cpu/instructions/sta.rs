@@ -17,9 +17,9 @@ mod test {
   fn test_sta_0x85_zeropage_store_data() {
     let mut cpu = CPU::new();
     cpu.interpret(vec![
-      0xA9, 0x05, //    LDA #$05    ; A = 5
-      0x85, 0x06, //    STA #$06    ; $0006 = 5
-      0x00, //          BRK         ;
+      0xA9, 0x05, //          LDA #$05    ; A = 5
+      0x85, 0x06, //          STA #$06    ; $0006 = 5
+      0x00, //                BRK         ;
     ]);
     assert_eq!(cpu.a, 0x05);
     assert_eq!(cpu.read_u8(0x06), 0x05);
@@ -32,12 +32,13 @@ mod test {
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x05, //        LDA #$05        ; A = 5
-      0x95, 0x07, //        STA $07         ; $0007 = 5
+      0xAA, //              TAX             ; X = 5
+      0xA9, 0x02, //        LDA #$02        ; A = 2
+      0x95, 0x05, //        STA $05,X       ; $000A = 5
       0x00, //              BRK             ;
     ]);
-    assert_eq!(cpu.x, 0x01);
-    assert_eq!(cpu.a, 0x05);
-    assert_eq!(cpu.read_u8(0x08), 0x05);
+    assert_eq!(cpu.a, 0x02);
+    assert_eq!(cpu.read_u8(0x0A), 0x02);
     assert!(cpu.status & NEGATIVE_FLAG == 0, "should not set the negative flag.");
     assert!(cpu.status & CARRY_FLAG == 0, "should not set the carry flag.");
   }

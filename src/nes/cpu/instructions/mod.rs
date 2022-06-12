@@ -1,3 +1,7 @@
+// Common functionality
+pub mod common;
+pub use common::*;
+
 // ADC: Add to Accumulator With Carry
 pub mod adc;
 pub use adc::*;
@@ -6,6 +10,10 @@ pub use adc::*;
 pub mod brk;
 pub use brk::*;
 
+// CLC: Clear Carry
+pub mod clc;
+pub use clc::*;
+
 // INX: Increment X
 pub mod inx;
 pub use inx::*;
@@ -13,6 +21,10 @@ pub use inx::*;
 // LDA: Load A
 pub mod lda;
 pub use lda::*;
+
+// SBC: Subtract from Accumulator With Carry
+pub mod sbc;
+pub use sbc::*;
 
 // STA: Store A
 pub mod sta;
