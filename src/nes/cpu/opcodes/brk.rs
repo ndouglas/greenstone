@@ -15,7 +15,9 @@ mod test {
   #[test]
   fn test_brk_0x00_halts() {
     let mut cpu = CPU::new();
-    cpu.interpret(vec![0x00]);
+    cpu.interpret(vec![
+      0x00, //         BRK          ;
+    ]);
     assert!(cpu.halt, "BRK should halt.");
   }
 }

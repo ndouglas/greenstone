@@ -67,7 +67,6 @@ impl<'a> CPU<'a> {
   }
 
   pub fn run(&mut self) {
-    let ref opcodes: HashMap<u8, &'static Opcode> = *OPCODE_MAP;
     loop {
       self.clock();
       if self.halt {
@@ -89,9 +88,7 @@ impl<'a> CPU<'a> {
     let code = self.read_u8(self.program_counter);
     self.program_counter += 1;
     let pc_state = self.program_counter;
-    let opcode = opcodes
-      .get(&code)
-      .expect(&format!("Opcode {:x} is not recognized", code));
+    let opcode = opcodes.get(&code).expect(&format!("Opcode {:x} is not recognized", code));
     let opcode_length = opcode.length;
     let mut opcode_cycles = opcode.cycles;
     let extra_cycles = match code {

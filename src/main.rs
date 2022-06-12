@@ -12,5 +12,6 @@ pub mod ui;
 
 fn main() {
   pretty_env_logger::init();
+  trace!("main()");
   ui::UI::run(iced::Settings::default());
 }
