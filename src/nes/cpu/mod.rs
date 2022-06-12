@@ -7,11 +7,11 @@ use crate::traits::Addressable;
 pub mod addressing_mode;
 pub use addressing_mode::*;
 
+pub mod instructions;
+pub use instructions::*;
+
 pub mod opcode;
 pub use opcode::*;
-
-pub mod opcodes;
-pub use opcodes::*;
 
 pub mod status_flags;
 pub use status_flags::*;
@@ -92,20 +92,20 @@ impl<'a> CPU<'a> {
     let opcode_length = opcode.length;
     let mut opcode_cycles = opcode.cycles;
     let extra_cycles = match code {
-      // BRK
-      0x00 => self.opcode_brk(&opcode.mode),
       // ADC
-      0x61 | 0x65 | 0x69 | 0x6D | 0x71 | 0x75 | 0x79 | 0x7D => self.opcode_adc(&opcode.mode),
+      0x61 | 0x65 | 0x69 | 0x6D | 0x71 | 0x75 | 0x79 | 0x7D => self.instruction_adc(&opcode.mode),
+      // BRK
+      0x00 => self.instruction_brk(&opcode.mode),
       // INX
-      0xE8 => self.opcode_inx(&opcode.mode),
+      0xE8 => self.instruction_inx(&opcode.mode),
       // LDA
-      0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => self.opcode_lda(&opcode.mode),
+      0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => self.instruction_lda(&opcode.mode),
       // STA
-      0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => self.opcode_sta(&opcode.mode),
+      0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => self.instruction_sta(&opcode.mode),
       // TAY
-      0xA8 => self.opcode_tay(&opcode.mode),
+      0xA8 => self.instruction_tay(&opcode.mode),
       // TAX
-      0xAA => self.opcode_tax(&opcode.mode),
+      0xAA => self.instruction_tax(&opcode.mode),
       _ => todo!(),
     };
     opcode_cycles += (extra_cycles && opcode.extra_cycle) as u8;

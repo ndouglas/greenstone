@@ -7,7 +7,7 @@ fn should_overflow(a: u16, m: u16, r: u16) -> bool {
 
 impl CPU<'_> {
   #[inline]
-  pub fn opcode_adc(&mut self, mode: &AddressingMode) -> bool {
+  pub fn instruction_adc(&mut self, mode: &AddressingMode) -> bool {
     let (address, additional_cycles) = self.get_operand_address(mode).unwrap();
     let addend = self.read_u8(address);
     let temp = self.a as u16 + addend as u16 + self.get_carry_flag() as u16;

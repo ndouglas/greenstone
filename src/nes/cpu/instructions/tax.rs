@@ -2,7 +2,7 @@ use super::super::*;
 
 impl CPU<'_> {
   #[inline]
-  pub fn opcode_tax(&mut self, _mode: &AddressingMode) -> bool {
+  pub fn instruction_tax(&mut self, _mode: &AddressingMode) -> bool {
     self.x = self.a;
     self.set_value_flags(self.x);
     false

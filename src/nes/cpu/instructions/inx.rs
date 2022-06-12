@@ -2,7 +2,7 @@ use super::super::*;
 
 impl CPU<'_> {
   #[inline]
-  pub fn opcode_inx(&mut self, _mode: &AddressingMode) -> bool {
+  pub fn instruction_inx(&mut self, _mode: &AddressingMode) -> bool {
     self.x = self.x.wrapping_add(1);
     self.set_value_flags(self.x);
     false

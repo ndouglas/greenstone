@@ -2,7 +2,7 @@ use super::super::*;
 
 impl CPU<'_> {
   #[inline]
-  pub fn opcode_brk(&mut self, _mode: &AddressingMode) -> bool {
+  pub fn instruction_brk(&mut self, _mode: &AddressingMode) -> bool {
     self.halt = true;
     false
   }
