@@ -79,13 +79,13 @@ mod test {
     assert_eq!(cpu.a, 0x55, "should retrieve 85 from address $0010.");
   }
 
-//  Opcode::new(0xA1, "LDA", 2, 6, AddressingMode::IndirectX, false, false, false, false),
-//  Opcode::new(0xA5, "LDA", 2, 3, AddressingMode::ZeroPage, false, false, false, false),
-//  Opcode::new(0xA9, "LDA", 2, 2, AddressingMode::Immediate, false, false, false, false),
-//  Opcode::new(0xAD, "LDA", 3, 4, AddressingMode::Absolute, false, false, false, false),
-//  Opcode::new(0xB1, "LDA", 2, 5, AddressingMode::IndirectY, false, false, false, true),
-//  Opcode::new(0xB5, "LDA", 2, 4, AddressingMode::ZeroPageX, false, false, false, false),
-//  Opcode::new(0xB9, "LDA", 3, 4, AddressingMode::AbsoluteY, false, false, false, true),
-//  Opcode::new(0xBD, "LDA", 3, 4, AddressingMode::AbsoluteX, false, false, false, true),
+//  Opcode::new(0xA1, "LDA", 2, 6, AddressingMode::IndirectX, false, false, false, false), (z, X)
+//  Opcode::new(0xA5, "LDA", 2, 3, AddressingMode::ZeroPage, false, false, false, false), z
+//  Opcode::new(0xA9, "LDA", 2, 2, AddressingMode::Immediate, false, false, false, false), #n
+//  Opcode::new(0xAD, "LDA", 3, 4, AddressingMode::Absolute, false, false, false, false), a
+//  Opcode::new(0xB1, "LDA", 2, 5, AddressingMode::IndirectY, false, false, false, true), (z), Y
+//  Opcode::new(0xB5, "LDA", 2, 4, AddressingMode::ZeroPageX, false, false, false, false), z, X
+//  Opcode::new(0xB9, "LDA", 3, 4, AddressingMode::AbsoluteY, false, false, false, true), a, Y
+//  Opcode::new(0xBD, "LDA", 3, 4, AddressingMode::AbsoluteX, false, false, false, true), a, X
 
 }

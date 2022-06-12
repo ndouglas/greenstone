@@ -42,13 +42,13 @@ mod test {
     assert!(cpu.status & CARRY_FLAG == 0, "should not set the carry flag.");
   }
 
-//  Opcode::new(0x81, "STA", 2, 6, AddressingMode::IndirectX, false, false, false, false),
-//  Opcode::new(0x85, "STA", 2, 3, AddressingMode::ZeroPage, false, false, false, false),
-//  Opcode::new(0x8D, "STA", 3, 4, AddressingMode::Absolute, false, false, false, false),
-//  Opcode::new(0x91, "STA", 2, 6, AddressingMode::IndirectY, false, false, false, false),
-//  Opcode::new(0x95, "STA", 2, 4, AddressingMode::ZeroPageX, false, false, false, false),
-//  Opcode::new(0x99, "STA", 3, 5, AddressingMode::AbsoluteY, false, false, false, false),
-//  Opcode::new(0x9D, "STA", 3, 5, AddressingMode::AbsoluteX, false, false, false, false),
+//  Opcode::new(0x81, "STA", 2, 6, AddressingMode::IndirectX, false, false, false, false), (z, X)
+//  Opcode::new(0x85, "STA", 2, 3, AddressingMode::ZeroPage, false, false, false, false), z
+//  Opcode::new(0x8D, "STA", 3, 4, AddressingMode::Absolute, false, false, false, false),  a
+//  Opcode::new(0x91, "STA", 2, 6, AddressingMode::IndirectY, false, false, false, false), (z), Y
+//  Opcode::new(0x95, "STA", 2, 4, AddressingMode::ZeroPageX, false, false, false, false), z, X
+//  Opcode::new(0x99, "STA", 3, 5, AddressingMode::AbsoluteY, false, false, false, false), a, Y
+//  Opcode::new(0x9D, "STA", 3, 5, AddressingMode::AbsoluteX, false, false, false, false), a, X
 
   #[test]
   fn test_sta_0x8d_absolute_store_data() {

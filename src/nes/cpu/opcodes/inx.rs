@@ -17,7 +17,7 @@ mod test {
   fn test_inx_0xe8_adding_data() {
     let mut cpu = CPU::new();
     cpu.interpret(vec![
-      0xA9, 0xC0, //            LDA, #$C0     ; A = -64
+      0xA9, 0xC0, //            LDA #$C0      ; A = -64
       0xAA, //                  TAX           ; X = -64
       0xE8, //                  INX           ; X += 1
       0x00, //                  BRK           ;
