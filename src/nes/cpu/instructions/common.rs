@@ -1,5 +1,3 @@
-use super::super::*;
-
 #[inline]
 #[named]
 pub fn add_u8s(augend: u8, addend: u8, carry: bool) -> (u8, bool, bool) {

@@ -116,10 +116,10 @@ impl<'a> CPU<'a> {
       0x38 => self.instruction_sec(&opcode.mode),
       // STA
       0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => self.instruction_sta(&opcode.mode),
-      // TAY
-      0xA8 => self.instruction_tay(&opcode.mode),
       // TAX
       0xAA => self.instruction_tax(&opcode.mode),
+      // TAY
+      0xA8 => self.instruction_tay(&opcode.mode),
       _ => todo!(),
     };
     opcode_cycles += (extra_cycles && opcode.extra_cycle) as u8;
