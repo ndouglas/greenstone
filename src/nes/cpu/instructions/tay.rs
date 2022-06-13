@@ -2,9 +2,13 @@ use super::super::*;
 
 impl CPU<'_> {
   #[inline]
+  #[named]
   pub fn instruction_tay(&mut self, _mode: &AddressingMode) -> bool {
+    trace_enter!();
     self.y = self.a;
+    trace_var!(self.y);
     self.set_value_flags(self.y);
+    trace_result!(false);
     false
   }
 }
@@ -12,9 +16,12 @@ impl CPU<'_> {
 #[cfg(test)]
 mod test {
   use super::*;
+  use crate::test::init;
 
   #[test]
+  #[named]
   fn test_tay_0xa8_transfer_data() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x05, //      LDA #$05    ; A = 5
@@ -27,7 +34,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_tay_0xa8_sets_zero_flag() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x00, //      LDA #$00    ; A = 0
@@ -44,7 +53,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_tay_0xa8_sets_negative_flag() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0xFF, //      LDA #$FF    ; A = -128

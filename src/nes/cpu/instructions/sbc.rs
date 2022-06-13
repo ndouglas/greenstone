@@ -4,26 +4,41 @@ use super::super::*;
 
 impl CPU<'_> {
   #[inline]
+  #[named]
   pub fn instruction_sbc(&mut self, mode: &AddressingMode) -> bool {
+    trace_enter!();
     let (address, additional_cycles) = self.get_operand_address(mode).unwrap();
+    trace_u16!(address);
+    trace_var!(additional_cycles);
     let minuend = self.a;
-    let subtrahend = (self.read_u8(address) as i8).wrapping_neg() as u8;
+    trace_u8!(minuend);
+    let subtrahend = (self.read_u8(address) as i8).wrapping_neg().wrapping_sub(1) as u8;
+    trace_u8!(subtrahend);
     let carry = self.get_carry_flag();
-    let (result, set_carry, set_overflow) = add_u8s(minuend, subtrahend, carry);
-    self.a = result;
+    trace_var!(carry);
+    let (answer, set_carry, set_overflow) = add_u8s(minuend, subtrahend, carry);
+    trace_u8!(answer);
+    trace_var!(set_carry);
+    trace_var!(set_overflow);
+    self.a = answer;
     self.set_carry_flag(set_carry);
     self.set_overflow_flag(set_overflow);
-    self.set_value_flags(result);
-    additional_cycles > 0
+    self.set_value_flags(answer);
+    let result = additional_cycles > 0;
+    trace_result!(result);
+    result
   }
 }
 
 #[cfg(test)]
 mod test {
   use super::*;
+  use crate::test::init;
 
   #[test]
+  #[named]
   fn test_sbc_0xe1_indirectx_subtract_with_carry() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x05, //        LDA #$05      ; A = 5
@@ -43,7 +58,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_sbc_0xe5_zeropage_subtract_with_carry() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x05, //        LDA #$05      ; A = 5
@@ -59,7 +76,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_sbc_0xe9_immediate_subtract_with_carry() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x05, //        LDA #$05      ; A = 5
@@ -73,7 +92,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_sbc_0xed_absolute_subtract_with_carry() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x03, //            LDA #$03        ; A = 3
@@ -89,7 +110,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_sbc_0xf1_indirecty_subtract_with_carry() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x0A, //        LDA #$0A          ; A = 10
@@ -109,7 +132,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_sbc_0xf5_zeropagex_subtract_with_carry() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x0A, //          LDA #$0A          ; A = 10
@@ -128,7 +153,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_sbc_0xf9_absolutey_subtract_with_carry() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x05, //          LDA #$05          ; A = 5
@@ -146,7 +173,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_sbc_0xfd_absolutex_subtract_with_carry() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x05, //          LDA #$05          ; A = 5
@@ -162,5 +191,4 @@ mod test {
     assert!(cpu.status & NEGATIVE_FLAG == NEGATIVE_FLAG, "should not set the negative flag.");
     assert!(cpu.status & CARRY_FLAG == 0, "should not set the carry flag.");
   }
-
 }

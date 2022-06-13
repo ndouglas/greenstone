@@ -14,6 +14,7 @@ pub struct Opcode {
 }
 
 impl Opcode {
+  #[named]
   fn new(
     code: u8,
     mnemonic: &'static str,

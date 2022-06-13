@@ -26,6 +26,10 @@ pub use lda::*;
 pub mod sbc;
 pub use sbc::*;
 
+// SEC: Set the Carry Flag.
+pub mod sec;
+pub use sec::*;
+
 // STA: Store A
 pub mod sta;
 pub use sta::*;

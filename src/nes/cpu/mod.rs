@@ -30,6 +30,7 @@ pub struct CPU<'a> {
 }
 
 impl<'a> CPU<'a> {
+  #[named]
   pub fn new() -> CPU<'a> {
     CPU {
       a: 0x00,
@@ -45,6 +46,7 @@ impl<'a> CPU<'a> {
     }
   }
 
+  #[named]
   pub fn new_with_bus() -> CPU<'a> {
     CPU {
       a: 0x00,
@@ -60,12 +62,14 @@ impl<'a> CPU<'a> {
     }
   }
 
+  #[named]
   pub fn interpret(&mut self, program: Vec<u8>) {
     self.load(program);
     self.reset();
     self.run()
   }
 
+  #[named]
   pub fn run(&mut self) {
     loop {
       self.clock();
@@ -75,6 +79,7 @@ impl<'a> CPU<'a> {
     }
   }
 
+  #[named]
   pub fn clock(&mut self) {
     if self.cycles == 0 {
       self.dequeue_instruction();
@@ -83,6 +88,7 @@ impl<'a> CPU<'a> {
     self.cycles -= 1;
   }
 
+  #[named]
   pub fn dequeue_instruction(&mut self) {
     let ref opcodes: HashMap<u8, &'static Opcode> = *OPCODE_MAP;
     let code = self.read_u8(self.program_counter);
@@ -107,7 +113,7 @@ impl<'a> CPU<'a> {
       // SBC
       0xE1 | 0xE5 | 0xE9 | 0xED | 0xF1 | 0xF5 | 0xF9 | 0xFD => self.instruction_sbc(&opcode.mode),
       // SEC
-      0x38 => self.instruction_clc(&opcode.mode),
+      0x38 => self.instruction_sec(&opcode.mode),
       // STA
       0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => self.instruction_sta(&opcode.mode),
       // TAY
@@ -123,6 +129,7 @@ impl<'a> CPU<'a> {
     self.cycles += opcode_cycles;
   }
 
+  #[named]
   pub fn reset(&mut self) {
     self.a = 0x00;
     self.x = 0x00;
@@ -137,14 +144,17 @@ impl<'a> CPU<'a> {
 }
 
 impl Addressable for CPU<'_> {
+  #[named]
   fn read_u8(&self, address: u16) -> u8 {
     self.addressable.read_u8(address)
   }
 
+  #[named]
   fn write_u8(&mut self, address: u16, data: u8) {
     self.addressable.write_u8(address, data);
   }
 
+  #[named]
   fn load(&mut self, program: Vec<u8>) {
     self.addressable.load(program)
   }

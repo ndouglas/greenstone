@@ -2,9 +2,13 @@ use super::super::*;
 
 impl CPU<'_> {
   #[inline]
+  #[named]
   pub fn instruction_tax(&mut self, _mode: &AddressingMode) -> bool {
+    trace_enter!();
     self.x = self.a;
+    trace_u8!(self.x);
     self.set_value_flags(self.x);
+    trace_result!(false);
     false
   }
 }
@@ -12,9 +16,12 @@ impl CPU<'_> {
 #[cfg(test)]
 mod test {
   use super::*;
+  use crate::test::init;
 
   #[test]
+  #[named]
   fn test_tax_0xaa_transfer_data() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x05, //      LDA #$05    ; A = 5
@@ -27,7 +34,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_tax_0xaa_sets_zero_flag() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x00, //      LDA #$00    ; A = 0
@@ -44,7 +53,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_tax_0xaa_sets_negative_flag() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0xFF, //      LDA #$FF    ; A = -128

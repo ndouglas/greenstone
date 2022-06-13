@@ -2,26 +2,41 @@ use super::super::*;
 
 impl CPU<'_> {
   #[inline]
+  #[named]
   pub fn instruction_adc(&mut self, mode: &AddressingMode) -> bool {
+    trace_enter!();
     let (address, additional_cycles) = self.get_operand_address(mode).unwrap();
-    let addend = self.read_u8(address);
-    let carry = self.get_carry_flag();
+    trace_u16!(address);
+    trace_u8!(additional_cycles);
     let augend = self.a;
-    let (result, set_carry, set_overflow) = add_u8s(augend, addend, carry);
-    self.a = result;
+    trace_u8!(augend);
+    let addend = self.read_u8(address);
+    trace_u8!(addend);
+    let carry = self.get_carry_flag();
+    trace_var!(carry);
+    let (answer, set_carry, set_overflow) = add_u8s(augend, addend, carry);
+    trace_u8!(answer);
+    trace_var!(set_carry);
+    trace_var!(set_overflow);
+    self.a = answer;
     self.set_carry_flag(set_carry);
     self.set_overflow_flag(set_overflow);
-    self.set_value_flags(result);
-    additional_cycles > 0
+    self.set_value_flags(answer);
+    let result = additional_cycles > 0;
+    trace_result!(result);
+    result
   }
 }
 
 #[cfg(test)]
 mod test {
   use super::*;
+  use crate::test::init;
 
   #[test]
+  #[named]
   fn test_adc_0x61_indirectx_add_with_carry() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x07, //        LDA #$07      ; A = 7
@@ -42,7 +57,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_adc_0x65_zeropage_add_with_carry() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x05, //        LDA #$05      ; A = 5
@@ -56,7 +73,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_adc_0x69_immediate_add_with_carry() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x05, //        LDA #$05      ; A = 5
@@ -69,7 +88,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_adc_0x6d_absolute_add_with_carry() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x03, //            LDA #$03        ; A = 3
@@ -84,7 +105,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_adc_0x71_indirecty_add_with_carry() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x0A, //        LDA #$0A          ; A = 10
@@ -103,7 +126,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_adc_0x75_zeropagex_add_with_carry() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x0A, //          LDA #$0A          ; A = 10
@@ -121,7 +146,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_adc_0x79_absolutey_add_with_carry() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x05, //          LDA #$05          ; A = 5
@@ -138,7 +165,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_adc_0x7d_absolutex_add_with_carry() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0x05, //          LDA #$05          ; A = 5
@@ -153,5 +182,4 @@ mod test {
     assert!(cpu.status & NEGATIVE_FLAG == 0, "should not set the negative flag.");
     assert!(cpu.status & CARRY_FLAG == 0, "should not set the carry flag.");
   }
-
 }

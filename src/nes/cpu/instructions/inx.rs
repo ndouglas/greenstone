@@ -2,9 +2,14 @@ use super::super::*;
 
 impl CPU<'_> {
   #[inline]
+  #[named]
   pub fn instruction_inx(&mut self, _mode: &AddressingMode) -> bool {
+    trace_enter!();
+    self.set_carry_flag(false);
     self.x = self.x.wrapping_add(1);
+    trace_u8!(self.x);
     self.set_value_flags(self.x);
+    trace_result!(false);
     false
   }
 }
@@ -12,9 +17,12 @@ impl CPU<'_> {
 #[cfg(test)]
 mod test {
   use super::*;
+  use crate::test::init;
 
   #[test]
+  #[named]
   fn test_inx_0xe8_adding_data() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0xC0, //            LDA #$C0      ; A = -64
@@ -29,7 +37,9 @@ mod test {
   }
 
   #[test]
+  #[named]
   fn test_inx_0xe8_overflow() {
+    init();
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0xA9, 0xFF, //            LDA #$FF        ; A = 255

@@ -1,27 +1,33 @@
 use super::super::*;
 
 #[inline]
+#[named]
 pub fn add_u8s(augend: u8, addend: u8, carry: bool) -> (u8, bool, bool) {
-  trace!("augend: {:X} ({} or {})", augend, augend, augend as i8);
-  trace!("addend: {:X} ({} or {})", addend, addend, addend as i8);
-  trace!("carry: {}", carry);
+  trace_enter!();
+  trace_u8!(augend);
+  trace_u8!(addend);
+  trace_var!(carry);
   let sum = (augend as u16) + (addend as u16) + (carry as u16);
-  trace!("sum: {:X} ({} or {})", sum, sum, sum as i16);
+  trace_u16!(sum);
   let result = sum as u8;
-  trace!("result: {} or {}", result, result as i8);
+  trace_u8!(result);
   let set_carry = sum > 0xFF;
-  trace!("set_carry: {}", set_carry);
+  trace_var!(set_carry);
   let set_overflow = (addend ^ result) & (augend ^ result) & 0x80 != 0;
-  trace!("set_overflow: {}", set_overflow);
+  trace_var!(set_overflow);
+  trace_exit!();
   (result, set_carry, set_overflow)
 }
 
 #[cfg(test)]
 mod test {
   use super::*;
+  use crate::test::init;
 
   #[test]
+  #[named]
   fn test_add_u8s() {
+    init();
     let mut augend = 0x05;
     let mut addend = 0x02;
     let mut carry = false;
@@ -63,8 +69,5 @@ mod test {
     assert!(set_carry == false, "should not have set the carry bit");
     assert!(set_overflow == false, "should not have set the overflow bit");
   }
-
-
-
 
 }

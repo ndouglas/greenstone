@@ -23,102 +23,170 @@ pub enum StatusFlags {
 
 impl CPU<'_> {
   #[inline]
+  #[named]
   pub fn set_status_flag(&mut self, flag: StatusFlags, value: bool) {
+    trace_enter!();
+    trace_var!(value);
     if value {
       self.status = self.status | (flag as u8);
     } else {
       self.status = self.status & !(flag as u8);
     }
+    trace_status_register!(self.status);
+    trace_exit!();
   }
 
   #[inline]
+  #[named]
   pub fn get_status_flag(&self, flag: StatusFlags) -> bool {
-    return self.status & (flag as u8) > 0;
+    trace_enter!();
+    let result = self.status & (flag as u8) > 0;
+    trace_result!(result);
+    result
   }
 
   #[inline]
+  #[named]
   pub fn set_negative_flag(&mut self, value: bool) {
+    trace_enter!();
     self.set_status_flag(StatusFlags::Negative, value);
+    trace_exit!();
   }
 
   #[inline]
+  #[named]
   pub fn get_negative_flag(&self) -> bool {
-    return self.get_status_flag(StatusFlags::Negative);
+    trace_enter!();
+    let result = self.get_status_flag(StatusFlags::Negative);
+    trace_result!(result);
+    result
   }
 
   #[inline]
+  #[named]
   pub fn set_overflow_flag(&mut self, value: bool) {
+    trace_enter!();
     self.set_status_flag(StatusFlags::Overflow, value);
+    trace_exit!();
   }
 
   #[inline]
+  #[named]
   pub fn get_overflow_flag(&self) -> bool {
-    return self.get_status_flag(StatusFlags::Overflow);
+    trace_enter!();
+    let result = self.get_status_flag(StatusFlags::Overflow);
+    trace_result!(result);
+    result
   }
 
   #[inline]
+  #[named]
   pub fn set_unused_flag(&mut self, value: bool) {
+    trace_enter!();
     self.set_status_flag(StatusFlags::Unused, value);
+    trace_exit!();
   }
 
   #[inline]
+  #[named]
   pub fn get_unused_flag(&self) -> bool {
-    return self.get_status_flag(StatusFlags::Unused);
+    trace_enter!();
+    let result = self.get_status_flag(StatusFlags::Unused);
+    trace_result!(result);
+    result
   }
 
   #[inline]
+  #[named]
   pub fn set_break_flag(&mut self, value: bool) {
+    trace_enter!();
     self.set_status_flag(StatusFlags::Break, value);
+    trace_exit!();
   }
 
   #[inline]
+  #[named]
   pub fn get_break_flag(&self) -> bool {
-    return self.get_status_flag(StatusFlags::Break);
+    trace_enter!();
+    let result = self.get_status_flag(StatusFlags::Break);
+    trace_result!(result);
+    result
   }
 
   #[inline]
+  #[named]
   pub fn set_decimal_flag(&mut self, value: bool) {
+    trace_enter!();
     self.set_status_flag(StatusFlags::Decimal, value);
+    trace_exit!();
   }
 
   #[inline]
+  #[named]
   pub fn get_decimal_flag(&self) -> bool {
-    return self.get_status_flag(StatusFlags::Decimal);
+    trace_enter!();
+    let result = self.get_status_flag(StatusFlags::Decimal);
+    trace_result!(result);
+    result
   }
 
   #[inline]
+  #[named]
   pub fn set_interrupt_disable_flag(&mut self, value: bool) {
+    trace_enter!();
     self.set_status_flag(StatusFlags::InterruptDisable, value);
+    trace_exit!();
   }
 
   #[inline]
+  #[named]
   pub fn get_interrupt_disable_flag(&self) -> bool {
-    return self.get_status_flag(StatusFlags::InterruptDisable);
+    trace_enter!();
+    let result = self.get_status_flag(StatusFlags::InterruptDisable);
+    trace_result!(result);
+    result
   }
 
   #[inline]
+  #[named]
   pub fn set_zero_flag(&mut self, value: bool) {
+    trace_enter!();
     self.set_status_flag(StatusFlags::Zero, value);
+    trace_exit!();
   }
 
   #[inline]
+  #[named]
   pub fn get_zero_flag(&self) -> bool {
-    return self.get_status_flag(StatusFlags::Zero);
+    trace_enter!();
+    let result = self.get_status_flag(StatusFlags::Zero);
+    trace_result!(result);
+    result
   }
 
   #[inline]
+  #[named]
   pub fn set_carry_flag(&mut self, value: bool) {
+    trace_enter!();
     self.set_status_flag(StatusFlags::Carry, value);
+    trace_exit!();
   }
 
   #[inline]
+  #[named]
   pub fn get_carry_flag(&self) -> bool {
-    return self.get_status_flag(StatusFlags::Carry);
+    trace_enter!();
+    let result = self.get_status_flag(StatusFlags::Carry);
+    trace_result!(result);
+    result
   }
 
   #[inline]
+  #[named]
   pub fn set_value_flags(&mut self, value: u8) {
+    trace_enter!();
     self.set_zero_flag(value == 0);
     self.set_negative_flag(value & NEGATIVE_FLAG == NEGATIVE_FLAG);
+    trace_exit!();
   }
 }
