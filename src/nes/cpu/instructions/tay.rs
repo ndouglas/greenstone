@@ -3,13 +3,14 @@ use super::super::*;
 impl CPU<'_> {
   #[inline]
   #[named]
-  pub fn instruction_tay(&mut self, _mode: &AddressingMode) -> bool {
+  pub fn instruction_tay(&mut self, _opcode: &Opcode) -> u8 {
     trace_enter!();
     self.y = self.a;
     trace_var!(self.y);
     self.set_value_flags(self.y);
-    trace_result!(false);
-    false
+    let result = 0;
+    trace_result!(result);
+    result
   }
 }
 

@@ -3,12 +3,13 @@ use super::super::*;
 impl CPU<'_> {
   #[inline]
   #[named]
-  pub fn instruction_brk(&mut self, _mode: &AddressingMode) -> bool {
+  pub fn instruction_brk(&mut self, _opcode: &Opcode) -> u8 {
     trace_enter!();
     self.halt = true;
     trace_var!(self.halt);
-    trace_result!(false);
-    false
+    let result = 0;
+    trace_result!(result);
+    result
   }
 }
 

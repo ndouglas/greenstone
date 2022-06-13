@@ -3,8 +3,10 @@ use super::super::*;
 impl CPU<'_> {
   #[inline]
   #[named]
-  pub fn instruction_lda(&mut self, mode: &AddressingMode) -> bool {
+  pub fn instruction_lda(&mut self, opcode: &Opcode) -> u8 {
     trace_enter!();
+    let mode = &opcode.mode;
+    trace_var!(mode);
     let (address, additional_cycles) = self.get_operand_address(mode).unwrap();
     trace_u16!(address);
     trace_u8!(additional_cycles);
@@ -13,9 +15,9 @@ impl CPU<'_> {
     self.a = value;
     trace_u8!(self.a);
     self.set_value_flags(value);
-    let force_additional_cycle = additional_cycles > 0;
-    trace_result!(force_additional_cycle);
-    force_additional_cycle
+    let result = additional_cycles;
+    trace_result!(result);
+    result
   }
 }
 

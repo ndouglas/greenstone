@@ -3,14 +3,15 @@ use super::super::*;
 impl CPU<'_> {
   #[inline]
   #[named]
-  pub fn instruction_inx(&mut self, _mode: &AddressingMode) -> bool {
+  pub fn instruction_inx(&mut self, _opcode: &Opcode) -> u8 {
     trace_enter!();
     self.set_carry_flag(false);
     self.x = self.x.wrapping_add(1);
     trace_u8!(self.x);
     self.set_value_flags(self.x);
-    trace_result!(false);
-    false
+    let result = 0;
+    trace_result!(result);
+    result
   }
 }
 
