@@ -2,9 +2,13 @@
 pub mod common;
 pub use common::*;
 
-// ADC: Add to Accumulator With Carry
+// ADC: Add to Accumulator With Carry.
 pub mod adc;
 pub use adc::*;
+
+// AND: Bitwise AND Accumulator With Data.
+pub mod and;
+pub use and::*;
 
 // BRK: Break
 pub mod brk;
@@ -22,7 +26,7 @@ pub use inx::*;
 pub mod lda;
 pub use lda::*;
 
-// SBC: Subtract from Accumulator With Carry
+// SBC: Subtract from Accumulator With Carry.
 pub mod sbc;
 pub use sbc::*;
 
@@ -30,14 +34,14 @@ pub use sbc::*;
 pub mod sec;
 pub use sec::*;
 
-// STA: Store A
+// STA: Store A.
 pub mod sta;
 pub use sta::*;
 
-// TAX: Transfer A -> X
+// TAX: Transfer A -> X.
 pub mod tax;
 pub use tax::*;
 
-// TAY: Transfer A -> Y
+// TAY: Transfer A -> Y.
 pub mod tay;
 pub use tay::*;

@@ -28,7 +28,10 @@ impl CPU<'_> {
     self.set_carry_flag(set_carry);
     self.set_overflow_flag(set_overflow);
     self.set_value_flags(answer);
-    let result = cycles + additional_cycles;
+    let mut result = cycles;
+    if opcode.extra_cycle {
+      result += additional_cycles;
+    }
     trace_result!(result);
     result
   }

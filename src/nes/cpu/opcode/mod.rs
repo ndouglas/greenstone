@@ -1,4 +1,4 @@
-use super::AddressingMode;
+use super::{ AddressingMode };
 use std::collections::HashMap;
 
 #[derive(Debug)]

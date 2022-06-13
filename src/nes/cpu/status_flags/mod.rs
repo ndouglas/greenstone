@@ -10,6 +10,7 @@ pub const ZERO_FLAG: u8 = 0b0000_0010;
 pub const CARRY_FLAG: u8 = 0b0000_0001;
 
 #[repr(u8)]
+#[derive(Debug)]
 pub enum StatusFlags {
   Negative = NEGATIVE_FLAG,
   Overflow = OVERFLOW_FLAG,
@@ -26,6 +27,7 @@ impl CPU<'_> {
   #[named]
   pub fn set_status_flag(&mut self, flag: StatusFlags, value: bool) {
     trace_enter!();
+    trace_var!(flag);
     trace_var!(value);
     if value {
       self.status = self.status | (flag as u8);

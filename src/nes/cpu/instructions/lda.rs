@@ -19,7 +19,10 @@ impl CPU<'_> {
     self.a = value;
     trace_u8!(self.a);
     self.set_value_flags(value);
-    let result = cycles + additional_cycles;
+    let mut result = cycles;
+    if opcode.extra_cycle {
+      result += additional_cycles;
+    }
     trace_result!(result);
     result
   }

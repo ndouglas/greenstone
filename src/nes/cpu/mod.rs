@@ -101,19 +101,22 @@ impl<'a> CPU<'a> {
   pub fn dequeue_instruction(&mut self) {
     trace_enter!();
     let ref opcodes: HashMap<u8, &'static Opcode> = *OPCODE_MAP;
-    let code = self.read_u8(self.program_counter);
-    trace_u8!(code);
+    trace_u16!(self.program_counter);
+    let next_opcode = self.read_u8(self.program_counter);
+    trace_u8!(next_opcode);
     self.program_counter += 1;
     trace_u16!(self.program_counter);
     let pc_state = self.program_counter;
     trace_u16!(pc_state);
-    let opcode = opcodes.get(&code).expect(&format!("Opcode {:x} is not recognized", code));
+    let opcode = opcodes.get(&next_opcode).expect(&format!("Opcode {:x} is not recognized", next_opcode));
     trace_var!(opcode);
-    let cycles = match code {
+    let cycles = match next_opcode {
       // Illegal Opcodes
       0xEB => 0,
       // ADC
       0x61 | 0x65 | 0x69 | 0x6D | 0x71 | 0x75 | 0x79 | 0x7D => self.instruction_adc(&opcode),
+      // AND
+      0x21 | 0x25 | 0x29 | 0x2D | 0x31 | 0x35 | 0x39 | 0x3D => self.instruction_and(&opcode),
       // BRK
       0x00 => self.instruction_brk(&opcode),
       // CLC
