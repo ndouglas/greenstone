@@ -13,7 +13,7 @@ mod test {
   use super::*;
 
   #[test]
-  fn test_clc_implicit_clear_carry_flag() {
+  fn test_clc_implied_clear_carry_flag() {
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0x18, //            CLC         ; Clear carry flag.

@@ -4,7 +4,7 @@ use super::CPU;
 
 #[derive(Debug)]
 pub enum AddressingMode {
-  Implicit,
+  Implied,
   Immediate,
   Relative,
   ZeroPage,
@@ -21,8 +21,8 @@ pub enum AddressingMode {
 impl CPU<'_> {
   pub fn get_operand_address(&self, mode: &AddressingMode) -> Option<(u16, u8)> {
     match mode {
-      // The Implicit mode does not require additional data.
-      AddressingMode::Implicit => None,
+      // The Implied mode does not require additional data.
+      AddressingMode::Implied => None,
       // The Immediate mode uses the subsequent byte of memory.
       AddressingMode::Immediate => {
         let address = self.program_counter;

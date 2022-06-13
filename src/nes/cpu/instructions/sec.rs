@@ -13,7 +13,7 @@ mod test {
   use super::*;
 
   #[test]
-  fn test_sec_implicit_clear_carry_flag() {
+  fn test_sec_implied_clear_carry_flag() {
     let mut cpu = CPU::new();
     cpu.interpret(vec![
       0x38, //            SEC         ; Set carry flag.

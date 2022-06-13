@@ -7,12 +7,8 @@ impl CPU<'_> {
   pub fn instruction_sbc(&mut self, mode: &AddressingMode) -> bool {
     let (address, additional_cycles) = self.get_operand_address(mode).unwrap();
     let minuend = self.a;
-    println!("Minuend {} or {}", minuend, minuend as i8);
-    println!("Data at Address {} or {}", self.read_u8(address), self.read_u8(address) as i8);
     let subtrahend = (self.read_u8(address) as i8).wrapping_neg() as u8;
-    println!("Subtrahend {} or {}", subtrahend, subtrahend as i8);
     let carry = self.get_carry_flag();
-    println!("Carry {}", carry);
     let (result, set_carry, set_overflow) = add_u8s(minuend, subtrahend, carry);
     self.a = result;
     self.set_carry_flag(set_carry);
