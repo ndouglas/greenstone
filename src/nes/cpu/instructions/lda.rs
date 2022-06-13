@@ -5,6 +5,10 @@ impl CPU<'_> {
   #[named]
   pub fn instruction_lda(&mut self, opcode: &Opcode) -> u8 {
     trace_enter!();
+    let length = opcode.length;
+    trace_u8!(length);
+    let cycles = opcode.cycles;
+    trace_u8!(cycles);
     let mode = &opcode.mode;
     trace_var!(mode);
     let (address, additional_cycles) = self.get_operand_address(mode).unwrap();
@@ -15,7 +19,7 @@ impl CPU<'_> {
     self.a = value;
     trace_u8!(self.a);
     self.set_value_flags(value);
-    let result = additional_cycles;
+    let result = cycles + additional_cycles;
     trace_result!(result);
     result
   }

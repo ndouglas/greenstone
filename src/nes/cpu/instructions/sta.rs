@@ -5,6 +5,10 @@ impl CPU<'_> {
   #[named]
   pub fn instruction_sta(&mut self, opcode: &Opcode) -> u8 {
     trace_enter!();
+    let length = opcode.length;
+    trace_u8!(length);
+    let cycles = opcode.cycles;
+    trace_u8!(cycles);
     let mode = &opcode.mode;
     trace_var!(mode);
     let (address, additional_cycles) = self.get_operand_address(mode).unwrap();
@@ -12,7 +16,7 @@ impl CPU<'_> {
     trace_var!(additional_cycles);
     trace_u8!(self.a);
     self.write_u8(address, self.a);
-    let result = 0;
+    let result = cycles;
     trace_result!(result);
     result
   }

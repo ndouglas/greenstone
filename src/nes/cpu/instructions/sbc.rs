@@ -7,6 +7,10 @@ impl CPU<'_> {
   #[named]
   pub fn instruction_sbc(&mut self, opcode: &Opcode) -> u8 {
     trace_enter!();
+    let length = opcode.length;
+    trace_u8!(length);
+    let cycles = opcode.cycles;
+    trace_u8!(cycles);
     let mode = &opcode.mode;
     trace_var!(mode);
     let (address, additional_cycles) = self.get_operand_address(mode).unwrap();
@@ -26,7 +30,7 @@ impl CPU<'_> {
     self.set_carry_flag(set_carry);
     self.set_overflow_flag(set_overflow);
     self.set_value_flags(answer);
-    let result = additional_cycles;
+    let result = cycles + additional_cycles;
     trace_result!(result);
     result
   }

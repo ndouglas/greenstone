@@ -3,11 +3,15 @@ use super::super::*;
 impl CPU<'_> {
   #[inline]
   #[named]
-  pub fn instruction_brk(&mut self, _opcode: &Opcode) -> u8 {
+  pub fn instruction_brk(&mut self, opcode: &Opcode) -> u8 {
     trace_enter!();
+    let length = opcode.length;
+    trace_u8!(length);
+    let cycles = opcode.cycles;
+    trace_u8!(cycles);
     self.halt = true;
     trace_var!(self.halt);
-    let result = 0;
+    let result = cycles;
     trace_result!(result);
     result
   }

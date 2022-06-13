@@ -64,16 +64,21 @@ impl<'a> CPU<'a> {
 
   #[named]
   pub fn interpret(&mut self, program: Vec<u8>) {
+    trace_enter!();
     self.load(program);
     self.reset();
-    self.run()
+    self.run();
+    trace_exit!();
   }
 
   #[named]
   pub fn run(&mut self) {
+    trace_enter!();
     loop {
       self.clock();
       if self.halt {
+        trace!("Halting!");
+        trace_exit!();
         return;
       }
     }
@@ -81,23 +86,30 @@ impl<'a> CPU<'a> {
 
   #[named]
   pub fn clock(&mut self) {
+    trace_enter!();
     if self.cycles == 0 {
       self.dequeue_instruction();
     }
     self.clock_counter += 1;
+    trace_var!(self.clock_counter);
     self.cycles -= 1;
+    trace_u8!(self.cycles);
+    trace_exit!();
   }
 
   #[named]
   pub fn dequeue_instruction(&mut self) {
+    trace_enter!();
     let ref opcodes: HashMap<u8, &'static Opcode> = *OPCODE_MAP;
     let code = self.read_u8(self.program_counter);
+    trace_u8!(code);
     self.program_counter += 1;
+    trace_u16!(self.program_counter);
     let pc_state = self.program_counter;
+    trace_u16!(pc_state);
     let opcode = opcodes.get(&code).expect(&format!("Opcode {:x} is not recognized", code));
-    let opcode_length = opcode.length;
-    let mut opcode_cycles = opcode.cycles;
-    let extra_cycles = match code {
+    trace_var!(opcode);
+    let cycles = match code {
       // Illegal Opcodes
       0xEB => 0,
       // ADC
@@ -122,11 +134,14 @@ impl<'a> CPU<'a> {
       0xA8 => self.instruction_tay(&opcode),
       _ => todo!(),
     };
-    opcode_cycles += extra_cycles;
+    trace_u8!(cycles);
     if pc_state == self.program_counter {
-      self.program_counter += (opcode_length - 1) as u16;
+      self.program_counter += (opcode.length - 1) as u16;
     }
-    self.cycles += opcode_cycles;
+    trace_u16!(self.program_counter);
+    self.cycles += cycles;
+    trace_u8!(self.cycles);
+    trace_exit!();
   }
 
   #[named]

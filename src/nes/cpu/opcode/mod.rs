@@ -1,6 +1,7 @@
 use super::AddressingMode;
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct Opcode {
   pub code: u8,
   pub mnemonic: &'static str,
