@@ -5,7 +5,7 @@ pub fn add_u8s(augend: u8, addend: u8, carry: bool) -> (u8, bool, bool) {
   trace_u8!(augend);
   trace_u8!(addend);
   trace_var!(carry);
-  let sum = (augend as u16) + (addend as u16) + (carry as u16);
+  let sum = (augend as u16).wrapping_add(addend as u16).wrapping_add(carry as u16);
   trace_u16!(sum);
   let result = sum as u8;
   trace_u8!(result);
@@ -36,8 +36,8 @@ mod test {
     assert_eq!(result, (augend.wrapping_add(addend)));
     assert!(set_carry == false, "should not have set the carry bit");
     assert!(set_overflow == false, "should not have set the overflow bit");
-    augend = (-3i8).wrapping_neg().wrapping_sub(-1) as u8;
-    addend = (-2i8).wrapping_neg().wrapping_sub(-1) as u8;
+    augend = (-3i8).wrapping_neg().wrapping_add(1) as u8;
+    addend = (-2i8).wrapping_neg().wrapping_add(1) as u8;
     carry = false;
     add_u8s_result = add_u8s(augend, addend, carry);
     result = add_u8s_result.0;
@@ -46,7 +46,7 @@ mod test {
     assert_eq!(result, (augend.wrapping_add(addend)));
     assert!(set_carry == false, "should not have set the carry bit");
     assert!(set_overflow == false, "should not have set the overflow bit");
-    augend = (-32i8).wrapping_neg().wrapping_sub(-1) as u8;
+    augend = (-32i8).wrapping_neg().wrapping_add(1) as u8;
     addend = 27;
     carry = false;
     add_u8s_result = add_u8s(augend, addend, carry);
@@ -57,7 +57,7 @@ mod test {
     assert!(set_carry == false, "should not have set the carry bit");
     assert!(set_overflow == false, "should not have set the overflow bit");
     augend = 27;
-    addend = (-32i8).wrapping_neg().wrapping_sub(-1) as u8;
+    addend = (-32i8).wrapping_neg().wrapping_add(1) as u8;
     carry = false;
     add_u8s_result = add_u8s(augend, addend, carry);
     result = add_u8s_result.0;

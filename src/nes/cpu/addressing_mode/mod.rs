@@ -38,7 +38,7 @@ impl CPU<'_> {
       AddressingMode::Relative => {
         let offset = self.read_u8(self.program_counter);
         trace_u8!(offset);
-        let address = self.program_counter + (offset as u16);
+        let address = self.program_counter.wrapping_add(offset as u16);
         trace_u16!(address);
         let additional_cycles = 0;
         trace_u8!(additional_cycles);
@@ -128,7 +128,7 @@ impl CPU<'_> {
           address = ((self.read_u8(pointer & 0xFF00) as u16) << 8) | self.read_u8(pointer) as u16;
         } else {
           // Normal behavior.
-          address = ((self.read_u8(pointer + 1) as u16) << 8) | self.read_u8(pointer) as u16;
+          address = ((self.read_u8(pointer.wrapping_add(1)) as u16) << 8) | self.read_u8(pointer) as u16;
         }
         trace_u16!(address);
         let additional_cycles = 0;

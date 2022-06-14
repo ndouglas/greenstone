@@ -90,9 +90,9 @@ impl<'a> CPU<'a> {
     if self.cycles == 0 {
       self.dequeue_instruction();
     }
-    self.clock_counter += 1;
+    self.clock_counter = self.clock_counter.wrapping_add(1);
     trace_var!(self.clock_counter);
-    self.cycles -= 1;
+    self.cycles = self.cycles.wrapping_sub(1);
     trace_u8!(self.cycles);
     trace_exit!();
   }
@@ -104,7 +104,7 @@ impl<'a> CPU<'a> {
     trace_u16!(self.program_counter);
     let next_opcode = self.read_u8(self.program_counter);
     trace_u8!(next_opcode);
-    self.program_counter += 1;
+    self.program_counter = self.program_counter.wrapping_add(1);
     trace_u16!(self.program_counter);
     let pc_state = self.program_counter;
     trace_u16!(pc_state);
@@ -139,10 +139,11 @@ impl<'a> CPU<'a> {
     };
     trace_u8!(cycles);
     if pc_state == self.program_counter {
-      self.program_counter += (opcode.length - 1) as u16;
+      let addend = opcode.length.wrapping_sub(1) as u16;
+      self.program_counter = self.program_counter.wrapping_add(addend);
     }
     trace_u16!(self.program_counter);
-    self.cycles += cycles;
+    self.cycles = self.cycles.wrapping_add(cycles);
     trace_u8!(self.cycles);
     trace_exit!();
   }

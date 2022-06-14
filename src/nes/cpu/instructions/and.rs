@@ -24,7 +24,7 @@ impl CPU<'_> {
     self.set_value_flags(answer);
     let mut result = cycles;
     if opcode.extra_cycle {
-      result += additional_cycles;
+      result = result.wrapping_add(additional_cycles);
     }
     trace_result!(result);
     result
