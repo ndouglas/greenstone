@@ -6,9 +6,7 @@ pub trait Addressable {
 
   #[named]
   fn read_u16(&self, address: u16) -> u16 {
-    let lo = self.read_u8(address) as u16;
-    let hi = self.read_u8(address.wrapping_add(1)) as u16;
-    let result = (hi << 8) | lo;
+    let result = u16::from_le_bytes([self.read_u8(address), self.read_u8(address.wrapping_add(1))]);
     result
   }
 

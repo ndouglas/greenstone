@@ -33,5 +33,4 @@ mod test {
     ]);
     assert!(cpu.status & CARRY_FLAG == CARRY_FLAG, "should set the carry flag.");
   }
-
 }

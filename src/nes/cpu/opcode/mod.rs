@@ -1,4 +1,4 @@
-use super::{ AddressingMode };
+use super::AddressingMode;
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -304,6 +304,16 @@ lazy_static! {
     let mut map = HashMap::new();
     for opcode in &*OPCODE_VECTOR {
       map.insert(opcode.code, opcode);
+    }
+    map
+  };
+  pub static ref INSTRUCTION_OPCODE_MAP: HashMap<&'static str, Vec<&'static Opcode>> = {
+    let mut map = HashMap::new();
+    for opcode in &*OPCODE_VECTOR {
+      map.insert(opcode.mnemonic, Vec::new());
+    }
+    for opcode in &*OPCODE_VECTOR {
+      map.get_mut(opcode.mnemonic).unwrap().push(opcode);
     }
     map
   };

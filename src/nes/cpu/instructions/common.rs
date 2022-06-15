@@ -67,5 +67,4 @@ mod test {
     assert!(set_carry == false, "should not have set the carry bit");
     assert!(set_overflow == false, "should not have set the overflow bit");
   }
-
 }

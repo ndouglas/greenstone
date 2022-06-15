@@ -59,7 +59,6 @@ mod test {
     assert!(cpu.status & CARRY_FLAG == 0, "should not set the carry flag.");
   }
 
-
   #[test]
   #[named]
   fn test_adc_0x65_zeropage_add_with_carry() {
@@ -167,14 +166,13 @@ mod test {
     assert!(cpu.status & NEGATIVE_FLAG == 0, "should not set the negative flag.");
     assert!(cpu.status & CARRY_FLAG == 0, "should not set the carry flag.");
   }
-//  Opcode::new(0x21, "AND", 2, 6, AddressingMode::IndirectX, false, false, false, false),
-//  Opcode::new(0x25, "AND", 2, 3, AddressingMode::ZeroPage, false, false, false, false),
-//  Opcode::new(0x29, "AND", 2, 2, AddressingMode::Immediate, false, false, false, false),
-//  Opcode::new(0x2D, "AND", 3, 4, AddressingMode::Absolute, false, false, false, false),
-//  Opcode::new(0x31, "AND", 2, 5, AddressingMode::IndirectY, false, false, false, true),
-//  Opcode::new(0x35, "AND", 2, 4, AddressingMode::ZeroPageX, false, false, false, false),
-//  Opcode::new(0x39, "AND", 3, 4, AddressingMode::AbsoluteY, false, false, false, true),
-
+  //  Opcode::new(0x21, "AND", 2, 6, AddressingMode::IndirectX, false, false, false, false),
+  //  Opcode::new(0x25, "AND", 2, 3, AddressingMode::ZeroPage, false, false, false, false),
+  //  Opcode::new(0x29, "AND", 2, 2, AddressingMode::Immediate, false, false, false, false),
+  //  Opcode::new(0x2D, "AND", 3, 4, AddressingMode::Absolute, false, false, false, false),
+  //  Opcode::new(0x31, "AND", 2, 5, AddressingMode::IndirectY, false, false, false, true),
+  //  Opcode::new(0x35, "AND", 2, 4, AddressingMode::ZeroPageX, false, false, false, false),
+  //  Opcode::new(0x39, "AND", 3, 4, AddressingMode::AbsoluteY, false, false, false, true),
 
   #[test]
   #[named]
@@ -194,6 +192,4 @@ mod test {
     assert!(cpu.status & NEGATIVE_FLAG == 0, "should not set the negative flag.");
     assert!(cpu.status & CARRY_FLAG == 0, "should not set the carry flag.");
   }
-
-
 }

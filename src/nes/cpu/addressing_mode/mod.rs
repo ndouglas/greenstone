@@ -125,16 +125,18 @@ impl CPU<'_> {
         let address;
         if pointer & 0x00FF == 0x00FF {
           // Buggy behavior.
-          address = ((self.read_u8(pointer & 0xFF00) as u16) << 8) | self.read_u8(pointer) as u16;
+          address = u16::from_le_bytes([self.read_u8(pointer & 0xFF00), self.read_u8(pointer)]);
         } else {
           // Normal behavior.
-          address = ((self.read_u8(pointer.wrapping_add(1)) as u16) << 8) | self.read_u8(pointer) as u16;
+          address = u16::from_le_bytes([self.read_u8(pointer.wrapping_add(1)), self.read_u8(pointer)]);
         }
         trace_u16!(address);
         let additional_cycles = 0;
         trace_u8!(additional_cycles);
         Some((address, additional_cycles))
       }
+
+
       // Indirect, X-Indexed reads a byte to get a zero-page address,
       // offsets that by the X register, and then reads that to get a
       // 16-bit address.
