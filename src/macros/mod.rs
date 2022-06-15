@@ -2,24 +2,17 @@ macro_rules! trace_u8 {
   ($var: expr) => {
     #[cfg(debug_assertions)]
     if $var & 0x80 > 0 {
-    trace!(
-      "{} = {:#04X} {:#010b} (+: {}, ±: {})",
-      stringify!($var),
-      $var,
-      $var,
-      $var as i8,
-      $var as u8
-    );
-  }
-  else {
-    trace!(
-      "{} = {:#04X} {:#010b} (+/±: {})",
-      stringify!($var),
-      $var,
-      $var,
-      $var as u8
-    );
-  }
+      trace!(
+        "{} = {:#04X} {:#010b} (+: {}, ±: {})",
+        stringify!($var),
+        $var,
+        $var,
+        $var as i8,
+        $var as u8
+      );
+    } else {
+      trace!("{} = {:#04X} {:#010b} (+/±: {})", stringify!($var), $var, $var, $var as u8);
+    }
   };
 }
 
@@ -27,24 +20,17 @@ macro_rules! debug_u8 {
   ($var: expr) => {
     #[cfg(debug_assertions)]
     if $var & 0x80 > 0 {
-    debug!(
-      "{} = {:#04X} {:#010b} (+: {}, ±: {})",
-      stringify!($var),
-      $var,
-      $var,
-      $var as i8,
-      $var as u8
-    );
-  }
-  else {
-    debug!(
-      "{} = {:#04X} {:#010b} (+/±: {})",
-      stringify!($var),
-      $var,
-      $var,
-      $var as u8
-    );
-  }
+      debug!(
+        "{} = {:#04X} {:#010b} (+: {}, ±: {})",
+        stringify!($var),
+        $var,
+        $var,
+        $var as i8,
+        $var as u8
+      );
+    } else {
+      debug!("{} = {:#04X} {:#010b} (+/±: {})", stringify!($var), $var, $var, $var as u8);
+    }
   };
 }
 
@@ -52,24 +38,17 @@ macro_rules! info_u8 {
   ($var: expr) => {
     #[cfg(debug_assertions)]
     if $var & 0x80 > 0 {
-    info!(
-      "{} = {:#04X} {:#010b} (+: {}, ±: {})",
-      stringify!($var),
-      $var,
-      $var,
-      $var as i8,
-      $var as u8
-    );
-  }
-  else {
-    info!(
-      "{} = {:#04X} {:#010b} (+/±: {})",
-      stringify!($var),
-      $var,
-      $var,
-      $var as u8
-    );
-  }
+      info!(
+        "{} = {:#04X} {:#010b} (+: {}, ±: {})",
+        stringify!($var),
+        $var,
+        $var,
+        $var as i8,
+        $var as u8
+      );
+    } else {
+      info!("{} = {:#04X} {:#010b} (+/±: {})", stringify!($var), $var, $var, $var as u8);
+    }
   };
 }
 
@@ -97,22 +76,52 @@ macro_rules! info_u16 {
 macro_rules! trace_status_register {
   ($var: expr) => {
     #[cfg(debug_assertions)]
-    trace!("N={}, O={}, U={}, B={}, D={}, I={}, Z={}, C={}", $var & NEGATIVE_FLAG, $var & OVERFLOW_FLAG, $var & UNUSED_FLAG, $var & BREAK_FLAG, $var & DECIMAL_FLAG, $var & INTERRUPT_DISABLE_FLAG, $var & ZERO_FLAG, $var & CARRY_FLAG);
-  }
+    trace!(
+      "N={}, O={}, U={}, B={}, D={}, I={}, Z={}, C={}",
+      $var & NEGATIVE_FLAG,
+      $var & OVERFLOW_FLAG,
+      $var & UNUSED_FLAG,
+      $var & BREAK_FLAG,
+      $var & DECIMAL_FLAG,
+      $var & INTERRUPT_DISABLE_FLAG,
+      $var & ZERO_FLAG,
+      $var & CARRY_FLAG
+    );
+  };
 }
 
 macro_rules! debug_status_register {
   ($var: expr) => {
     #[cfg(debug_assertions)]
-    debug!("N={}, O={}, U={}, B={}, D={}, I={}, Z={}, C={}", $var & NEGATIVE_FLAG, $var & OVERFLOW_FLAG, $var & UNUSED_FLAG, $var & BREAK_FLAG, $var & DECIMAL_FLAG, $var & INTERRUPT_DISABLE_FLAG, $var & ZERO_FLAG, $var & CARRY_FLAG);
-  }
+    debug!(
+      "N={}, O={}, U={}, B={}, D={}, I={}, Z={}, C={}",
+      $var & NEGATIVE_FLAG,
+      $var & OVERFLOW_FLAG,
+      $var & UNUSED_FLAG,
+      $var & BREAK_FLAG,
+      $var & DECIMAL_FLAG,
+      $var & INTERRUPT_DISABLE_FLAG,
+      $var & ZERO_FLAG,
+      $var & CARRY_FLAG
+    );
+  };
 }
 
 macro_rules! info_status_register {
   ($var: expr) => {
     #[cfg(debug_assertions)]
-    info!("N={}, O={}, U={}, B={}, D={}, I={}, Z={}, C={}", $var & NEGATIVE_FLAG, $var & OVERFLOW_FLAG, $var & UNUSED_FLAG, $var & BREAK_FLAG, $var & DECIMAL_FLAG, $var & INTERRUPT_DISABLE_FLAG, $var & ZERO_FLAG, $var & CARRY_FLAG);
-  }
+    info!(
+      "N={}, O={}, U={}, B={}, D={}, I={}, Z={}, C={}",
+      $var & NEGATIVE_FLAG,
+      $var & OVERFLOW_FLAG,
+      $var & UNUSED_FLAG,
+      $var & BREAK_FLAG,
+      $var & DECIMAL_FLAG,
+      $var & INTERRUPT_DISABLE_FLAG,
+      $var & ZERO_FLAG,
+      $var & CARRY_FLAG
+    );
+  };
 }
 
 macro_rules! trace_var {
