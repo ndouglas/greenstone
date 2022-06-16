@@ -26,7 +26,7 @@ pub struct CPU<'a> {
   pub clock_counter: u32,
   pub cycles: u8,
   pub halt: bool,
-  pub addressable: Box<dyn Addressable + 'a>,
+  pub bus: Box<dyn Addressable + 'a>,
 }
 
 impl<'a> CPU<'a> {
@@ -42,7 +42,7 @@ impl<'a> CPU<'a> {
       clock_counter: 0,
       cycles: 0x00,
       halt: false,
-      addressable: Box::new(SimpleMemory::new()),
+      bus: Box::new(SimpleMemory::new()),
     }
   }
 
@@ -58,7 +58,7 @@ impl<'a> CPU<'a> {
       clock_counter: 0,
       cycles: 0x00,
       halt: false,
-      addressable: Box::new(Bus::new()),
+      bus: Box::new(Bus::new()),
     }
   }
 
@@ -88,7 +88,7 @@ impl<'a> CPU<'a> {
   pub fn clock(&mut self) {
     trace_enter!();
     if self.cycles == 0 {
-      self.dequeue_instruction();
+      self.process_instruction();
     }
     self.clock_counter = self.clock_counter.wrapping_add(1);
     trace_var!(self.clock_counter);
@@ -98,7 +98,7 @@ impl<'a> CPU<'a> {
   }
 
   #[named]
-  pub fn dequeue_instruction(&mut self) {
+  pub fn process_instruction(&mut self) {
     trace_enter!();
     let ref opcodes: HashMap<u8, &'static Opcode> = *OPCODE_MAP;
     trace_u16!(self.program_counter);
@@ -165,16 +165,16 @@ impl<'a> CPU<'a> {
 impl Addressable for CPU<'_> {
   #[named]
   fn read_u8(&self, address: u16) -> u8 {
-    self.addressable.read_u8(address)
+    self.bus.read_u8(address)
   }
 
   #[named]
   fn write_u8(&mut self, address: u16, data: u8) {
-    self.addressable.write_u8(address, data);
+    self.bus.write_u8(address, data);
   }
 
   #[named]
   fn load(&mut self, program: Vec<u8>) {
-    self.addressable.load(program)
+    self.bus.load(program)
   }
 }
