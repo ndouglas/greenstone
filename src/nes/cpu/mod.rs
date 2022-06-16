@@ -125,6 +125,7 @@ impl<'a> CPU<'a> {
         "LDA" => self.instruction_lda(&opcode),
         "LDX" => self.instruction_ldx(&opcode),
         "LDY" => self.instruction_ldy(&opcode),
+        "ORA" => self.instruction_ora(&opcode),
         "SBC" => self.instruction_sbc(&opcode),
         "SEC" => self.instruction_sec(&opcode),
         "STA" => self.instruction_sta(&opcode),

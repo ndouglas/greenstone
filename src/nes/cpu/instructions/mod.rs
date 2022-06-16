@@ -46,6 +46,10 @@ pub use ldx::*;
 pub mod ldy;
 pub use ldy::*;
 
+// ORA: OR A
+pub mod ora;
+pub use ora::*;
+
 // SBC: Subtract from Accumulator With Carry.
 pub mod sbc;
 pub use sbc::*;
