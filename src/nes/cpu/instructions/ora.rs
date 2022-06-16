@@ -30,7 +30,7 @@ mod test {
 
   #[test]
   #[named]
-  fn test_cmp() {
+  fn test_ora() {
     init();
     test_instruction!("ORA", Immediate, [0b00001111]{a:0b01010101} => []{ a: 0b01011111, status: 0b00000000 });
     test_instruction!("ORA", Immediate, [0b10001111]{a:0b01010101} => []{ a: 0b11011111, status: 0b10000000 });

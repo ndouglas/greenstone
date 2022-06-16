@@ -121,6 +121,7 @@ impl<'a> CPU<'a> {
         "CMP" => self.instruction_cmp(&opcode),
         "CPX" => self.instruction_cpx(&opcode),
         "CPY" => self.instruction_cpy(&opcode),
+        "EOR" => self.instruction_eor(&opcode),
         "INX" => self.instruction_inx(&opcode),
         "LDA" => self.instruction_lda(&opcode),
         "LDX" => self.instruction_ldx(&opcode),

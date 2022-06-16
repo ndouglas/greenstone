@@ -30,6 +30,10 @@ pub use cpx::*;
 pub mod cpy;
 pub use cpy::*;
 
+// EOR: XOR A
+pub mod eor;
+pub use eor::*;
+
 // INX: Increment X
 pub mod inx;
 pub use inx::*;
