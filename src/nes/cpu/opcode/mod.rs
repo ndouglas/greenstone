@@ -207,7 +207,7 @@ lazy_static! {
     Opcode::new(0x9D, "STA", 3, 5, AbsoluteX, 0b00000000, false, false, false, false),
     Opcode::new(0x9E, "SHX", 3, 5, Implied, 0b00000000, false, true, true, false),
     Opcode::new(0x9F, "SHA", 3, 5, Implied, 0b00000000, false, true, true, false),
-    Opcode::new(0xA0, "LDY", 2, 2, Implied, 0b10000010, false, false, false, false),
+    Opcode::new(0xA0, "LDY", 2, 2, Immediate, 0b10000010, false, false, false, false),
     Opcode::new(0xA1, "LDA", 2, 6, IndirectX, 0b10000010, false, false, false, false),
     Opcode::new(0xA2, "LDX", 2, 2, Immediate, 0b10000010, false, false, false, false),
     Opcode::new(0xA3, "LAX", 2, 6, Implied, 0b00000000, false, true, false, false),

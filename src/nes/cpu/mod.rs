@@ -113,29 +113,22 @@ impl<'a> CPU<'a> {
     let cycles = match next_opcode {
       // Illegal Opcodes
       0xEB => 0,
-      // ADC
-      0x61 | 0x65 | 0x69 | 0x6D | 0x71 | 0x75 | 0x79 | 0x7D => self.instruction_adc(&opcode),
-      // AND
-      0x21 | 0x25 | 0x29 | 0x2D | 0x31 | 0x35 | 0x39 | 0x3D => self.instruction_and(&opcode),
-      // BRK
-      0x00 => self.instruction_brk(&opcode),
-      // CLC
-      0x18 => self.instruction_clc(&opcode),
-      // INX
-      0xE8 => self.instruction_inx(&opcode),
-      // LDA
-      0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => self.instruction_lda(&opcode),
-      // SBC
-      0xE1 | 0xE5 | 0xE9 | 0xED | 0xF1 | 0xF5 | 0xF9 | 0xFD => self.instruction_sbc(&opcode),
-      // SEC
-      0x38 => self.instruction_sec(&opcode),
-      // STA
-      0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => self.instruction_sta(&opcode),
-      // TAX
-      0xAA => self.instruction_tax(&opcode),
-      // TAY
-      0xA8 => self.instruction_tay(&opcode),
-      _ => todo!(),
+      _ => match opcode.mnemonic {
+          "ADC" => self.instruction_adc(&opcode),
+          "AND" => self.instruction_and(&opcode),
+          "BRK" => self.instruction_brk(&opcode),
+          "CLC" => self.instruction_clc(&opcode),
+          "INX" => self.instruction_inx(&opcode),
+          "LDA" => self.instruction_lda(&opcode),
+          "LDX" => self.instruction_ldx(&opcode),
+          "LDY" => self.instruction_ldy(&opcode),
+          "SBC" => self.instruction_sbc(&opcode),
+          "SEC" => self.instruction_sec(&opcode),
+          "STA" => self.instruction_sta(&opcode),
+          "TAX" => self.instruction_tax(&opcode),
+          "TAY" => self.instruction_tay(&opcode),
+          _ => todo!(),
+      },
     };
     trace_u8!(cycles);
     if pc_state == self.program_counter {

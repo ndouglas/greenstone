@@ -26,6 +26,14 @@ pub use inx::*;
 pub mod lda;
 pub use lda::*;
 
+// LDX: Load X
+pub mod ldx;
+pub use ldx::*;
+
+// LDY: Load Y
+pub mod ldy;
+pub use ldy::*;
+
 // SBC: Subtract from Accumulator With Carry.
 pub mod sbc;
 pub use sbc::*;
