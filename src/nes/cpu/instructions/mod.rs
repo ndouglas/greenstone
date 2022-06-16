@@ -46,6 +46,10 @@ pub use sec::*;
 pub mod sta;
 pub use sta::*;
 
+// STX: Store X.
+pub mod stx;
+pub use stx::*;
+
 // TAX: Transfer A -> X.
 pub mod tax;
 pub use tax::*;
