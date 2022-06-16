@@ -43,152 +43,18 @@ mod test {
   use crate::test::init;
 
   #[test]
-  #[named]
-  fn test_adc_0x61_indirectx_add_with_carry() {
+  fn test_adc() {
     init();
-    let mut cpu = CPU::new();
-    cpu.interpret(vec![
-      0xA9, 0x07, //        LDA #$07      ; A = 7
-      0x85, 0x05, //        STA $05       ; $05 = 7
-      0xA9, 0x05, //        LDA #$05      ; A = 5
-      0xAA, //              TAX           ; X = 5
-      0xA9, 0x0F, //        LDA #$0F      ; A = 15
-      0x85, 0x0A, //        STA $0A       ; $0A = 15
-      0xA9, 0x58, //        LDA #$58      ; A = 88
-      0x85, 0x0F, //        STA $0F       ; $0F = 88
-      0xA9, 0x0D, //        LDA #$0D      ; A = 13
-      0x61, 0x05, //        ADC ($05,X)   ; A += ($05 + X)
-      0x00, //              BRK           ;
-    ]);
-    assert_eq!(cpu.a, 0x65);
-    assert!(cpu.status & NEGATIVE_FLAG == 0, "should not set the negative flag.");
-    assert!(cpu.status & CARRY_FLAG == 0, "should not set the carry flag.");
-  }
-
-  #[test]
-  #[named]
-  fn test_adc_0x65_zeropage_add_with_carry() {
-    init();
-    let mut cpu = CPU::new();
-    cpu.interpret(vec![
-      0xA9, 0x05, //        LDA #$05      ; A = 5
-      0x85, 0x0F, //        STA $0F       ; $0F = 5
-      0x65, 0x0F, //        ADC $0F       ; A += $0F
-      0x00, //              BRK           ;
-    ]);
-    assert_eq!(cpu.a, 0x0A);
-    assert!(cpu.status & NEGATIVE_FLAG == 0, "should not set the negative flag.");
-    assert!(cpu.status & CARRY_FLAG == 0, "should not set the carry flag.");
-  }
-
-  #[test]
-  #[named]
-  fn test_adc_0x69_immediate_add_with_carry() {
-    init();
-    let mut cpu = CPU::new();
-    cpu.interpret(vec![
-      0xA9, 0x05, //        LDA #$05      ; A = 5
-      0x69, 0x03, //        ADC #$03      ; A += 3
-      0x00, //              BRK           ;
-    ]);
-    assert_eq!(cpu.a, 0x08);
-    assert!(cpu.status & NEGATIVE_FLAG == 0, "should not set the negative flag.");
-    assert!(cpu.status & CARRY_FLAG == 0, "should not set the carry flag.");
-  }
-
-  #[test]
-  #[named]
-  fn test_adc_0x6d_absolute_add_with_carry() {
-    init();
-    let mut cpu = CPU::new();
-    cpu.interpret(vec![
-      0xA9, 0x03, //            LDA #$03        ; A = 3
-      0x85, 0x05, //            STA $05         ; $05 = 3
-      0xA9, 0x01, //            LDA #$01        ; A = 1
-      0x6D, 0x05, 0x00, //      ADC $0005       ; A += $0005
-      0x00, //                  BRK             ;
-    ]);
-    assert_eq!(cpu.a, 0x04);
-    assert!(cpu.status & NEGATIVE_FLAG == 0, "should not set the negative flag.");
-    assert!(cpu.status & CARRY_FLAG == 0, "should not set the carry flag.");
-  }
-
-  #[test]
-  #[named]
-  fn test_adc_0x71_indirecty_add_with_carry() {
-    init();
-    let mut cpu = CPU::new();
-    cpu.interpret(vec![
-      0xA9, 0x0A, //        LDA #$0A          ; A = 10
-      0x85, 0x03, //        STA $03           ; $03 = 10
-      0xA9, 0x73, //        LDA #$73          ; A = 115
-      0x85, 0x0F, //        STA $0F           ; $0F = 115
-      0xA9, 0x05, //        LDA #$05          ; A = 5
-      0xA8, //              TAY               ; Y = 5
-      0xA9, 0x09, //        LDA #$09          ; A = 9
-      0x71, 0x03, //        ADC ($03),Y       ; A += ($03) + Y
-      0x00, //              BRK               ;
-    ]);
-    assert_eq!(cpu.a, 0x7C);
-    assert!(cpu.status & NEGATIVE_FLAG == 0, "should not set the negative flag.");
-    assert!(cpu.status & CARRY_FLAG == 0, "should not set the carry flag.");
-  }
-
-  #[test]
-  #[named]
-  fn test_adc_0x75_zeropagex_add_with_carry() {
-    init();
-    let mut cpu = CPU::new();
-    cpu.interpret(vec![
-      0xA9, 0x0A, //          LDA #$0A          ; A = 10
-      0x85, 0x03, //          STA $03           ; $03 = 10
-      0xA9, 0x73, //          LDA #$73          ; A = 115
-      0x85, 0x08, //          STA $08           ; $08 = 115
-      0xA9, 0x05, //          LDA #$05          ; A = 5
-      0xAA, //                TAX               ; X = 5
-      0x75, 0x03, //          ADC $03,X         ; A += $03 + X
-      0x00, //                BRK               ;
-    ]);
-    assert_eq!(cpu.a, 0x78);
-    assert!(cpu.status & NEGATIVE_FLAG == 0, "should not set the negative flag.");
-    assert!(cpu.status & CARRY_FLAG == 0, "should not set the carry flag.");
-  }
-
-  #[test]
-  #[named]
-  fn test_adc_0x79_absolutey_add_with_carry() {
-    init();
-    let mut cpu = CPU::new();
-    cpu.interpret(vec![
-      0xA9, 0x05, //          LDA #$05          ; A = 5
-      0xA8, //                TAY               ; Y = 5
-      0xA9, 0x73, //          LDA #$73          ; A = 115
-      0x85, 0x08, //          STA $08           ; $08 = 115
-      0xA9, 0x05, //          LDA #$05          ; A = 5
-      0x79, 0x03, 0x00, //    ADC $0003,Y       ; A += $0003 + Y
-      0x00, //                BRK               ;
-    ]);
-    assert_eq!(cpu.a, 0x78);
-    assert!(cpu.status & NEGATIVE_FLAG == 0, "should not set the negative flag.");
-    assert!(cpu.status & CARRY_FLAG == 0, "should not set the carry flag.");
-  }
-
-  #[test]
-  #[named]
-  fn test_adc_0x7d_absolutex_add_with_carry() {
-    init();
-    let mut cpu = CPU::new();
-    cpu.interpret(vec![
-      0xA9, 0x05, //          LDA #$05          ; A = 5
-      0xAA, //                TAX               ; X = 5
-      0xA9, 0x73, //          LDA #$73          ; A = 115
-      0x85, 0x08, //          STA $08           ; $08 = 115
-      0xA9, 0x05, //          LDA #$05          ; A = 5
-      0x7D, 0x03, 0x00, //    ADC $0003,X       ; A += $0003 + X
-      0x00, //                BRK               ;
-    ]);
-    assert_eq!(cpu.a, 0x78);
-    assert!(cpu.status & NEGATIVE_FLAG == 0, "should not set the negative flag.");
-    assert!(cpu.status & CARRY_FLAG == 0, "should not set the carry flag.");
+    test_instruction!("ADC", Immediate, [3]{a:2, status:1} => []{ a: 6 });
+    test_instruction!("ADC", Immediate, [255]{a:1, status:0x00} => []{ a: 0x00, status: 0b00000011 });
+    test_instruction!("ADC", Immediate, [127]{a:1, status:0x00} => []{ a: 128, status: 0b11000000 });
+    test_instruction!("ADC", Immediate, [200]{a:100} => []{ a: 44 });
+    test_instruction!("ADC", ZeroPage,  [0x02, 0x90]{a: 1} => []{ a: 0x91 });
+    test_instruction!("ADC", ZeroPageX, [0x02, 0x00, 0x90]{x:1, a: 1} => []{ a: 0x91 });
+    test_instruction!("ADC", Absolute, [0x04, 0x00, 0x00, 0x90]{a:1} => []{ a: 0x91 });
+    test_instruction!("ADC", AbsoluteX, [0x03, 0x00, 0x00, 0x90]{x:1, a: 1} => []{ a: 0x91 });
+    test_instruction!("ADC", AbsoluteY, [0x03, 0x00, 0x00, 0x90]{y:1, a: 1} => []{ a: 0x91 });
+    test_instruction!("ADC", IndirectX, [0x02, 0x00, 0x05, 0x00, 0x90]{x:1, a: 1} => []{ a: 0x91 });
+    test_instruction!("ADC", IndirectY, [0x02, 0x04, 0x00, 0x00, 0x90]{y:1, a: 1} => []{ a: 0x91 });
   }
 }

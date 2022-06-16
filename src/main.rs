@@ -31,5 +31,6 @@ mod test {
   #[named]
   pub fn init() {
     let _ = pretty_env_logger::env_logger::builder().is_test(true).try_init();
+    std::env::set_var("RUST_BACKTRACE", "1");
   }
 }

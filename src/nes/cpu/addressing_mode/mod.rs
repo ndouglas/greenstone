@@ -2,7 +2,7 @@ use crate::traits::addressable::Addressable;
 
 use super::CPU;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum AddressingMode {
   Implied,
   Immediate,
@@ -135,8 +135,6 @@ impl CPU<'_> {
         trace_u8!(additional_cycles);
         Some((address, additional_cycles))
       }
-
-
       // Indirect, X-Indexed reads a byte to get a zero-page address,
       // offsets that by the X register, and then reads that to get a
       // 16-bit address.

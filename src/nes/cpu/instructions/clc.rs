@@ -24,13 +24,9 @@ mod test {
 
   #[test]
   #[named]
-  fn test_clc_implied_clear_carry_flag() {
+  fn test_clc() {
     init();
-    let mut cpu = CPU::new();
-    cpu.interpret(vec![
-      0x18, //            CLC         ; Clear carry flag.
-      0x00, //            BRK         ;
-    ]);
-    assert!(cpu.status & CARRY_FLAG == 0, "should clear the carry flag.");
+    test_instruction!("CLC", Implied, []{status: 0b11111111} => []{status: 0b11111110});
+    test_instruction!("CLC", Implied, []{status: 0b11111110} => []{status: 0b11111110});
   }
 }

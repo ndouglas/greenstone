@@ -1,13 +1,17 @@
 use crate::traits::Addressable;
 
+const START_ADDRESS: usize = 0x0000;
+const PROGRAM_CONTROL_ADDRESS: usize = 0xFFFC;
+const MAX_ADDRESS: usize = 0xFFFF;
+
 pub struct SimpleMemory {
-  memory: [u8; 0xFFFF],
+  memory: [u8; MAX_ADDRESS],
 }
 
 impl SimpleMemory {
   #[named]
   pub fn new() -> SimpleMemory {
-    SimpleMemory { memory: [0; 0xFFFF] }
+    SimpleMemory { memory: [0; MAX_ADDRESS] }
   }
 }
 
@@ -24,7 +28,7 @@ impl Addressable for SimpleMemory {
 
   #[named]
   fn load(&mut self, program: Vec<u8>) {
-    self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
-    self.write_u16(0xFFFC, 0x8000);
+    self.memory[START_ADDRESS..(START_ADDRESS + program.len())].copy_from_slice(&program[..]);
+    self.write_u16(PROGRAM_CONTROL_ADDRESS.try_into().unwrap(), START_ADDRESS.try_into().unwrap());
   }
 }

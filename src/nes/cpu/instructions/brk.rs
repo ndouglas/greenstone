@@ -24,12 +24,8 @@ mod test {
 
   #[test]
   #[named]
-  fn test_brk_0x00_halts() {
+  fn test_brk() {
     init();
-    let mut cpu = CPU::new();
-    cpu.interpret(vec![
-      0x00, //         BRK          ;
-    ]);
-    assert!(cpu.halt, "BRK should halt.");
+    test_instruction!("BRK", Implied, [0x00, 0x00]{a:0x00, status: 0x00} => []{ a: 0x00});
   }
 }

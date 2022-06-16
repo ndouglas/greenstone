@@ -24,13 +24,9 @@ mod test {
 
   #[test]
   #[named]
-  fn test_sec_0x38_implied_set_carry_flag() {
+  fn test_sec() {
     init();
-    let mut cpu = CPU::new();
-    cpu.interpret(vec![
-      0x38, //            SEC         ; Set carry flag.
-      0x00, //            BRK         ;
-    ]);
-    assert!(cpu.status & CARRY_FLAG == CARRY_FLAG, "should set the carry flag.");
+    test_instruction!("SEC", Implied, []{status: 0b11111110} => []{status: 0b11111111});
+    test_instruction!("SEC", Implied, []{status: 0b11111111} => []{status: 0b11111111});
   }
 }
