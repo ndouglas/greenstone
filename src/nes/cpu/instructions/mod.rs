@@ -18,6 +18,18 @@ pub use brk::*;
 pub mod clc;
 pub use clc::*;
 
+// CMP: Compare
+pub mod cmp;
+pub use cmp::*;
+
+// CPX: Compare X
+pub mod cpx;
+pub use cpx::*;
+
+// CPY: Compare Y
+pub mod cpy;
+pub use cpy::*;
+
 // INX: Increment X
 pub mod inx;
 pub use inx::*;
@@ -49,6 +61,10 @@ pub use sta::*;
 // STX: Store X.
 pub mod stx;
 pub use stx::*;
+
+// STX: Store Y.
+pub mod sty;
+pub use sty::*;
 
 // TAX: Transfer A -> X.
 pub mod tax;
