@@ -13,9 +13,9 @@ impl CPU<'_> {
     let (address, additional_cycles) = self.get_operand_address(mode).unwrap();
     trace_u16!(address);
     trace_u8!(additional_cycles);
-    let value = self.read_u8(address);
-    trace_u8!(value);
-    self.a = self.a | value;
+    let operand = self.read_u8(address);
+    trace_u8!(operand);
+    self.a = self.a | operand;
     self.set_value_flags(self.a);
     let result = cycles;
     trace_result!(result);

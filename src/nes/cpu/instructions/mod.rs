@@ -10,6 +10,10 @@ pub use adc::*;
 pub mod and;
 pub use and::*;
 
+// BIT: Test Bits.
+pub mod bit;
+pub use bit::*;
+
 // BRK: Break
 pub mod brk;
 pub use brk::*;

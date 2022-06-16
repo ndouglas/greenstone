@@ -14,11 +14,11 @@ impl CPU<'_> {
     let (address, additional_cycles) = self.get_operand_address(mode).unwrap();
     trace_u16!(address);
     trace_u8!(additional_cycles);
-    let value = self.read_u8(address);
-    trace_u8!(value);
-    self.a = value;
+    let operand = self.read_u8(address);
+    trace_u8!(operand);
+    self.a = operand;
     trace_u8!(self.a);
-    self.set_value_flags(value);
+    self.set_value_flags(operand);
     let mut result = cycles;
     if opcode.extra_cycle {
       result += additional_cycles;

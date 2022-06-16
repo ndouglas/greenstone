@@ -13,10 +13,10 @@ impl CPU<'_> {
     let (address, additional_cycles) = self.get_operand_address(mode).unwrap();
     trace_u16!(address);
     trace_u8!(additional_cycles);
-    let value = self.read_u8(address);
-    trace_u8!(value);
-    self.set_value_flags(self.y.wrapping_sub(value));
-    self.set_carry_flag(self.y >= value);
+    let operand = self.read_u8(address);
+    trace_u8!(operand);
+    self.set_value_flags(self.y.wrapping_sub(operand));
+    self.set_carry_flag(self.y >= operand);
     trace_var!(self.get_carry_flag());
     let result = cycles;
     trace_result!(result);

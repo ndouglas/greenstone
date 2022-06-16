@@ -116,6 +116,7 @@ impl<'a> CPU<'a> {
       _ => match opcode.mnemonic {
         "ADC" => self.instruction_adc(&opcode),
         "AND" => self.instruction_and(&opcode),
+        "BIT" => self.instruction_bit(&opcode),
         "BRK" => self.instruction_brk(&opcode),
         "CLC" => self.instruction_clc(&opcode),
         "CMP" => self.instruction_cmp(&opcode),
