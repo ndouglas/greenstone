@@ -224,7 +224,7 @@ lazy_static! {
     Opcode::new(0xAE, "LDX", 3, 4, Absolute, 0b10000010, false, false, false, false),
     Opcode::new(0xAF, "LAX", 3, 4, Implied, 0b00000000, false, true, false, false),
     Opcode::new(0xB0, "BCS", 2, 2, Relative, 0b00000000, false, false, false, false),
-    Opcode::new(0xB1, "LDA", 2, 5, IndirectY, 0b00000000, false, false, false, true),
+    Opcode::new(0xB1, "LDA", 2, 5, IndirectY, 0b10000010, false, false, false, true),
     Opcode::new(0xB2, "JAM", 1, 2, Implied, 0b00000000, true, true, false, false),
     Opcode::new(0xB3, "LAX", 2, 5, Implied, 0b00000000, false, true, false, true),
     Opcode::new(0xB4, "LDY", 2, 4, ZeroPageX, 0b10000010, false, false, false, false),

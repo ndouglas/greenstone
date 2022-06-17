@@ -180,12 +180,18 @@ macro_rules! test_opcode {
       program.insert(0, $opcode);
       cpu.load(program);
       cpu.reset();
+      $(cpu.$start_key = $start_value;)*
       let start_pc = cpu.program_counter;
       let start_cycles = cpu.cycles;
       let start_status = cpu.status;
-      $(cpu.$start_key = $start_value;)*
       cpu.process_instruction();
-      assert!(0 == cpu.status & start_status & !test_opcode.status_mask, "Instruction violated status register mask: {:#010b}", cpu.status);
+      let status_differences = cpu.status ^ start_status;
+      trace_u8!(status_differences);
+      let status_mask = test_opcode.status_mask;
+      trace_u8!(status_mask);
+      let status_violations = status_differences & !status_mask;
+      trace_u8!(status_violations);
+      assert!(status_violations == 0, "Instruction violated status register mask; mask: {:#010b}, start: {:#010b}, actual: {:#010b}, differences: {:#010b}, violations: {:#010b}", status_mask, start_status, cpu.status, status_differences, status_violations);
       assert!(test_opcode.length == (cpu.program_counter - start_pc) as u8, "Invalid instruction length; expected {} bytes, found {}.", test_opcode.length, (cpu.program_counter - start_pc) as u8);
       assert!(test_opcode.cycles == (cpu.cycles - start_cycles), "Invalid instruction cycles; expected {} cycles, found {}.", test_opcode.cycles, cpu.cycles - start_cycles);
       $(

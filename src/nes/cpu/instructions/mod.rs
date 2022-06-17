@@ -122,9 +122,17 @@ pub use tax::*;
 pub mod tay;
 pub use tay::*;
 
+// TSX: Transfer Stack Pointer -> X.
+pub mod tsx;
+pub use tsx::*;
+
 // TXA: Transfer X -> A.
 pub mod txa;
 pub use txa::*;
+
+// TXS: Transfer X -> Stack Pointer.
+pub mod txs;
+pub use txs::*;
 
 // TYA: Transfer Y -> A.
 pub mod tya;
