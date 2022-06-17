@@ -42,6 +42,14 @@ pub use cpy::*;
 pub mod dec;
 pub use dec::*;
 
+// DEX: Decrement X
+pub mod dex;
+pub use dex::*;
+
+// DEY: Decrement Y
+pub mod dey;
+pub use dey::*;
+
 // EOR: XOR A
 pub mod eor;
 pub use eor::*;
@@ -53,6 +61,10 @@ pub use inc::*;
 // INX: Increment X
 pub mod inx;
 pub use inx::*;
+
+// INY: Increment Y
+pub mod iny;
+pub use iny::*;
 
 // LDA: Load A
 pub mod lda;
