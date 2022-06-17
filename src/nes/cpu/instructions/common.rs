@@ -1,3 +1,5 @@
+use super::super::*;
+
 #[inline]
 #[named]
 pub fn add_u8s(augend: u8, addend: u8, carry: bool) -> (u8, bool, bool) {
@@ -15,6 +17,30 @@ pub fn add_u8s(augend: u8, addend: u8, carry: bool) -> (u8, bool, bool) {
   trace_var!(set_overflow);
   trace_exit!();
   (result, set_carry, set_overflow)
+}
+
+impl CPU<'_> {
+  #[inline]
+  #[named]
+  pub fn branch_on_condition(&mut self, condition: bool) {
+    trace_enter!();
+    // Ensure the negative bit is propagated correctly.
+    let (address, additional_cycles) = self.get_operand_address(&AddressingMode::Immediate).unwrap();
+    trace_u16!(address);
+    trace_u8!(additional_cycles);
+    let offset = self.read_u8(address) as i8 as u16;
+    trace_u16!(offset);
+    if condition {
+      self.tick();
+      let new_pc = self.program_counter.wrapping_add(offset);
+      if (self.program_counter & 0xFF00) != (new_pc & 0xFF00) {
+        self.tick();
+      }
+      self.program_counter = new_pc;
+      trace_u16!(self.program_counter);
+    }
+    trace_exit!();
+  }
 }
 
 #[cfg(test)]

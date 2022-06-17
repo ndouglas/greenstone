@@ -33,4 +33,7 @@ impl Addressable for Bus {
     self.write_u16(0xFFFC, 0x8000);
     trace_exit!();
   }
+
+  #[named]
+  fn tick(&mut self) {}
 }

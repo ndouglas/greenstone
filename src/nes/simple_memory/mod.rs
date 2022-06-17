@@ -31,4 +31,7 @@ impl Addressable for SimpleMemory {
     self.memory[START_ADDRESS..(START_ADDRESS + program.len())].copy_from_slice(&program[..]);
     self.write_u16(PROGRAM_CONTROL_ADDRESS.try_into().unwrap(), START_ADDRESS.try_into().unwrap());
   }
+
+  #[named]
+  fn tick(&mut self) {}
 }

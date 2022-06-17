@@ -19,4 +19,6 @@ pub trait Addressable {
   }
 
   fn load(&mut self, program: Vec<u8>);
+
+  fn tick(&mut self);
 }

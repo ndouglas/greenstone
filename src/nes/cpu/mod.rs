@@ -23,7 +23,7 @@ pub struct CPU<'a> {
   pub status: u8,
   pub stack_pointer: u8,
   pub program_counter: u16,
-  pub clock_counter: u32,
+  pub clock_counter: u64,
   pub cycles: u8,
   pub halt: bool,
   pub bus: Box<dyn Addressable + 'a>,
@@ -90,10 +90,7 @@ impl<'a> CPU<'a> {
     if self.cycles == 0 {
       self.process_instruction();
     }
-    self.clock_counter = self.clock_counter.wrapping_add(1);
-    trace_var!(self.clock_counter);
-    self.cycles = self.cycles.wrapping_sub(1);
-    trace_u8!(self.cycles);
+    self.tick();
     trace_exit!();
   }
 
@@ -195,5 +192,12 @@ impl Addressable for CPU<'_> {
   #[named]
   fn load(&mut self, program: Vec<u8>) {
     self.bus.load(program)
+  }
+
+  #[named]
+  fn tick(&mut self) {
+    self.cycles = self.cycles.wrapping_sub(1);
+    trace_u8!(self.cycles);
+    self.bus.tick();
   }
 }
