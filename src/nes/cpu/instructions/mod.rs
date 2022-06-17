@@ -26,6 +26,18 @@ pub use brk::*;
 pub mod clc;
 pub use clc::*;
 
+// CLD: Clear Decimal Mode
+pub mod cld;
+pub use cld::*;
+
+// CLI: Clear Interrupt Disable
+pub mod cli;
+pub use cli::*;
+
+// CLV: Clear Overflow
+pub mod clv;
+pub use clv::*;
+
 // CMP: Compare
 pub mod cmp;
 pub use cmp::*;
@@ -101,6 +113,14 @@ pub use sbc::*;
 // SEC: Set the Carry Flag.
 pub mod sec;
 pub use sec::*;
+
+// SED: Set the Decimal Mode Flag.
+pub mod sed;
+pub use sed::*;
+
+// SEI: Set the Interrupt Disable Flag.
+pub mod sei;
+pub use sei::*;
 
 // STA: Store A.
 pub mod sta;
