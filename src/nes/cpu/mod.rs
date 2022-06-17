@@ -116,6 +116,7 @@ impl<'a> CPU<'a> {
       _ => match opcode.mnemonic {
         "ADC" => self.instruction_adc(&opcode),
         "AND" => self.instruction_and(&opcode),
+        "ASL" => self.instruction_asl(&opcode),
         "BIT" => self.instruction_bit(&opcode),
         "BRK" => self.instruction_brk(&opcode),
         "CLC" => self.instruction_clc(&opcode),
@@ -127,7 +128,10 @@ impl<'a> CPU<'a> {
         "LDA" => self.instruction_lda(&opcode),
         "LDX" => self.instruction_ldx(&opcode),
         "LDY" => self.instruction_ldy(&opcode),
+        "LSR" => self.instruction_lsr(&opcode),
         "ORA" => self.instruction_ora(&opcode),
+        "ROL" => self.instruction_rol(&opcode),
+        "ROR" => self.instruction_ror(&opcode),
         "SBC" => self.instruction_sbc(&opcode),
         "SEC" => self.instruction_sec(&opcode),
         "STA" => self.instruction_sta(&opcode),

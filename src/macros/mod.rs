@@ -2,7 +2,7 @@ macro_rules! format_u8 {
   ($var: expr) => {{
     #[cfg(debug_assertions)]
     if $var & 0x80 > 0 {
-      format!("{:#04X} {:#010b} (+: {}, ±: {})", $var, $var, $var as i8, $var as u8)
+      format!("{:#04X} {:#010b} (+: {}, ±: {})", $var, $var, $var as u8, $var as i8)
     } else {
       format!("{:#04X} {:#010b} (+/±: {})", $var, $var, $var as u8)
     }

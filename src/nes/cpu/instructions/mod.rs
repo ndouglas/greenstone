@@ -10,6 +10,10 @@ pub use adc::*;
 pub mod and;
 pub use and::*;
 
+// ASL: Arithmetic Shift Left
+pub mod asl;
+pub use asl::*;
+
 // BIT: Test Bits.
 pub mod bit;
 pub use bit::*;
@@ -54,9 +58,21 @@ pub use ldx::*;
 pub mod ldy;
 pub use ldy::*;
 
+// LSR: Logical Shift Right
+pub mod lsr;
+pub use lsr::*;
+
 // ORA: OR A
 pub mod ora;
 pub use ora::*;
+
+// ROL: Rotate Left
+pub mod rol;
+pub use rol::*;
+
+// ROR: Rotate Right
+pub mod ror;
+pub use ror::*;
 
 // SBC: Subtract from Accumulator With Carry.
 pub mod sbc;

@@ -8,6 +8,7 @@ impl CPU<'_> {
     let length = opcode.length;
     trace_u8!(length);
     let cycles = opcode.cycles;
+    trace_u8!(cycles);
     let mode = &opcode.mode;
     trace_var!(mode);
     let (address, additional_cycles) = self.get_operand_address(mode).unwrap();
