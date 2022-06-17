@@ -144,6 +144,8 @@ impl<'a> CPU<'a> {
         "STY" => self.instruction_sty(&opcode),
         "TAX" => self.instruction_tax(&opcode),
         "TAY" => self.instruction_tay(&opcode),
+        "TXA" => self.instruction_txa(&opcode),
+        "TYA" => self.instruction_tya(&opcode),
         _ => todo!(),
       },
     };

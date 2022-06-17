@@ -121,3 +121,11 @@ pub use tax::*;
 // TAY: Transfer A -> Y.
 pub mod tay;
 pub use tay::*;
+
+// TXA: Transfer X -> A.
+pub mod txa;
+pub use txa::*;
+
+// TYA: Transfer Y -> A.
+pub mod tya;
+pub use tya::*;
