@@ -38,9 +38,17 @@ pub use cpx::*;
 pub mod cpy;
 pub use cpy::*;
 
+// DEC: Decrement
+pub mod dec;
+pub use dec::*;
+
 // EOR: XOR A
 pub mod eor;
 pub use eor::*;
+
+// INC: Increment
+pub mod inc;
+pub use inc::*;
 
 // INX: Increment X
 pub mod inx;
