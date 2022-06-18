@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 
 use crate::nes::bus::Bus;
 use crate::nes::simple_memory::SimpleMemory;
@@ -19,6 +20,8 @@ pub use opcode::*;
 pub mod status_flags;
 pub use status_flags::*;
 
+#[derive(Derivative)]
+#[derivative(Debug)]
 pub struct CPU<'a> {
   pub a: u8,
   pub x: u8,
@@ -28,6 +31,7 @@ pub struct CPU<'a> {
   pub program_counter: u16,
   pub clock_counter: u64,
   pub halt: bool,
+  #[derivative(Debug="ignore")]
   pub bus: Box<dyn Addressable + 'a>,
 }
 
@@ -96,13 +100,15 @@ impl<'a> CPU<'a> {
     trace_enter!();
     let ref opcodes: HashMap<u8, &'static Opcode> = *OPCODE_MAP;
     trace_u16!(self.program_counter);
+    debug!("Ticking (reading next opcode)...");
     let next_opcode = self.read_u8(self.program_counter);
     trace_u8!(next_opcode);
     self.program_counter = self.program_counter.wrapping_add(1);
     trace_u16!(self.program_counter);
     let pc_state = self.program_counter;
     trace_u16!(pc_state);
-    let opcode = opcodes.get(&next_opcode).expect(&format!("Opcode {:x} is not recognized", next_opcode));
+    let opcode = opcodes.get(&next_opcode).expect(&format!("Opcode {:#04X} is not recognized", next_opcode));
+    debug!("Processing next instruction (at address {:#06X}): {}", self.program_counter.wrapping_sub(1), opcode);
     trace_var!(opcode);
     match next_opcode {
       // Illegal Opcodes
@@ -175,19 +181,24 @@ impl<'a> CPU<'a> {
   }
 
   #[named]
-  #[warn(dead_code)]
+  #[allow(dead_code)]
   fn unclocked_read_u16(&mut self, address: u16) -> u16 {
+    trace_enter!();
     let result = u16::from_le_bytes([self.unclocked_read_u8(address), self.unclocked_read_u8(address.wrapping_add(1))]);
+    trace_u16!(result);
+    trace_exit!();
     result
   }
 
   #[named]
-  #[warn(dead_code)]
+  #[allow(dead_code)]
   fn unclocked_write_u16(&mut self, address: u16, data: u16) {
+    trace_enter!();
     let hi = (data >> 8) as u8;
     let lo = (data & 0xFF) as u8;
     self.unclocked_write_u8(address, lo);
     self.unclocked_write_u8(address.wrapping_add(1), hi);
+    trace_exit!();
   }
 
 }
@@ -221,8 +232,14 @@ impl Addressable for CPU<'_> {
   fn tick(&mut self) {
     trace_enter!();
     self.clock_counter = self.clock_counter.wrapping_add(1);
-    trace_var!(self.clock_counter);
+    debug!("Tick {}", self.clock_counter);
     self.bus.tick();
     trace_exit!();
+  }
+}
+
+impl fmt::Display for CPU<'_> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+      write!(f, "{:?}", self)
   }
 }

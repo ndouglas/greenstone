@@ -13,6 +13,7 @@ impl CPU<'_> {
     trace_u16!(address);
     let first = self.a;
     trace_u8!(first);
+    debug!("Ticking (reading operand)...");
     let second = self.read_u8(address);
     trace_u8!(second);
     let answer = first & second;

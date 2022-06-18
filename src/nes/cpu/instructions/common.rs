@@ -24,6 +24,7 @@ impl CPU<'_> {
   #[named]
   pub fn branch_on_condition(&mut self, opcode: &Opcode, condition: bool) {
     trace_enter!();
+    trace_var!(condition);
     let length = opcode.length;
     trace_u8!(length);
     let mode = &opcode.mode;
@@ -31,15 +32,23 @@ impl CPU<'_> {
     let address = self.get_operand_address(opcode, mode).unwrap();
     trace_u16!(address);
     // Ensure the negative bit is propagated correctly.
+    debug!("Ticking (reading next byte as offset)...");
     let offset = self.read_u8(address) as i8 as u16;
     trace_u16!(offset);
     if condition {
+      debug!("Branching...");
+      debug!("Ticking (reading next byte)...");
+      self.tick();
       let new_pc = self.program_counter.wrapping_add(offset);
       if (self.program_counter & 0xFF00) != (new_pc & 0xFF00) {
+        debug!("Ticking (repairing program counter after crossing page boundary)...");
         self.tick();
       }
       self.program_counter = new_pc;
       trace_u16!(self.program_counter);
+    }
+    else {
+      self.program_counter = self.program_counter.wrapping_add(1);
     }
     trace_exit!();
   }

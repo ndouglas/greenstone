@@ -20,6 +20,7 @@ impl CPU<'_> {
     self.status = 0x00;
     self.clock_counter = 0;
     self.halt = false;
+    debug!("Ticking twice (reading initial state for program counter)...");
     self.program_counter = self.read_u16(0xFFFC);
   }
 

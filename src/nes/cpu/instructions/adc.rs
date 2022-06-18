@@ -13,6 +13,7 @@ impl CPU<'_> {
     trace_u16!(address);
     let augend = self.a;
     trace_u8!(augend);
+    debug!("Ticking (reading operand)...");
     let addend = self.read_u8(address);
     trace_u8!(addend);
     let carry = self.get_carry_flag();

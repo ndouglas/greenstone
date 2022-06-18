@@ -1,6 +1,8 @@
 #![allow(unused_macros)]
 
 #[macro_use]
+extern crate derivative;
+#[macro_use]
 extern crate function_name;
 use ::function_name::named;
 extern crate iced;

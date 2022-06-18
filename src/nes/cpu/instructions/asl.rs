@@ -15,13 +15,16 @@ impl CPU<'_> {
     trace_u8!(length);
     let address = self.get_operand_address(opcode, mode).unwrap();
     trace_u16!(address);
+    debug!("Ticking (reading operand)...");
     let operand = self.read_u8(address);
     trace_u8!(operand);
     let output = operand << 1;
     trace_u8!(output);
     self.set_carry_flag(operand & NEGATIVE_FLAG != 0);
+    debug!("Ticking (processing instruction)...");
     self.tick();
     self.set_value_flags(output);
+    debug!("Ticking twice (writing 2-byte result)...");
     self.write_u8(address, output);
     trace_exit!();
   }
@@ -37,6 +40,7 @@ impl CPU<'_> {
     self.set_carry_flag(operand & NEGATIVE_FLAG != 0);
     self.set_value_flags(output);
     self.a = output;
+    debug!("Ticking (processing instruction)...");
     self.tick();
     trace_exit!();
   }

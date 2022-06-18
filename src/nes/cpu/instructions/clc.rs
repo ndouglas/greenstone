@@ -8,6 +8,7 @@ impl CPU<'_> {
     let length = opcode.length;
     trace_u8!(length);
     self.set_carry_flag(false);
+    debug!("Ticking (processing instruction)...");
     self.tick();
     trace_var!(self.get_carry_flag());
     trace_exit!();

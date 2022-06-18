@@ -19,25 +19,21 @@ mod test {
   #[named]
   fn test_bpl() {
     init();
-    // test_instruction!("BPL", Relative,  [0x10]{status: 0b10000000} => []{program_counter: 2, clock_counter: 2});
-    // test_instruction!("BPL", Relative,  []{x: 127} => []{x: 128, clock_counter: 3, status: 0b10000000});
+    test_instruction!("BPL", Relative, [0x10]{status: 0b10000000} => []{program_counter: 2, clock_counter: 2});
+    test_instruction!("BPL", Relative, [0x10]{status: 0b00000000} => []{program_counter: 17, clock_counter: 3});
+    test_instruction!("BPL", Relative, [0x00]{status: 0b00000000} => []{program_counter: 0x0103, clock_counter: 4}, |cpu: &mut CPU<'_>| {
+      cpu.program_counter = 0x00FD;
+      cpu.unclocked_write_u8(0x00FD, 0x10);
+      cpu.unclocked_write_u16(0x00FE, 5);
+    });
+    test_instruction!("BPL", Relative, [0x00]{status: 0b00000000} => []{program_counter: 0x0100, clock_counter: 4}, |cpu: &mut CPU<'_>| {
+      cpu.program_counter = 0x00FD;
+      cpu.unclocked_write_u8(0x00FD, 0x10);
+      cpu.unclocked_write_u16(0x00FE, 2);
+    });
+    test_instruction!("BPL", Relative, [0x00]{status: 0b10000000} => []{program_counter: 0x00FF, clock_counter: 2}, |cpu: &mut CPU<'_>| {
+      cpu.program_counter = 0x00FD;
+      cpu.unclocked_write_u8(0x00FD, 0x10);
+      cpu.unclocked_write_u16(0x00FE, 5);
+    });
   }
-
-//   #[test]
-// fn test_bpl() {
-//     let cpu = test_op!("bpl", NoMode, [10]{p: 0b10000000} => []{pc: 2});
-//     assert_eq!(cpu.bus.cycles, 2);
-// 
-//     let cpu = test_op!("bpl", NoMode, [10]{p: 0} => []{pc: 12});
-//     assert_eq!(cpu.bus.cycles, 3);
-// 
-//     // Test page boundary cross
-//     let mut cpu = build_cpu!([0]);
-//     cpu.pc = 0x00FE;
-//     cpu.bus.ram[0x00FE] = 1;
-//     cpu.bpl();
-//     assert!(cross(0x00FF, 1));
-//     assert_eq!(cpu.pc, 0x0100);
-//     assert_eq!(cpu.bus.cycles, 3); // Because we call bpl directly, it's only 3 cycles
-// }
-}

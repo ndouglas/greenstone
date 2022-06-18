@@ -34,18 +34,21 @@ macro_rules! format_status_register {
 
 macro_rules! trace_u8 {
   ($var: expr) => {
+    #[cfg(debug_assertions)]
     trace!("{} = {}", stringify!($var), format_u8!($var));
   };
 }
 
 macro_rules! debug_u8 {
   ($var: expr) => {
+    #[cfg(debug_assertions)]
     debug!("{} = {}", stringify!($var), format_u8!($var));
   };
 }
 
 macro_rules! info_u8 {
   ($var: expr) => {
+    #[cfg(debug_assertions)]
     info!("{} = {}", stringify!($var), format_u8!($var));
   };
 }
@@ -155,12 +158,17 @@ macro_rules! get_opcode {
   }};
 }
 
+macro_rules! some_or_none {
+  () => { None };
+  ($expression:expr) => { Some($expression) }
+}
+
 macro_rules! test_opcode {
-  ($opcode:expr, [$($byte:expr),*]{$($start_key:ident : $start_value:expr),*} => [$($returned_byte:expr),*]{$($expected_key:ident : $expected_value:expr),*}) => {
+  ($opcode:expr, [$($byte:expr),*]{$($start_key:ident : $start_value:expr),*} => [$($returned_byte:expr),*]{$($expected_key:ident : $expected_value:expr),*} $(, $builder:expr)?) => {
     { // Begin test scope.
       info!("Starting test!");
       let ref opcodes: HashMap<u8, &'static Opcode> = *OPCODE_MAP;
-      let test_opcode = opcodes.get(&$opcode).expect(&format!("Opcode {:x} is not recognized", $opcode));
+      let test_opcode = opcodes.get(&$opcode).expect(&format!("Opcode {:#04X} is not recognized", $opcode));
       trace_var!(test_opcode);
       let mut cpu = CPU::new();
       let mut program = Vec::new();
@@ -176,6 +184,10 @@ macro_rules! test_opcode {
       trace_var!(start_pc);
       let start_status = cpu.status;
       trace_var!(start_status);
+      $(let builder:Option<fn (&mut CPU<'_>)> = some_or_none!($builder);
+      if let Some(closure) = builder {
+        closure(&mut cpu);
+      })*
       cpu.process_instruction();
       let status_differences = cpu.status ^ start_status;
       trace_u8!(status_differences);
@@ -184,22 +196,27 @@ macro_rules! test_opcode {
       let status_violations = status_differences & !status_mask;
       trace_u8!(status_violations);
       assert!(status_violations == 0, "Opcode ({}) violated status register mask; mask: {:#010b}, start: {:#010b}, actual: {:#010b}, differences: {:#010b}, violations: {:#010b}", test_opcode, status_mask, start_status, cpu.status, status_differences, status_violations);
-      assert!(test_opcode.length == (cpu.program_counter - start_pc) as u8, "Invalid opcode ({}) length; expected {} bytes, found {}.", test_opcode, test_opcode.length, (cpu.program_counter - start_pc) as u8);
       #[allow(unused_assignments)]
       let mut expected_cycles = 0;
       expected_cycles = test_opcode.cycles;
       $(
+        let expected_value: u64 = $expected_value;
         match stringify!($expected_key) {
           "clock_counter" => {
-            trace!("Updating expected cycle count to {}", $expected_value);
-            expected_cycles = $expected_value;
+            trace!("Updating expected cycle count to {}", expected_value);
+            expected_cycles = expected_value as u8;
+          },
+          "program_counter" => {
+            let expected_value_string = format_u16!(expected_value as u16);
+            let actual_value = cpu.$expected_key as u16;
+            let actual_value_string = format_u16!(actual_value);
+            assert!(cpu.$expected_key == $expected_value, "Unexpected opcode ({}) program counter value: expected {} to be {}, found {}.", test_opcode, stringify!(cpu.$expected_key), expected_value_string, actual_value_string);
           },
           _ => {
-            let expected_value = $expected_value as u8;
-            let expected_value_string = format_u8!(expected_value);
+            let expected_value_string = format_u8!(expected_value as u8);
             let actual_value = cpu.$expected_key as u8;
             let actual_value_string = format_u8!(actual_value);
-            assert!(cpu.$expected_key == $expected_value, "Unexpected opcode ({}) register value: expected {} to be {}, found {}.", test_opcode, stringify!(cpu.$expected_key), expected_value_string, actual_value_string);
+            assert!(cpu.$expected_key as u8 == expected_value as u8, "Unexpected opcode ({}) register value: expected {} to be {}, found {}.", test_opcode, stringify!(cpu.$expected_key), expected_value_string, actual_value_string);
           },
         }
       )*

@@ -11,6 +11,7 @@ impl CPU<'_> {
     trace_var!(mode);
     let address = self.get_operand_address(opcode, mode).unwrap();
     trace_u16!(address);
+    debug!("Ticking (reading operand)...");
     let operand = self.read_u8(address);
     trace_u8!(operand);
     self.set_value_flags(self.a.wrapping_sub(operand));
