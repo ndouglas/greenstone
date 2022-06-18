@@ -46,8 +46,7 @@ impl CPU<'_> {
       }
       self.program_counter = new_pc;
       trace_u16!(self.program_counter);
-    }
-    else {
+    } else {
       self.program_counter = self.program_counter.wrapping_add(1);
     }
     trace_exit!();
@@ -64,7 +63,6 @@ impl CPU<'_> {
     trace_u8!(result);
     result
   }
-
 }
 
 #[cfg(test)]

@@ -2,8 +2,8 @@ use std::fmt;
 
 use crate::traits::addressable::Addressable;
 
-use super::CPU;
 use super::opcode::Opcode;
+use super::CPU;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum AddressingMode {
@@ -28,9 +28,7 @@ impl CPU<'_> {
     trace!("Using addressing mode {}", mode);
     let result = match mode {
       // The Implied mode does not require additional data.
-      AddressingMode::Implied => {
-        None
-      },
+      AddressingMode::Implied => None,
       // The Immediate mode uses the subsequent byte of memory.
       AddressingMode::Immediate => {
         let address = self.program_counter;
@@ -98,8 +96,7 @@ impl CPU<'_> {
         if opcode.extra_cycle {
           debug!("Ticking (extra cycle due to opcode)...");
           self.tick();
-        }
-        else if address & 0xFF00 != base & 0xFF00 {
+        } else if address & 0xFF00 != base & 0xFF00 {
           debug!("Ticking (extra cycle due to crossing page boundary)...");
           self.tick();
         }
@@ -117,8 +114,7 @@ impl CPU<'_> {
         if opcode.extra_cycle {
           debug!("Ticking (extra cycle due to opcode)...");
           self.tick();
-        }
-        else if address & 0xFF00 != base & 0xFF00 {
+        } else if address & 0xFF00 != base & 0xFF00 {
           debug!("Ticking (extra cycle due to crossing page boundary)...");
           self.tick();
         }
@@ -186,8 +182,7 @@ impl CPU<'_> {
         if opcode.extra_cycle {
           debug!("Ticking (extra cycle due to opcode)...");
           self.tick();
-        }
-        else if address & 0xFF00 != deref_base & 0xFF00 {
+        } else if address & 0xFF00 != deref_base & 0xFF00 {
           debug!("Ticking (extra cycle due to crossing page boundary)...");
           self.tick();
         }
@@ -201,6 +196,6 @@ impl CPU<'_> {
 
 impl fmt::Display for AddressingMode {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-      write!(f, "{:?}", self)
+    write!(f, "{:?}", self)
   }
 }

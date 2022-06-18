@@ -3,14 +3,13 @@ use crate::traits::addressable::Addressable;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 enum Interrupt {
-    NonMaskable,
-    Reset,
-    Request,
-    Break,
+  NonMaskable,
+  Reset,
+  Request,
+  Break,
 }
 
 impl CPU<'_> {
-
   #[named]
   pub fn reset(&mut self) {
     self.a = 0x00;
@@ -23,5 +22,4 @@ impl CPU<'_> {
     debug!("Ticking twice (reading initial state for program counter)...");
     self.program_counter = self.read_u16(0xFFFC);
   }
-
 }

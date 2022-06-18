@@ -14,9 +14,29 @@ pub use and::*;
 pub mod asl;
 pub use asl::*;
 
+// BCC: Branch if Carry Clear
+pub mod bcc;
+pub use bcc::*;
+
+// BCS: Branch if Carry Set
+pub mod bcs;
+pub use bcs::*;
+
+// BEQ: Branch if Equal
+pub mod beq;
+pub use beq::*;
+
 // BIT: Test Bits.
 pub mod bit;
 pub use bit::*;
+
+// BMI: Branch if Negative
+pub mod bmi;
+pub use bmi::*;
+
+// BNE: Branch if Not Equal
+pub mod bne;
+pub use bne::*;
 
 // BPL: Branch if Positive
 pub mod bpl;
@@ -25,6 +45,14 @@ pub use bpl::*;
 // BRK: Break
 pub mod brk;
 pub use brk::*;
+
+// BVC: Branch if Negative
+pub mod bvc;
+pub use bvc::*;
+
+// BVS: Branch if Overflow Set
+pub mod bvs;
+pub use bvs::*;
 
 // CLC: Clear Carry
 pub mod clc;

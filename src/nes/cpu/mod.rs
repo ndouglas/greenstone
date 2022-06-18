@@ -31,7 +31,7 @@ pub struct CPU<'a> {
   pub program_counter: u16,
   pub clock_counter: u64,
   pub halt: bool,
-  #[derivative(Debug="ignore")]
+  #[derivative(Debug = "ignore")]
   pub bus: Box<dyn Addressable + 'a>,
 }
 
@@ -107,19 +107,32 @@ impl<'a> CPU<'a> {
     trace_u16!(self.program_counter);
     let pc_state = self.program_counter;
     trace_u16!(pc_state);
-    let opcode = opcodes.get(&next_opcode).expect(&format!("Opcode {:#04X} is not recognized", next_opcode));
-    debug!("Processing next instruction (at address {:#06X}): {}", self.program_counter.wrapping_sub(1), opcode);
+    let opcode = opcodes
+      .get(&next_opcode)
+      .expect(&format!("Opcode {:#04X} is not recognized", next_opcode));
+    debug!(
+      "Processing next instruction (at address {:#06X}): {}",
+      self.program_counter.wrapping_sub(1),
+      opcode
+    );
     trace_var!(opcode);
     match next_opcode {
       // Illegal Opcodes
-      0xEB => {},
+      0xEB => {}
       _ => match opcode.mnemonic {
         "ADC" => self.instruction_adc(&opcode),
         "AND" => self.instruction_and(&opcode),
         "ASL" => self.instruction_asl(&opcode),
+        "BCC" => self.instruction_bcc(&opcode),
+        "BCS" => self.instruction_bcs(&opcode),
+        "BEQ" => self.instruction_beq(&opcode),
         "BIT" => self.instruction_bit(&opcode),
+        "BMI" => self.instruction_bmi(&opcode),
+        "BNE" => self.instruction_bne(&opcode),
         "BPL" => self.instruction_bpl(&opcode),
         "BRK" => self.instruction_brk(&opcode),
+        "BVC" => self.instruction_bvc(&opcode),
+        "BVS" => self.instruction_bvs(&opcode),
         "CLC" => self.instruction_clc(&opcode),
         "CLD" => self.instruction_cld(&opcode),
         "CLI" => self.instruction_cli(&opcode),
@@ -155,7 +168,7 @@ impl<'a> CPU<'a> {
         "TXS" => self.instruction_txs(&opcode),
         "TYA" => self.instruction_tya(&opcode),
         _ => todo!(),
-      }
+      },
     }
     if pc_state == self.program_counter {
       let addend = opcode.length.wrapping_sub(1) as u16;
@@ -200,7 +213,6 @@ impl<'a> CPU<'a> {
     self.unclocked_write_u8(address.wrapping_add(1), hi);
     trace_exit!();
   }
-
 }
 
 impl Addressable for CPU<'_> {
@@ -240,6 +252,6 @@ impl Addressable for CPU<'_> {
 
 impl fmt::Display for CPU<'_> {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-      write!(f, "{:?}", self)
+    write!(f, "{:?}", self)
   }
 }

@@ -159,8 +159,12 @@ macro_rules! get_opcode {
 }
 
 macro_rules! some_or_none {
-  () => { None };
-  ($expression:expr) => { Some($expression) }
+  () => {
+    None
+  };
+  ($expression:expr) => {
+    Some($expression)
+  };
 }
 
 macro_rules! test_opcode {
