@@ -41,8 +41,3 @@ mod test {
     // test_instruction!("INC", AbsoluteX, [0x03, 0x00, 0x00, 0x02]{x: 1} => [0x03, 0x00, 0x00, 0x03]{});
   }
 }
-
-// Opcode::new(0xE6, "INC", 2, 5, ZeroPage, 0b10000010, false, false, false, false),
-// Opcode::new(0xEE, "INC", 3, 6, Absolute, 0b10000010, false, false, false, false),
-// Opcode::new(0xF6, "INC", 2, 6, ZeroPageX, 0b10000010, false, false, false, false),
-// Opcode::new(0xFE, "INC", 3, 7, AbsoluteX, 0b10000010, false, false, false, false),

@@ -82,7 +82,7 @@ impl CPU<'_> {
         trace_u16!(base);
         let address = base.wrapping_add(self.x as u16);
         trace_u16!(address);
-        if opcode.extra_cycle && address & 0xFF00 != base & 0xFF00 {
+        if address & 0xFF00 != base & 0xFF00 {
           self.tick();
         }
         Some(address)
@@ -95,7 +95,7 @@ impl CPU<'_> {
         trace_u16!(base);
         let address = base.wrapping_add(self.y as u16);
         trace_u16!(address);
-        if opcode.extra_cycle && address & 0xFF00 != base & 0xFF00 {
+        if address & 0xFF00 != base & 0xFF00 {
           self.tick();
         }
         Some(address)
@@ -152,7 +152,7 @@ impl CPU<'_> {
         trace_u16!(deref_base);
         let address = deref_base.wrapping_add(self.y as u16);
         trace_u16!(address);
-        if opcode.extra_cycle && (address & 0xFF00 != deref_base & 0xFF00) {
+        if address & 0xFF00 != deref_base & 0xFF00 {
           self.tick();
         }
         Some(address)
