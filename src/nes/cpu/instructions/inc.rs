@@ -36,8 +36,8 @@ mod test {
     init();
     test_instruction!("INC", ZeroPage,  [0x02, 255]{} => [0x02, 0]{status: 0b00000010});
     test_instruction!("INC", ZeroPage,  [0x02, 127]{} => [0x02, 128]{status: 0b10000000});
+    test_instruction!("INC", ZeroPageX, [0x02, 0x00, 0x02]{x: 1} => [0x02, 0x00, 0x03]{});
     // test_instruction!("INC", Absolute,  [0x03, 0x00, 0x02]{} => [0x03, 0x00, 0x03]{});
-    // test_instruction!("INC", ZeroPageX, [0x02, 0x00, 0x02]{x: 1} => [0x02, 0x00, 0x03]{});
     // test_instruction!("INC", AbsoluteX, [0x03, 0x00, 0x00, 0x02]{x: 1} => [0x03, 0x00, 0x00, 0x03]{});
   }
 }

@@ -32,7 +32,7 @@ mod test {
     test_instruction!("LDA", Immediate, [0xFF]{} => []{ a: 0xFF, status: 0b10000000 });
     test_instruction!("LDA", Immediate, [0x20]{} => []{ a: 0x20, status: 0 });
     test_instruction!("LDA", ZeroPage,  [0x02, 0x90]{} => []{ a: 0x90 });
-    // test_instruction!("LDA", ZeroPageX, [0x02, 0, 0x90]{x:1} => []{ a: 0x90 });
+    test_instruction!("LDA", ZeroPageX, [0x02, 0, 0x90]{x:1} => []{ a: 0x90 });
     // test_instruction!("LDA", Absolute,  [0x04, 0, 0, 0x90]{x:1} => []{ a: 0x90 });
     // test_instruction!("LDA", AbsoluteX, [0x03, 0, 0, 0x90]{x:1} => []{ a: 0x90 });
     // test_instruction!("LDA", AbsoluteY, [0x03, 0, 0, 0x90]{y:1} => []{ a: 0x90 });

@@ -51,11 +51,11 @@ mod test {
   #[named]
   fn test_lsr() {
     init();
-    // test_instruction!("LSR", ZeroPageX, [0x02, 0x00, 0x02]{x: 1} => [0x02, 0x00, 0x01]{});
     // test_instruction!("LSR", Absolute,  [0x03, 0x00, 0x02]{} => [0x03, 0x00, 0x01]{});
     // test_instruction!("LSR", AbsoluteX, [0x03, 0x00, 0x00, 0x02]{x: 1} => [0x03, 0x00, 0x00, 0x01]{});
     test_instruction!("LSR", Implied, []{a: 2} => []{a: 1});
     test_instruction!("LSR", ZeroPage,  [0x02, 0x01]{status:1} => [0x02, 0x00]{status: 0b00000011});
     test_instruction!("LSR", ZeroPage,  [0x02, 0x01]{status:0} => [0x02, 0x00]{status: 0b00000011});
+    test_instruction!("LSR", ZeroPageX, [0x02, 0x00, 0x02]{x: 1} => [0x02, 0x00, 0x01]{});
   }
 }

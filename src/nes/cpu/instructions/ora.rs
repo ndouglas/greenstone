@@ -32,7 +32,7 @@ mod test {
     test_instruction!("ORA", Immediate, [0b10001111]{a:0b01010101} => []{ a: 0b11011111, status: 0b10000000 });
     test_instruction!("ORA", Immediate, [0x00]{a:0} => []{ a: 0x00, status: 0b00000010 });
     test_instruction!("ORA", ZeroPage, [0x02, 0xFF]{a: 0xF0} => []{a: 0xFF});
-    // test_instruction!("ORA", ZeroPageX, [0x02, 0x00, 0xFF]{x:1, a: 0xF0} => []{a: 0xFF});
+    test_instruction!("ORA", ZeroPageX, [0x02, 0x00, 0xFF]{x:1, a: 0xF0} => []{a: 0xFF});
     // test_instruction!("ORA", Absolute, [0x04, 0x00, 0x00, 0xFF]{a:0xF0} => []{a: 0xFF});
     // test_instruction!("ORA", AbsoluteX, [0x03, 0x00, 0x00, 0xFF]{x:1, a: 0xF0} => []{a: 0xFF});
     // test_instruction!("ORA", AbsoluteY, [0x03, 0x00, 0x00, 0xFF]{y:1, a: 0xF0} => []{a: 0xFF});

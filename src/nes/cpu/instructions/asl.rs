@@ -54,7 +54,7 @@ mod test {
     test_instruction!("ASL", ZeroPage,  [0x02, 0xFF]{status:1} => [0x02, 0xFE]{status: 0b10000001});
     test_instruction!("ASL", ZeroPage,  [0x02, 0xFF]{status:0} => [0x02, 0xFE]{status: 0b10000001});
     test_instruction!("ASL", ZeroPage,  [0x02, 0b10000000]{} => [0x02, 0x00]{status: 0b00000011});
-    // test_instruction!("ASL", ZeroPageX, [0x02, 0x00, 0x01]{x: 1} => [0x02, 0x00, 0x02]{});
+    test_instruction!("ASL", ZeroPageX, [0x02, 0x00, 0x01]{x: 1} => [0x02, 0x00, 0x02]{});
     // test_instruction!("ASL", Absolute,  [0x03, 0x00, 0x01]{} => [0x03, 0x00, 0x02]{});
     // test_instruction!("ASL", AbsoluteX, [0x03, 0x00, 0x00, 0x01]{x: 1} => [0x03, 0x00, 0x00, 0x02]{});
     test_instruction!("ASL", Implied, []{a: 1} => []{a: 2});

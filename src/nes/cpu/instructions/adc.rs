@@ -42,7 +42,7 @@ mod test {
     test_instruction!("ADC", Immediate, [127]{a:1, status:0x00} => []{ a: 128, status: 0b11000000 });
     test_instruction!("ADC", Immediate, [200]{a:100} => []{ a: 44 });
     test_instruction!("ADC", ZeroPage, [0x02, 0x90]{a: 1} => []{ a: 0x91 });
-    // test_instruction!("ADC", ZeroPageX, [0x02, 0x00, 0x90]{x:1, a: 1} => []{ a: 0x91 });
+    test_instruction!("ADC", ZeroPageX, [0x02, 0x00, 0x90]{x:1, a: 1} => []{ a: 0x91 });
     // test_instruction!("ADC", Absolute, [0x04, 0x00, 0x00, 0x90]{a:1} => []{ a: 0x91 });
     // test_instruction!("ADC", AbsoluteX, [0x03, 0x00, 0x00, 0x90]{x:1, a: 1} => []{ a: 0x91 });
     // test_instruction!("ADC", AbsoluteY, [0x03, 0x00, 0x00, 0x90]{y:1, a: 1} => []{ a: 0x91 });
