@@ -3,17 +3,14 @@ use super::super::*;
 impl CPU<'_> {
   #[inline]
   #[named]
-  pub fn instruction_txs(&mut self, opcode: &Opcode) -> u8 {
+  pub fn instruction_txs(&mut self, opcode: &Opcode) {
     trace_enter!();
     let length = opcode.length;
     trace_u8!(length);
-    let cycles = opcode.cycles;
-    trace_u8!(cycles);
     self.stack_pointer = self.x;
+    self.tick();
     trace_u8!(self.stack_pointer);
-    let result = cycles;
-    trace_result!(result);
-    result
+    trace_exit!();
   }
 }
 

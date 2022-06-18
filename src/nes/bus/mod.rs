@@ -12,7 +12,7 @@ impl Bus {
 
 impl Addressable for Bus {
   #[named]
-  fn read_u8(&self, address: u16) -> u8 {
+  fn read_u8(&mut self, address: u16) -> u8 {
     trace_enter!();
     let result = self.memory[address as usize];
     trace_result!(result);

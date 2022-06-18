@@ -1,11 +1,11 @@
 // A trait for addressable things: buses, memory, etc.
 pub trait Addressable {
-  fn read_u8(&self, address: u16) -> u8;
+  fn read_u8(&mut self, address: u16) -> u8;
 
   fn write_u8(&mut self, address: u16, data: u8);
 
   #[named]
-  fn read_u16(&self, address: u16) -> u16 {
+  fn read_u16(&mut self, address: u16) -> u16 {
     let result = u16::from_le_bytes([self.read_u8(address), self.read_u8(address.wrapping_add(1))]);
     result
   }

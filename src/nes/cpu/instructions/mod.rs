@@ -18,6 +18,10 @@ pub use asl::*;
 pub mod bit;
 pub use bit::*;
 
+// BPL: Branch if Positive
+pub mod bpl;
+pub use bpl::*;
+
 // BRK: Break
 pub mod brk;
 pub use brk::*;

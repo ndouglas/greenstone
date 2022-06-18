@@ -3,18 +3,15 @@ use super::super::*;
 impl CPU<'_> {
   #[inline]
   #[named]
-  pub fn instruction_tya(&mut self, opcode: &Opcode) -> u8 {
+  pub fn instruction_tya(&mut self, opcode: &Opcode) {
     trace_enter!();
     let length = opcode.length;
     trace_u8!(length);
-    let cycles = opcode.cycles;
-    trace_u8!(cycles);
     self.a = self.y;
+    self.tick();
     trace_u8!(self.a);
     self.set_value_flags(self.a);
-    let result = cycles;
-    trace_result!(result);
-    result
+    trace_exit!();
   }
 }
 

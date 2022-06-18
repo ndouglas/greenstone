@@ -24,7 +24,6 @@ pub struct CPU<'a> {
   pub stack_pointer: u8,
   pub program_counter: u16,
   pub clock_counter: u64,
-  pub cycles: u8,
   pub halt: bool,
   pub bus: Box<dyn Addressable + 'a>,
 }
@@ -40,7 +39,6 @@ impl<'a> CPU<'a> {
       stack_pointer: 0x00,
       program_counter: 0x0000,
       clock_counter: 0,
-      cycles: 0x00,
       halt: false,
       bus: Box::new(SimpleMemory::new()),
     }
@@ -56,7 +54,6 @@ impl<'a> CPU<'a> {
       stack_pointer: 0x00,
       program_counter: 0x0000,
       clock_counter: 0,
-      cycles: 0x00,
       halt: false,
       bus: Box::new(Bus::new()),
     }
@@ -87,10 +84,7 @@ impl<'a> CPU<'a> {
   #[named]
   pub fn clock(&mut self) {
     trace_enter!();
-    if self.cycles == 0 {
-      self.process_instruction();
-    }
-    self.tick();
+    self.process_instruction();
     trace_exit!();
   }
 
@@ -107,14 +101,15 @@ impl<'a> CPU<'a> {
     trace_u16!(pc_state);
     let opcode = opcodes.get(&next_opcode).expect(&format!("Opcode {:x} is not recognized", next_opcode));
     trace_var!(opcode);
-    let cycles = match next_opcode {
+    match next_opcode {
       // Illegal Opcodes
-      0xEB => 0,
+      0xEB => {},
       _ => match opcode.mnemonic {
         "ADC" => self.instruction_adc(&opcode),
         "AND" => self.instruction_and(&opcode),
         "ASL" => self.instruction_asl(&opcode),
         "BIT" => self.instruction_bit(&opcode),
+        "BPL" => self.instruction_bpl(&opcode),
         "BRK" => self.instruction_brk(&opcode),
         "CLC" => self.instruction_clc(&opcode),
         "CLD" => self.instruction_cld(&opcode),
@@ -151,16 +146,13 @@ impl<'a> CPU<'a> {
         "TXS" => self.instruction_txs(&opcode),
         "TYA" => self.instruction_tya(&opcode),
         _ => todo!(),
-      },
-    };
-    trace_u8!(cycles);
+      }
+    }
     if pc_state == self.program_counter {
       let addend = opcode.length.wrapping_sub(1) as u16;
       self.program_counter = self.program_counter.wrapping_add(addend);
     }
     trace_u16!(self.program_counter);
-    self.cycles = self.cycles.wrapping_add(cycles);
-    trace_u8!(self.cycles);
     trace_exit!();
   }
 
@@ -172,32 +164,74 @@ impl<'a> CPU<'a> {
     self.stack_pointer = 0x00;
     self.status = 0x00;
     self.clock_counter = 0;
-    self.cycles = 0;
     self.halt = false;
     self.program_counter = self.read_u16(0xFFFC);
   }
+
+  #[named]
+  fn unclocked_read_u8(&mut self, address: u16) -> u8 {
+    trace_enter!();
+    let result = self.bus.read_u8(address);
+    trace_result!(result);
+    result
+  }
+
+  #[named]
+  fn unclocked_write_u8(&mut self, address: u16, data: u8) {
+    trace_enter!();
+    self.bus.write_u8(address, data);
+    trace_exit!();
+  }
+
+  #[named]
+  #[warn(dead_code)]
+  fn unclocked_read_u16(&mut self, address: u16) -> u16 {
+    let result = u16::from_le_bytes([self.unclocked_read_u8(address), self.unclocked_read_u8(address.wrapping_add(1))]);
+    result
+  }
+
+  #[named]
+  #[warn(dead_code)]
+  fn unclocked_write_u16(&mut self, address: u16, data: u16) {
+    let hi = (data >> 8) as u8;
+    let lo = (data & 0xFF) as u8;
+    self.unclocked_write_u8(address, lo);
+    self.unclocked_write_u8(address.wrapping_add(1), hi);
+  }
+
 }
 
 impl Addressable for CPU<'_> {
   #[named]
-  fn read_u8(&self, address: u16) -> u8 {
-    self.bus.read_u8(address)
+  fn read_u8(&mut self, address: u16) -> u8 {
+    trace_enter!();
+    self.tick();
+    let result = self.unclocked_read_u8(address);
+    trace_result!(result);
+    result
   }
 
   #[named]
   fn write_u8(&mut self, address: u16, data: u8) {
-    self.bus.write_u8(address, data);
+    trace_enter!();
+    self.tick();
+    self.unclocked_write_u8(address, data);
+    trace_exit!();
   }
 
   #[named]
   fn load(&mut self, program: Vec<u8>) {
-    self.bus.load(program)
+    trace_enter!();
+    self.bus.load(program);
+    trace_exit!();
   }
 
   #[named]
   fn tick(&mut self) {
-    self.cycles = self.cycles.wrapping_sub(1);
-    trace_u8!(self.cycles);
+    trace_enter!();
+    self.clock_counter = self.clock_counter.wrapping_add(1);
+    trace_var!(self.clock_counter);
     self.bus.tick();
+    trace_exit!();
   }
 }

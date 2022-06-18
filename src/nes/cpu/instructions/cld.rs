@@ -3,17 +3,14 @@ use super::super::*;
 impl CPU<'_> {
   #[inline]
   #[named]
-  pub fn instruction_cld(&mut self, opcode: &Opcode) -> u8 {
+  pub fn instruction_cld(&mut self, opcode: &Opcode) {
     trace_enter!();
     let length = opcode.length;
     trace_u8!(length);
-    let cycles = opcode.cycles;
-    trace_u8!(cycles);
     self.set_decimal_flag(false);
+    self.tick();
     trace_var!(self.get_decimal_flag());
-    let result = cycles;
-    trace_result!(result);
-    result
+    trace_exit!();
   }
 }
 

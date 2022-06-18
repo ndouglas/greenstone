@@ -1,6 +1,7 @@
 use super::AddressingMode;
 use super::AddressingMode::*;
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 
 #[derive(Debug)]
 pub struct Opcode {
@@ -338,4 +339,11 @@ lazy_static! {
     }
     map
   };
+}
+
+
+impl fmt::Display for Opcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }

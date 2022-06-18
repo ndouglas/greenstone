@@ -17,21 +17,32 @@ impl SimpleMemory {
 
 impl Addressable for SimpleMemory {
   #[named]
-  fn read_u8(&self, address: u16) -> u8 {
-    self.memory[address as usize]
+  fn read_u8(&mut self, address: u16) -> u8 {
+    trace_enter!();
+    let result = self.memory[address as usize];
+    trace_u8!(result);
+    trace_exit!();
+    result
   }
 
   #[named]
   fn write_u8(&mut self, address: u16, data: u8) {
+    trace_enter!();
     self.memory[address as usize] = data;
+    trace_exit!();
   }
 
   #[named]
   fn load(&mut self, program: Vec<u8>) {
+    trace_enter!();
     self.memory[START_ADDRESS..(START_ADDRESS + program.len())].copy_from_slice(&program[..]);
     self.write_u16(PROGRAM_CONTROL_ADDRESS.try_into().unwrap(), START_ADDRESS.try_into().unwrap());
+    trace_exit!();
   }
 
   #[named]
-  fn tick(&mut self) {}
+  fn tick(&mut self) {
+    trace_enter!();
+    trace_exit!();
+  }
 }

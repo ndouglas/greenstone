@@ -22,16 +22,18 @@ pub fn add_u8s(augend: u8, addend: u8, carry: bool) -> (u8, bool, bool) {
 impl CPU<'_> {
   #[inline]
   #[named]
-  pub fn branch_on_condition(&mut self, condition: bool) {
+  pub fn branch_on_condition(&mut self, opcode: &Opcode, condition: bool) {
     trace_enter!();
-    // Ensure the negative bit is propagated correctly.
-    let (address, additional_cycles) = self.get_operand_address(&AddressingMode::Immediate).unwrap();
+    let length = opcode.length;
+    trace_u8!(length);
+    let mode = &opcode.mode;
+    trace_var!(mode);
+    let address = self.get_operand_address(opcode, mode).unwrap();
     trace_u16!(address);
-    trace_u8!(additional_cycles);
+    // Ensure the negative bit is propagated correctly.
     let offset = self.read_u8(address) as i8 as u16;
     trace_u16!(offset);
     if condition {
-      self.tick();
       let new_pc = self.program_counter.wrapping_add(offset);
       if (self.program_counter & 0xFF00) != (new_pc & 0xFF00) {
         self.tick();
@@ -41,6 +43,19 @@ impl CPU<'_> {
     }
     trace_exit!();
   }
+
+  #[inline]
+  #[named]
+  pub fn get_operand_value(&mut self, opcode: &Opcode, mode: &AddressingMode) -> u8 {
+    trace_enter!();
+    trace_var!(mode);
+    let address = self.get_operand_address(opcode, mode).unwrap();
+    trace_u16!(address);
+    let result = self.read_u8(address);
+    trace_u8!(result);
+    result
+  }
+
 }
 
 #[cfg(test)]
