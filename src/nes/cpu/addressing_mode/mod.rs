@@ -133,10 +133,12 @@ impl CPU<'_> {
         let address;
         if pointer & 0x00FF == 0x00FF {
           // Buggy behavior.
+          debug!("Ticking twice (reading 2-byte address via buggy Indirect behavior)...");
           address = u16::from_le_bytes([self.read_u8(pointer & 0xFF00), self.read_u8(pointer)]);
         } else {
           // Normal behavior.
-          address = u16::from_le_bytes([self.read_u8(pointer.wrapping_add(1)), self.read_u8(pointer)]);
+          debug!("Ticking twice (reading 2-byte address via non-buggy Indirect behavior)...");
+          address = u16::from_le_bytes([self.read_u8(pointer), self.read_u8(pointer.wrapping_add(1))]);
         }
         trace_u16!(address);
         Some(address)

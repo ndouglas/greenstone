@@ -110,6 +110,10 @@ pub use inx::*;
 pub mod iny;
 pub use iny::*;
 
+// JMP: Jump to Address
+pub mod jmp;
+pub use jmp::*;
+
 // LDA: Load A
 pub mod lda;
 pub use lda::*;

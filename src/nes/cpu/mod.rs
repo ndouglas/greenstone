@@ -147,6 +147,7 @@ impl<'a> CPU<'a> {
         "INC" => self.instruction_inc(&opcode),
         "INX" => self.instruction_inx(&opcode),
         "INY" => self.instruction_iny(&opcode),
+        "JMP" => self.instruction_jmp(&opcode),
         "LDA" => self.instruction_lda(&opcode),
         "LDX" => self.instruction_ldx(&opcode),
         "LDY" => self.instruction_ldy(&opcode),
@@ -219,6 +220,7 @@ impl Addressable for CPU<'_> {
   #[named]
   fn read_u8(&mut self, address: u16) -> u8 {
     trace_enter!();
+    trace_u16!(address);
     self.tick();
     let result = self.unclocked_read_u8(address);
     trace_result!(result);
@@ -228,6 +230,8 @@ impl Addressable for CPU<'_> {
   #[named]
   fn write_u8(&mut self, address: u16, data: u8) {
     trace_enter!();
+    trace_u16!(address);
+    trace_u16!(data);
     self.tick();
     self.unclocked_write_u8(address, data);
     trace_exit!();
