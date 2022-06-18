@@ -159,6 +159,8 @@ impl<'a> CPU<'a> {
         "ORA" => self.instruction_ora(&opcode),
         "ROL" => self.instruction_rol(&opcode),
         "ROR" => self.instruction_ror(&opcode),
+        "RTI" => self.instruction_rti(&opcode),
+        "RTS" => self.instruction_rts(&opcode),
         "SBC" => self.instruction_sbc(&opcode),
         "SEC" => self.instruction_sec(&opcode),
         "SED" => self.instruction_sed(&opcode),

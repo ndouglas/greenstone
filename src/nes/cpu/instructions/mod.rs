@@ -146,6 +146,14 @@ pub use rol::*;
 pub mod ror;
 pub use ror::*;
 
+// RTI: Return from Interrupt
+pub mod rti;
+pub use rti::*;
+
+// RTS: Return from Subroutine
+pub mod rts;
+pub use rts::*;
+
 // SBC: Subtract from Accumulator With Carry.
 pub mod sbc;
 pub use sbc::*;

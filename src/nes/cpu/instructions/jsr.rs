@@ -30,7 +30,7 @@ mod test {
   #[named]
   fn test_jsr() {
     init();
-    test_instruction!("JSR", Absolute, [0x0A, 0x00]{} => []{clock_counter: 6, program_counter: 10, stack_pointer: 0xFD}, |cpu: &mut CPU<'_>, opcode: &Opcode| {
+    test_instruction!("JSR", Absolute, [0x0A, 0x00]{} => []{clock_counter: 6, program_counter: 10, stack_pointer: 0xFD}, |cpu: &mut CPU<'_>, _opcode: &Opcode| {
       // Write an RTS at the destination instruction.
       cpu.unclocked_write_u16(0x000A, 0x60)
     });

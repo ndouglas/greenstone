@@ -182,16 +182,16 @@ macro_rules! test_opcode {
       cpu.load(program);
       cpu.reset();
       $(cpu.$start_key = $start_value;)*
+      $(let builder:Option<fn (&mut CPU<'_>, &Opcode)> = some_or_none!($builder);
+      if let Some(closure) = builder {
+        closure(&mut cpu, &test_opcode);
+      })*
       let start_cc = cpu.clock_counter;
       trace_var!(start_cc);
       let start_pc = cpu.program_counter;
       trace_var!(start_pc);
       let start_status = cpu.status;
       trace_var!(start_status);
-      $(let builder:Option<fn (&mut CPU<'_>, &Opcode)> = some_or_none!($builder);
-      if let Some(closure) = builder {
-        closure(&mut cpu, &test_opcode);
-      })*
       cpu.process_instruction();
       let status_differences = cpu.status ^ start_status;
       trace_u8!(status_differences);

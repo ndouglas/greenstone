@@ -27,7 +27,7 @@ mod test {
     init();
     test_instruction!("JMP", Absolute, [0x0A, 0x00]{} => []{program_counter: 10});
     test_instruction!("JMP", Indirect, [0x03, 0x00, 0x0A, 0x00]{} => []{program_counter: 10});
-    test_instruction!("JMP", Indirect, [0xFF, 0x01]{status: 0b10000000} => []{program_counter: 0x2211}, |cpu: &mut CPU<'_>, opcode: &Opcode| {
+    test_instruction!("JMP", Indirect, [0xFF, 0x01]{status: 0b10000000} => []{program_counter: 0x2211}, |cpu: &mut CPU<'_>, _opcode: &Opcode| {
       cpu.unclocked_write_u8(0x01FF, 0x11);
       cpu.unclocked_write_u8(0x0100, 0x22);
       cpu.unclocked_write_u8(0x0200, 0x33);
