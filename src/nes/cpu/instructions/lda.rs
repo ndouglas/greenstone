@@ -36,7 +36,7 @@ mod test {
     test_instruction!("LDA", Absolute,  [0x04, 0, 0, 0x90]{x:1} => []{ a: 0x90 });
     test_instruction!("LDA", IndirectX, [0x02, 0, 0x05, 0, 0x90]{x:1} => []{ a: 0x90 });
     test_instruction!("LDA", IndirectY, [0x02, 0x04, 0, 0, 0x90]{y:1} => []{ a: 0x90 });
-    // test_instruction!("LDA", AbsoluteX, [0x03, 0, 0, 0x90]{x:1} => []{ a: 0x90 });
-    // test_instruction!("LDA", AbsoluteY, [0x03, 0, 0, 0x90]{y:1} => []{ a: 0x90 });
+    test_instruction!("LDA", AbsoluteX, [0x03, 0, 0, 0x90]{x:1} => []{ a: 0x90 });
+    test_instruction!("LDA", AbsoluteY, [0x03, 0, 0, 0x90]{y:1} => []{ a: 0x90 });
   }
 }

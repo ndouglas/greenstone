@@ -9,9 +9,6 @@ impl CPU<'_> {
     trace_u8!(length);
     let mode = &opcode.mode;
     trace_var!(mode);
-    if mode == &AddressingMode::AbsoluteX {
-      self.tick();
-    }
     let address = self.get_operand_address(opcode, mode).unwrap();
     trace_u16!(address);
     let operand = self.read_u8(address);
@@ -38,6 +35,6 @@ mod test {
     test_instruction!("INC", ZeroPage,  [0x02, 127]{} => [0x02, 128]{status: 0b10000000});
     test_instruction!("INC", ZeroPageX, [0x02, 0x00, 0x02]{x: 1} => [0x02, 0x00, 0x03]{});
     test_instruction!("INC", Absolute,  [0x03, 0x00, 0x02]{} => [0x03, 0x00, 0x03]{});
-    // test_instruction!("INC", AbsoluteX, [0x03, 0x00, 0x00, 0x02]{x: 1} => [0x03, 0x00, 0x00, 0x03]{});
+    test_instruction!("INC", AbsoluteX, [0x03, 0x00, 0x00, 0x02]{x: 1} => [0x03, 0x00, 0x00, 0x03]{});
   }
 }

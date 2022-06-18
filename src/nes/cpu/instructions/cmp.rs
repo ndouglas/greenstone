@@ -37,7 +37,7 @@ mod test {
     test_instruction!("CMP", Absolute, [0x04, 0x00, 0x00, 10]{a:10} => []{ status: 0b00000011  });
     test_instruction!("CMP", IndirectX, [0x02, 0x00, 0x05, 0x00, 10]{x:1, a: 10} => []{ status: 0b00000011 });
     test_instruction!("CMP", IndirectY, [0x02, 0x04, 0x00, 0x00, 10]{y:1, a: 10} => []{ status: 0b00000011 });
-    // test_instruction!("CMP", AbsoluteX, [0x03, 0x00, 0x00, 10]{x:1, a: 10} => []{ status: 0b00000011 });
-    // test_instruction!("CMP", AbsoluteY, [0x03, 0x00, 0x00, 10]{y:1, a: 10} => []{ status: 0b00000011 });
+    test_instruction!("CMP", AbsoluteX, [0x03, 0x00, 0x00, 10]{x:1, a: 10} => []{ status: 0b00000011 });
+    test_instruction!("CMP", AbsoluteY, [0x03, 0x00, 0x00, 10]{y:1, a: 10} => []{ status: 0b00000011 });
   }
 }

@@ -57,6 +57,6 @@ mod test {
     test_instruction!("ROR", ZeroPage,  [0x02, 0x01]{status:0b00000000} => [0x02, 0x00]{status: 0b00000011});
     test_instruction!("ROR", ZeroPageX,  [0x02, 0x00, 0x01]{status:0b00000000, x: 1} => [0x02, 0x00]{status: 0b00000011});
     test_instruction!("ROR", Absolute,  [0x03, 0x00, 0x01]{status:0b00000000} => [0x03, 0x00]{status: 0b00000011});
-    // test_instruction!("ROR", AbsoluteX,  [0x02, 0x00, 0x01]{status:0b00000000, x: 1} => [0x02, 0x00]{status: 0b00000011});
+    test_instruction!("ROR", AbsoluteX,  [0x02, 0x00, 0x01]{status:0b00000000, x: 1} => [0x02, 0x00]{status: 0b00000011});
   }
 }

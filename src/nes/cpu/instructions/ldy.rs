@@ -34,6 +34,6 @@ mod test {
     test_instruction!("LDY", ZeroPage,  [0x02, 0x90]{}           => []{ y: 0x90 });
     test_instruction!("LDY", ZeroPageX, [0x02, 0x00, 0x90]{x:1}     => []{ y: 0x90 });
     test_instruction!("LDY", Absolute,  [0x04, 0x00, 0x00, 0x90]{}     => []{ y: 0x90 });
-    // test_instruction!("LDY", AbsoluteX, [0x03, 0x00, 0x00, 0x90]{x:1}  => []{ y: 0x90 });
+    test_instruction!("LDY", AbsoluteX, [0x03, 0x00, 0x00, 0x90]{x:1}  => []{ y: 0x90 });
   }
 }
