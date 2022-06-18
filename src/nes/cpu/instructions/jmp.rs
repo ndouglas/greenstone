@@ -1,6 +1,15 @@
 use super::super::*;
 
 impl CPU<'_> {
+  // JMP Cycle Information (from 6502_cpu.txt)
+  //
+  // #  address R/W description
+  // --- ------- --- -------------------------------------------------
+  //  1    PC     R  fetch opcode, increment PC
+  //  2    PC     R  fetch low address byte, increment PC
+  //  3    PC     R  copy low address byte to PCL, fetch high address
+  //                 byte to PCH
+
   #[inline]
   #[named]
   pub fn instruction_jmp(&mut self, opcode: &Opcode) {
@@ -34,4 +43,3 @@ mod test {
     });
   }
 }
-

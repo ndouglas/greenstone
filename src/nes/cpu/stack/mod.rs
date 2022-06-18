@@ -1,5 +1,5 @@
-use crate::traits::addressable::Addressable;
 use super::super::*;
+use crate::traits::addressable::Addressable;
 
 pub const STACK_BASE_ADDRESS: u16 = 0x0100;
 
@@ -47,7 +47,6 @@ impl CPU<'_> {
     trace_exit!();
     result
   }
-
 }
 
 #[cfg(test)]
@@ -95,6 +94,4 @@ mod test {
       result
     });
   }
-
-
 }

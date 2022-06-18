@@ -1,7 +1,6 @@
 use super::super::*;
 
 impl CPU<'_> {
-
   // RTI Cycle Information (from 6502_cpu.txt)
   //
   // #  address R/W description
@@ -53,6 +52,4 @@ mod test {
       cpu.push_u8(0b11011111);
     });
   }
-
 }
-

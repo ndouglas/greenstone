@@ -33,6 +33,4 @@ mod test {
       cpu.unclocked_write_u16(0x000A, 0x60)
     });
   }
-
 }
-
