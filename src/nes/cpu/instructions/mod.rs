@@ -114,6 +114,10 @@ pub use iny::*;
 pub mod jmp;
 pub use jmp::*;
 
+// JSR: Jump to Subroutine
+pub mod jsr;
+pub use jsr::*;
+
 // LDA: Load A
 pub mod lda;
 pub use lda::*;

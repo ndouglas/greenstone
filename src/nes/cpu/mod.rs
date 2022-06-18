@@ -17,6 +17,9 @@ pub use interrupt::*;
 pub mod opcode;
 pub use opcode::*;
 
+pub mod stack;
+pub use stack::*;
+
 pub mod status_flags;
 pub use status_flags::*;
 
@@ -43,7 +46,7 @@ impl<'a> CPU<'a> {
       x: 0x00,
       y: 0x00,
       status: 0x00,
-      stack_pointer: 0x00,
+      stack_pointer: 0xFF,
       program_counter: 0x0000,
       clock_counter: 0,
       halt: false,
@@ -58,7 +61,7 @@ impl<'a> CPU<'a> {
       x: 0x00,
       y: 0x00,
       status: 0x00,
-      stack_pointer: 0x00,
+      stack_pointer: 0xFF,
       program_counter: 0x0000,
       clock_counter: 0,
       halt: false,
@@ -148,6 +151,7 @@ impl<'a> CPU<'a> {
         "INX" => self.instruction_inx(&opcode),
         "INY" => self.instruction_iny(&opcode),
         "JMP" => self.instruction_jmp(&opcode),
+        "JSR" => self.instruction_jsr(&opcode),
         "LDA" => self.instruction_lda(&opcode),
         "LDX" => self.instruction_ldx(&opcode),
         "LDY" => self.instruction_ldy(&opcode),

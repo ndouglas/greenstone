@@ -15,7 +15,7 @@ impl CPU<'_> {
     self.a = 0x00;
     self.x = 0x00;
     self.y = 0x00;
-    self.stack_pointer = 0x00;
+    self.stack_pointer = 0xFF;
     self.status = 0x00;
     self.clock_counter = 0;
     self.halt = false;

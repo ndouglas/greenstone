@@ -27,19 +27,11 @@ mod test {
     init();
     test_instruction!("JMP", Absolute, [0x0A, 0x00]{} => []{program_counter: 10});
     test_instruction!("JMP", Indirect, [0x03, 0x00, 0x0A, 0x00]{} => []{program_counter: 10});
+    test_instruction!("JMP", Indirect, [0xFF, 0x01]{status: 0b10000000} => []{program_counter: 0x2211}, |cpu: &mut CPU<'_>, opcode: &Opcode| {
+      cpu.unclocked_write_u8(0x01FF, 0x11);
+      cpu.unclocked_write_u8(0x0100, 0x22);
+      cpu.unclocked_write_u8(0x0200, 0x33);
+    });
   }
 }
 
-// test_op!("jmp", Absolute, [10, 0]{} => []{pc: 10});
-// test_op!("jmp", Indirect, [3, 0, 10, 0]{} => []{pc: 10});
-// 
-// // Test page boundary bug
-// let mut cpu = build_cpu!([0]);
-// cpu.pc = 0;
-// cpu.bus.ram[0] = 0xFF;
-// cpu.bus.ram[1] = 0x01;
-// cpu.bus.ram[0x01FF] = 0x11;
-// cpu.bus.ram[0x0100] = 0x22;
-// cpu.jmp(Indirect);
-// assert_eq!(cpu.pc, 0x2211);
-// }

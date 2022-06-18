@@ -21,17 +21,17 @@ mod test {
     init();
     test_instruction!("BMI", Relative, [0x10]{status: 0b00000000} => []{program_counter: 2, clock_counter: 2});
     test_instruction!("BMI", Relative, [0x10]{status: 0b10000000} => []{program_counter: 17, clock_counter: 3});
-    test_instruction!("BMI", Relative, [0x00]{status: 0b10000000} => []{program_counter: 0x0103, clock_counter: 4}, |cpu: &mut CPU<'_>| {
+    test_instruction!("BMI", Relative, [0x00]{status: 0b10000000} => []{program_counter: 0x0103, clock_counter: 4}, |cpu: &mut CPU<'_>, _opcode: &Opcode| {
       cpu.program_counter = 0x00FD;
       cpu.unclocked_write_u8(0x00FD, 0x30);
       cpu.unclocked_write_u16(0x00FE, 5);
     });
-    test_instruction!("BMI", Relative, [0x00]{status: 0b10000000} => []{program_counter: 0x0100, clock_counter: 4}, |cpu: &mut CPU<'_>| {
+    test_instruction!("BMI", Relative, [0x00]{status: 0b10000000} => []{program_counter: 0x0100, clock_counter: 4}, |cpu: &mut CPU<'_>, _opcode: &Opcode| {
       cpu.program_counter = 0x00FD;
       cpu.unclocked_write_u8(0x00FD, 0x30);
       cpu.unclocked_write_u16(0x00FE, 2);
     });
-    test_instruction!("BMI", Relative, [0x00]{status: 0b00000000} => []{program_counter: 0x00FF, clock_counter: 2}, |cpu: &mut CPU<'_>| {
+    test_instruction!("BMI", Relative, [0x00]{status: 0b00000000} => []{program_counter: 0x00FF, clock_counter: 2}, |cpu: &mut CPU<'_>, _opcode: &Opcode| {
       cpu.program_counter = 0x00FD;
       cpu.unclocked_write_u8(0x00FD, 0x30);
       cpu.unclocked_write_u16(0x00FE, 5);
