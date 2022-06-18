@@ -10,6 +10,9 @@ pub use addressing_mode::*;
 pub mod instructions;
 pub use instructions::*;
 
+pub mod interrupt;
+pub use interrupt::*;
+
 pub mod opcode;
 pub use opcode::*;
 
@@ -154,18 +157,6 @@ impl<'a> CPU<'a> {
     }
     trace_u16!(self.program_counter);
     trace_exit!();
-  }
-
-  #[named]
-  pub fn reset(&mut self) {
-    self.a = 0x00;
-    self.x = 0x00;
-    self.y = 0x00;
-    self.stack_pointer = 0x00;
-    self.status = 0x00;
-    self.clock_counter = 0;
-    self.halt = false;
-    self.program_counter = self.read_u16(0xFFFC);
   }
 
   #[named]
