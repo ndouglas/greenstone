@@ -54,7 +54,7 @@ mod test {
     test_instruction!("ROL", ZeroPage,  [0x02, 0xFF]{status:0b00000000} => [0x02, 0xFE]{status: 0b10000001});
     test_instruction!("ROL", ZeroPage,  [0x02, 0x80]{status:0b00000000} => [0x02, 0x00]{status: 0b00000011});
     test_instruction!("ROL", ZeroPageX, [0x02, 0x00, 0xFF]{status:0b00000001, x: 1} => [0x02, 0x00, 0xFF]{status: 0b10000001});
-    // test_instruction!("ROL", Absolute,  [0x03, 0x00, 0xFF]{status:0b00000001} => [0x03, 0x00, 0xFF]{status: 0b10000001});
+    test_instruction!("ROL", Absolute,  [0x03, 0x00, 0xFF]{status:0b00000001} => [0x03, 0x00, 0xFF]{status: 0b10000001});
     // test_instruction!("ROL", AbsoluteX, [0x03, 0x00, 0x00, 0xFF]{status:0b00000001, x: 1} => [0x03, 0x00, 0x00, 0xFF]{status: 0b10000001});
   }
 }

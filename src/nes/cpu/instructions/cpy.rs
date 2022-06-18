@@ -33,6 +33,6 @@ mod test {
     test_instruction!("CPY", Immediate, [100]{y:10} => []{ status: 0b10000000 });
     test_instruction!("CPY", Immediate, [10]{y:100} => []{ status: 0b00000001 });
     test_instruction!("CPY", ZeroPage, [0x02, 10]{y: 10} => []{ status: 0b00000011 });
-    // test_instruction!("CPY", Absolute, [0x04, 0x00, 0x00, 10]{y:10} => []{ status: 0b00000011  });
+    test_instruction!("CPY", Absolute, [0x04, 0x00, 0x00, 10]{y:10} => []{ status: 0b00000011  });
   }
 }

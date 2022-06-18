@@ -51,12 +51,12 @@ mod test {
   #[named]
   fn test_ror() {
     init();
+    test_instruction!("ROR", Implied, []{a: 2} => []{a: 1});
     test_instruction!("ROR", ZeroPage,  [0x02, 0xFF]{status:0b00000001} => [0x02, 0xFF]{status: 0b10000001});
     test_instruction!("ROR", ZeroPage,  [0x02, 0xFF]{status:0b00000000} => [0x02, 0x7F]{status: 0b00000001});
     test_instruction!("ROR", ZeroPage,  [0x02, 0x01]{status:0b00000000} => [0x02, 0x00]{status: 0b00000011});
     test_instruction!("ROR", ZeroPageX,  [0x02, 0x00, 0x01]{status:0b00000000, x: 1} => [0x02, 0x00]{status: 0b00000011});
-    // test_instruction!("ROR", Absolute,  [0x03, 0x00, 0x01]{status:0b00000000} => [0x03, 0x00]{status: 0b00000011});
+    test_instruction!("ROR", Absolute,  [0x03, 0x00, 0x01]{status:0b00000000} => [0x03, 0x00]{status: 0b00000011});
     // test_instruction!("ROR", AbsoluteX,  [0x02, 0x00, 0x01]{status:0b00000000, x: 1} => [0x02, 0x00]{status: 0b00000011});
-    test_instruction!("ROR", Implied, []{a: 2} => []{a: 1});
   }
 }

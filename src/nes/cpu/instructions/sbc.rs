@@ -45,7 +45,7 @@ mod test {
     test_instruction!("SBC", Immediate, [176]{a:80, status:1} => []{ a: 160, status: 0b11000000 });
     test_instruction!("SBC", ZeroPage,  [0x02, 0x90]{a: 0xFF, status: 1} => []{ a: 0x6F });
     test_instruction!("SBC", ZeroPageX, [0x02, 0x00, 0x90]{x:1, a: 0xFF, status: 1} => []{ a: 0x6F });
-    // test_instruction!("SBC", Absolute,  [0x04, 0x00, 0x00, 0x90]{a:0xFF, status: 1} => []{ a: 0x6F });
+    test_instruction!("SBC", Absolute,  [0x04, 0x00, 0x00, 0x90]{a:0xFF, status: 1} => []{ a: 0x6F });
     // test_instruction!("SBC", AbsoluteX, [0x03, 0x00, 0x00, 0x90]{x:1, a: 0xFF, status: 1} => []{ a: 0x6F });
     // test_instruction!("SBC", AbsoluteY, [0x03, 0x00, 0x00, 0x90]{y:1, a: 0xFF, status: 1} => []{ a: 0x6F });
     // test_instruction!("SBC", IndirectX, [0x02, 0x00, 0x05, 0x00, 0x90]{x:1, a: 0xFF, status: 1} => []{ a: 0x6F });

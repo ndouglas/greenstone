@@ -33,6 +33,6 @@ mod test {
     test_instruction!("CPX", Immediate, [100]{x:10} => []{ status: 0b10000000 });
     test_instruction!("CPX", Immediate, [10]{x:100} => []{ status: 0b00000001 });
     test_instruction!("CPX", ZeroPage, [0x02, 10]{x: 10} => []{ status: 0b00000011 });
-    // test_instruction!("CPX", Absolute, [0x04, 0x00, 0x00, 10]{x:10} => []{ status: 0b00000011  });
+    test_instruction!("CPX", Absolute, [0x04, 0x00, 0x00, 10]{x:10} => []{ status: 0b00000011  });
   }
 }
