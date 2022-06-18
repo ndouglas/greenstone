@@ -25,6 +25,8 @@ mod test {
   #[named]
   fn test_inx() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("INX", Implied,  []{x: 255} => []{x: 0, status: 0b00000010});
     test_instruction!("INX", Implied,  []{x: 127} => []{x: 128, status: 0b10000000});
   }

@@ -28,6 +28,8 @@ mod test {
   #[named]
   fn test_ldx() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("LDX", Immediate, [0x00]{}                 => []{ x: 0x00, status: 0b00000010 });
     test_instruction!("LDX", Immediate, [0xFF]{}                 => []{ x: 0xFF, status: 0b10000000 });
     test_instruction!("LDX", Immediate, [0x20]{}                 => []{ x: 0x20, status: 0b00000000 });

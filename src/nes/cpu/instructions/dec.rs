@@ -31,6 +31,8 @@ mod test {
   #[named]
   fn test_dec() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("DEC", ZeroPage,  [0x02, 0x00]{} => [0x02, 0xFF]{status: 0b10000000});
     test_instruction!("DEC", ZeroPage,  [0x02, 0x01]{} => [0x02, 0x00]{status: 0b00000010});
     test_instruction!("DEC", ZeroPageX, [0x02, 0x00, 0x02]{x: 1} => [0x02, 0x00, 0x01]{});

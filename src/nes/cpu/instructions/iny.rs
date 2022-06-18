@@ -25,6 +25,8 @@ mod test {
   #[named]
   fn test_iny() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("INY", Implied,  []{y: 255} => []{y: 0, status: 0b00000010});
     test_instruction!("INY", Implied,  []{y: 127} => []{y: 128, status: 0b10000000});
   }

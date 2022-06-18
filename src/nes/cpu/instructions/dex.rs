@@ -25,6 +25,8 @@ mod test {
   #[named]
   fn test_dex() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("DEX", Implied,  []{x: 1} => []{x: 0, status: 0b00000010});
     test_instruction!("DEX", Implied,  []{x: 0} => []{x: 255, status: 0b10000000});
   }

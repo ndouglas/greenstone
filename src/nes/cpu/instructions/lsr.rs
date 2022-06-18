@@ -51,6 +51,8 @@ mod test {
   #[named]
   fn test_lsr() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("LSR", Implied, []{a: 2} => []{a: 1});
     test_instruction!("LSR", ZeroPage,  [0x02, 0x01]{status:1} => [0x02, 0x00]{status: 0b00000011});
     test_instruction!("LSR", ZeroPage,  [0x02, 0x01]{status:0} => [0x02, 0x00]{status: 0b00000011});

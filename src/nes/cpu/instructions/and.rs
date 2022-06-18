@@ -32,6 +32,8 @@ mod test {
   #[test]
   fn test_and() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("AND", Immediate, [0b00001111]{a:0b01010101} => []{ a: 0b00000101, status: 0b00000000 });
     test_instruction!("AND", Immediate, [0b10001111]{a:0b11010101} => []{ a: 0b10000101, status: 0b10000000 });
     test_instruction!("AND", Immediate, [0x00]{a:0b11010101} => []{ a: 0x00, status: 0b00000010 });

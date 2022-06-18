@@ -40,6 +40,8 @@ mod test {
   #[named]
   fn test_sbc() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("SBC", Immediate, [2]{a:10, status:1} => []{ a: 8 });
     test_instruction!("SBC", Immediate, [2]{a:10, status:0} => []{ a: 7 });
     test_instruction!("SBC", Immediate, [176]{a:80, status:1} => []{ a: 160, status: 0b11000000 });

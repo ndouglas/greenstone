@@ -30,6 +30,8 @@ mod test {
   #[named]
   fn test_cmp() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("CMP", Immediate, [10]{a:10} => []{ status: 0b00000011 });
     test_instruction!("CMP", Immediate, [100]{a:10} => []{ status: 0b10000000 });
     test_instruction!("CMP", Immediate, [10]{a:100} => []{ status: 0b00000001 });

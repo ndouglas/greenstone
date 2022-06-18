@@ -49,6 +49,8 @@ mod test {
   #[named]
   fn test_jmp() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("JMP", Absolute, [0x0A, 0x00]{} => []{program_counter: 10});
     test_instruction!("JMP", Indirect, [0x03, 0x00, 0x0A, 0x00]{} => []{program_counter: 10});
     test_instruction!("JMP", Indirect, [0xFF, 0x01]{status: 0b10000000} => []{program_counter: 0x2211}, |cpu: &mut CPU<'_>, _opcode: &Opcode| {

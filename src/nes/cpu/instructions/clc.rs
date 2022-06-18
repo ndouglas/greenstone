@@ -24,6 +24,8 @@ mod test {
   #[named]
   fn test_clc() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("CLC", Implied, []{status: 0b11111111} => []{status: 0b11111110});
     test_instruction!("CLC", Implied, []{status: 0b11111110} => []{status: 0b11111110});
   }

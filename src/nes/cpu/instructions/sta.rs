@@ -26,6 +26,8 @@ mod test {
   #[named]
   fn test_sta() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("STA", ZeroPage,  [0x02]{a: 0x66} => [0x02, 0x66]{});
     test_instruction!("STA", ZeroPageX, [0x02]{a: 0x66, x:1} => [0x02, 0x00, 0x66]{});
     test_instruction!("STA", Absolute,  [0x04, 0x00]{a:0x66} => [0x04, 0x00, 0x00, 0x66]{});

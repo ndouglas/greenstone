@@ -28,6 +28,8 @@ mod test {
   #[named]
   fn test_lda() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("LDA", Immediate, [0x00]{} => []{ a: 0x00, status: 0b00000010 });
     test_instruction!("LDA", Immediate, [0xFF]{} => []{ a: 0xFF, status: 0b10000000 });
     test_instruction!("LDA", Immediate, [0x20]{} => []{ a: 0x20, status: 0 });

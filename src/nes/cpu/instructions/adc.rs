@@ -38,6 +38,8 @@ mod test {
   #[test]
   fn test_adc() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("ADC", Immediate, [3]{a:2, status:1} => []{ a: 6 });
     test_instruction!("ADC", Immediate, [255]{a:1, status:0x00} => []{ a: 0x00, status: 0b00000011 });
     test_instruction!("ADC", Immediate, [127]{a:1, status:0x00} => []{ a: 128, status: 0b11000000 });

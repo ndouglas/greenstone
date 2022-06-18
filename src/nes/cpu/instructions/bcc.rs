@@ -19,6 +19,8 @@ mod test {
   #[named]
   fn test_bcc() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("BCC", Relative, [0x10]{status: 0b00000001} => []{program_counter: 2, clock_counter: 2});
     test_instruction!("BCC", Relative, [0x10]{status: 0b00000000} => []{program_counter: 17, clock_counter: 3});
   }

@@ -23,6 +23,8 @@ mod test {
   #[named]
   fn test_sei() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("SEI", Implied, []{status: 0b00000000} => []{status: 0b00000100});
     test_instruction!("SEI", Implied, []{status: 0b00000100} => []{status: 0b00000100});
   }

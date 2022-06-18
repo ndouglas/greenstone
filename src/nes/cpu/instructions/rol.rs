@@ -50,6 +50,8 @@ mod test {
   #[named]
   fn test_rol() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("ROL", ZeroPage,  [0x02, 0xFF]{status:0b00000001} => [0x02, 0xFF]{status: 0b10000001});
     test_instruction!("ROL", ZeroPage,  [0x02, 0xFF]{status:0b00000000} => [0x02, 0xFE]{status: 0b10000001});
     test_instruction!("ROL", ZeroPage,  [0x02, 0x80]{status:0b00000000} => [0x02, 0x00]{status: 0b00000011});

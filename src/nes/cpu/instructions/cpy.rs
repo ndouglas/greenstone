@@ -29,6 +29,8 @@ mod test {
   #[named]
   fn test_cpx() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("CPY", Immediate, [10]{y:10} => []{ status: 0b00000011 });
     test_instruction!("CPY", Immediate, [100]{y:10} => []{ status: 0b10000000 });
     test_instruction!("CPY", Immediate, [10]{y:100} => []{ status: 0b00000001 });

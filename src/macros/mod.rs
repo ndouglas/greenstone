@@ -167,6 +167,8 @@ macro_rules! some_or_none {
   };
 }
 
+// This test macro is inspired by Starr Horne's excellent test macro.
+// See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
 macro_rules! test_opcode {
   ($opcode:expr, [$($byte:expr),*]{$($start_key:ident : $start_value:expr),*} => [$($returned_byte:expr),*]{$($expected_key:ident : $expected_value:expr),*} $(, $builder:expr)?) => {
     { // Begin test scope.

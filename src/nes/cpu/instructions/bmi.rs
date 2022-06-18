@@ -19,6 +19,8 @@ mod test {
   #[named]
   fn test_bmi() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("BMI", Relative, [0x10]{status: 0b00000000} => []{program_counter: 2, clock_counter: 2});
     test_instruction!("BMI", Relative, [0x10]{status: 0b10000000} => []{program_counter: 17, clock_counter: 3});
     test_instruction!("BMI", Relative, [0x00]{status: 0b10000000} => []{program_counter: 0x0103, clock_counter: 4}, |cpu: &mut CPU<'_>, _opcode: &Opcode| {

@@ -25,6 +25,8 @@ mod test {
   #[named]
   fn test_dey() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("DEY", Implied,  []{y: 1} => []{y: 0, status: 0b00000010});
     test_instruction!("DEY", Implied,  []{y: 0} => []{y: 255, status: 0b10000000});
   }

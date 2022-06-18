@@ -23,6 +23,8 @@ mod test {
   #[named]
   fn test_txs() {
     init();
+    // These test cases are based on Starr Horne's `nes-rust`.
+    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
     test_instruction!("TXS", Implied,  []{x: 1} => []{stack_pointer: 1, x: 1, status: 0b00000000});
     test_instruction!("TXS", Implied,  []{x: 255} => []{stack_pointer: 255, x: 255, status: 0b00000000});
   }
