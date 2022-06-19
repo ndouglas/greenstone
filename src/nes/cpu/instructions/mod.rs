@@ -138,6 +138,22 @@ pub use lsr::*;
 pub mod ora;
 pub use ora::*;
 
+// PHA: Push A onto the Stack
+pub mod pha;
+pub use pha::*;
+
+// PHP: Push Status onto the Stack
+pub mod php;
+pub use php::*;
+
+// PLA: Pop A off the Stack
+pub mod pla;
+pub use pla::*;
+
+// PLP: Pop Status off the Stack
+pub mod plp;
+pub use plp::*;
+
 // ROL: Rotate Left
 pub mod rol;
 pub use rol::*;
