@@ -39,8 +39,8 @@ impl CPU<'_> {
       debug!("Branching...");
       debug!("Ticking (reading next byte)...");
       self.tick();
-      let new_pc = address.wrapping_add(offset);
-      if (address & 0xFF00) != (new_pc & 0xFF00) {
+      let new_pc = self.program_counter.wrapping_add(offset);
+      if (self.program_counter & 0xFF00) != (new_pc & 0xFF00) {
         debug!("Ticking (repairing program counter after crossing page boundary)...");
         self.tick();
       }
