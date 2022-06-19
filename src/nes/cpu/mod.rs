@@ -99,27 +99,40 @@ impl<'a> CPU<'a> {
   }
 
   #[named]
+  #[inline]
+  pub fn dequeue_instruction(&mut self) -> &'static Opcode {
+    trace_enter!();
+    let code = self.read_u8(self.program_counter);
+    debug!("Processing next instruction @ {:#06X}): {}", self.program_counter, format_u8!(code));
+    trace_u8!(code);
+    let ref opcodes: HashMap<u8, &'static Opcode> = *OPCODE_MAP;
+    self.program_counter = self.program_counter.wrapping_add(1);
+    let result = opcodes.get(&code).expect(&format!("Opcode {:#04X} is not recognized", code));
+    trace_result!(result);
+    result
+  }
+
+  #[named]
   pub fn process_instruction(&mut self) {
     trace_enter!();
-    let ref opcodes: HashMap<u8, &'static Opcode> = *OPCODE_MAP;
-    trace_u16!(self.program_counter);
-    debug!("Ticking (reading next opcode)...");
-    let next_opcode = self.read_u8(self.program_counter);
-    trace_u8!(next_opcode);
-    self.program_counter = self.program_counter.wrapping_add(1);
-    trace_u16!(self.program_counter);
-    let pc_state = self.program_counter;
-    trace_u16!(pc_state);
-    let opcode = opcodes
-      .get(&next_opcode)
-      .expect(&format!("Opcode {:#04X} is not recognized", next_opcode));
-    debug!(
-      "Processing next instruction (at address {:#06X}): {}",
-      self.program_counter.wrapping_sub(1),
-      opcode
-    );
+    let opcode = self.dequeue_instruction();
     trace_var!(opcode);
-    match next_opcode {
+    let pc_state = self.program_counter;
+    self.execute_instruction(opcode);
+    if pc_state == self.program_counter {
+      let addend = opcode.length.wrapping_sub(1) as u16;
+      self.program_counter = self.program_counter.wrapping_add(addend);
+    }
+    trace_u16!(self.program_counter);
+    trace_exit!();
+  }
+
+  #[named]
+  #[inline]
+  fn execute_instruction(&mut self, opcode: &Opcode) {
+    trace_enter!();
+    trace_var!(opcode);
+    match opcode.code {
       // Illegal Opcodes
       0xEB => {}
       _ => match opcode.mnemonic {
@@ -181,12 +194,6 @@ impl<'a> CPU<'a> {
         _ => todo!(),
       },
     }
-    if pc_state == self.program_counter {
-      let addend = opcode.length.wrapping_sub(1) as u16;
-      self.program_counter = self.program_counter.wrapping_add(addend);
-    }
-    trace_u16!(self.program_counter);
-    trace_exit!();
   }
 
   #[named]
