@@ -11,7 +11,9 @@ pub struct SimpleMemory {
 impl SimpleMemory {
   #[named]
   pub fn new() -> SimpleMemory {
-    SimpleMemory { memory: [0; (MAX_ADDRESS + 1)] }
+    SimpleMemory {
+      memory: [0; (MAX_ADDRESS + 1)],
+    }
   }
 }
 
@@ -33,10 +35,11 @@ impl Addressable for SimpleMemory {
   }
 
   #[named]
-  fn load(&mut self, program: Vec<u8>) {
+  fn load(&mut self, program: Vec<u8>, start: u16) {
     trace_enter!();
-    self.memory[START_ADDRESS..(START_ADDRESS + program.len())].copy_from_slice(&program[..]);
-    self.write_u16(PROGRAM_CONTROL_ADDRESS.try_into().unwrap(), START_ADDRESS.try_into().unwrap());
+    let start_address = start as usize;
+    self.memory[start_address..(start_address + program.len())].copy_from_slice(&program[..]);
+    self.write_u16(PROGRAM_CONTROL_ADDRESS.try_into().unwrap(), start);
     trace_exit!();
   }
 

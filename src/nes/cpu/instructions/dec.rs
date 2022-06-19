@@ -5,19 +5,7 @@ impl CPU<'_> {
   #[named]
   pub fn instruction_dec(&mut self, opcode: &Opcode) {
     trace_enter!();
-    let length = opcode.length;
-    trace_u8!(length);
-    let mode = &opcode.mode;
-    trace_var!(mode);
-    let address = self.get_operand_address(opcode, mode).unwrap();
-    trace_u16!(address);
-    let operand = self.read_u8(address);
-    trace_u8!(operand);
-    let output = operand.wrapping_sub(1);
-    trace_u8!(output);
-    self.tick();
-    self.write_u8(address, output);
-    self.set_value_flags(output);
+    self.decrement_u8(opcode);
     trace_exit!();
   }
 }

@@ -18,7 +18,7 @@ pub trait Addressable {
     self.write_u8(address.wrapping_add(1), hi);
   }
 
-  fn load(&mut self, program: Vec<u8>);
+  fn load(&mut self, program: Vec<u8>, start: u16);
 
   fn tick(&mut self);
 }

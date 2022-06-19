@@ -1,5 +1,9 @@
 use crate::traits::Addressable;
 
+const START_ADDRESS: usize = 0x0000;
+const PROGRAM_CONTROL_ADDRESS: usize = 0xFFFC;
+const MAX_ADDRESS: usize = 0xFFFF;
+
 pub struct Bus {
   memory: [u8; 0xFFFF],
 }
@@ -27,10 +31,11 @@ impl Addressable for Bus {
   }
 
   #[named]
-  fn load(&mut self, program: Vec<u8>) {
+  fn load(&mut self, program: Vec<u8>, start: u16) {
     trace_enter!();
-    self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
-    self.write_u16(0xFFFC, 0x8000);
+    let start_address = start as usize;
+    self.memory[start_address..(start_address + program.len())].copy_from_slice(&program[..]);
+    self.write_u16(PROGRAM_CONTROL_ADDRESS.try_into().unwrap(), start);
     trace_exit!();
   }
 

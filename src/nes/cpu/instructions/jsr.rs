@@ -13,7 +13,7 @@ impl CPU<'_> {
     trace_u16!(address);
     debug!("Ticking (processing instruction)...");
     self.tick();
-    let return_address = self.program_counter.wrapping_sub(1);
+    let return_address = self.program_counter.wrapping_add(1);
     trace_u16!(return_address);
     self.push_u16(return_address);
     self.program_counter = address;

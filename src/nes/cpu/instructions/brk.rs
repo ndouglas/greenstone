@@ -7,7 +7,7 @@ impl CPU<'_> {
     trace_enter!();
     let length = opcode.length;
     trace_u8!(length);
-    self.program_counter = self.program_counter.wrapping_add(1);
+    self.increment_program_counter();
     self.r#break();
     self.set_interrupt_disable_flag(false);
     trace_exit!();
@@ -28,5 +28,3 @@ mod test {
     test_instruction!("BRK", Implied, [0x00, 0x00]{a:0x00, status: 0x00} => []{ a: 0x00});
   }
 }
-
-

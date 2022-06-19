@@ -67,9 +67,9 @@ impl<'a> CPU<'a> {
   }
 
   #[named]
-  pub fn interpret(&mut self, program: Vec<u8>) {
+  pub fn interpret(&mut self, program: Vec<u8>, start: u16) {
     trace_enter!();
-    self.load(program);
+    self.load(program, start);
     self.reset();
     self.run();
     trace_exit!();
@@ -78,9 +78,21 @@ impl<'a> CPU<'a> {
   #[named]
   pub fn run(&mut self) {
     trace_enter!();
+    self.run_with_callback(|_| {});
+    trace_exit!();
+  }
+
+  #[named]
+  pub fn run_with_callback<F>(&mut self, mut callback: F)
+  where
+    F: FnMut(&mut CPU),
+  {
+    trace_enter!();
     loop {
+      callback(self);
       self.clock();
     }
+    trace_exit!();
   }
 
   #[named]
@@ -91,39 +103,31 @@ impl<'a> CPU<'a> {
   }
 
   #[named]
-  #[inline]
-  pub fn dequeue_instruction(&mut self) -> &'static Opcode {
-    trace_enter!();
-    let code = self.read_u8(self.program_counter);
-    debug!("Processing next instruction @ {:#06X}): {}", self.program_counter, format_u8!(code));
-    trace_u8!(code);
-    let ref opcodes: HashMap<u8, &'static Opcode> = *OPCODE_MAP;
-    self.program_counter = self.program_counter.wrapping_add(1);
-    let result = opcodes.get(&code).expect(&format!("Opcode {:#04X} is not recognized", code));
-    trace_result!(result);
-    result
-  }
-
-  #[named]
   pub fn process_instruction(&mut self) {
     trace_enter!();
     if self.is_nmi_ready() {
       self.acknowledge_nmi();
       self.nmi();
-    }
-    else if self.is_irq_ready() && !self.get_interrupt_disable_flag() {
+    } else if self.is_irq_ready() && !self.get_interrupt_disable_flag() {
       self.irq();
     }
     let opcode = self.dequeue_instruction();
     trace_var!(opcode);
-    let pc_state = self.program_counter;
     self.execute_instruction(opcode);
-    if pc_state == self.program_counter {
-      let addend = opcode.length.wrapping_sub(1) as u16;
-      self.program_counter = self.program_counter.wrapping_add(addend);
-    }
-    trace_u16!(self.program_counter);
     trace_exit!();
+  }
+
+  #[named]
+  #[inline]
+  pub fn dequeue_instruction(&mut self) -> &'static Opcode {
+    trace_enter!();
+    let code = self.get_next_u8();
+    debug!("Processing next instruction @ {:#06X}): {}", (self.program_counter - 1), format_u8!(code));
+    trace_u8!(code);
+    let ref opcodes: HashMap<u8, &'static Opcode> = *OPCODE_MAP;
+    let result = opcodes.get(&code).expect(&format!("Opcode {:#04X} is not recognized", code));
+    trace_result!(result);
+    result
   }
 
   #[named]
@@ -136,6 +140,7 @@ impl<'a> CPU<'a> {
       0xEB => {}
       // General instructions
       _ => match opcode.mnemonic {
+        // Legal Opcodes
         "ADC" => self.instruction_adc(&opcode),
         "AND" => self.instruction_and(&opcode),
         "ASL" => self.instruction_asl(&opcode),
@@ -192,12 +197,50 @@ impl<'a> CPU<'a> {
         "TXA" => self.instruction_txa(&opcode),
         "TXS" => self.instruction_txs(&opcode),
         "TYA" => self.instruction_tya(&opcode),
+        // Illegal Opcodes
+        "DCP" => self.instruction_dcp(&opcode),
         _ => todo!(),
       },
     }
   }
 
   #[named]
+  #[inline]
+  pub fn increment_program_counter(&mut self) {
+    trace_enter!();
+    self.program_counter = self.program_counter.wrapping_add(1);
+    trace_exit!();
+  }
+
+  #[named]
+  #[inline]
+  pub fn get_next_u8(&mut self) -> u8 {
+    trace_enter!();
+    let start_pc = self.program_counter;
+    trace_u16!(self.program_counter);
+    self.increment_program_counter();
+    let result = self.read_u8(start_pc);
+    trace_u8!(result);
+    trace_exit!();
+    result
+  }
+
+  #[named]
+  #[inline]
+  pub fn get_next_u16(&mut self) -> u16 {
+    trace_enter!();
+    let start_pc = self.program_counter;
+    trace_u16!(self.program_counter);
+    self.increment_program_counter();
+    self.increment_program_counter();
+    let result = self.read_u16(start_pc);
+    trace_u16!(result);
+    trace_exit!();
+    result
+  }
+
+  #[named]
+  #[inline]
   fn unclocked_read_u8(&mut self, address: u16) -> u8 {
     trace_enter!();
     let result = self.bus.read_u8(address);
@@ -206,6 +249,7 @@ impl<'a> CPU<'a> {
   }
 
   #[named]
+  #[inline]
   fn unclocked_write_u8(&mut self, address: u16, data: u8) {
     trace_enter!();
     self.bus.write_u8(address, data);
@@ -256,9 +300,9 @@ impl Addressable for CPU<'_> {
   }
 
   #[named]
-  fn load(&mut self, program: Vec<u8>) {
+  fn load(&mut self, program: Vec<u8>, start: u16) {
     trace_enter!();
-    self.bus.load(program);
+    self.bus.load(program, start);
     trace_exit!();
   }
 

@@ -5,8 +5,7 @@ impl CPU<'_> {
   #[named]
   pub fn instruction_tya(&mut self, opcode: &Opcode) {
     trace_enter!();
-    let length = opcode.length;
-    trace_u8!(length);
+    trace_u8!(opcode.length);
     self.a = self.y;
     self.tick();
     trace_u8!(self.a);

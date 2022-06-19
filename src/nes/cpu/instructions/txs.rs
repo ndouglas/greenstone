@@ -5,8 +5,7 @@ impl CPU<'_> {
   #[named]
   pub fn instruction_txs(&mut self, opcode: &Opcode) {
     trace_enter!();
-    let length = opcode.length;
-    trace_u8!(length);
+    trace_u8!(opcode.length);
     self.stack_pointer = self.x;
     self.tick();
     trace_u8!(self.stack_pointer);

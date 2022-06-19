@@ -39,15 +39,13 @@ impl CPU<'_> {
       debug!("Branching...");
       debug!("Ticking (reading next byte)...");
       self.tick();
-      let new_pc = self.program_counter.wrapping_add(offset);
-      if (self.program_counter & 0xFF00) != (new_pc & 0xFF00) {
+      let new_pc = address.wrapping_add(offset);
+      if (address & 0xFF00) != (new_pc & 0xFF00) {
         debug!("Ticking (repairing program counter after crossing page boundary)...");
         self.tick();
       }
       self.program_counter = new_pc;
       trace_u16!(self.program_counter);
-    } else {
-      self.program_counter = self.program_counter.wrapping_add(1);
     }
     trace_exit!();
   }
@@ -61,6 +59,27 @@ impl CPU<'_> {
     trace_u16!(address);
     let result = self.read_u8(address);
     trace_u8!(result);
+    result
+  }
+
+  #[inline]
+  #[named]
+  pub fn decrement_u8(&mut self, opcode: &Opcode) -> u8 {
+    trace_enter!();
+    trace_u8!(opcode.length);
+    let mode = &opcode.mode;
+    trace_var!(mode);
+    let address = self.get_operand_address(opcode, mode).unwrap();
+    trace_u16!(address);
+    let operand = self.read_u8(address);
+    trace_u8!(operand);
+    let result = operand.wrapping_sub(1);
+    trace_u8!(result);
+    debug!("Ticking (processing decrement instruction)...");
+    self.tick();
+    self.write_u8(address, result);
+    self.set_value_flags(result);
+    trace_exit!();
     result
   }
 }

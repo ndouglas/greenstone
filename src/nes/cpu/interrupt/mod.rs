@@ -14,7 +14,6 @@ enum Interrupt {
 }
 
 impl CPU<'_> {
-
   #[named]
   #[inline]
   pub fn is_nmi_ready(&self) -> bool {

@@ -82,6 +82,10 @@ pub use cpx::*;
 pub mod cpy;
 pub use cpy::*;
 
+// DCP: Decrement and Compare (Unofficial)
+pub mod dcp;
+pub use dcp::*;
+
 // DEC: Decrement
 pub mod dec;
 pub use dec::*;

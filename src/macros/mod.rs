@@ -1,6 +1,5 @@
 macro_rules! format_u8 {
   ($var: expr) => {{
-    #[cfg(debug_assertions)]
     if $var & 0x80 > 0 {
       format!("{:#04X} {:#010b} (+: {}, ±: {})", $var, $var, $var as u8, $var as i8)
     } else {
@@ -11,7 +10,6 @@ macro_rules! format_u8 {
 
 macro_rules! format_u16 {
   ($var: expr) => {{
-    #[cfg(debug_assertions)]
     format!("{:#06X} {:#018b} ({})", $var, $var, $var)
   }};
 }
@@ -181,7 +179,7 @@ macro_rules! test_opcode {
       $(program.push($byte);)*
       program.insert(0, $opcode);
       trace_var!(program);
-      cpu.load(program);
+      cpu.load(program, 0);
       cpu.reset();
       cpu.status = 0b0000_0000;
       $(cpu.$start_key = $start_value;)*

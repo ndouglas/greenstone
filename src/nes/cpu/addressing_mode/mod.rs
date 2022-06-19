@@ -48,6 +48,7 @@ impl CPU<'_> {
       //
       AddressingMode::Immediate => {
         let address = self.program_counter;
+        self.increment_program_counter();
         trace_u16!(address);
         Some(address)
       }
@@ -92,6 +93,7 @@ impl CPU<'_> {
       //
       AddressingMode::Relative => {
         let address = self.program_counter;
+        self.increment_program_counter();
         trace_u16!(address);
         Some(address)
       }
@@ -130,7 +132,7 @@ impl CPU<'_> {
       //
       AddressingMode::ZeroPage => {
         debug!("Ticking (reading operand address from zero page)...");
-        let address = self.read_u8(self.program_counter) as u16;
+        let address = self.get_next_u8() as u16;
         trace_u16!(address);
         Some(address)
       }
@@ -186,7 +188,7 @@ impl CPU<'_> {
       //
       AddressingMode::ZeroPageX => {
         debug!("Ticking (reading operand address from zero page)...");
-        let base = self.read_u8(self.program_counter);
+        let base = self.get_next_u8();
         trace_u16!(base);
         let address = base.wrapping_add(self.x) as u16;
         trace_u16!(address);
@@ -246,7 +248,7 @@ impl CPU<'_> {
       //
       AddressingMode::ZeroPageY => {
         debug!("Ticking (reading operand address from zero page)...");
-        let base = self.read_u8(self.program_counter);
+        let base = self.get_next_u8();
         trace_u16!(base);
         let address = base.wrapping_add(self.y) as u16;
         trace_u16!(address);
@@ -301,7 +303,7 @@ impl CPU<'_> {
       //
       AddressingMode::Absolute => {
         debug!("Ticking twice (reading 2-byte operand address)...");
-        let address = self.read_u16(self.program_counter);
+        let address = self.get_next_u16();
         trace_u16!(address);
         Some(address)
       }
@@ -375,7 +377,7 @@ impl CPU<'_> {
       //
       AddressingMode::AbsoluteX => {
         debug!("Ticking twice (reading 2-byte operand address)...");
-        let base = self.read_u16(self.program_counter);
+        let base = self.get_next_u16();
         trace_u16!(base);
         let address = base.wrapping_add(self.x as u16);
         trace_u16!(address);
@@ -461,7 +463,7 @@ impl CPU<'_> {
       //
       AddressingMode::AbsoluteY => {
         debug!("Ticking twice (reading 2-byte operand address)...");
-        let base = self.read_u16(self.program_counter);
+        let base = self.get_next_u16();
         trace_u16!(base);
         let address = base.wrapping_add(self.y as u16);
         trace_u16!(address);
@@ -496,7 +498,7 @@ impl CPU<'_> {
       //
       AddressingMode::Indirect => {
         debug!("Ticking twice (reading 2-byte operand address)...");
-        let pointer = self.read_u16(self.program_counter);
+        let pointer = self.get_next_u16();
         trace_u16!(pointer);
         let address;
         if pointer & 0x00FF == 0x00FF {
@@ -564,7 +566,7 @@ impl CPU<'_> {
       //
       AddressingMode::IndirectX => {
         debug!("Ticking (reading operand adress)...");
-        let base = self.read_u8(self.program_counter);
+        let base = self.get_next_u8();
         trace_u8!(base);
         let pointer: u8 = base.wrapping_add(self.x);
         trace_u8!(pointer);
@@ -651,7 +653,7 @@ impl CPU<'_> {
       //
       AddressingMode::IndirectY => {
         debug!("Ticking (reading operand address)...");
-        let base = self.read_u8(self.program_counter);
+        let base = self.get_next_u8();
         trace_u8!(base);
         debug!("Ticking (reading low byte of 2-byte operand address)...");
         let lo = self.read_u8(base as u16);
