@@ -33,7 +33,6 @@ pub struct CPU<'a> {
   pub stack_pointer: u8,
   pub program_counter: u16,
   pub clock_counter: u64,
-  pub halt: bool,
   #[derivative(Debug = "ignore")]
   pub bus: Box<dyn Addressable + 'a>,
 }
@@ -49,7 +48,6 @@ impl<'a> CPU<'a> {
       stack_pointer: 0xFF,
       program_counter: 0x0000,
       clock_counter: 0,
-      halt: false,
       bus: Box::new(SimpleMemory::new()),
     }
   }
@@ -64,7 +62,6 @@ impl<'a> CPU<'a> {
       stack_pointer: 0xFF,
       program_counter: 0x0000,
       clock_counter: 0,
-      halt: false,
       bus: Box::new(Bus::new()),
     }
   }
@@ -83,11 +80,6 @@ impl<'a> CPU<'a> {
     trace_enter!();
     loop {
       self.clock();
-      if self.halt {
-        trace!("Halting!");
-        trace_exit!();
-        return;
-      }
     }
   }
 
@@ -115,6 +107,13 @@ impl<'a> CPU<'a> {
   #[named]
   pub fn process_instruction(&mut self) {
     trace_enter!();
+    if self.is_nmi_ready() {
+      self.acknowledge_nmi();
+      self.nmi();
+    }
+    else if self.is_irq_ready() && !self.get_interrupt_disable_flag() {
+      self.irq();
+    }
     let opcode = self.dequeue_instruction();
     trace_var!(opcode);
     let pc_state = self.program_counter;

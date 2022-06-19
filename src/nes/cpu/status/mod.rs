@@ -9,6 +9,8 @@ pub const INTERRUPT_DISABLE_FLAG: u8 = 0b0000_0100;
 pub const ZERO_FLAG: u8 = 0b0000_0010;
 pub const CARRY_FLAG: u8 = 0b0000_0001;
 
+pub const RESET_STATUS: u8 = UNUSED_FLAG | BREAK_FLAG | INTERRUPT_DISABLE_FLAG;
+
 #[repr(u8)]
 #[derive(Debug)]
 pub enum StatusFlags {

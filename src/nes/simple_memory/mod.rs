@@ -5,13 +5,13 @@ const PROGRAM_CONTROL_ADDRESS: usize = 0xFFFC;
 const MAX_ADDRESS: usize = 0xFFFF;
 
 pub struct SimpleMemory {
-  memory: [u8; MAX_ADDRESS],
+  memory: [u8; (MAX_ADDRESS + 1)],
 }
 
 impl SimpleMemory {
   #[named]
   pub fn new() -> SimpleMemory {
-    SimpleMemory { memory: [0; MAX_ADDRESS] }
+    SimpleMemory { memory: [0; (MAX_ADDRESS + 1)] }
   }
 }
 

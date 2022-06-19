@@ -183,6 +183,7 @@ macro_rules! test_opcode {
       trace_var!(program);
       cpu.load(program);
       cpu.reset();
+      cpu.status = 0b0000_0000;
       $(cpu.$start_key = $start_value;)*
       $(let builder:Option<fn (&mut CPU<'_>, &Opcode)> = some_or_none!($builder);
       if let Some(closure) = builder {
@@ -206,7 +207,7 @@ macro_rules! test_opcode {
       let mut expected_cycles = 0;
       expected_cycles = test_opcode.cycles;
       $(
-        let expected_value: u64 = $expected_value;
+        let expected_value: u64 = ($expected_value) as u64;
         match stringify!($expected_key) {
           "clock_counter" => {
             trace!("Updating expected cycle count to {}", expected_value);
