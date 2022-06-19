@@ -32,6 +32,6 @@ mod test {
     init();
     // These test cases are based on Starr Horne's `nes-rust`.
     // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
-    test_instruction!("PHA", Implied, []{} => []{}, |cpu: &mut CPU<'_>, _opcode: &Opcode| {});
+    test_instruction!("PHA", Implied, []{} => []{}, |_cpu: &mut CPU<'_>, _opcode: &Opcode| {});
   }
 }

@@ -135,6 +135,7 @@ impl<'a> CPU<'a> {
     match opcode.code {
       // Illegal Opcodes
       0xEB => {}
+      // General instructions
       _ => match opcode.mnemonic {
         "ADC" => self.instruction_adc(&opcode),
         "AND" => self.instruction_and(&opcode),
@@ -169,6 +170,7 @@ impl<'a> CPU<'a> {
         "LDX" => self.instruction_ldx(&opcode),
         "LDY" => self.instruction_ldy(&opcode),
         "LSR" => self.instruction_lsr(&opcode),
+        "NOP" => self.instruction_nop(&opcode),
         "ORA" => self.instruction_ora(&opcode),
         "PHA" => self.instruction_pha(&opcode),
         "PHP" => self.instruction_php(&opcode),

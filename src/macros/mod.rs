@@ -238,6 +238,7 @@ macro_rules! test_opcode {
         let actual_value_string = format_u8!(actual_value);
         assert!(actual_value == byte, "Unexpected opcode ({}) memory value; Expected contents of memory at {} to be {}, got {}", test_opcode, format_u16!(address), expected_value_string, actual_value_string);
       }
+      cpu
     } // End test scope.
   }
 }

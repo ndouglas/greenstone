@@ -134,6 +134,10 @@ pub use ldy::*;
 pub mod lsr;
 pub use lsr::*;
 
+// NOP: No Operation
+pub mod nop;
+pub use nop::*;
+
 // ORA: OR A
 pub mod ora;
 pub use ora::*;
