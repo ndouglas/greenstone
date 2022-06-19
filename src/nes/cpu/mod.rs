@@ -20,8 +20,8 @@ pub use opcode::*;
 pub mod stack;
 pub use stack::*;
 
-pub mod status_flags;
-pub use status_flags::*;
+pub mod status;
+pub use status::*;
 
 #[derive(Derivative)]
 #[derivative(Debug)]
