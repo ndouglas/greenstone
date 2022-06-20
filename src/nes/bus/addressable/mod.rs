@@ -3,7 +3,7 @@ use crate::traits::Addressable;
 
 impl Addressable for Bus {
   #[named]
-  fn read_u8(&mut self, address: u16) -> u8 {
+  fn unclocked_read_u8(&mut self, address: u16) -> u8 {
     trace_enter!();
     let result = self.memory[address as usize];
     trace_result!(result);
@@ -11,7 +11,7 @@ impl Addressable for Bus {
   }
 
   #[named]
-  fn write_u8(&mut self, address: u16, data: u8) {
+  fn unclocked_write_u8(&mut self, address: u16, data: u8) {
     trace_enter!();
     self.memory[address as usize] = data;
     trace_exit!();

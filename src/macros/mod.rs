@@ -200,12 +200,13 @@ macro_rules! test_opcode {
       trace_u8!(status_mask);
       let status_violations = status_differences & !status_mask;
       trace_u8!(status_violations);
-      assert!(status_violations == 0, "Opcode ({}) violated status register mask; mask: {:#010b}, start: {:#010b}, actual: {:#010b}, differences: {:#010b}, violations: {:#010b}", test_opcode, status_mask, start_status, cpu.status, status_differences, status_violations);
+      assert!(status_violations == 0, "{} violated status register mask; mask: {:#010b}, start: {:#010b}, actual: {:#010b}, differences: {:#010b}, violations: {:#010b}", test_opcode, status_mask, start_status, cpu.status, status_differences, status_violations);
       #[allow(unused_assignments)]
       let mut expected_cycles = 0;
       expected_cycles = test_opcode.cycles;
       $(
         let expected_value: u64 = ($expected_value) as u64;
+        println!(stringify!($expected_key));
         match stringify!($expected_key) {
           "clock_counter" => {
             trace!("Updating expected cycle count to {}", expected_value);
@@ -215,18 +216,18 @@ macro_rules! test_opcode {
             let expected_value_string = format_u16!(expected_value as u16);
             let actual_value = cpu.$expected_key as u16;
             let actual_value_string = format_u16!(actual_value);
-            assert!(cpu.$expected_key == $expected_value, "Unexpected opcode ({}) program counter value: expected {} to be {}, found {}.", test_opcode, stringify!(cpu.$expected_key), expected_value_string, actual_value_string);
+            assert!(cpu.$expected_key == $expected_value, "{} encountered unexpected program counter value: expected {} to be {}, found {}.", test_opcode, stringify!(cpu.$expected_key), expected_value_string, actual_value_string);
           },
           _ => {
             let expected_value_string = format_u8!(expected_value as u8);
             let actual_value = cpu.$expected_key as u8;
             let actual_value_string = format_u8!(actual_value);
-            assert!(cpu.$expected_key as u8 == expected_value as u8, "Unexpected opcode ({}) register value: expected {} to be {}, found {}.", test_opcode, stringify!(cpu.$expected_key), expected_value_string, actual_value_string);
+            assert!(cpu.$expected_key as u8 == expected_value as u8, "{} encountered unexpected register value: expected {} to be {}, found {}.", test_opcode, stringify!(cpu.$expected_key), expected_value_string, actual_value_string);
           },
         }
       )*
       let actual_cycles = (cpu.clock_counter - start_cc) as u8;
-      assert!(expected_cycles == actual_cycles, "Invalid opcode ({}) cycles; expected {} cycles, found {}.", test_opcode, expected_cycles, actual_cycles);
+      assert!(expected_cycles == actual_cycles, "{} encountered invalid cycles; expected {} cycles, found {}.", test_opcode, expected_cycles, actual_cycles);
       let mut expected_memory = Vec::new();
       $(expected_memory.push($returned_byte);)*
       expected_memory.insert(0, $opcode);
@@ -235,7 +236,7 @@ macro_rules! test_opcode {
         let expected_value_string = format_u8!(byte);
         let actual_value = cpu.unclocked_read_u8(address);
         let actual_value_string = format_u8!(actual_value);
-        assert!(actual_value == byte, "Unexpected opcode ({}) memory value; Expected contents of memory at {} to be {}, got {}", test_opcode, format_u16!(address), expected_value_string, actual_value_string);
+        assert!(actual_value == byte, "{} encountered unexpected memory value; Expected contents of memory at {} to be {}, got {}", test_opcode, format_u16!(address), expected_value_string, actual_value_string);
       }
       cpu
     } // End test scope.

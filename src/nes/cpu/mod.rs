@@ -244,43 +244,6 @@ impl<'a> CPU<'a> {
     result
   }
 
-  #[named]
-  #[inline]
-  fn unclocked_read_u8(&mut self, address: u16) -> u8 {
-    trace_enter!();
-    let result = self.bus.read_u8(address);
-    trace_result!(result);
-    result
-  }
-
-  #[named]
-  #[inline]
-  fn unclocked_write_u8(&mut self, address: u16, data: u8) {
-    trace_enter!();
-    self.bus.write_u8(address, data);
-    trace_exit!();
-  }
-
-  #[named]
-  #[allow(dead_code)]
-  fn unclocked_read_u16(&mut self, address: u16) -> u16 {
-    trace_enter!();
-    let result = u16::from_le_bytes([self.unclocked_read_u8(address), self.unclocked_read_u8(address.wrapping_add(1))]);
-    trace_u16!(result);
-    trace_exit!();
-    result
-  }
-
-  #[named]
-  #[allow(dead_code)]
-  fn unclocked_write_u16(&mut self, address: u16, data: u16) {
-    trace_enter!();
-    let hi = (data >> 8) as u8;
-    let lo = (data & 0xFF) as u8;
-    self.unclocked_write_u8(address, lo);
-    self.unclocked_write_u8(address.wrapping_add(1), hi);
-    trace_exit!();
-  }
 }
 
 impl fmt::Display for CPU<'_> {
