@@ -1,6 +1,6 @@
 use super::super::*;
 
-impl CPU<'_> {
+impl CPU {
   //
   // PHA, PHP (from 6502_cpu.txt)
   //

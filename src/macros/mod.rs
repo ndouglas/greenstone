@@ -183,7 +183,7 @@ macro_rules! test_opcode {
       cpu.handle_reset();
       cpu.status = 0b0000_0000;
       $(cpu.$start_key = $start_value;)*
-      $(let builder:Option<fn (&mut CPU<'_>, &Opcode)> = some_or_none!($builder);
+      $(let builder:Option<fn (&mut CPU, &Opcode)> = some_or_none!($builder);
       if let Some(closure) = builder {
         closure(&mut cpu, &test_opcode);
       })*

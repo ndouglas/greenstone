@@ -1,6 +1,6 @@
 use super::super::*;
 
-impl CPU<'_> {
+impl CPU {
   //
   // PLA, PLP (from 6502_cpu.txt)
   //

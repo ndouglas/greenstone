@@ -30,7 +30,7 @@ pub use status::*;
 
 #[derive(Derivative)]
 #[derivative(Debug)]
-pub struct CPU<'a> {
+pub struct CPU {
   pub a: u8,
   pub x: u8,
   pub y: u8,
@@ -39,12 +39,12 @@ pub struct CPU<'a> {
   pub program_counter: u16,
   pub clock_counter: u64,
   #[derivative(Debug = "ignore")]
-  pub bus: Box<dyn Busable + 'a>,
+  pub bus: Box<dyn Busable>,
 }
 
-impl<'a> CPU<'a> {
+impl CPU {
   #[named]
-  pub fn new() -> CPU<'a> {
+  pub fn new() -> CPU {
     CPU {
       a: 0x00,
       x: 0x00,
@@ -58,7 +58,7 @@ impl<'a> CPU<'a> {
   }
 
   #[named]
-  pub fn new_with_bus() -> CPU<'a> {
+  pub fn new_with_bus() -> CPU {
     CPU {
       a: 0x00,
       x: 0x00,
@@ -245,7 +245,7 @@ impl<'a> CPU<'a> {
   }
 }
 
-impl fmt::Display for CPU<'_> {
+impl fmt::Display for CPU {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "{:?}", self)
   }

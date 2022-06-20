@@ -4,7 +4,7 @@ use crate::traits::Interruptible;
 
 pub const STACK_BASE_ADDRESS: u16 = 0x0100;
 
-impl CPU<'_> {
+impl CPU {
   #[inline]
   #[named]
   pub fn push_u8(&mut self, data: u8) {

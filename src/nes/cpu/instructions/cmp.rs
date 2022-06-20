@@ -1,6 +1,6 @@
 use super::super::*;
 
-impl CPU<'_> {
+impl CPU {
   #[inline]
   #[named]
   pub fn instruction_cmp(&mut self, opcode: &Opcode) {

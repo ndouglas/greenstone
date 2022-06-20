@@ -19,7 +19,7 @@ pub fn add_u8s(augend: u8, addend: u8, carry: bool) -> (u8, bool, bool) {
   (result, set_carry, set_overflow)
 }
 
-impl CPU<'_> {
+impl CPU {
   #[inline]
   #[named]
   pub fn branch_on_condition(&mut self, opcode: &Opcode, condition: bool) {

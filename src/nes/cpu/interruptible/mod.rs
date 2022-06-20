@@ -6,7 +6,7 @@ pub const NMI_ADDRESS: u16 = 0xFFFA;
 pub const RESET_ADDRESS: u16 = 0xFFFC;
 pub const IRQ_ADDRESS: u16 = 0xFFFE;
 
-impl Interruptible for CPU<'_> {
+impl Interruptible for CPU {
   #[named]
   #[inline]
   fn is_nmi_ready(&self) -> bool {

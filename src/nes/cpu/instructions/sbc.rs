@@ -2,7 +2,7 @@ use crate::nes::common::add_u8s;
 
 use super::super::*;
 
-impl CPU<'_> {
+impl CPU {
   #[inline]
   #[named]
   pub fn instruction_sbc(&mut self, opcode: &Opcode) {

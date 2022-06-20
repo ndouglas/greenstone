@@ -21,7 +21,7 @@ pub enum AddressingMode {
   IndirectY,
 }
 
-impl CPU<'_> {
+impl CPU {
   #[named]
   pub fn get_operand_address(&mut self, opcode: &Opcode, mode: &AddressingMode) -> Option<u16> {
     trace_enter!();

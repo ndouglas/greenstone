@@ -24,7 +24,7 @@ pub enum StatusFlags {
   Carry = CARRY_FLAG,
 }
 
-impl CPU<'_> {
+impl CPU {
   #[inline]
   #[named]
   pub fn set_status_flag(&mut self, flag: StatusFlags, value: bool) {
