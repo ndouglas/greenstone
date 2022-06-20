@@ -58,7 +58,7 @@ impl CPU {
   }
 
   #[named]
-  pub fn new_with_bus() -> CPU {
+  pub fn new_with_bus(bus: Box<dyn Busable>) -> CPU {
     CPU {
       a: 0x00,
       x: 0x00,
@@ -67,7 +67,7 @@ impl CPU {
       stack_pointer: 0xFF,
       program_counter: 0x0000,
       clock_counter: 0,
-      bus: Box::new(Bus::new()),
+      bus,
     }
   }
 

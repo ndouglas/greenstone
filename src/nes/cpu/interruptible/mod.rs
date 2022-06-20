@@ -84,6 +84,7 @@ impl Interruptible for CPU {
   fn handle_reset(&mut self) {
     trace_enter!();
     debug!("Ticking five times (reset sequence)...");
+    self.clock_counter = 0;
     for _ in 0..5 {
       self.tick();
     }
@@ -92,7 +93,6 @@ impl Interruptible for CPU {
     self.y = 0x00;
     self.stack_pointer = 0xFF;
     self.status = RESET_STATUS;
-    self.clock_counter = 0;
     debug!("Ticking twice (reading initial state for program counter)...");
     self.program_counter = self.read_u16(RESET_ADDRESS);
     trace_exit!();
