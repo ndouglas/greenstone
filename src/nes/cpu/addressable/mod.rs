@@ -2,7 +2,6 @@ use super::super::*;
 use crate::traits::Addressable;
 
 impl Addressable for CPU<'_> {
-
   #[named]
   #[inline]
   fn unclocked_read_u8(&mut self, address: u16) -> u8 {
@@ -61,5 +60,4 @@ impl Addressable for CPU<'_> {
     self.bus.tick();
     trace_exit!();
   }
-
 }

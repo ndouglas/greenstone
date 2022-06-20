@@ -243,7 +243,6 @@ impl<'a> CPU<'a> {
     trace_exit!();
     result
   }
-
 }
 
 impl fmt::Display for CPU<'_> {

@@ -1,6 +1,5 @@
 // A trait for addressable things: buses, memory, etc.
 pub trait Addressable {
-
   fn unclocked_read_u8(&mut self, address: u16) -> u8;
 
   fn unclocked_write_u8(&mut self, address: u16, data: u8);
@@ -70,6 +69,4 @@ pub trait Addressable {
     self.write_u8(address, lo);
     self.write_u8(address.wrapping_add(1), hi);
   }
-
 }
-

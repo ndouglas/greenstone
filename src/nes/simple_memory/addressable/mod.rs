@@ -32,5 +32,4 @@ impl Addressable for SimpleMemory {
     trace_enter!();
     trace_exit!();
   }
-
 }

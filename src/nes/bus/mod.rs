@@ -16,6 +16,8 @@ pub struct Bus {
 
 impl Bus {
   pub fn new() -> Bus {
-    Bus { memory: [0; MAX_ADDRESS + 1] }
+    Bus {
+      memory: [0; MAX_ADDRESS + 1],
+    }
   }
 }
