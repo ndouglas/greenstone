@@ -214,6 +214,7 @@ impl CPU {
   pub fn increment_program_counter(&mut self) {
     trace_enter!();
     self.program_counter = self.program_counter.wrapping_add(1);
+    debug!("Incremented program counter to {}.", format_u16!(self.program_counter));
     trace_exit!();
   }
 

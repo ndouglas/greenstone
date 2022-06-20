@@ -77,7 +77,7 @@ fn read_screen_state(cpu: &mut CPU, frame: &mut [u8; 32 * 3 * 32]) -> bool {
   let mut frame_idx = 0;
   let mut update = false;
   for i in 0x0200..0x0600 {
-    let color_idx = cpu.read_u8(i as u16);
+    let color_idx = cpu.unclocked_read_u8(i as u16);
     let (b1, b2, b3) = color(color_idx).rgb();
     if frame[frame_idx] != b1 || frame[frame_idx + 1] != b2 || frame[frame_idx + 2] != b3 {
       frame[frame_idx] = b1;
@@ -120,7 +120,7 @@ fn main() {
   bus.load_cartridge_data(&bytes);
 
   //load the game
-  let mut cpu = CPU::new();
+  let mut cpu = CPU::new_with_bus(Box::new(bus));
   cpu.handle_reset();
 
   // run the game cycle
