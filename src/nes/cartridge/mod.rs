@@ -31,6 +31,8 @@ impl Cartridge {
   }
 }
 
+// These test cases are based on Starr Horne's `nes-rust`.
+// See https://github.com/starrhorne/nes-rust/blob/master/src/cartridge/mapper.rs
 #[cfg(test)]
 mod test {
   use super::*;
