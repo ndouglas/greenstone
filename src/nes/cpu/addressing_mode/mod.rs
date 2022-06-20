@@ -24,6 +24,7 @@ pub enum AddressingMode {
 impl CPU {
   #[named]
   pub fn get_operand_address(&mut self, opcode: &Opcode, mode: &AddressingMode) -> Option<u16> {
+    use AddressingMode::*;
     trace_enter!();
     trace!("Using addressing mode {}", mode);
     let result = match mode {
@@ -36,7 +37,7 @@ impl CPU {
       //  1    PC     R  fetch opcode, increment PC
       //  2    PC     R  read next instruction byte (and throw it away)
       //
-      AddressingMode::Implied => None,
+      Implied => None,
       // The Immediate mode uses the subsequent byte of memory.
       //
       // Immediate Instruction Cycle Information (from 6502_cpu.txt)
@@ -46,7 +47,7 @@ impl CPU {
       //  1    PC     R  fetch opcode, increment PC
       //  2    PC     R  fetch value, increment PC
       //
-      AddressingMode::Immediate => {
+      Immediate => {
         let address = self.program_counter;
         self.increment_program_counter();
         trace_u16!(address);
@@ -91,7 +92,7 @@ impl CPU {
       //  3    PC     R  fetch high byte of address, increment PC
       //  4  address  W  write register to effective address
       //
-      AddressingMode::Relative => {
+      Relative => {
         let address = self.program_counter;
         self.increment_program_counter();
         trace_u16!(address);
@@ -130,7 +131,7 @@ impl CPU {
       //   2    PC     R  fetch address, increment PC
       //   3  address  W  write register to effective address
       //
-      AddressingMode::ZeroPage => {
+      ZeroPage => {
         debug!("Ticking (reading operand address from zero page)...");
         let address = self.get_next_u8() as u16;
         trace_u16!(address);
@@ -186,7 +187,7 @@ impl CPU {
       //         * The high byte of the effective address is always zero,
       //           i.e. page boundary crossings are not handled.
       //
-      AddressingMode::ZeroPageX => {
+      ZeroPageX => {
         debug!("Ticking (reading operand address from zero page)...");
         let base = self.get_next_u8();
         trace_u16!(base);
@@ -246,7 +247,7 @@ impl CPU {
       //         * The high byte of the effective address is always zero,
       //           i.e. page boundary crossings are not handled.
       //
-      AddressingMode::ZeroPageY => {
+      ZeroPageY => {
         debug!("Ticking (reading operand address from zero page)...");
         let base = self.get_next_u8();
         trace_u16!(base);
@@ -301,7 +302,7 @@ impl CPU {
       //    3    PC     R  fetch high byte of address, increment PC
       //    4  address  W  write register to effective address
       //
-      AddressingMode::Absolute => {
+      Absolute => {
         debug!("Ticking twice (reading 2-byte operand address)...");
         let address = self.get_next_u16();
         trace_u16!(address);
@@ -375,7 +376,7 @@ impl CPU {
       //            the processor cannot undo a write to an invalid
       //            address, it always reads from the address first.
       //
-      AddressingMode::AbsoluteX => {
+      AbsoluteX => {
         debug!("Ticking twice (reading 2-byte operand address)...");
         let base = self.get_next_u16();
         trace_u16!(base);
@@ -461,7 +462,7 @@ impl CPU {
       //            the processor cannot undo a write to an invalid
       //            address, it always reads from the address first.
       //
-      AddressingMode::AbsoluteY => {
+      AbsoluteY => {
         debug!("Ticking twice (reading 2-byte operand address)...");
         let base = self.get_next_u16();
         trace_u16!(base);
@@ -496,7 +497,7 @@ impl CPU {
       // Note: * The PCH will always be fetched from the same page
       //         than PCL, i.e. page boundary crossing is not handled.
       //
-      AddressingMode::Indirect => {
+      Indirect => {
         debug!("Ticking twice (reading 2-byte operand address)...");
         let pointer = self.get_next_u16();
         trace_u16!(pointer);
@@ -564,7 +565,7 @@ impl CPU {
       //   Note: The effective address is always fetched from zero page,
       //         i.e. the zero page boundary crossing is not handled.
       //
-      AddressingMode::IndirectX => {
+      IndirectX => {
         debug!("Ticking (reading operand adress)...");
         let base = self.get_next_u8();
         trace_u8!(base);
@@ -651,7 +652,7 @@ impl CPU {
       //          * The high byte of the effective address may be invalid
       //            at this time, i.e. it may be smaller by $100.
       //
-      AddressingMode::IndirectY => {
+      IndirectY => {
         debug!("Ticking (reading operand address)...");
         let base = self.get_next_u8();
         trace_u8!(base);

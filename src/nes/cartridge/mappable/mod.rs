@@ -1,9 +1,8 @@
 use super::*;
-use crate::traits::Mappable;
 use crate::traits::mappable::MirroringMode;
+use crate::traits::Mappable;
 
 impl Mappable for Cartridge {
-
   #[named]
   #[inline]
   fn read_prg_u8(&self, address: u16) -> u8 {
@@ -24,7 +23,7 @@ impl Mappable for Cartridge {
     self.mapper.write_prg_u8(address, data);
     trace_exit!();
   }
-  
+
   #[named]
   #[inline]
   fn read_chr_u8(&self, address: u16) -> u8 {
@@ -35,7 +34,7 @@ impl Mappable for Cartridge {
     trace_exit!();
     result
   }
-  
+
   #[named]
   #[inline]
   fn write_chr_u8(&mut self, address: u16, data: u8) {
@@ -45,7 +44,7 @@ impl Mappable for Cartridge {
     self.mapper.write_chr_u8(address, data);
     trace_exit!();
   }
-  
+
   #[named]
   #[inline]
   fn signal_scanline(&mut self) {
@@ -63,7 +62,7 @@ impl Mappable for Cartridge {
     trace_exit!();
     result
   }
-  
+
   #[named]
   #[inline]
   fn get_irq_flag(&self) -> bool {
@@ -73,6 +72,4 @@ impl Mappable for Cartridge {
     trace_exit!();
     result
   }
-
 }
-
