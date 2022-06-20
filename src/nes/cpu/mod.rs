@@ -4,6 +4,11 @@ use std::fmt;
 use crate::nes::bus::Bus;
 use crate::nes::simple_memory::SimpleMemory;
 use crate::traits::Addressable;
+use crate::traits::Busable;
+use crate::traits::Interruptible;
+
+pub mod addressable;
+pub use addressable::*;
 
 pub mod addressing_mode;
 pub use addressing_mode::*;
@@ -11,8 +16,8 @@ pub use addressing_mode::*;
 pub mod instructions;
 pub use instructions::*;
 
-pub mod interrupt;
-pub use interrupt::*;
+pub mod interruptible;
+pub use interruptible::*;
 
 pub mod opcode;
 pub use opcode::*;
@@ -34,7 +39,7 @@ pub struct CPU<'a> {
   pub program_counter: u16,
   pub clock_counter: u64,
   #[derivative(Debug = "ignore")]
-  pub bus: Box<dyn Addressable + 'a>,
+  pub bus: Box<dyn Busable + 'a>,
 }
 
 impl<'a> CPU<'a> {
@@ -70,7 +75,7 @@ impl<'a> CPU<'a> {
   pub fn interpret(&mut self, program: Vec<u8>, start: u16) {
     trace_enter!();
     self.load(program, start);
-    self.reset();
+    self.handle_reset();
     self.run();
     trace_exit!();
   }
@@ -107,9 +112,9 @@ impl<'a> CPU<'a> {
     trace_enter!();
     if self.is_nmi_ready() {
       self.acknowledge_nmi();
-      self.nmi();
+      self.handle_nmi();
     } else if self.is_irq_ready() && !self.get_interrupt_disable_flag() {
-      self.irq();
+      self.handle_irq();
     }
     let opcode = self.dequeue_instruction();
     trace_var!(opcode);
@@ -274,44 +279,6 @@ impl<'a> CPU<'a> {
     let lo = (data & 0xFF) as u8;
     self.unclocked_write_u8(address, lo);
     self.unclocked_write_u8(address.wrapping_add(1), hi);
-    trace_exit!();
-  }
-}
-
-impl Addressable for CPU<'_> {
-  #[named]
-  fn read_u8(&mut self, address: u16) -> u8 {
-    trace_enter!();
-    trace_u16!(address);
-    self.tick();
-    let result = self.unclocked_read_u8(address);
-    trace_result!(result);
-    result
-  }
-
-  #[named]
-  fn write_u8(&mut self, address: u16, data: u8) {
-    trace_enter!();
-    trace_u16!(address);
-    trace_u16!(data);
-    self.tick();
-    self.unclocked_write_u8(address, data);
-    trace_exit!();
-  }
-
-  #[named]
-  fn load(&mut self, program: Vec<u8>, start: u16) {
-    trace_enter!();
-    self.bus.load(program, start);
-    trace_exit!();
-  }
-
-  #[named]
-  fn tick(&mut self) {
-    trace_enter!();
-    self.clock_counter = self.clock_counter.wrapping_add(1);
-    debug!("Tick {}", self.clock_counter);
-    self.bus.tick();
     trace_exit!();
   }
 }

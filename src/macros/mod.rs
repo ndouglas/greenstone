@@ -180,7 +180,7 @@ macro_rules! test_opcode {
       program.insert(0, $opcode);
       trace_var!(program);
       cpu.load(program, 0);
-      cpu.reset();
+      cpu.handle_reset();
       cpu.status = 0b0000_0000;
       $(cpu.$start_key = $start_value;)*
       $(let builder:Option<fn (&mut CPU<'_>, &Opcode)> = some_or_none!($builder);

@@ -8,7 +8,7 @@ impl CPU<'_> {
     let length = opcode.length;
     trace_u8!(length);
     self.increment_program_counter();
-    self.r#break();
+    self.handle_break();
     self.set_interrupt_disable_flag(false);
     trace_exit!();
   }

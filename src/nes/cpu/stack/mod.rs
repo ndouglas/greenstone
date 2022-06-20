@@ -1,5 +1,6 @@
 use super::super::*;
-use crate::traits::addressable::Addressable;
+use crate::traits::Addressable;
+use crate::traits::Interruptible;
 
 pub const STACK_BASE_ADDRESS: u16 = 0x0100;
 
@@ -59,7 +60,7 @@ mod test {
   fn test_stack() {
     init();
     let mut cpu = CPU::new();
-    cpu.reset();
+    cpu.handle_reset();
     assert_eq!(0x03, {
       cpu.push_u8(0x03);
       cpu.pop_u8()

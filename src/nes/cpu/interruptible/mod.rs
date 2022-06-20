@@ -1,38 +1,43 @@
 use super::super::*;
-use crate::traits::addressable::Addressable;
+use crate::traits::Addressable;
+use crate::traits::Interruptible;
 
 pub const NMI_ADDRESS: u16 = 0xFFFA;
 pub const RESET_ADDRESS: u16 = 0xFFFC;
 pub const IRQ_ADDRESS: u16 = 0xFFFE;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-enum Interrupt {
-  NonMaskable,
-  Reset,
-  Request,
-  Break,
-}
-
-impl CPU<'_> {
+impl Interruptible for CPU<'_> {
   #[named]
   #[inline]
-  pub fn is_nmi_ready(&self) -> bool {
-    false
+  fn is_nmi_ready(&self) -> bool {
+    trace_enter!();
+    let result = self.bus.is_nmi_ready();
+    trace_var!(result);
+    trace_exit!();
+    result
   }
 
   #[named]
   #[inline]
-  pub fn acknowledge_nmi(&mut self) {}
-
-  #[named]
-  #[inline]
-  pub fn is_irq_ready(&self) -> bool {
-    false
+  fn acknowledge_nmi(&mut self) {
+    trace_enter!();
+    self.bus.acknowledge_nmi();
+    trace_exit!();
   }
 
   #[named]
   #[inline]
-  pub fn nmi(&mut self) {
+  fn is_irq_ready(&self) -> bool {
+    trace_enter!();
+    let result = self.bus.is_irq_ready();
+    trace_var!(result);
+    trace_exit!();
+    result
+  }
+
+  #[named]
+  #[inline]
+  fn handle_nmi(&mut self) {
     debug!("Ticking twice for NMI interrupt...");
     self.tick();
     self.tick();
@@ -47,7 +52,7 @@ impl CPU<'_> {
 
   #[named]
   #[inline]
-  pub fn irq(&mut self) {
+  fn handle_irq(&mut self) {
     debug!("Ticking twice for IRQ interrupt...");
     self.tick();
     self.tick();
@@ -62,7 +67,7 @@ impl CPU<'_> {
 
   #[named]
   #[inline]
-  pub fn r#break(&mut self) {
+  fn handle_break(&mut self) {
     debug!("Ticking for Break interrupt...");
     self.tick();
     debug!("Ticking twice (pushing program counter to the stack)...");
@@ -76,7 +81,7 @@ impl CPU<'_> {
 
   #[named]
   #[inline]
-  pub fn reset(&mut self) {
+  fn handle_reset(&mut self) {
     trace_enter!();
     debug!("Ticking five times (reset sequence)...");
     for _ in 0..5 {
