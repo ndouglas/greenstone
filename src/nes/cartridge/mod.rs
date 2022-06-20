@@ -4,6 +4,9 @@ use crate::traits::Mappable;
 pub mod mappable;
 pub use mappable::*;
 
-pub struct Cartridge<'a> {
-  mapper: Box<dyn Mappable + 'a>,
+pub mod mapper;
+pub use mapper::*;
+
+pub struct Cartridge {
+  mapper: Box<dyn Mappable>,
 }

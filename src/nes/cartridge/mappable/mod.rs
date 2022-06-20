@@ -2,7 +2,7 @@ use super::*;
 use crate::traits::Mappable;
 use crate::traits::mappable::MirroringMode;
 
-impl Mappable for Cartridge<'_> {
+impl Mappable for Cartridge {
 
   #[named]
   #[inline]
