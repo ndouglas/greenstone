@@ -35,9 +35,15 @@ impl Bus {
     trace_u16!(address);
     let result = match address {
       RAM_START_ADDRESS..= RAM_RANGE_MAX_ADDRESS => {
-        let actual_address = (address & RAM_ACTUAL_MAX_ADDRESS);
+        let actual_address = address & RAM_ACTUAL_MAX_ADDRESS;
         trace_u16!(actual_address);
         self.memory[actual_address as usize]
+      },
+      PPU_REGISTER_START_ADDRESS ..= PPU_REGISTER_RANGE_MAX_ADDRESS => {
+        let actual_address = address & PPU_REGISTER_ACTUAL_MAX_ADDRESS;
+        trace_u16!(actual_address);
+        todo!("Todo: PPU.");
+        0x00
       },
       _ => {
         warn!("Ignoring out-of-bounds memory read at address {}", format_u16!(address));
@@ -55,9 +61,14 @@ impl Bus {
     trace_u16!(address);
     match address {
       RAM_START_ADDRESS..= RAM_RANGE_MAX_ADDRESS => {
-        let actual_address = (address & RAM_ACTUAL_MAX_ADDRESS);
+        let actual_address = address & RAM_ACTUAL_MAX_ADDRESS;
         trace_u16!(actual_address);
         self.memory[actual_address as usize] = data;
+      },
+      PPU_REGISTER_START_ADDRESS ..= PPU_REGISTER_RANGE_MAX_ADDRESS => {
+        let actual_address = address & PPU_REGISTER_ACTUAL_MAX_ADDRESS;
+        trace_u16!(actual_address);
+        todo!("Todo: PPU.");
       },
       _ => {
         warn!("Ignoring out-of-bounds memory write at address {}", format_u16!(address));

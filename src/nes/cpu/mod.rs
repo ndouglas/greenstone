@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 use crate::nes::bus::Bus;
-use crate::nes::simple_memory::SimpleMemory;
+use crate::nes::simple_bus::SimpleBus;
 use crate::traits::Addressable;
 use crate::traits::Busable;
 use crate::traits::Interruptible;
@@ -53,7 +53,7 @@ impl<'a> CPU<'a> {
       stack_pointer: 0xFF,
       program_counter: 0x0000,
       clock_counter: 0,
-      bus: Box::new(SimpleMemory::new()),
+      bus: Box::new(SimpleBus::new()),
     }
   }
 

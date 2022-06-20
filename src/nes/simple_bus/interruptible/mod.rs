@@ -1,7 +1,7 @@
 use super::*;
 use crate::traits::Interruptible;
 
-impl Interruptible for SimpleMemory {
+impl Interruptible for SimpleBus {
   #[named]
   #[inline]
   fn is_nmi_ready(&self) -> bool {

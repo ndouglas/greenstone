@@ -11,14 +11,14 @@ pub use busable::*;
 pub mod interruptible;
 pub use interruptible::*;
 
-pub struct SimpleMemory {
+pub struct SimpleBus {
   memory: [u8; (MAX_ADDRESS + 1)],
 }
 
-impl SimpleMemory {
+impl SimpleBus {
   #[named]
-  pub fn new() -> SimpleMemory {
-    SimpleMemory {
+  pub fn new() -> SimpleBus {
+    SimpleBus {
       memory: [0; (MAX_ADDRESS + 1)],
     }
   }

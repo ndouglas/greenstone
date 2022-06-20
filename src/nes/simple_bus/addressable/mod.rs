@@ -1,7 +1,7 @@
 use super::*;
 use crate::traits::Addressable;
 
-impl Addressable for SimpleMemory {
+impl Addressable for SimpleBus {
   #[named]
   fn unclocked_read_u8(&mut self, address: u16) -> u8 {
     trace_enter!();

@@ -4,6 +4,15 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Nathan Douglas <github@darkdell.net>"]
 
+
+[lib]
+name = "greenstone"
+path = "src/lib.rs"
+
+[[bin]]
+name = "greenstone"
+path = "src/main.rs"
+
 [dependencies]
 derivative = "2.2.0"
 function_name = "0.3.0"

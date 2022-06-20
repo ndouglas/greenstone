@@ -7,5 +7,5 @@ pub mod cpu;
 pub use cpu::*;
 
 // Simple memory implementation.
-pub mod simple_memory;
-pub use simple_memory::*;
+pub mod simple_bus;
+pub use simple_bus::*;

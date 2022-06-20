@@ -1,4 +1,4 @@
 use super::*;
 use crate::traits::Busable;
 
-impl Busable for SimpleMemory {}
+impl Busable for SimpleBus {}
