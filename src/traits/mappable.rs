@@ -15,9 +15,11 @@ pub trait Mappable {
 
   fn write_chr_u8(&mut self, address: u16, data: u8);
 
-  fn signal_scanline(&mut self);
+  fn signal_scanline(&mut self) {}
 
   fn get_mirroring_mode(&self) -> MirroringMode;
 
-  fn get_irq_flag(&self) -> bool;
+  fn get_irq_flag(&self) -> bool {
+    false
+  }
 }

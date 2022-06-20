@@ -3,13 +3,13 @@ use std::ops::Range;
 
 use crate::traits::mappable::MirroringMode;
 
-const PRG_ROM_PAGE_SIZE: usize = 0x4000;
-const PRG_RAM_PAGE_SIZE: usize = 0x2000;
-const CHR_ROM_PAGE_SIZE: usize = 0x2000;
-const CHR_RAM_PAGE_SIZE: usize = 0x2000;
-const MAGIC_STRING_LENGTH: usize = 4;
-const MAGIC_STRING_BYTES: [u8; MAGIC_STRING_LENGTH] = [0x4e, 0x45, 0x53, 0x1a];
-const HEADER_LENGTH: usize = 16;
+pub const PRG_ROM_PAGE_SIZE: usize = 0x4000;
+pub const PRG_RAM_PAGE_SIZE: usize = 0x2000;
+pub const CHR_ROM_PAGE_SIZE: usize = 0x2000;
+pub const CHR_RAM_PAGE_SIZE: usize = 0x2000;
+pub const MAGIC_STRING_LENGTH: usize = 4;
+pub const MAGIC_STRING_BYTES: [u8; MAGIC_STRING_LENGTH] = [0x4e, 0x45, 0x53, 0x1a];
+pub const HEADER_LENGTH: usize = 16;
 
 #[named]
 #[inline]
