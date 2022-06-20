@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use crate::nes::bus::Bus;
 use crate::nes::simple_bus::SimpleBus;
 use crate::traits::Addressable;
 use crate::traits::Busable;

@@ -1,6 +1,5 @@
 use super::super::*;
 use crate::traits::Addressable;
-use crate::traits::Interruptible;
 
 pub const STACK_BASE_ADDRESS: u16 = 0x0100;
 
@@ -54,6 +53,7 @@ impl CPU {
 mod test {
   use super::*;
   use crate::test::init;
+  use crate::traits::Interruptible;
 
   #[test]
   #[named]

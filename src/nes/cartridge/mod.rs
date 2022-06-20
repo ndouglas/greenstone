@@ -58,6 +58,7 @@ mod test {
 
   #[test]
   fn test_read_prg_rom() {
+    init();
     let cartridge = build_cartridge(false);
     for i in 0..0x8000u16 {
       if i % 2 == 0 {
@@ -70,6 +71,7 @@ mod test {
 
   #[test]
   fn test_prg_ram() {
+    init();
     let mut cartridge = build_cartridge(false);
     for i in 0x6000u16..0x7000u16 {
       cartridge.write_prg_u8(i, i as u8);
@@ -79,6 +81,7 @@ mod test {
 
   #[test]
   fn test_read_chr_rom() {
+    init();
     let cartridge = build_cartridge(false);
     for i in 0..0x2000u16 {
       if i % 2 == 0 {
@@ -91,6 +94,7 @@ mod test {
 
   #[test]
   fn test_chr_ram() {
+    init();
     let mut cartridge = build_cartridge(true);
     for i in 0..0x2000u16 {
       cartridge.write_chr_u8(i, i as u8);

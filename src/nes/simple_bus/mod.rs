@@ -1,5 +1,3 @@
-const START_ADDRESS: usize = 0x0000;
-const PROGRAM_CONTROL_ADDRESS: usize = 0xFFFC;
 const MAX_ADDRESS: usize = 0xFFFF;
 
 pub mod addressable;

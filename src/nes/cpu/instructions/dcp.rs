@@ -43,9 +43,5 @@ mod test {
   #[named]
   fn test_dcp() {
     init();
-    // These test cases are based on Starr Horne's `nes-rust`.
-    // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
-    //
-    // TODO: Add tests.
   }
 }
