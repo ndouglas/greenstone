@@ -139,73 +139,8 @@ impl CPU {
   fn execute_instruction(&mut self, opcode: &Opcode) {
     trace_enter!();
     trace_var!(opcode);
-    match opcode.code {
-      // Illegal Opcodes
-      0xEB => {}
-      // General instructions
-      _ => match opcode.mnemonic {
-        // Legal Opcodes
-        "ADC" => self.instruction_adc(&opcode),
-        "AND" => self.instruction_and(&opcode),
-        "ASL" => self.instruction_asl(&opcode),
-        "BCC" => self.instruction_bcc(&opcode),
-        "BCS" => self.instruction_bcs(&opcode),
-        "BEQ" => self.instruction_beq(&opcode),
-        "BIT" => self.instruction_bit(&opcode),
-        "BMI" => self.instruction_bmi(&opcode),
-        "BNE" => self.instruction_bne(&opcode),
-        "BPL" => self.instruction_bpl(&opcode),
-        "BRK" => self.instruction_brk(&opcode),
-        "BVC" => self.instruction_bvc(&opcode),
-        "BVS" => self.instruction_bvs(&opcode),
-        "CLC" => self.instruction_clc(&opcode),
-        "CLD" => self.instruction_cld(&opcode),
-        "CLI" => self.instruction_cli(&opcode),
-        "CLV" => self.instruction_clv(&opcode),
-        "CMP" => self.instruction_cmp(&opcode),
-        "CPX" => self.instruction_cpx(&opcode),
-        "CPY" => self.instruction_cpy(&opcode),
-        "DEC" => self.instruction_dec(&opcode),
-        "DEX" => self.instruction_dex(&opcode),
-        "DEY" => self.instruction_dey(&opcode),
-        "EOR" => self.instruction_eor(&opcode),
-        "INC" => self.instruction_inc(&opcode),
-        "INX" => self.instruction_inx(&opcode),
-        "INY" => self.instruction_iny(&opcode),
-        "JMP" => self.instruction_jmp(&opcode),
-        "JSR" => self.instruction_jsr(&opcode),
-        "LDA" => self.instruction_lda(&opcode),
-        "LDX" => self.instruction_ldx(&opcode),
-        "LDY" => self.instruction_ldy(&opcode),
-        "LSR" => self.instruction_lsr(&opcode),
-        "NOP" => self.instruction_nop(&opcode),
-        "ORA" => self.instruction_ora(&opcode),
-        "PHA" => self.instruction_pha(&opcode),
-        "PHP" => self.instruction_php(&opcode),
-        "PLA" => self.instruction_pla(&opcode),
-        "PLP" => self.instruction_plp(&opcode),
-        "ROL" => self.instruction_rol(&opcode),
-        "ROR" => self.instruction_ror(&opcode),
-        "RTI" => self.instruction_rti(&opcode),
-        "RTS" => self.instruction_rts(&opcode),
-        "SBC" => self.instruction_sbc(&opcode),
-        "SEC" => self.instruction_sec(&opcode),
-        "SED" => self.instruction_sed(&opcode),
-        "SEI" => self.instruction_sei(&opcode),
-        "STA" => self.instruction_sta(&opcode),
-        "STX" => self.instruction_stx(&opcode),
-        "STY" => self.instruction_sty(&opcode),
-        "TAX" => self.instruction_tax(&opcode),
-        "TAY" => self.instruction_tay(&opcode),
-        "TSX" => self.instruction_tsx(&opcode),
-        "TXA" => self.instruction_txa(&opcode),
-        "TXS" => self.instruction_txs(&opcode),
-        "TYA" => self.instruction_tya(&opcode),
-        // Illegal Opcodes
-        "DCP" => self.instruction_dcp(&opcode),
-        _ => todo!(),
-      },
-    }
+    (opcode.function)(self, &opcode);
+    trace_exit!();
   }
 
   #[named]

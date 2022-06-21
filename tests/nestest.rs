@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::VecDeque;
 
 use greenstone::*;
 
@@ -133,9 +134,19 @@ mod test {
 
     let lines = read_lines("/Users/nathan/Projects/greenstone/test_fixtures/nestest_minus_ppu.log");
     let mut current_line = 0;
+    let mut messages = VecDeque::new();
+
     cpu.run_with_callback(move |cpu| {
-      println!("{}", trace(cpu));
-      assert_eq!(trace(cpu), lines[current_line], "Mismatch on line {}", current_line);
+      let trace_message = trace(cpu);
+      messages.push_back(trace_message.clone());
+      while messages.len() > 5 {
+        messages.pop_front();
+      }
+      assert_eq!(
+        trace_message, lines[current_line],
+        "Mismatch on line {}.  \nAdditional context: \n{}\n{}\n{}\n{}\n{}\n",
+        current_line, messages[0], messages[1], messages[2], messages[3], messages[4]
+      );
       current_line = current_line + 1;
     });
   }

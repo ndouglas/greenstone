@@ -18,8 +18,7 @@ impl CPU {
         debug!("Incrementing program counter (SKB/Skip Byte No-Op)...");
         self.increment_program_counter();
       }
-      _ => {
-      }
+      _ => {}
     }
     debug!("Ticking (NOP)...");
     self.tick();

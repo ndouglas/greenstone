@@ -114,6 +114,10 @@ pub use inx::*;
 pub mod iny;
 pub use iny::*;
 
+// JAM: Die in a fire
+pub mod jam;
+pub use jam::*;
+
 // JMP: Jump to Address
 pub mod jmp;
 pub use jmp::*;
@@ -121,6 +125,10 @@ pub use jmp::*;
 // JSR: Jump to Subroutine
 pub mod jsr;
 pub use jsr::*;
+
+// LAX: Load A and X
+pub mod lax;
+pub use lax::*;
 
 // LDA: Load A
 pub mod lda;
@@ -178,6 +186,10 @@ pub use rti::*;
 pub mod rts;
 pub use rts::*;
 
+// SAX: Store A & X to M
+pub mod sax;
+pub use sax::*;
+
 // SBC: Subtract from Accumulator With Carry.
 pub mod sbc;
 pub use sbc::*;
@@ -229,3 +241,7 @@ pub use txs::*;
 // TYA: Transfer Y -> A.
 pub mod tya;
 pub use tya::*;
+
+// WTF: Unimplemented/Unknown Instruction.
+pub mod wtf;
+pub use wtf::*;

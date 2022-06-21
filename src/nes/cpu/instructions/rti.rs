@@ -44,7 +44,7 @@ mod test {
     init();
     // These test cases are based on Starr Horne's `nes-rust`.
     // See https://github.com/starrhorne/nes-rust/blob/master/src/cpu_test.rs
-    test_instruction!("RTI", Implied, []{} => []{status: 0b11001111, program_counter: 0x1234, stack_pointer: 0xFF}, |cpu: &mut CPU, _opcode: &Opcode| {
+    test_instruction!("RTI", Implied, []{} => []{status: 0b11101111, program_counter: 0x1234, stack_pointer: 0xFD}, |cpu: &mut CPU, _opcode: &Opcode| {
       cpu.push_u16(0x1234);
       // RTI is not allowed to change the Unused flag.
       // RTI should clear the Break flag.
