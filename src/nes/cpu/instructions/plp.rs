@@ -19,7 +19,7 @@ impl CPU {
     self.tick();
     debug!("Ticking (incrementing the stack pointer register)...");
     self.tick();
-    let output = self.pop_u8() & !UNUSED_FLAG & !BREAK_FLAG;
+    let output = (self.pop_u8() | UNUSED_FLAG) & !BREAK_FLAG;
     trace_u8!(output);
     self.status = output;
     trace_u8!(self.status);

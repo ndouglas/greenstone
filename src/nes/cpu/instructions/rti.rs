@@ -24,12 +24,9 @@ impl CPU {
     self.tick();
     debug!("Ticking (adjusting stack pointer)...");
     self.tick();
-    let mut new_status = self.pop_u8();
+    let new_status = (self.pop_u8() | UNUSED_FLAG) & !BREAK_FLAG;
     trace_u8!(new_status);
-    new_status = new_status & !BREAK_FLAG;
-    new_status = new_status & !UNUSED_FLAG;
     self.status = new_status;
-    trace_u8!(self.status);
     self.program_counter = self.pop_u16();
     trace_u8!(self.program_counter);
     trace_exit!();

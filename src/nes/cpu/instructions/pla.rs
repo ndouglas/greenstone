@@ -20,6 +20,8 @@ impl CPU {
     debug!("Ticking (incrementing the stack pointer register)...");
     self.tick();
     self.a = self.pop_u8();
+    trace_u8!(self.a);
+    self.set_value_flags(self.a);
     trace_exit!();
   }
 }

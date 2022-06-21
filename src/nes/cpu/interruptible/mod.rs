@@ -5,6 +5,8 @@ use crate::traits::Interruptible;
 pub const NMI_ADDRESS: u16 = 0xFFFA;
 pub const RESET_ADDRESS: u16 = 0xFFFC;
 pub const IRQ_ADDRESS: u16 = 0xFFFE;
+pub const RESET_STACK: u8 = 0xFD;
+pub const RESET_STATUS: u8 = UNUSED_FLAG | INTERRUPT_DISABLE_FLAG;
 
 impl Interruptible for CPU {
   #[named]
@@ -91,7 +93,7 @@ impl Interruptible for CPU {
     self.a = 0x00;
     self.x = 0x00;
     self.y = 0x00;
-    self.stack_pointer = 0xFF;
+    self.stack_pointer = RESET_STACK;
     self.status = RESET_STATUS;
     debug!("Ticking twice (reading initial state for program counter)...");
     self.program_counter = self.read_u16(RESET_ADDRESS);

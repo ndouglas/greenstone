@@ -23,6 +23,73 @@ pub enum AddressingMode {
 
 impl CPU {
   #[named]
+  pub fn unclocked_get_operand_value(&mut self, mode: &AddressingMode, address: u16) -> Option<u8> {
+    use AddressingMode::*;
+    trace_enter!();
+    trace!("Using addressing mode {}", mode);
+    let result = match mode {
+      Implied => None,
+      _ => match self.unclocked_get_operand_address(mode, address) {
+        Some(new_address) => Some(self.unclocked_read_u8(new_address)),
+        None => None,
+      },
+    };
+    trace_var!(result);
+    trace_exit!();
+    result
+  }
+
+  #[named]
+  pub fn unclocked_get_operand_address(&mut self, mode: &AddressingMode, address: u16) -> Option<u16> {
+    use AddressingMode::*;
+    trace_enter!();
+    trace!("Using addressing mode {}", mode);
+    let result = match mode {
+      Implied => None,
+      Immediate => Some(address),
+      Relative => Some(address),
+      ZeroPage => Some(self.unclocked_read_u8(address) as u16),
+      ZeroPageX => Some(self.unclocked_read_u8(address).wrapping_add(self.x) as u16),
+      ZeroPageY => Some(self.unclocked_read_u8(address).wrapping_add(self.y) as u16),
+      Absolute => Some(self.unclocked_read_u16(address)),
+      AbsoluteX => Some(self.unclocked_read_u16(address).wrapping_add(self.x as u16)),
+      AbsoluteY => Some(self.unclocked_read_u16(address).wrapping_add(self.y as u16)),
+      Indirect => {
+        let pointer = self.unclocked_read_u16(address);
+        trace_u16!(pointer);
+        let address;
+        if pointer & 0x00FF == 0x00FF {
+          // Buggy behavior.
+          address = u16::from_le_bytes([self.unclocked_read_u8(pointer), self.unclocked_read_u8(pointer & 0xFF00)]);
+        } else {
+          // Normal behavior.
+          address = self.unclocked_read_u16(pointer);
+        }
+        trace_u16!(address);
+        Some(address)
+      }
+      IndirectX => {
+        let base = self.unclocked_read_u8(address);
+        let pointer = base.wrapping_add(self.x);
+        let lo = self.unclocked_read_u8(pointer as u16);
+        let hi = self.unclocked_read_u8(pointer.wrapping_add(1) as u16);
+        Some((hi as u16) << 8 | (lo as u16))
+      }
+      IndirectY => {
+        let base = self.unclocked_read_u8(address);
+        let lo = self.unclocked_read_u8(base as u16);
+        let hi = self.unclocked_read_u8(base.wrapping_add(1) as u16);
+        let deref_base = (hi as u16) << 8 | (lo as u16);
+        let deref = deref_base.wrapping_add(self.y as u16);
+        Some(deref)
+      }
+    };
+    trace_var!(result);
+    trace_exit!();
+    result
+  }
+
+  #[named]
   pub fn get_operand_address(&mut self, opcode: &Opcode, mode: &AddressingMode) -> Option<u16> {
     use AddressingMode::*;
     trace_enter!();

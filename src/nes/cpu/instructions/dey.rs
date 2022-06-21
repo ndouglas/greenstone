@@ -7,7 +7,6 @@ impl CPU {
     trace_enter!();
     let length = opcode.length;
     trace_u8!(length);
-    self.set_carry_flag(false);
     self.y = self.y.wrapping_sub(1);
     trace_u8!(self.y);
     self.tick();

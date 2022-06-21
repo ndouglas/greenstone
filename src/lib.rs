@@ -23,8 +23,7 @@ pub use traits::*;
 pub mod ui;
 pub use ui::*;
 
-#[cfg(test)]
-mod test {
+pub mod test {
   use super::*;
 
   #[named]

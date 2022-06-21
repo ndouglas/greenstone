@@ -41,7 +41,7 @@ impl Bus {
   }
 
   #[named]
-  pub fn inner_read_u8(&mut self, address: u16) -> u8 {
+  pub fn inner_read_u8(&self, address: u16) -> u8 {
     trace_enter!();
     trace_u16!(address);
     let result = match address {
@@ -49,18 +49,20 @@ impl Bus {
         let actual_address = address & RAM_ACTUAL_END_ADDRESS;
         trace_u16!(actual_address);
         self.memory[actual_address as usize]
-      },
+      }
       PPU_REGISTER_START_ADDRESS..=PPU_REGISTER_RANGE_END_ADDRESS => {
         let actual_address = address & PPU_REGISTER_ACTUAL_END_ADDRESS;
         trace_u16!(actual_address);
         todo!("Todo: PPU.");
         0x00
-      },
-      CARTRIDGE_START_ADDRESS..=CARTRIDGE_END_ADDRESS => if let Some(ref cartridge) = self.cartridge {
+      }
+      CARTRIDGE_START_ADDRESS..=CARTRIDGE_END_ADDRESS => {
+        if let Some(ref cartridge) = self.cartridge {
           cartridge.borrow().read_prg_u8(address)
-      } else {
+        } else {
           (address >> 8) as u8
-      },
+        }
+      }
       _ => {
         warn!("Ignoring out-of-bounds memory read at address {}", format_u16!(address));
         0x00
@@ -87,9 +89,11 @@ impl Bus {
         trace_u16!(actual_address);
         todo!("Todo: PPU.");
       }
-      CARTRIDGE_START_ADDRESS..=CARTRIDGE_END_ADDRESS => if let Some(ref cartridge) = self.cartridge {
+      CARTRIDGE_START_ADDRESS..=CARTRIDGE_END_ADDRESS => {
+        if let Some(ref cartridge) = self.cartridge {
           cartridge.borrow_mut().write_prg_u8(address, value);
-      },
+        }
+      }
       _ => {
         warn!("Ignoring out-of-bounds memory write at address {}", format_u16!(address));
       }
@@ -105,5 +109,4 @@ impl Bus {
     self.cartridge = Some(cartridge);
     trace_exit!();
   }
-
 }
