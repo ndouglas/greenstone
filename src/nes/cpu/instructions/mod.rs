@@ -114,6 +114,10 @@ pub use inx::*;
 pub mod iny;
 pub use iny::*;
 
+// ISB: Increment and Subtract from A
+pub mod isb;
+pub use isb::*;
+
 // JAM: Die in a fire
 pub mod jam;
 pub use jam::*;
