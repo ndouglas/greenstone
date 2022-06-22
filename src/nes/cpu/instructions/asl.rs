@@ -8,9 +8,6 @@ impl CPU {
     trace_u8!(self.status);
     let mode = &opcode.mode;
     trace_var!(mode);
-    if mode == &AddressingMode::Implied {
-      return self.instruction_asl_0a(opcode);
-    }
     let length = opcode.length;
     trace_u8!(length);
     let address = self.get_operand_address(opcode, mode).unwrap();

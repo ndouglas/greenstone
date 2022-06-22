@@ -174,6 +174,10 @@ pub use pla::*;
 pub mod plp;
 pub use plp::*;
 
+// RLA: Rotate Left and AND
+pub mod rla;
+pub use rla::*;
+
 // ROL: Rotate Left
 pub mod rol;
 pub use rol::*;
@@ -209,6 +213,10 @@ pub use sed::*;
 // SEI: Set the Interrupt Disable Flag.
 pub mod sei;
 pub use sei::*;
+
+// SLO: Arithmetic Shift Left + ORA
+pub mod slo;
+pub use slo::*;
 
 // STA: Store A.
 pub mod sta;

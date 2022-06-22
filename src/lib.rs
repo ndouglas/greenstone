@@ -5,8 +5,8 @@ extern crate derivative;
 #[macro_use]
 extern crate function_name;
 pub use ::function_name::named;
-extern crate iced;
-use iced::Application;
+// extern crate iced;
+// use iced::Application;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
@@ -20,8 +20,8 @@ pub mod nes;
 pub use nes::*;
 pub mod traits;
 pub use traits::*;
-pub mod ui;
-pub use ui::*;
+// pub mod ui;
+// pub use ui::*;
 
 pub mod test {
   use super::*;
