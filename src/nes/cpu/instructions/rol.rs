@@ -7,9 +7,6 @@ impl CPU {
     trace_enter!();
     let mode = &opcode.mode;
     trace_var!(mode);
-    if mode == &AddressingMode::Implied {
-      return self.instruction_rol_2a(opcode);
-    }
     let length = opcode.length;
     trace_u8!(length);
     let address = self.get_operand_address(opcode, mode).unwrap();

@@ -218,6 +218,10 @@ pub use sei::*;
 pub mod slo;
 pub use slo::*;
 
+// SRE: Logical Shift Right + EOR
+pub mod sre;
+pub use sre::*;
+
 // STA: Store A.
 pub mod sta;
 pub use sta::*;
