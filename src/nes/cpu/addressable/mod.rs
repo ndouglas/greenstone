@@ -4,7 +4,7 @@ use crate::traits::Addressable;
 impl Addressable for CPU {
   #[named]
   #[inline]
-  fn unclocked_read_u8(&self, address: u16) -> u8 {
+  fn unclocked_read_u8(&mut self, address: u16) -> u8 {
     trace_enter!();
     trace_u16!(address);
     let result = self.bus.unclocked_read_u8(address);

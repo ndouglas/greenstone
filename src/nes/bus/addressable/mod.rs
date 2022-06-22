@@ -4,7 +4,7 @@ use crate::traits::Addressable;
 impl Addressable for Bus {
   #[named]
   #[inline]
-  fn unclocked_read_u8(&self, address: u16) -> u8 {
+  fn unclocked_read_u8(&mut self, address: u16) -> u8 {
     trace_enter!();
     let result = self.inner_read_u8(address);
     trace_result!(result);
@@ -31,5 +31,17 @@ impl Addressable for Bus {
 
   #[named]
   #[inline]
-  fn tick(&mut self) {}
+  fn tick(&mut self) {
+    trace_enter!();
+    self.clock_counter = self.clock_counter.wrapping_add(1);
+    let cycles = self.clock_counter;
+    trace_var!(cycles);
+    debug!("Ticking PPU and checking results...");
+    self.ppu.tick();
+    debug!("Ticking PPU and checking results...");
+    self.ppu.tick();
+    debug!("Ticking PPU and checking results...");
+    self.ppu.tick();
+    trace_exit!();
+  }
 }

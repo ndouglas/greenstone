@@ -4,6 +4,8 @@ use std::rc::Rc;
 use crate::cartridge::Cartridge;
 use crate::traits::Mappable;
 
+use super::ppu::PPU;
+
 const PROGRAM_CONTROL_ADDRESS: u16 = 0xFFFC;
 const MAX_ADDRESS: u16 = 0xFFFF;
 
@@ -30,6 +32,8 @@ pub use interruptible::*;
 pub struct Bus {
   memory: [u8; (RAM_ACTUAL_END_ADDRESS + 1) as usize],
   cartridge: Option<Rc<RefCell<Cartridge>>>,
+  clock_counter: u64,
+  ppu: PPU,
 }
 
 impl Bus {
@@ -37,11 +41,13 @@ impl Bus {
     Bus {
       memory: [0; (RAM_ACTUAL_END_ADDRESS + 1) as usize],
       cartridge: None,
+      clock_counter: 0,
+      ppu: PPU::new(),
     }
   }
 
   #[named]
-  pub fn inner_read_u8(&self, address: u16) -> u8 {
+  pub fn inner_read_u8(&mut self, address: u16) -> u8 {
     trace_enter!();
     trace_u16!(address);
     let result = match address {
@@ -53,8 +59,7 @@ impl Bus {
       PPU_REGISTER_START_ADDRESS..=PPU_REGISTER_RANGE_END_ADDRESS => {
         let actual_address = address & PPU_REGISTER_ACTUAL_END_ADDRESS;
         trace_u16!(actual_address);
-        todo!("Todo: PPU.");
-        0x00
+        self.ppu.read_u8(actual_address)
       }
       CARTRIDGE_START_ADDRESS..=CARTRIDGE_END_ADDRESS => {
         if let Some(ref cartridge) = self.cartridge {
@@ -87,7 +92,7 @@ impl Bus {
       PPU_REGISTER_START_ADDRESS..=PPU_REGISTER_RANGE_END_ADDRESS => {
         let actual_address = address & PPU_REGISTER_ACTUAL_END_ADDRESS;
         trace_u16!(actual_address);
-        todo!("Todo: PPU.");
+        self.ppu.write_u8(actual_address, value);
       }
       CARTRIDGE_START_ADDRESS..=CARTRIDGE_END_ADDRESS => {
         if let Some(ref cartridge) = self.cartridge {
