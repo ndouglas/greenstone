@@ -116,7 +116,7 @@ fn main() {
   let mut rng = rand::thread_rng();
 
   //load the game
-  let bytes: Vec<u8> = std::fs::read("/Users/nathan/Projects/greenstone/roms/snake.nes").unwrap();
+  let bytes: Vec<u8> = std::fs::read("roms/snake.nes").unwrap();
   let mut bus = Bus::new();
   bus.load_cartridge_data(&bytes);
 
