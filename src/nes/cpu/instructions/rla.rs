@@ -21,6 +21,7 @@ impl CPU {
     trace_u8!(answer);
     self.a = answer;
     self.set_value_flags(answer);
+    debug!("Ticking (processing data)...");
     self.tick();
     trace_exit!();
   }

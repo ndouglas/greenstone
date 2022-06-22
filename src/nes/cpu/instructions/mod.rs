@@ -186,6 +186,10 @@ pub use rol::*;
 pub mod ror;
 pub use ror::*;
 
+// RRA: Rotate Right and ADC
+pub mod rra;
+pub use rra::*;
+
 // RTI: Return from Interrupt
 pub mod rti;
 pub use rti::*;
