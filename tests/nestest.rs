@@ -3,14 +3,14 @@ use std::collections::VecDeque;
 
 use greenstone::*;
 
-pub fn format_1byte_instruction(_cpu: &CPU, opcode: &Opcode) -> String {
+pub fn format_1byte_instruction(_cpu: &mut CPU, opcode: &Opcode) -> String {
   match opcode.code {
     0x0A | 0x4A | 0x2A | 0x6A => format!("A "),
     _ => String::from(""),
   }
 }
 
-pub fn format_2byte_instruction(cpu: &CPU, opcode: &Opcode, address: u8, start_address: u16, operand_address: u16, operand_value: u8) -> String {
+pub fn format_2byte_instruction(cpu: &mut CPU, opcode: &Opcode, address: u8, start_address: u16, operand_address: u16, operand_value: u8) -> String {
   use AddressingMode::*;
   match opcode.mode {
     Immediate => format!("#${:02x}", address),
@@ -35,7 +35,7 @@ pub fn format_2byte_instruction(cpu: &CPU, opcode: &Opcode, address: u8, start_a
   }
 }
 
-pub fn format_3byte_instruction(cpu: &CPU, opcode: &Opcode, address: u16, start_address: u16, operand_address: u16, operand_value: u8) -> String {
+pub fn format_3byte_instruction(cpu: &mut CPU, opcode: &Opcode, address: u16, start_address: u16, operand_address: u16, operand_value: u8) -> String {
   use AddressingMode::*;
   if opcode.mnemonic == "JMP" || opcode.mnemonic == "JSR" {
     if opcode.code == 0x6C {
@@ -74,11 +74,11 @@ pub fn trace(cpu: &mut CPU) -> String {
   let operand_address = cpu.unclocked_get_operand_address(&opcode.mode, start_address + 1).unwrap_or(0);
   let operand_value = cpu.unclocked_get_operand_value(&opcode.mode, start_address + 1).unwrap_or(0);
   let temporary = match opcode.length {
-    1 => format_1byte_instruction(&cpu, &opcode),
+    1 => format_1byte_instruction(cpu, &opcode),
     2 => {
       let address: u8 = cpu.unclocked_read_u8(start_address + 1);
       hex_dump.push(address);
-      format_2byte_instruction(&cpu, &opcode, address, start_address, operand_address, operand_value)
+      format_2byte_instruction(cpu, &opcode, address, start_address, operand_address, operand_value)
     }
     3 => {
       {
@@ -88,7 +88,7 @@ pub fn trace(cpu: &mut CPU) -> String {
         hex_dump.push(hi);
       }
       let address = cpu.unclocked_read_u16(start_address + 1);
-      format_3byte_instruction(&cpu, &opcode, address, start_address, operand_address, operand_value)
+      format_3byte_instruction(cpu, &opcode, address, start_address, operand_address, operand_value)
     }
     _ => String::from(""),
   };
@@ -123,7 +123,7 @@ mod test {
   #[test]
   fn test_nestest() {
     init();
-    let bytes: Vec<u8> = std::fs::read("/Users/nathan/Projects/greenstone/roms/nestest.nes").unwrap();
+    let bytes: Vec<u8> = std::fs::read("roms/nestest.nes").unwrap();
     let mut bus = Bus::new();
     bus.load_cartridge_data(&bytes);
 
@@ -132,7 +132,7 @@ mod test {
     // Automated mode.
     cpu.program_counter = 0xC000;
 
-    let lines = read_lines("/Users/nathan/Projects/greenstone/test_fixtures/nestest_minus_ppu.log");
+    let lines = read_lines("test_fixtures/nestest_minus_ppu.log");
     let mut current_line = 0;
     let mut messages = VecDeque::new();
 
