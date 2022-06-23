@@ -13,6 +13,10 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 extern crate pretty_env_logger;
+extern crate tokio;
+extern crate uuid;
+#[macro_use]
+extern crate warp;
 
 pub mod cli;
 pub use cli::*;
@@ -21,6 +25,8 @@ pub mod macros;
 pub use macros::*;
 pub mod nes;
 pub use nes::*;
+pub mod server;
+pub use server::*;
 pub mod traits;
 pub use traits::*;
 

@@ -15,10 +15,19 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 extern crate pretty_env_logger;
+#[macro_use]
+extern crate serde;
+#[macro_use]
+extern crate serde_json;
+extern crate tokio;
+extern crate uuid;
+#[macro_use]
+extern crate warp;
 
 pub use greenstone::*;
 
 use clap::Parser;
+use tokio::runtime::Runtime;
 
 // Temporary.
 use rand::Rng;
@@ -94,15 +103,29 @@ fn read_screen_state(cpu: &mut CPU, frame: &mut [u8; 32 * 3 * 32]) -> bool {
   }
   update
 }
+use crate::warp::Filter;
 
 #[named]
-fn main() {
+#[tokio::main]
+async fn main() {
   pretty_env_logger::init();
   trace!("main()");
+
   let args = Arguments::parse();
+  let mut server_option = None;
+  //
+  // Server
+  //
+  if args.serve {
+    println!("Serving!");
+    let server_handle = tokio::spawn(async {
+      let hello = warp::path!("hello" / String).map(|name| format!("Hello, {}!", name));
+      warp::serve(hello).run(([0, 0, 0, 0], 44553)).await;
+    });
+    server_option = Some(server_handle);
+  }
 
   // TEMPORARY
-
   let sdl_context = sdl2::init().unwrap();
   let video_subsystem = sdl_context.video().unwrap();
   let window = video_subsystem
@@ -142,5 +165,8 @@ fn main() {
   });
   // /TEMPORARY
 
-  // ui::UI::run(iced::Settings::default());
+  std::thread::sleep(std::time::Duration::from_millis(3600_000));
+  if let Some(server_handle) = server_option {
+    tokio::join!(server_handle);
+  }
 }
