@@ -5,8 +5,7 @@ impl CPU {
   #[named]
   pub fn instruction_brk(&mut self, opcode: &Opcode) {
     trace_enter!();
-    let length = opcode.length;
-    trace_u8!(length);
+    trace_var!(opcode);
     self.increment_program_counter();
     self.handle_break();
     self.set_interrupt_disable_flag(false);

@@ -3,10 +3,9 @@ use super::super::*;
 impl CPU {
   #[inline]
   #[named]
-  pub fn instruction_sec(&mut self, opcode: &Opcode) {
+  pub fn instruction_sec(&mut self, _opcode: &Opcode) {
     trace_enter!();
-    let length = opcode.length;
-    trace_u8!(length);
+    trace_var!(_opcode);
     self.set_carry_flag(true);
     self.tick();
     trace_var!(self.get_carry_flag());

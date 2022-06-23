@@ -5,8 +5,7 @@ impl CPU {
   #[named]
   pub fn instruction_sei(&mut self, opcode: &Opcode) {
     trace_enter!();
-    let length = opcode.length;
-    trace_u8!(length);
+    trace_var!(opcode);
     self.set_interrupt_disable_flag(true);
     self.tick();
     trace_var!(self.get_interrupt_disable_flag());

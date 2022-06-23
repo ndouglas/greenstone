@@ -3,9 +3,9 @@ use super::super::*;
 impl CPU {
   #[inline]
   #[named]
-  pub fn instruction_txa(&mut self, opcode: &Opcode) {
+  pub fn instruction_txa(&mut self, _opcode: &Opcode) {
     trace_enter!();
-    trace_u8!(opcode.length);
+    trace_var!(_opcode);
     self.a = self.x;
     self.tick();
     trace_u8!(self.a);

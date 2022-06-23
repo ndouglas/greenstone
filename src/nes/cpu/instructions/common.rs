@@ -25,8 +25,7 @@ impl CPU {
   pub fn branch_on_condition(&mut self, opcode: &Opcode, condition: bool) {
     trace_enter!();
     trace_var!(condition);
-    let length = opcode.length;
-    trace_u8!(length);
+    trace_var!(opcode);
     let mode = &opcode.mode;
     trace_var!(mode);
     let address = self.get_operand_address(opcode, mode).unwrap();

@@ -5,8 +5,7 @@ impl CPU {
   #[named]
   pub fn instruction_cli(&mut self, opcode: &Opcode) {
     trace_enter!();
-    let length = opcode.length;
-    trace_u8!(length);
+    trace_var!(opcode);
     self.set_interrupt_disable_flag(false);
     debug!("Ticking (processing instruction)...");
     self.tick();

@@ -29,8 +29,7 @@ impl CPU {
   #[named]
   pub fn instruction_jmp(&mut self, opcode: &Opcode) {
     trace_enter!();
-    let length = opcode.length;
-    trace_u8!(length);
+    trace_var!(opcode);
     let mode = &opcode.mode;
     trace_var!(mode);
     let address = self.get_operand_address(opcode, mode).unwrap();

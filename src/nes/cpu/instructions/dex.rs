@@ -5,8 +5,7 @@ impl CPU {
   #[named]
   pub fn instruction_dex(&mut self, opcode: &Opcode) {
     trace_enter!();
-    let length = opcode.length;
-    trace_u8!(length);
+    trace_var!(opcode);
     self.x = self.x.wrapping_sub(1);
     trace_u8!(self.x);
     self.tick();

@@ -8,8 +8,7 @@ impl CPU {
     trace_u8!(self.status);
     let mode = &opcode.mode;
     trace_var!(mode);
-    let length = opcode.length;
-    trace_u8!(length);
+    trace_var!(opcode);
     let address = self.get_operand_address(opcode, mode).unwrap();
     trace_u16!(address);
     debug!("Ticking (reading operand)...");

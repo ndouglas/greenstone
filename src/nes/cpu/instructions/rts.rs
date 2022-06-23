@@ -5,6 +5,7 @@ impl CPU {
   #[named]
   pub fn instruction_rts(&mut self, _opcode: &Opcode) {
     trace_enter!();
+    trace_var!(_opcode);
     debug!("Ticking (processing instruction)...");
     self.tick();
     debug!("Ticking (processing instruction)...");

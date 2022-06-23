@@ -1,5 +1,6 @@
 #![allow(unused_macros)]
 
+extern crate clap;
 #[macro_use]
 extern crate derivative;
 #[macro_use]
@@ -13,6 +14,8 @@ extern crate lazy_static;
 extern crate log;
 extern crate pretty_env_logger;
 
+pub mod cli;
+pub use cli::*;
 #[macro_use]
 pub mod macros;
 pub use macros::*;
@@ -20,8 +23,6 @@ pub mod nes;
 pub use nes::*;
 pub mod traits;
 pub use traits::*;
-// pub mod ui;
-// pub use ui::*;
 
 pub mod test {
   use super::*;

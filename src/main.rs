@@ -2,6 +2,8 @@
 #![allow(unused_imports)]
 
 #[macro_use]
+extern crate clap;
+#[macro_use]
 extern crate derivative;
 #[macro_use]
 extern crate function_name;
@@ -15,6 +17,8 @@ extern crate log;
 extern crate pretty_env_logger;
 
 pub use greenstone::*;
+
+use clap::Parser;
 
 // Temporary.
 use rand::Rng;
@@ -95,6 +99,7 @@ fn read_screen_state(cpu: &mut CPU, frame: &mut [u8; 32 * 3 * 32]) -> bool {
 fn main() {
   pretty_env_logger::init();
   trace!("main()");
+  let args = Arguments::parse();
 
   // TEMPORARY
 
@@ -115,8 +120,8 @@ fn main() {
   let mut screen_state = [0 as u8; 32 * 3 * 32];
   let mut rng = rand::thread_rng();
 
-  //load the game
-  let bytes: Vec<u8> = std::fs::read("roms/snake.nes").unwrap();
+  //load the file
+  let bytes: Vec<u8> = std::fs::read(args.file).unwrap();
   let mut bus = Bus::new();
   bus.load_cartridge_data(&bytes);
 
