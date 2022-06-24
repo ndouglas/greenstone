@@ -18,10 +18,10 @@ pub const PALETTE_END_ADDRESS: u16 = VRAM_END_ADDRESS;
 pub const VRAM_LENGTH: usize = 2048;
 
 pub struct VRAM {
-  nametables: Vec<u8>,
-  palettes: Vec<u8>,
-  cartridge: Option<Rc<RefCell<Cartridge>>>,
-  read_buffer: u8,
+  pub nametables: Vec<u8>,
+  pub palettes: Vec<u8>,
+  pub cartridge: Option<Rc<RefCell<Cartridge>>>,
+  pub read_buffer: u8,
 }
 
 impl VRAM {
@@ -32,6 +32,13 @@ impl VRAM {
       cartridge: None,
       read_buffer: 0,
     }
+  }
+
+  #[named]
+  pub fn set_cartridge(&mut self, cartridge: Rc<RefCell<Cartridge>>) {
+    trace_enter!();
+    self.cartridge = Some(cartridge);
+    trace_exit!();
   }
 
   #[named]
@@ -46,7 +53,7 @@ impl VRAM {
       },
       NAMETABLE_START_ADDRESS..=NAMETABLE_END_ADDRESS => {
         let mirroring_mode = self.get_mirroring_mode();
-        let mirrored_address = self.get_mirrored_nametable_address(&mirroring_mode, address) as usize;
+        let mirrored_address = self.get_mirrored_nametable_address(mirroring_mode, address) as usize;
         self.nametables[mirrored_address] = value;
       }
       PALETTE_START_ADDRESS..=PALETTE_END_ADDRESS => {
@@ -69,7 +76,7 @@ impl VRAM {
       },
       NAMETABLE_START_ADDRESS..=NAMETABLE_END_ADDRESS => {
         let mirroring_mode = self.get_mirroring_mode();
-        let mirrored_address = self.get_mirrored_nametable_address(&mirroring_mode, address) as usize;
+        let mirrored_address = self.get_mirrored_nametable_address(mirroring_mode, address) as usize;
         self.nametables[mirrored_address]
       }
       PALETTE_START_ADDRESS..=PALETTE_END_ADDRESS => {
@@ -118,8 +125,9 @@ impl VRAM {
     result
   }
 
+  // Adapted from code in Starr Horne's `rust-nes`.
   #[named]
-  pub fn get_mirrored_nametable_address(&self, mirroring_mode: &MirroringMode, address: u16) -> u16 {
+  pub fn get_mirrored_nametable_address(&self, mirroring_mode: MirroringMode, address: u16) -> u16 {
     use MirroringMode::*;
     trace_enter!();
     trace_var!(mirroring_mode);
@@ -134,6 +142,7 @@ impl VRAM {
     result
   }
 
+  // Adapted from code in Starr Horne's `rust-nes`.
   #[named]
   pub fn get_mirrored_palette_address(&self, address: u16) -> u16 {
     trace_enter!();
@@ -145,5 +154,167 @@ impl VRAM {
     trace_u16!(result);
     trace_exit!();
     result
+  }
+}
+
+#[cfg(test)]
+mod test {
+  use super::*;
+  use crate::test::init;
+
+  // These test cases come from Starr Horne's `rust-nes`.
+  // See https://github.com/starrhorne/nes-rust/blob/master/src/ppu/vram.rs
+
+  #[test]
+  fn test_read_u8_nametable() {
+    init();
+    let mut vram = VRAM::new();
+    vram.nametables[0x201] = 0x11;
+    assert_eq!(vram.read_u8(0x2201), 0x11);
+    assert_eq!(vram.read_u8(0x2200), 0x00);
+  }
+
+  #[test]
+  fn test_write_u8_nametable() {
+    init();
+    let mut vram = VRAM::new();
+    vram.write_u8(0x2201, 0x11);
+    assert_eq!(vram.nametables[0x201], 0x11);
+    assert_eq!(vram.nametables[0x200], 0x00);
+  }
+
+  #[test]
+  fn test_read_u8_palette() {
+    init();
+    let mut vram = VRAM::new();
+    vram.palettes[0x09] = 0x22;
+    vram.palettes[0x00] = 0x33;
+    assert_eq!(vram.read_u8(0x3F09), 0x22);
+    assert_eq!(vram.read_u8(0x3F00), 0x33);
+    assert_eq!(vram.read_u8(0x3F11), 0x00);
+  }
+
+  #[test]
+  fn test_write_u8_palette() {
+    init();
+    let mut vram = VRAM::new();
+    vram.write_u8(0x3F09, 0x11);
+    assert_eq!(vram.palettes[0x09], 0x11);
+  }
+
+  fn build_cartridge() -> Rc<RefCell<Cartridge>> {
+    init();
+    let mut data = vec![
+      0x4e, 0x45, 0x53, 0x1a, 0x02, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    ];
+    data.extend_from_slice(&[0u8; 2 * 0x4000]);
+    for i in 0..0x2000u16 {
+      data.push(i as u8);
+    }
+    Rc::new(RefCell::new(Cartridge::new(&data)))
+  }
+
+  #[test]
+  fn test_read_u8_cartridge() {
+    init();
+    let mut vram = VRAM::new();
+    vram.set_cartridge(build_cartridge());
+    assert_eq!(vram.read_u8(0), 0);
+    assert_eq!(vram.read_u8(10), 10);
+    assert_eq!(vram.read_u8(20), 20);
+  }
+
+  #[test]
+  fn test_buffered_read_u8() {
+    init();
+    let mut vram = VRAM::new();
+    vram.nametables[0x201] = 0x11;
+    vram.nametables[0x202] = 0x12;
+    assert_eq!(vram.buffered_read_u8(0x2201), 0);
+    assert_eq!(vram.buffered_read_u8(0x2202), 0x11);
+    assert_eq!(vram.buffered_read_u8(0x2203), 0x12);
+    assert_eq!(vram.buffered_read_u8(0x2204), 0);
+  }
+
+  #[test]
+  fn test_mirror_nametable_horizontally() {
+    use MirroringMode::*;
+    init();
+    let vram = VRAM::new();
+    // Nametable 1 - starting at 0x2000
+    assert_eq!(vram.get_mirrored_nametable_address(Horizontal, 0x2001), 1);
+    assert_eq!(vram.get_mirrored_nametable_address(Horizontal, 0x2201), 0x201);
+    assert_eq!(vram.get_mirrored_nametable_address(Horizontal, 0x2401), 1);
+    assert_eq!(vram.get_mirrored_nametable_address(Horizontal, 0x2601), 0x201);
+
+    // Nametable 1 - mirrored at 0x3000
+    assert_eq!(vram.get_mirrored_nametable_address(Horizontal, 0x3001), 1);
+    assert_eq!(vram.get_mirrored_nametable_address(Horizontal, 0x3201), 0x201);
+    assert_eq!(vram.get_mirrored_nametable_address(Horizontal, 0x3401), 1);
+    assert_eq!(vram.get_mirrored_nametable_address(Horizontal, 0x3601), 0x201);
+
+    // Nametable 2 - starting at 0x2800
+    assert_eq!(vram.get_mirrored_nametable_address(Horizontal, 0x2801), 0x401);
+    assert_eq!(vram.get_mirrored_nametable_address(Horizontal, 0x2A01), 0x601);
+    assert_eq!(vram.get_mirrored_nametable_address(Horizontal, 0x2C01), 0x401);
+    assert_eq!(vram.get_mirrored_nametable_address(Horizontal, 0x2E01), 0x601);
+
+    // Nametable 2 - mirrored at 0x3800
+    assert_eq!(vram.get_mirrored_nametable_address(Horizontal, 0x3801), 0x401);
+    assert_eq!(vram.get_mirrored_nametable_address(Horizontal, 0x3A01), 0x601);
+    assert_eq!(vram.get_mirrored_nametable_address(Horizontal, 0x3C01), 0x401);
+    assert_eq!(vram.get_mirrored_nametable_address(Horizontal, 0x3E01), 0x601);
+  }
+
+  #[test]
+  fn test_mirror_nametable_vertically() {
+    use MirroringMode::*;
+    init();
+    let vram = VRAM::new();
+    // Nametable 1 - starting at 0x2000
+    assert_eq!(vram.get_mirrored_nametable_address(Vertical, 0x2001), 1);
+    assert_eq!(vram.get_mirrored_nametable_address(Vertical, 0x2201), 0x201);
+    assert_eq!(vram.get_mirrored_nametable_address(Vertical, 0x2801), 1);
+    assert_eq!(vram.get_mirrored_nametable_address(Vertical, 0x2A01), 0x201);
+
+    // Nametable 1 - mirrored at 0x3000
+    assert_eq!(vram.get_mirrored_nametable_address(Vertical, 0x3001), 1);
+    assert_eq!(vram.get_mirrored_nametable_address(Vertical, 0x3201), 0x201);
+    assert_eq!(vram.get_mirrored_nametable_address(Vertical, 0x3801), 1);
+    assert_eq!(vram.get_mirrored_nametable_address(Vertical, 0x3A01), 0x201);
+
+    // Nametable 2 - starting at 0x2400
+    assert_eq!(vram.get_mirrored_nametable_address(Vertical, 0x2401), 0x401);
+    assert_eq!(vram.get_mirrored_nametable_address(Vertical, 0x2601), 0x601);
+    assert_eq!(vram.get_mirrored_nametable_address(Vertical, 0x2C01), 0x401);
+    assert_eq!(vram.get_mirrored_nametable_address(Vertical, 0x2E01), 0x601);
+
+    // Nametable 2 - mirrored at 0x3800
+    assert_eq!(vram.get_mirrored_nametable_address(Vertical, 0x3401), 0x401);
+    assert_eq!(vram.get_mirrored_nametable_address(Vertical, 0x3601), 0x601);
+    assert_eq!(vram.get_mirrored_nametable_address(Vertical, 0x3C01), 0x401);
+    assert_eq!(vram.get_mirrored_nametable_address(Vertical, 0x3E01), 0x601);
+  }
+
+  #[test]
+  fn test_mirror_palette() {
+    init();
+    let vram = VRAM::new();
+    assert_eq!(vram.get_mirrored_palette_address(0x3F01), 1);
+    assert_eq!(vram.get_mirrored_palette_address(0x3F21), 1);
+    assert_eq!(vram.get_mirrored_palette_address(0x3F41), 1);
+    assert_eq!(vram.get_mirrored_palette_address(0x3F11), 0x11);
+    // Test mirroring of 0x10
+    assert_eq!(vram.get_mirrored_palette_address(0x3F10), 0);
+    assert_eq!(vram.get_mirrored_palette_address(0x3F30), 0);
+    // Test mirroring of 0x14
+    assert_eq!(vram.get_mirrored_palette_address(0x3F14), 4);
+    assert_eq!(vram.get_mirrored_palette_address(0x3F34), 4);
+    // Test mirroring of 0x18
+    assert_eq!(vram.get_mirrored_palette_address(0x3F18), 8);
+    assert_eq!(vram.get_mirrored_palette_address(0x3F38), 8);
+    // Test mirroring of 0x1c
+    assert_eq!(vram.get_mirrored_palette_address(0x3F1C), 0x0C);
+    assert_eq!(vram.get_mirrored_palette_address(0x3F3C), 0x0C);
   }
 }
