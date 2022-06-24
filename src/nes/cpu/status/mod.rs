@@ -34,7 +34,7 @@ impl CPU {
     } else {
       self.status = self.status & !(flag as u8);
     }
-    trace_status_register!(self.status);
+    trace!("{}", format_cpu_status_register!(self.status));
     trace_exit!();
   }
 

@@ -76,7 +76,7 @@ impl ControlRegister {
     } else {
       self.value = self.value & !(flag as u8);
     }
-    trace_ppu_control_register!(self.value);
+    trace!("{}", format_ppu_control_register!(self.value));
     trace_exit!();
   }
 

@@ -78,7 +78,7 @@ impl MaskRegister {
     } else {
       self.value = self.value & !(flag as u8);
     }
-    trace_ppu_mask_register!(self.value);
+    trace!("{}", format_ppu_mask_register!(self.value));
     trace_exit!();
   }
 

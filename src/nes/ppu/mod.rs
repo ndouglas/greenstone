@@ -1,5 +1,3 @@
-use super::*;
-
 pub mod registers;
 pub use registers::*;
 
@@ -14,6 +12,7 @@ pub const OAM_DATA_REGISTER_INDEX: u8 = 4;
 pub const SCROLL_REGISTER_INDEX: u8 = 5;
 pub const ADDRESS_REGISTER_INDEX: u8 = 6;
 pub const DATA_REGISTER_INDEX: u8 = 7;
+pub const OAM_RAM_SIZE: u8 = 256;
 
 /// NES Picture-Processing Unit
 pub struct PPU {
@@ -21,10 +20,16 @@ pub struct PPU {
   control_register: ControlRegister,
   /// Mask Register.
   mask_register: MaskRegister,
+  /// Status Register.
+  status_register: StatusRegister,
+  /// OAM Address Register.
+  oam_address: u8,
   /// Address Register.``
   address_register: AddressRegister,
   /// The PPU <-> CPU data bus, latching but constantly decaying...
   latching_bus: u8,
+  /// OAM RAM.
+  oam_ram: Vec<u8>,
 }
 
 impl PPU {
@@ -32,8 +37,11 @@ impl PPU {
     PPU {
       control_register: ControlRegister::new(),
       mask_register: MaskRegister::new(),
+      status_register: StatusRegister::new(),
+      oam_address: 0x00,
       address_register: AddressRegister::new(),
       latching_bus: 0x00,
+      oam_ram: vec![u8; OAM_RAM_SIZE],
     }
   }
 
@@ -44,6 +52,7 @@ impl PPU {
     trace_u16!(address);
     let index = (address % 8) as u8;
     let result = match index {
+      STATUS_REGISTER_INDEX => self.status_register.read_u8() | (self.latching_bus & 0b0001_1111),
       // By default, reads (including of write-only registers), return the
       // value on the decaying latching data bus.
       _ => self.latching_bus,
@@ -65,7 +74,7 @@ impl PPU {
       MASK_REGISTER_INDEX => self.mask_register.write_u8(value),
       // Read-only!
       STATUS_REGISTER_INDEX => (),
-      OAM_ADDRESS_REGISTER_INDEX => (),
+      OAM_ADDRESS_REGISTER_INDEX => self.oam_address = value,
       OAM_DATA_REGISTER_INDEX => (),
       SCROLL_REGISTER_INDEX => (),
       ADDRESS_REGISTER_INDEX => self.address_register.write_u8(value),
