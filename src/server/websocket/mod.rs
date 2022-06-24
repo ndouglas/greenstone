@@ -1,6 +1,5 @@
 use super::*;
 use futures::{FutureExt, StreamExt};
-use serde::Deserialize;
 use serde_json::from_str;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;

@@ -30,18 +30,18 @@ macro_rules! format_status_register {
   };
 }
 
-macro_rules! nestest_log_cpu {
-  ($var: ident) => {
+macro_rules! format_ppu_control_register {
+  ($var: expr) => {
     format!(
-      "N={}, O={}, U={}, B={}, D={}, I={}, Z={}, C={}",
-      ($var & NEGATIVE_FLAG) > 0,
-      ($var & OVERFLOW_FLAG) > 0,
-      ($var & UNUSED_FLAG) > 0,
-      ($var & BREAK_FLAG) > 0,
-      ($var & DECIMAL_FLAG) > 0,
-      ($var & INTERRUPT_DISABLE_FLAG) > 0,
-      ($var & ZERO_FLAG) > 0,
-      ($var & CARRY_FLAG) > 0
+      "V={}, P={}, H={}, B={}, S={}, I={}, N={}, N={}",
+      ($var & GENERATE_NMI_FLAG) > 0,
+      ($var & PPU_ROLE_SELECT_FLAG) > 0,
+      ($var & SPRITE_SIZE_FLAG) > 0,
+      ($var & BACKGROUND_ADDRESS_FLAG) > 0,
+      ($var & SPRITE_ADDRESS_FLAG) > 0,
+      ($var & VRAM_INCREMENT_FLAG) > 0,
+      ($var & NAMETABLE_2_FLAG) > 0,
+      ($var & NAMETABLE_1_FLAG) > 0
     )
   };
 }
@@ -106,6 +106,27 @@ macro_rules! info_status_register {
   ($var: expr) => {
     #[cfg(debug_assertions)]
     info!("Status: {}", format_status_register!($var));
+  };
+}
+
+macro_rules! trace_ppu_control_register {
+  ($var: expr) => {
+    #[cfg(debug_assertions)]
+    trace!("PPU Control: {}", format_ppu_control_register!($var));
+  };
+}
+
+macro_rules! debug_ppu_control_register {
+  ($var: expr) => {
+    #[cfg(debug_assertions)]
+    debug!("PPU Control: {}", format_ppu_control_register!($var));
+  };
+}
+
+macro_rules! info_ppu_control_register {
+  ($var: expr) => {
+    #[cfg(debug_assertions)]
+    info!("PPU Control: {}", format_ppu_control_register!($var));
   };
 }
 
