@@ -5,6 +5,7 @@ use warp::ws::Message;
 use warp::Error;
 
 /// Represents the user accessing the server via WebSocket.
+#[derive(Clone, Debug)]
 pub struct Client {
   pub user_id: usize,
   pub sender: Option<UnboundedSender<Result<Message, Error>>>,

@@ -113,14 +113,14 @@ async fn main() {
 
   let args = Arguments::parse();
   let mut server_option = None;
+
   //
   // Server
   //
   if args.serve {
     println!("Serving!");
     let server_handle = tokio::spawn(async {
-      let hello = warp::path!("hello" / String).map(|name| format!("Hello, {}!", name));
-      warp::serve(hello).run(([0, 0, 0, 0], 44553)).await;
+      start_server().await;
     });
     server_option = Some(server_handle);
   }
