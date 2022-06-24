@@ -1,5 +1,10 @@
+use super::*;
+
 pub mod registers;
 pub use registers::*;
+
+pub mod vram;
+pub use vram::*;
 
 pub const CONTROL_REGISTER_INDEX: u8 = 0;
 pub const MASK_REGISTER_INDEX: u8 = 1;
