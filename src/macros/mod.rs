@@ -46,6 +46,22 @@ macro_rules! format_ppu_control_register {
   };
 }
 
+macro_rules! format_ppu_mask_register {
+  ($var: expr) => {
+    format!(
+      "B={}, G={}, R={}, s={}, b={}, M={}, m={}, G={}",
+      ($var & EMPHASIZE_BLUE_FLAG) > 0,
+      ($var & EMPHASIZE_GREEN_FLAG) > 0,
+      ($var & EMPHASIZE_RED_FLAG) > 0,
+      ($var & SHOW_SPRITES_FLAG) > 0,
+      ($var & SHOW_BACKGROUND_FLAG) > 0,
+      ($var & SHOW_SPRITES_LEFT_FLAG) > 0,
+      ($var & SHOW_BACKGROUND_LEFT_FLAG) > 0,
+      ($var & GREYSCALE_FLAG) > 0
+    )
+  };
+}
+
 macro_rules! trace_u8 {
   ($var: expr) => {
     #[cfg(debug_assertions)]
@@ -127,6 +143,27 @@ macro_rules! info_ppu_control_register {
   ($var: expr) => {
     #[cfg(debug_assertions)]
     info!("PPU Control: {}", format_ppu_control_register!($var));
+  };
+}
+
+macro_rules! trace_ppu_mask_register {
+  ($var: expr) => {
+    #[cfg(debug_assertions)]
+    trace!("PPU Mask: {}", format_ppu_mask_register!($var));
+  };
+}
+
+macro_rules! debug_ppu_mask_register {
+  ($var: expr) => {
+    #[cfg(debug_assertions)]
+    debug!("PPU Mask: {}", format_ppu_mask_register!($var));
+  };
+}
+
+macro_rules! info_ppu_mask_register {
+  ($var: expr) => {
+    #[cfg(debug_assertions)]
+    info!("PPU Mask: {}", format_ppu_mask_register!($var));
   };
 }
 
