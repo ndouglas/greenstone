@@ -1,3 +1,8 @@
+use super::*;
+
+pub mod registers;
+pub use registers::*;
+
 pub struct PPU {}
 
 impl PPU {
