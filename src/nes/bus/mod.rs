@@ -59,7 +59,8 @@ impl Bus {
       PPU_REGISTER_START_ADDRESS..=PPU_REGISTER_RANGE_END_ADDRESS => {
         let actual_address = address & PPU_REGISTER_ACTUAL_END_ADDRESS;
         trace_u16!(actual_address);
-        self.ppu.read_u8(actual_address)
+        let index = (actual_address % 8) as u8;
+        self.ppu.read_register(index)
       }
       CARTRIDGE_START_ADDRESS..=CARTRIDGE_END_ADDRESS => {
         if let Some(ref cartridge) = self.cartridge {
@@ -92,7 +93,8 @@ impl Bus {
       PPU_REGISTER_START_ADDRESS..=PPU_REGISTER_RANGE_END_ADDRESS => {
         let actual_address = address & PPU_REGISTER_ACTUAL_END_ADDRESS;
         trace_u16!(actual_address);
-        self.ppu.write_u8(actual_address, value);
+        let index = (actual_address % 8) as u8;
+        self.ppu.write_register(index, value);
       }
       CARTRIDGE_START_ADDRESS..=CARTRIDGE_END_ADDRESS => {
         if let Some(ref cartridge) = self.cartridge {

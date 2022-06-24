@@ -12,7 +12,8 @@ pub const OAM_DATA_REGISTER_INDEX: u8 = 4;
 pub const SCROLL_REGISTER_INDEX: u8 = 5;
 pub const ADDRESS_REGISTER_INDEX: u8 = 6;
 pub const DATA_REGISTER_INDEX: u8 = 7;
-pub const OAM_RAM_SIZE: u8 = 256;
+
+pub const OAM_RAM_SIZE: u16 = 256;
 
 /// NES Picture-Processing Unit
 pub struct PPU {
@@ -28,6 +29,8 @@ pub struct PPU {
   address_register: AddressRegister,
   /// The PPU <-> CPU data bus, latching but constantly decaying...
   latching_bus: u8,
+  /// Video RAM.
+  vram: VRAM,
   /// OAM RAM.
   oam_ram: Vec<u8>,
 }
@@ -41,16 +44,16 @@ impl PPU {
       oam_address: 0x00,
       address_register: AddressRegister::new(),
       latching_bus: 0x00,
-      oam_ram: vec![u8; OAM_RAM_SIZE],
+      vram: VRAM::new(),
+      oam_ram: vec![0; OAM_RAM_SIZE as usize],
     }
   }
 
   #[named]
   #[inline]
-  pub fn read_u8(&mut self, address: u16) -> u8 {
+  pub fn read_register(&mut self, index: u8) -> u8 {
     trace_enter!();
-    trace_u16!(address);
-    let index = (address % 8) as u8;
+    trace_u8!(index);
     let result = match index {
       STATUS_REGISTER_INDEX => self.status_register.read_u8() | (self.latching_bus & 0b0001_1111),
       // By default, reads (including of write-only registers), return the
@@ -64,11 +67,10 @@ impl PPU {
 
   #[named]
   #[inline]
-  pub fn write_u8(&mut self, address: u16, value: u8) {
+  pub fn write_register(&mut self, index: u8, value: u8) {
     trace_enter!();
-    trace_u16!(address);
+    trace_u16!(index);
     trace_u16!(value);
-    let index = (address % 8) as u8;
     match index {
       CONTROL_REGISTER_INDEX => self.control_register.write_u8(value),
       MASK_REGISTER_INDEX => self.mask_register.write_u8(value),
@@ -89,5 +91,14 @@ impl PPU {
   pub fn tick(&mut self) {
     trace_enter!();
     trace_exit!();
+  }
+
+  #[named]
+  pub fn reset(&mut self) {
+    self.control_register = ControlRegister::new();
+    self.mask_register = MaskRegister::new();
+    self.status_register = StatusRegister::new();
+    self.vram.reset();
+    self.oam_ram = vec![0; OAM_RAM_SIZE as usize];
   }
 }

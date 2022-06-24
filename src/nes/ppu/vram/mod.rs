@@ -155,6 +155,15 @@ impl VRAM {
     trace_exit!();
     result
   }
+
+  #[named]
+  pub fn reset(&mut self) {
+    trace_enter!();
+    self.nametables = vec![0; 2 * NAMETABLE_SIZE as usize];
+    self.palettes = vec![0; PALETTE_SIZE as usize];
+    self.cartridge = None;
+    trace_exit!();
+  }
 }
 
 #[cfg(test)]
