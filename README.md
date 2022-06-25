@@ -1,6 +1,8 @@
 # Greenstone
 
-A basic NES emulator written in Rust with an emphasis on debugging and game development.
+A basic NES emulator written in Rust with an emphasis on debugging and game development.  
+
+This is just a personal project for educational purposes.  If you're learning how to write a NES emulator, I'd recommend checking out the resources below; they're infinitely better than mine 🙂
 
 ## Acknowledgements
 

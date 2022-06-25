@@ -26,11 +26,12 @@ pub const PPU_OPEN_BUS2_FLAG: u8 = 0b0000_0100;
 pub const PPU_OPEN_BUS1_FLAG: u8 = 0b0000_0010;
 pub const PPU_OPEN_BUS0_FLAG: u8 = 0b0000_0001;
 
+#[repr(u8)]
 #[derive(Debug)]
 pub enum StatusFlags {
-  VerticalBlank,
-  SpriteZeroHit,
-  SpriteOverflow,
+  VerticalBlank = VERTICAL_BLANK_FLAG,
+  SpriteZeroHit = SPRITE_ZERO_HIT_FLAG,
+  SpriteOverflow = SPRITE_OVERFLOW_FLAG,
 }
 
 pub struct StatusRegister {

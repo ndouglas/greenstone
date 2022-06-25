@@ -14,6 +14,7 @@ name = "greenstone"
 path = "src/main.rs"
 
 [dependencies]
+bitfield = "0.13"
 clap = { version = "3.2.5", features = ["derive"] }
 derivative = "2.2.0"
 function_name = "0.3.0"

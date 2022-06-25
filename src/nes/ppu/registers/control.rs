@@ -318,4 +318,14 @@ impl ControlRegister {
     trace_exit!();
     result
   }
+
+  #[named]
+  #[inline]
+  pub fn get_nametable(&self) -> u8 {
+    trace_enter!();
+    let result = self.value & 0b0000_0011;
+    trace_u8!(result);
+    trace_exit!();
+    result
+  }
 }

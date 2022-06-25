@@ -2,6 +2,8 @@
 #![allow(unused_imports)]
 
 #[macro_use]
+extern crate bitfield;
+#[macro_use]
 extern crate clap;
 #[macro_use]
 extern crate derivative;
