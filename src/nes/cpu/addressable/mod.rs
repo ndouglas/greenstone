@@ -60,4 +60,12 @@ impl Addressable for CPU {
     self.bus.tick();
     trace_exit!();
   }
+
+  fn get_framebuffer(&self) -> &[u8] {
+    self.bus.get_framebuffer()
+  }
+
+  fn take_frame_ready(&mut self) -> bool {
+    self.bus.take_frame_ready()
+  }
 }
