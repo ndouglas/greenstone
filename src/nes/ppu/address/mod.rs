@@ -52,7 +52,7 @@ impl Address {
   pub fn scroll_x(&mut self) {
     if self.coarse_x() == 31 {
       self.set_coarse_x(0);
-      self.0 ^= 0x0400 // switch horizontal nametable
+      self.0 ^= 0x0400; // switch horizontal nametable
     } else {
       let cx = self.coarse_x();
       self.set_coarse_x(cx + 1);

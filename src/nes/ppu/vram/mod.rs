@@ -161,7 +161,8 @@ impl VRAM {
     trace_enter!();
     self.nametables = vec![0; 2 * NAMETABLE_SIZE as usize];
     self.palettes = vec![0; PALETTE_SIZE as usize];
-    self.cartridge = None;
+    self.read_buffer = 0;
+    // Note: Don't clear cartridge reference - it's still needed for CHR ROM access
     trace_exit!();
   }
 }
