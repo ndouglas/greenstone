@@ -5,12 +5,14 @@ impl Interruptible for Bus {
   #[named]
   #[inline]
   fn is_nmi_ready(&self) -> bool {
-    false
+    self.ppu.is_nmi_pending()
   }
 
   #[named]
   #[inline]
-  fn acknowledge_nmi(&mut self) {}
+  fn acknowledge_nmi(&mut self) {
+    self.ppu.acknowledge_nmi();
+  }
 
   #[named]
   #[inline]
@@ -32,5 +34,7 @@ impl Interruptible for Bus {
 
   #[named]
   #[inline]
-  fn handle_reset(&mut self) {}
+  fn handle_reset(&mut self) {
+    self.ppu.reset();
+  }
 }

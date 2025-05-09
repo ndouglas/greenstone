@@ -44,4 +44,12 @@ impl Addressable for Bus {
     self.ppu.tick();
     trace_exit!();
   }
+
+  fn get_framebuffer(&self) -> &[u8] {
+    self.ppu.get_framebuffer()
+  }
+
+  fn take_frame_ready(&mut self) -> bool {
+    self.ppu.take_frame_ready()
+  }
 }

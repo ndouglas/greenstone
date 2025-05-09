@@ -113,7 +113,18 @@ impl Bus {
     trace_enter!();
     info!("Loading cartridge from data...");
     let cartridge = Rc::new(RefCell::new(Cartridge::new(data)));
+    self.ppu.vram.set_cartridge(cartridge.clone());
     self.cartridge = Some(cartridge);
     trace_exit!();
+  }
+
+  /// Get a reference to the PPU's framebuffer.
+  pub fn get_framebuffer(&self) -> &[u8] {
+    self.ppu.get_framebuffer()
+  }
+
+  /// Check if a new frame is ready and clear the flag.
+  pub fn take_frame_ready(&mut self) -> bool {
+    self.ppu.take_frame_ready()
   }
 }
