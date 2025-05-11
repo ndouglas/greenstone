@@ -69,4 +69,14 @@ pub trait Addressable {
     self.write_u8(address, lo);
     self.write_u8(address.wrapping_add(1), hi);
   }
+
+  /// Get the PPU framebuffer (256x240 RGB). Default returns empty slice.
+  fn get_framebuffer(&self) -> &[u8] {
+    &[]
+  }
+
+  /// Check if a new frame is ready and clear the flag. Default returns false.
+  fn take_frame_ready(&mut self) -> bool {
+    false
+  }
 }

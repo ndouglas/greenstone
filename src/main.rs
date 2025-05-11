@@ -88,7 +88,17 @@ fn color(byte: u8) -> Color {
   }
 }
 
-// Temporary
+// Check if PPU has a new frame ready
+fn check_ppu_frame_ready(cpu: &mut CPU) -> bool {
+  cpu.take_frame_ready()
+}
+
+// Get the PPU framebuffer
+fn get_ppu_framebuffer(cpu: &CPU) -> &[u8] {
+  cpu.get_framebuffer()
+}
+
+// Temporary - for test ROMs that write to RAM
 fn read_screen_state(cpu: &mut CPU, frame: &mut [u8; 32 * 3 * 32]) -> bool {
   let mut frame_idx = 0;
   let mut update = false;
@@ -127,45 +137,56 @@ async fn main() {
     server_option = Some(server_handle);
   }
 
-  // TEMPORARY
+  // NES display constants
+  const NES_WIDTH: u32 = 256;
+  const NES_HEIGHT: u32 = 240;
+  const SCALE: f32 = 3.0;
+
   let sdl_context = sdl2::init().unwrap();
   let video_subsystem = sdl_context.video().unwrap();
   let window = video_subsystem
-    .window("snek game 🐍", (32.0 * 10.0) as u32, (32.0 * 10.0) as u32)
+    .window(
+      "Greenstone NES Emulator",
+      (NES_WIDTH as f32 * SCALE) as u32,
+      (NES_HEIGHT as f32 * SCALE) as u32,
+    )
     .position_centered()
     .build()
     .unwrap();
 
   let mut canvas = window.into_canvas().present_vsync().build().unwrap();
   let mut event_pump = sdl_context.event_pump().unwrap();
-  canvas.set_scale(10.0, 10.0).unwrap();
+  canvas.set_scale(SCALE, SCALE).unwrap();
   let creator = canvas.texture_creator();
-  let mut texture = creator.create_texture_target(PixelFormatEnum::RGB24, 32, 32).unwrap();
+  let mut texture = creator
+    .create_texture_target(PixelFormatEnum::RGB24, NES_WIDTH, NES_HEIGHT)
+    .unwrap();
 
-  let mut screen_state = [0 as u8; 32 * 3 * 32];
-  let mut rng = rand::thread_rng();
-
-  //load the file
+  // Load the ROM file
   let bytes: Vec<u8> = std::fs::read(args.file).unwrap();
   let mut bus = Bus::new();
   bus.load_cartridge_data(&bytes);
 
-  //load the game
+  // Initialize CPU with the bus
   let mut cpu = CPU::new_with_bus(Box::new(bus));
   cpu.handle_reset();
 
-  // run the game cycle
+  // Run the emulation loop
   cpu.run_with_callback(move |cpu| {
     handle_user_input(cpu, &mut event_pump);
-    cpu.write_u8(0xfe, rng.gen_range(1, 16));
-    if read_screen_state(cpu, &mut screen_state) {
-      texture.update(None, &screen_state, 32 * 3).unwrap();
-      canvas.copy(&texture, None, None).unwrap();
-      canvas.present();
+
+    // Check if PPU has rendered a new frame
+    if check_ppu_frame_ready(cpu) {
+      let framebuffer = get_ppu_framebuffer(cpu);
+      if framebuffer.len() == (NES_WIDTH * NES_HEIGHT * 3) as usize {
+        texture
+          .update(None, framebuffer, (NES_WIDTH * 3) as usize)
+          .unwrap();
+        canvas.copy(&texture, None, None).unwrap();
+        canvas.present();
+      }
     }
-    ::std::thread::sleep(std::time::Duration::new(0, 70_000));
   });
-  // /TEMPORARY
 
   std::thread::sleep(std::time::Duration::from_millis(3600_000));
   if let Some(server_handle) = server_option {
