@@ -298,12 +298,16 @@ impl PPU {
   pub fn tick(&mut self) {
     trace_enter!();
 
+    // Check if rendering is enabled
+    let rendering_enabled =
+      self.mask_register.get_show_background_flag() || self.mask_register.get_show_sprites_flag();
+
     // Handle rendering for visible scanlines (0-239)
     if self.scanline < 240 {
       self.render_pixel();
     }
 
-    // Advance dot counter
+    // Advance dot counter first, then process events for the new dot
     self.dot += 1;
 
     // Handle end of scanline
@@ -316,6 +320,36 @@ impl PPU {
         self.scanline = 0;
         self.frame_count = self.frame_count.wrapping_add(1);
         self.frame_ready = true;
+      }
+    }
+
+    // Scroll register updates during rendering
+    // These happen on visible scanlines (0-239) and pre-render scanline (261)
+    let is_render_scanline = self.scanline < 240 || self.scanline == PRE_RENDER_SCANLINE;
+
+    if rendering_enabled && is_render_scanline {
+      // Coarse X increment every 8 dots during visible portion (dots 8, 16, ... 256)
+      // Also at dots 328 and 336 for next scanline tile prefetch
+      if (self.dot >= 8 && self.dot <= 256 && self.dot % 8 == 0)
+        || self.dot == 328
+        || self.dot == 336
+      {
+        self.v_address.scroll_x();
+      }
+
+      // Fine Y increment at dot 256
+      if self.dot == 256 {
+        self.v_address.scroll_y();
+      }
+
+      // Horizontal bits reload from t to v at dot 257
+      if self.dot == 257 {
+        self.v_address.copy_x(self.t_address);
+      }
+
+      // Vertical bits reload from t to v during pre-render scanline dots 280-304
+      if self.scanline == PRE_RENDER_SCANLINE && self.dot >= 280 && self.dot <= 304 {
+        self.v_address.copy_y(self.t_address);
       }
     }
 
