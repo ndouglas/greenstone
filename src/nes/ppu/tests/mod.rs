@@ -6,6 +6,7 @@
 mod timing;
 mod vblank;
 mod registers;
+mod scrolling;
 mod background;
 mod sprites;
 mod integration;
