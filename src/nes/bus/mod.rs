@@ -17,6 +17,10 @@ const PPU_REGISTER_START_ADDRESS: u16 = 0x2000;
 const PPU_REGISTER_ACTUAL_END_ADDRESS: u16 = 0x2007;
 const PPU_REGISTER_RANGE_END_ADDRESS: u16 = 0x3FFF;
 
+const APU_IO_START_ADDRESS: u16 = 0x4000;
+const APU_IO_END_ADDRESS: u16 = 0x4017;
+const OAM_DMA_ADDRESS: u16 = 0x4014;
+
 const CARTRIDGE_START_ADDRESS: u16 = 0x4018;
 const CARTRIDGE_END_ADDRESS: u16 = MAX_ADDRESS;
 
@@ -62,6 +66,11 @@ impl Bus {
         let index = (actual_address % 8) as u8;
         self.ppu.read_register(index)
       }
+      APU_IO_START_ADDRESS..=APU_IO_END_ADDRESS => {
+        // APU and I/O registers - most reads return 0 for now
+        // TODO: Implement APU status (0x4015) and controller reads (0x4016, 0x4017)
+        0x00
+      }
       CARTRIDGE_START_ADDRESS..=CARTRIDGE_END_ADDRESS => {
         if let Some(ref cartridge) = self.cartridge {
           cartridge.borrow().read_prg_u8(address)
@@ -96,6 +105,23 @@ impl Bus {
         let index = (actual_address % 8) as u8;
         self.ppu.write_register(index, value);
       }
+      APU_IO_START_ADDRESS..=APU_IO_END_ADDRESS => {
+        if address == OAM_DMA_ADDRESS {
+          // OAM DMA: copy 256 bytes from CPU page XX00-XXFF to OAM
+          let source_page = (value as u16) << 8;
+          let mut oam_data = [0u8; 256];
+          for i in 0..256u16 {
+            let src_addr = source_page | i;
+            oam_data[i as usize] = self.inner_read_u8(src_addr);
+          }
+          self.ppu.write_oam_dma(&oam_data);
+          // Note: Real OAM DMA takes 513-514 CPU cycles
+          // TODO: Add cycle-accurate DMA timing
+        }
+        // Other APU/IO registers are ignored for now
+        // TODO: Implement APU registers (0x4000-0x4013, 0x4015)
+        // TODO: Implement controller registers (0x4016, 0x4017)
+      }
       CARTRIDGE_START_ADDRESS..=CARTRIDGE_END_ADDRESS => {
         if let Some(ref cartridge) = self.cartridge {
           cartridge.borrow_mut().write_prg_u8(address, value);
@@ -126,5 +152,20 @@ impl Bus {
   /// Check if a new frame is ready and clear the flag.
   pub fn take_frame_ready(&mut self) -> bool {
     self.ppu.take_frame_ready()
+  }
+
+  /// Get debug info about PPU state
+  #[cfg(test)]
+  pub fn get_ppu_debug_info(&self) -> String {
+    format!(
+      "PPU Debug:\n  CTRL: 0x{:02X}\n  MASK: 0x{:02X}\n  STATUS: 0x{:02X}\n  show_bg: {}\n  show_sprites: {}\n  scanline: {}\n  dot: {}",
+      self.ppu.control_register.read_u8(),
+      self.ppu.mask_register.read_u8(),
+      self.ppu.status_register.read_u8(),
+      self.ppu.mask_register.get_show_background_flag(),
+      self.ppu.mask_register.get_show_sprites_flag(),
+      self.ppu.scanline,
+      self.ppu.dot
+    )
   }
 }

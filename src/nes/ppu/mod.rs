@@ -266,7 +266,12 @@ impl PPU {
     let mut result = self.status_register.read_u8();
     self.status_register.set_vertical_blank_flag(false);
     self.is_latched = false;
-    self.suppress_vblanks = true;
+    // Only suppress VBlank if reading at the exact cycle when VBlank would be set.
+    // This implements the NES "race condition" where reading at VBlank start
+    // returns 0 in bit 7 but prevents VBlank from being set.
+    if self.scanline == VBLANK_SCANLINE && self.dot == 0 {
+      self.suppress_vblanks = true;
+    }
     // Status register includes some garbage from the bus.
     result = result | (self.latching_bus & 0b0001_1111);
     trace_result!(result);
@@ -410,8 +415,11 @@ impl PPU {
   }
 
   /// Get the background pixel color index at the given screen position.
+  ///
+  /// Uses v_address for vertical scroll (updated per-scanline) and calculates
+  /// horizontal position from fine_x and the screen x coordinate.
   #[named]
-  fn get_background_pixel(&mut self, x: usize, y: usize) -> u8 {
+  fn get_background_pixel(&mut self, x: usize, _y: usize) -> u8 {
     // Check if background rendering is enabled
     if !self.mask_register.get_show_background_flag() {
       return self.vram.read_u8(0x3F00);
@@ -422,70 +430,70 @@ impl PPU {
       return self.vram.read_u8(0x3F00);
     }
 
-    // Calculate tile coordinates based on screen position and scroll
-    // The scroll values come from the PPU scroll register writes
-    let scroll_x = (self.t_address.coarse_x() as usize * 8) + self.fine_x as usize;
-    let scroll_y = (self.t_address.coarse_y() as usize * 8) + self.t_address.fine_y() as usize;
+    // Use v_address for vertical position (updated per-scanline by scroll logic)
+    // Use t_address for horizontal starting position (restored at dot 257)
+    let coarse_y = self.v_address.coarse_y();
+    let fine_y = self.v_address.fine_y();
+    let nametable = self.v_address.nametable();
 
-    // Calculate the actual pixel position in the virtual 512x480 nametable space
-    let pixel_x = (x + scroll_x) % 512;
-    let pixel_y = (y + scroll_y) % 480;
+    // Calculate horizontal tile position
+    // v_address.coarse_x represents the starting tile, fine_x the sub-tile offset
+    // For screen pixel x: total_x = coarse_x * 8 + fine_x + x
+    // tile_x = total_x / 8 = coarse_x + (fine_x + x) / 8
+    let start_coarse_x = self.t_address.coarse_x() as usize;
+    let start_nametable_x = (self.t_address.nametable() & 1) as usize;
+    let total_x = start_coarse_x * 8 + self.fine_x as usize + x;
+    let tile_x = (total_x / 8) % 32;
+    let nametable_x = ((total_x / 256) + start_nametable_x) % 2;
 
-    // Determine which nametable (0-3)
-    let nametable_x = if pixel_x >= 256 { 1 } else { 0 };
-    let nametable_y = if pixel_y >= 240 { 1 } else { 0 };
-    let nametable = (nametable_y << 1) | nametable_x;
+    // Build nametable index
+    let nametable_y = (nametable >> 1) & 1;
+    let current_nametable = (nametable_y << 1) | nametable_x as u8;
 
-    // Position within the nametable
-    let tile_x = (pixel_x % 256) / 8;
-    let tile_y = (pixel_y % 240) / 8;
-    let fine_x_pos = (pixel_x % 256) % 8;
-    let fine_y_pos = (pixel_y % 240) % 8;
+    // Calculate nametable address
+    let nametable_base = 0x2000u16 + (current_nametable as u16 * 0x400);
+    let nametable_addr = nametable_base + (coarse_y as u16 * 32) + tile_x as u16;
 
-    // Get the tile index from the nametable
-    let nametable_base = 0x2000 + (nametable as u16 * 0x400);
-    let nametable_addr = nametable_base + (tile_y as u16 * 32) + tile_x as u16;
+    // Read tile index from nametable
     let tile_index = self.vram.read_u8(nametable_addr);
 
-    // Get the pattern table address based on control register
+    // Get pattern table base from control register
     let pattern_base: u16 = if self.control_register.get_background_address_flag() {
       0x1000
     } else {
       0x0000
     };
 
-    // Get the pattern data (two bit planes)
-    let pattern_addr = pattern_base + (tile_index as u16 * 16) + fine_y_pos as u16;
+    // Read pattern data (two bit planes)
+    let pattern_addr = pattern_base + (tile_index as u16 * 16) + fine_y as u16;
     let pattern_low = self.vram.read_u8(pattern_addr);
     let pattern_high = self.vram.read_u8(pattern_addr + 8);
 
-    // Extract the 2-bit pixel value from the pattern planes
-    let pixel_bit = 7 - fine_x_pos;
-    let pixel_low = (pattern_low >> pixel_bit) & 1;
-    let pixel_high = (pattern_high >> pixel_bit) & 1;
+    // Extract the 2-bit pixel value
+    let bit_position = 7 - ((self.fine_x as usize + x) % 8);
+    let pixel_low = (pattern_low >> bit_position) & 1;
+    let pixel_high = (pattern_high >> bit_position) & 1;
     let pixel_value = (pixel_high << 1) | pixel_low;
 
-    // If the pixel is transparent (0), return background color
+    // Transparent pixel (0) shows backdrop color
     if pixel_value == 0 {
       return self.vram.read_u8(0x3F00);
     }
 
-    // Get the attribute byte for palette selection
-    let attribute_base = nametable_base + 0x3C0;
-    let attribute_x = tile_x / 4;
-    let attribute_y = tile_y / 4;
-    let attribute_addr = attribute_base + (attribute_y as u16 * 8) + attribute_x as u16;
+    // Get attribute byte for palette selection
+    let attr_x = tile_x / 4;
+    let attr_y = coarse_y as usize / 4;
+    let attribute_addr = nametable_base + 0x3C0 + (attr_y as u16 * 8) + attr_x as u16;
     let attribute = self.vram.read_u8(attribute_addr);
 
-    // Determine which 2-bit palette to use based on position within the attribute byte
-    // Each attribute byte covers 4x4 tiles (32x32 pixels)
-    // The byte is divided into 4 quadrants of 2x2 tiles each
+    // Determine which 2-bit palette from the attribute byte
+    // Each attribute byte covers 4x4 tiles, divided into 2x2 quadrants
     let quadrant_x = (tile_x % 4) / 2;
-    let quadrant_y = (tile_y % 4) / 2;
+    let quadrant_y = (coarse_y as usize % 4) / 2;
     let palette_shift = (quadrant_y * 2 + quadrant_x) * 2;
     let palette_index = (attribute >> palette_shift) & 0x03;
 
-    // Get the final color from the palette
+    // Get final color from palette RAM
     let palette_addr = 0x3F00 + (palette_index as u16 * 4) + pixel_value as u16;
     self.vram.read_u8(palette_addr)
   }

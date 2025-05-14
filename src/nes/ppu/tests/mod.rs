@@ -10,6 +10,8 @@ mod scrolling;
 mod background;
 mod sprites;
 mod integration;
+mod rendering_debug;
+mod rom_debug;
 
 use super::*;
 use crate::test::init;
