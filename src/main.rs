@@ -171,12 +171,17 @@ async fn main() {
   let mut cpu = CPU::new_with_bus(Box::new(bus));
   cpu.handle_reset();
 
-  // Run the emulation loop
-  cpu.run_with_callback(move |cpu| {
-    handle_user_input(cpu, &mut event_pump);
+  // Run the emulation loop with frame rate limiting
+  // NES runs at ~60.0988 FPS (NTSC), so ~16.64ms per frame
+  let frame_duration = std::time::Duration::from_nanos(16_639_267); // 1/60.0988 seconds
+  let mut last_frame_time = std::time::Instant::now();
 
+  cpu.run_with_callback(move |cpu| {
     // Check if PPU has rendered a new frame
     if check_ppu_frame_ready(cpu) {
+      // Only handle input once per frame (not every CPU cycle)
+      handle_user_input(cpu, &mut event_pump);
+
       let framebuffer = get_ppu_framebuffer(cpu);
       if framebuffer.len() == (NES_WIDTH * NES_HEIGHT * 3) as usize {
         texture
@@ -185,6 +190,13 @@ async fn main() {
         canvas.copy(&texture, None, None).unwrap();
         canvas.present();
       }
+
+      // Frame rate limiting: sleep until next frame should start
+      let elapsed = last_frame_time.elapsed();
+      if elapsed < frame_duration {
+        std::thread::sleep(frame_duration - elapsed);
+      }
+      last_frame_time = std::time::Instant::now();
     }
   });
 
