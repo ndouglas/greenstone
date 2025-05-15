@@ -193,8 +193,8 @@ macro_rules! test_opcode {
   ($opcode:expr, [$($byte:expr),*]{$($start_key:ident : $start_value:expr),*} => [$($returned_byte:expr),*]{$($expected_key:ident : $expected_value:expr),*} $(, $builder:expr)?) => {
     { // Begin test scope.
       info!("\n\n------------------ Starting test! ------------------\n");
-      let ref opcodes: HashMap<u8, &'static Opcode> = *OPCODE_MAP;
-      let test_opcode = opcodes.get(&$opcode).expect(&format!("Opcode {:#04X} is not recognized", $opcode));
+      let test_opcode = OPCODE_TABLE[$opcode as usize]
+        .expect(&format!("Opcode {:#04X} is not recognized", $opcode));
       trace_var!(test_opcode);
       let mut cpu = CPU::new();
       let mut program = Vec::new();

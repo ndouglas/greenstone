@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fmt;
 
 use crate::nes::simple_bus::SimpleBus;
@@ -128,8 +127,9 @@ impl CPU {
     let code = self.get_next_u8();
     debug!("Processing next instruction @ {:#06X}): {}", (self.program_counter - 1), format_u8!(code));
     trace_u8!(code);
-    let ref opcodes: HashMap<u8, &'static Opcode> = *OPCODE_MAP;
-    let result = opcodes.get(&code).unwrap_or_else(|| panic!("Opcode {:#04X} is not recognized", code));
+    // Use array-based lookup for O(1) performance without hashing
+    let result = OPCODE_TABLE[code as usize]
+      .unwrap_or_else(|| panic!("Opcode {:#04X} is not recognized", code));
     trace_result!(result);
     result
   }

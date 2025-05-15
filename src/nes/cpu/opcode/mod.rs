@@ -318,6 +318,15 @@ lazy_static! {
     }
     map
   };
+  /// Fast array-based opcode lookup table for O(1) access without hashing.
+  /// Index directly by opcode byte (0-255) for maximum performance.
+  pub static ref OPCODE_TABLE: [Option<&'static Opcode>; 256] = {
+    let mut table: [Option<&'static Opcode>; 256] = [None; 256];
+    for opcode in &*OPCODE_VECTOR {
+      table[opcode.code as usize] = Some(opcode);
+    }
+    table
+  };
   pub static ref OPCODE_MNEMONICS: HashSet<&'static str> = {
     let mut set = HashSet::new();
     for opcode in &*OPCODE_VECTOR {
