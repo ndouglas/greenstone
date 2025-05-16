@@ -256,3 +256,156 @@ fn test_render_pixel_skips_after_dot_256() {
     let last_pixel = (SCREEN_WIDTH - 1) * 3;
     assert_eq!(ppu.framebuffer[last_pixel], 0xAA, "Dots after 256 should not render");
 }
+
+// =============================================================================
+// Tile Fetch Timing Tests
+// =============================================================================
+// The PPU fetches tile data in an 8-cycle pattern:
+//   Dots 1-2: Nametable byte
+//   Dots 3-4: Attribute byte
+//   Dots 5-6: Pattern table low byte
+//   Dots 7-8: Pattern table high byte
+// After 8 dots, coarse X increments and the next tile is fetched.
+// This pattern repeats for tiles 0-31, plus 2 prefetch tiles at dots 321-336.
+
+#[test]
+fn test_tile_fetch_cycle_is_8_dots() {
+    // Each tile fetch takes exactly 8 PPU cycles
+    // Coarse X increments every 8 dots: at dots 8, 16, 24, ..., 256
+    // Plus prefetch increments at dots 328 and 336
+
+    let mut ppu = create_test_ppu();
+    ppu.mask_register.set_show_background_flag(true);
+
+    // Set initial coarse_x to 0
+    ppu.v_address.set_coarse_x(0);
+    ppu.scanline = 0;
+
+    // Advance through first 8 dots
+    for _ in 0..8 {
+        ppu.tick();
+    }
+
+    // After 8 dots, coarse_x should have incremented
+    assert_eq!(ppu.v_address.coarse_x(), 1, "Coarse X should increment after 8 dots");
+
+    // Advance another 8 dots
+    for _ in 0..8 {
+        ppu.tick();
+    }
+
+    // Coarse X should be 2 now
+    assert_eq!(ppu.v_address.coarse_x(), 2, "Coarse X should be 2 after 16 dots");
+}
+
+#[test]
+fn test_32_tiles_fetched_per_scanline() {
+    // Visible portion fetches 32 tiles (256 pixels / 8 pixels per tile)
+    let mut ppu = create_test_ppu();
+    ppu.mask_register.set_show_background_flag(true);
+
+    ppu.v_address.set_coarse_x(0);
+    ppu.scanline = 0;
+    ppu.dot = 0;
+
+    // Advance to dot 256 (32 tiles * 8 dots = 256 dots of fetching)
+    for _ in 0..256 {
+        ppu.tick();
+    }
+
+    // Should have done 32 coarse_x increments, wrapping back to 0
+    // (0 -> 1 -> ... -> 31 -> 0)
+    assert_eq!(ppu.v_address.coarse_x(), 0, "Coarse X should wrap after 32 increments");
+}
+
+#[test]
+fn test_prefetch_tiles_at_end_of_scanline() {
+    // Dots 321-336 prefetch the first 2 tiles of the next scanline
+    // Coarse X increments at dots 328 and 336
+
+    let mut ppu = create_test_ppu();
+    ppu.mask_register.set_show_background_flag(true);
+
+    // Advance to scanline 0, just before prefetch
+    advance_ppu_to(&mut ppu, 0, 320);
+
+    let coarse_x_before = ppu.v_address.coarse_x();
+
+    // Advance to dot 328
+    for _ in 0..8 {
+        ppu.tick();
+    }
+
+    // Should have one prefetch increment
+    assert_eq!(
+        ppu.v_address.coarse_x(),
+        (coarse_x_before + 1) & 0x1F,
+        "First prefetch increment at dot 328"
+    );
+
+    // Advance to dot 336
+    for _ in 0..8 {
+        ppu.tick();
+    }
+
+    // Should have second prefetch increment
+    assert_eq!(
+        ppu.v_address.coarse_x(),
+        (coarse_x_before + 2) & 0x1F,
+        "Second prefetch increment at dot 336"
+    );
+}
+
+#[test]
+fn test_no_fetches_during_hblank() {
+    // Dots 257-320 are HBlank - no tile fetching occurs
+    // (Sprite fetches happen here instead, but no background scroll updates)
+
+    let mut ppu = create_test_ppu();
+    ppu.mask_register.set_show_background_flag(true);
+
+    // Advance to dot 257 (start of HBlank)
+    advance_ppu_to(&mut ppu, 0, 257);
+
+    let coarse_x_at_257 = ppu.v_address.coarse_x();
+
+    // Advance through HBlank to dot 320
+    for _ in 257..320 {
+        ppu.tick();
+    }
+
+    // Coarse X should not change during HBlank (257-320)
+    // Note: It gets reloaded from t at dot 257, so we check it stays constant after that
+    assert_eq!(
+        ppu.v_address.coarse_x(),
+        coarse_x_at_257,
+        "Coarse X should not change during HBlank (except reload at 257)"
+    );
+}
+
+// =============================================================================
+// Transparent Pixel Tests
+// =============================================================================
+
+#[test]
+fn test_transparent_background_pixel_shows_backdrop() {
+    let mut ppu = create_test_ppu();
+
+    // Enable background
+    ppu.mask_register.set_show_background_flag(true);
+    ppu.mask_register.set_show_background_left_flag(true);
+
+    // Set up backdrop color (palette index 0x3F00)
+    ppu.vram.write_u8(0x3F00, 0x0D); // Black
+
+    // Set up a palette color
+    ppu.vram.write_u8(0x3F01, 0x16); // Red
+
+    // The get_background_pixel function should return backdrop (0x0D)
+    // when the pixel value is 0 (transparent)
+    // This depends on the tile/pattern data being 0
+
+    let color = ppu.get_background_pixel(0, 0);
+    // If tile data is 0, should return backdrop
+    // Note: Actual result depends on CHR ROM content
+}

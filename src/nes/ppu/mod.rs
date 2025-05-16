@@ -315,8 +315,22 @@ impl PPU {
     // Advance dot counter first, then process events for the new dot
     self.dot += 1;
 
-    // Handle end of scanline
-    if self.dot >= DOTS_PER_SCANLINE {
+    // NTSC odd frame cycle skip:
+    // On odd frames with rendering enabled, the pre-render scanline is one cycle shorter.
+    // The PPU skips from dot 339 directly to dot 0 of the next frame (skipping dot 340).
+    let is_odd_frame = self.frame_count % 2 == 1;
+    if rendering_enabled
+      && is_odd_frame
+      && self.scanline == PRE_RENDER_SCANLINE
+      && self.dot == 340
+    {
+      // Skip dot 340 - go directly to the next frame
+      self.dot = 0;
+      self.scanline = 0;
+      self.frame_count = self.frame_count.wrapping_add(1);
+      self.frame_ready = true;
+    } else if self.dot >= DOTS_PER_SCANLINE {
+      // Normal end of scanline handling
       self.dot = 0;
       self.scanline += 1;
 

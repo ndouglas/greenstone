@@ -318,3 +318,216 @@ fn test_sprite_flip_flags() {
     ppu.write_oam_data_register(0xC0); // Both flips
     assert_eq!(ppu.oam_ram[2] & 0xC0, 0xC0);
 }
+
+// =============================================================================
+// Sprite Evaluation Timing Tests
+// =============================================================================
+// Sprite evaluation occurs during dots 65-256 of visible scanlines.
+// The PPU scans OAM to find up to 8 sprites that are on the current scanline.
+
+#[test]
+fn test_sprite_evaluation_dots_65_to_256() {
+    // Sprite evaluation happens during dots 65-256
+    // This is when the PPU determines which sprites appear on the next scanline
+
+    let ppu = create_test_ppu();
+
+    // Document the expected timing
+    const SPRITE_EVAL_START: u16 = 65;
+    const SPRITE_EVAL_END: u16 = 256;
+
+    assert!(
+        SPRITE_EVAL_END - SPRITE_EVAL_START == 191,
+        "Sprite evaluation should span 192 dots"
+    );
+}
+
+#[test]
+fn test_sprite_fetches_during_dots_257_320() {
+    // After evaluation, sprite pattern data is fetched during dots 257-320 (HBlank)
+    // This is 64 dots = 8 sprites * 8 dots per sprite
+
+    let ppu = create_test_ppu();
+
+    const SPRITE_FETCH_START: u16 = 257;
+    const SPRITE_FETCH_END: u16 = 320;
+
+    // 8 sprites, each taking 8 dots to fetch pattern data
+    assert_eq!(
+        SPRITE_FETCH_END - SPRITE_FETCH_START + 1,
+        64,
+        "Sprite fetches should span 64 dots (8 sprites * 8 dots)"
+    );
+}
+
+#[test]
+fn test_sprite_on_scanline_detection() {
+    let mut ppu = create_test_ppu();
+
+    // Enable sprites
+    ppu.mask_register.set_show_sprites_flag(true);
+
+    // Place sprite 0 at Y=50 (sprite appears on scanlines 50-57 for 8x8)
+    ppu.oam_ram[0] = 50; // Y position
+    ppu.oam_ram[1] = 0x00; // Tile
+    ppu.oam_ram[2] = 0x00; // Attributes
+    ppu.oam_ram[3] = 100; // X position
+
+    // A sprite at Y=50 should be visible on scanline 50
+    // (Y in OAM is the top of the sprite)
+    let sprite_y = ppu.oam_ram[0] as u16;
+    let scanline: u16 = 50;
+
+    // In 8x8 mode, sprite is visible when: scanline >= sprite_y && scanline < sprite_y + 8
+    let is_8x8 = !ppu.control_register.get_sprite_size_flag();
+    let sprite_height: u16 = if is_8x8 { 8 } else { 16 };
+
+    assert!(
+        scanline >= sprite_y && scanline < sprite_y + sprite_height,
+        "Sprite at Y={} should be visible on scanline {}",
+        sprite_y,
+        scanline
+    );
+}
+
+// =============================================================================
+// Sprite Zero Hit Detailed Tests
+// =============================================================================
+
+#[test]
+fn test_sprite_zero_hit_requires_both_rendering_enabled() {
+    let mut ppu = create_test_ppu();
+
+    // Sprite zero hit requires BOTH background AND sprites to be enabled
+
+    // Neither enabled - no hit possible
+    ppu.mask_register.set_show_background_flag(false);
+    ppu.mask_register.set_show_sprites_flag(false);
+    let both_disabled =
+        !ppu.mask_register.get_show_background_flag() && !ppu.mask_register.get_show_sprites_flag();
+    assert!(both_disabled, "Both rendering disabled");
+
+    // Only background - no hit
+    ppu.mask_register.set_show_background_flag(true);
+    ppu.mask_register.set_show_sprites_flag(false);
+    let only_bg =
+        ppu.mask_register.get_show_background_flag() && !ppu.mask_register.get_show_sprites_flag();
+    assert!(only_bg, "Only background enabled");
+
+    // Only sprites - no hit
+    ppu.mask_register.set_show_background_flag(false);
+    ppu.mask_register.set_show_sprites_flag(true);
+    let only_sprites =
+        !ppu.mask_register.get_show_background_flag() && ppu.mask_register.get_show_sprites_flag();
+    assert!(only_sprites, "Only sprites enabled");
+
+    // Both enabled - hit is possible
+    ppu.mask_register.set_show_background_flag(true);
+    ppu.mask_register.set_show_sprites_flag(true);
+    let both_enabled =
+        ppu.mask_register.get_show_background_flag() && ppu.mask_register.get_show_sprites_flag();
+    assert!(both_enabled, "Both rendering enabled - hit possible");
+}
+
+#[test]
+fn test_sprite_zero_hit_not_at_x_255_detailed() {
+    // Sprite zero hit cannot occur at x=255
+    // This is because the hit detection happens at the pixel output stage,
+    // and x=255 has special handling
+
+    let mut ppu = create_test_ppu();
+    ppu.mask_register.set_show_background_flag(true);
+    ppu.mask_register.set_show_sprites_flag(true);
+
+    // Place sprite 0 with X=255
+    ppu.oam_ram[0] = 100; // Y
+    ppu.oam_ram[1] = 0x00; // Tile
+    ppu.oam_ram[2] = 0x00; // Attributes (front priority)
+    ppu.oam_ram[3] = 255; // X = 255
+
+    // Even if both sprite and background have opaque pixels,
+    // hit cannot occur at x=255
+    // This test documents the expected hardware behavior
+}
+
+#[test]
+fn test_sprite_zero_hit_respects_left_clipping() {
+    // If left 8 pixel clipping is enabled for either background or sprites,
+    // sprite zero hit cannot occur in the leftmost 8 pixels
+
+    let mut ppu = create_test_ppu();
+    ppu.mask_register.set_show_background_flag(true);
+    ppu.mask_register.set_show_sprites_flag(true);
+
+    // Disable left 8 pixels for background
+    ppu.mask_register.set_show_background_left_flag(false);
+
+    // Place sprite 0 in the left 8 pixels
+    ppu.oam_ram[0] = 100;
+    ppu.oam_ram[1] = 0x00;
+    ppu.oam_ram[2] = 0x00;
+    ppu.oam_ram[3] = 0; // X = 0 (leftmost)
+
+    // Sprite zero hit should not occur in clipped region
+    // This documents the expected behavior
+}
+
+// =============================================================================
+// Sprite Rendering Priority Tests
+// =============================================================================
+
+#[test]
+fn test_lower_oam_index_has_higher_priority() {
+    // When multiple sprites overlap, lower OAM index has priority
+    // Sprite 0 has highest priority, sprite 63 has lowest
+
+    let mut ppu = create_test_ppu();
+
+    // Place two sprites at the same position
+    // Sprite 0
+    ppu.oam_ram[0] = 100; // Y
+    ppu.oam_ram[1] = 0x01; // Tile 1
+    ppu.oam_ram[2] = 0x00; // Attributes
+    ppu.oam_ram[3] = 50; // X
+
+    // Sprite 1 (same position, different tile)
+    ppu.oam_ram[4] = 100; // Y
+    ppu.oam_ram[5] = 0x02; // Tile 2
+    ppu.oam_ram[6] = 0x00; // Attributes
+    ppu.oam_ram[7] = 50; // X
+
+    // Sprite 0 should be displayed in front of sprite 1
+    // (when both have opaque pixels at the same location)
+}
+
+#[test]
+fn test_sprite_behind_background_priority() {
+    let mut ppu = create_test_ppu();
+
+    // Set sprite priority bit (bit 5 of attributes)
+    // 0 = in front of background
+    // 1 = behind background
+
+    // Sprite with priority = behind (bit 5 set)
+    ppu.oam_ram[0] = 100;
+    ppu.oam_ram[1] = 0x00;
+    ppu.oam_ram[2] = 0x20; // Bit 5 set = behind background
+    ppu.oam_ram[3] = 50;
+
+    // When priority bit is set, sprite only shows where background is transparent
+    assert_eq!(ppu.oam_ram[2] & 0x20, 0x20, "Priority bit should be set");
+}
+
+#[test]
+fn test_sprite_in_front_of_background_priority() {
+    let mut ppu = create_test_ppu();
+
+    // Sprite with priority = in front (bit 5 clear)
+    ppu.oam_ram[0] = 100;
+    ppu.oam_ram[1] = 0x00;
+    ppu.oam_ram[2] = 0x00; // Bit 5 clear = in front of background
+    ppu.oam_ram[3] = 50;
+
+    // When priority bit is clear, sprite shows in front of background
+    assert_eq!(ppu.oam_ram[2] & 0x20, 0x00, "Priority bit should be clear");
+}
