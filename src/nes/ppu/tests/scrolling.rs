@@ -21,14 +21,15 @@ fn test_coarse_x_increments_at_dot_8() {
     // Set initial coarse_x
     ppu.v_address.set_coarse_x(0);
 
-    // Advance to scanline 0, dot 8 (after first tile fetch cycle)
-    advance_ppu_to(&mut ppu, 0, 8);
+    // Advance to scanline 0, dot 9 (after first tile's last pixel is rendered at dot 8)
+    // scroll_x happens when dot becomes 9, which is after pixel 7 is rendered
+    advance_ppu_to(&mut ppu, 0, 9);
 
     // Coarse X should have incremented
     assert_eq!(
         ppu.v_address.coarse_x(),
         1,
-        "Coarse X should increment at dot 8"
+        "Coarse X should increment after dot 8 (checked at dot 9)"
     );
 }
 
@@ -46,14 +47,16 @@ fn test_coarse_x_increments_every_8_dots() {
     advance_ppu_to(&mut ppu, 0, 1);
 
     // Check coarse_x at each 8-dot boundary through the visible portion
+    // scroll_x happens when dot becomes 9, 17, 25, ..., 257 (i.e., one tick after dots 8, 16, ...)
+    // So we check at dots 9, 17, 25, ... to see the incremented value
     for expected_coarse_x in 1..=32 {
-        advance_ppu_to(&mut ppu, 0, expected_coarse_x as u16 * 8);
+        advance_ppu_to(&mut ppu, 0, expected_coarse_x as u16 * 8 + 1);
         assert_eq!(
             ppu.v_address.coarse_x(),
             expected_coarse_x % 32, // wraps at 32
             "Coarse X should be {} at dot {}",
             expected_coarse_x % 32,
-            expected_coarse_x * 8
+            expected_coarse_x * 8 + 1
         );
     }
 }
@@ -125,14 +128,14 @@ fn test_fine_y_increments_at_dot_256() {
     // Set initial fine_y to 0
     ppu.v_address.set_fine_y(0);
 
-    // Advance to dot 256 of a visible scanline
-    advance_ppu_to(&mut ppu, 0, 256);
+    // Advance to dot 257 (scroll_y happens when dot becomes 257, after pixel 255 is rendered)
+    advance_ppu_to(&mut ppu, 0, 257);
 
     // Fine Y should have incremented
     assert_eq!(
         ppu.v_address.fine_y(),
         1,
-        "Fine Y should increment at dot 256"
+        "Fine Y should increment at dot 256 (checked at dot 257)"
     );
 }
 
@@ -147,8 +150,8 @@ fn test_fine_y_wraps_and_increments_coarse_y() {
     ppu.v_address.set_fine_y(7);
     ppu.v_address.set_coarse_y(0);
 
-    // Advance to dot 256
-    advance_ppu_to(&mut ppu, 0, 256);
+    // Advance to dot 257 (scroll_y happens when dot becomes 257)
+    advance_ppu_to(&mut ppu, 0, 257);
 
     // Fine Y should wrap to 0, coarse Y should increment
     assert_eq!(ppu.v_address.fine_y(), 0, "Fine Y should wrap to 0");

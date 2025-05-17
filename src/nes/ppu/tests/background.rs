@@ -271,8 +271,9 @@ fn test_render_pixel_skips_after_dot_256() {
 #[test]
 fn test_tile_fetch_cycle_is_8_dots() {
     // Each tile fetch takes exactly 8 PPU cycles
-    // Coarse X increments every 8 dots: at dots 8, 16, 24, ..., 256
-    // Plus prefetch increments at dots 328 and 336
+    // Coarse X increments after each tile's last pixel is rendered
+    // This happens when dot becomes 9, 17, 25, ..., 257 (one tick after dots 8, 16, etc.)
+    // Plus prefetch increments when dot becomes 329 and 337
 
     let mut ppu = create_test_ppu();
     ppu.mask_register.set_show_background_flag(true);
@@ -281,21 +282,21 @@ fn test_tile_fetch_cycle_is_8_dots() {
     ppu.v_address.set_coarse_x(0);
     ppu.scanline = 0;
 
-    // Advance through first 8 dots
-    for _ in 0..8 {
+    // Advance through first 9 dots (scroll_x happens when dot becomes 9)
+    for _ in 0..9 {
         ppu.tick();
     }
 
-    // After 8 dots, coarse_x should have incremented
-    assert_eq!(ppu.v_address.coarse_x(), 1, "Coarse X should increment after 8 dots");
+    // After 9 dots, coarse_x should have incremented
+    assert_eq!(ppu.v_address.coarse_x(), 1, "Coarse X should increment after 9 dots");
 
-    // Advance another 8 dots
+    // Advance another 8 dots (to dot 17)
     for _ in 0..8 {
         ppu.tick();
     }
 
     // Coarse X should be 2 now
-    assert_eq!(ppu.v_address.coarse_x(), 2, "Coarse X should be 2 after 16 dots");
+    assert_eq!(ppu.v_address.coarse_x(), 2, "Coarse X should be 2 after 17 dots");
 }
 
 #[test]
@@ -308,8 +309,8 @@ fn test_32_tiles_fetched_per_scanline() {
     ppu.scanline = 0;
     ppu.dot = 0;
 
-    // Advance to dot 256 (32 tiles * 8 dots = 256 dots of fetching)
-    for _ in 0..256 {
+    // Advance to dot 257 (32 scroll_x increments happen at dots 9, 17, ..., 257)
+    for _ in 0..257 {
         ppu.tick();
     }
 
@@ -321,7 +322,7 @@ fn test_32_tiles_fetched_per_scanline() {
 #[test]
 fn test_prefetch_tiles_at_end_of_scanline() {
     // Dots 321-336 prefetch the first 2 tiles of the next scanline
-    // Coarse X increments at dots 328 and 336
+    // Coarse X increments when dot becomes 329 and 337
 
     let mut ppu = create_test_ppu();
     ppu.mask_register.set_show_background_flag(true);
@@ -331,8 +332,8 @@ fn test_prefetch_tiles_at_end_of_scanline() {
 
     let coarse_x_before = ppu.v_address.coarse_x();
 
-    // Advance to dot 328
-    for _ in 0..8 {
+    // Advance to dot 329 (first prefetch increment happens when dot becomes 329)
+    for _ in 0..9 {
         ppu.tick();
     }
 
@@ -340,10 +341,10 @@ fn test_prefetch_tiles_at_end_of_scanline() {
     assert_eq!(
         ppu.v_address.coarse_x(),
         (coarse_x_before + 1) & 0x1F,
-        "First prefetch increment at dot 328"
+        "First prefetch increment at dot 329"
     );
 
-    // Advance to dot 336
+    // Advance to dot 337 (second prefetch increment)
     for _ in 0..8 {
         ppu.tick();
     }
@@ -352,7 +353,7 @@ fn test_prefetch_tiles_at_end_of_scanline() {
     assert_eq!(
         ppu.v_address.coarse_x(),
         (coarse_x_before + 2) & 0x1F,
-        "Second prefetch increment at dot 336"
+        "Second prefetch increment at dot 337"
     );
 }
 

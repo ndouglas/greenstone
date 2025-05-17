@@ -71,6 +71,24 @@ pub struct PPU {
   pub framebuffer: Vec<u8>,
   /// Whether a new frame is ready for display.
   pub frame_ready: bool,
+  /// Secondary OAM: holds up to 8 sprites for the current scanline.
+  /// Each sprite is 4 bytes (Y, tile, attributes, X), so 32 bytes total.
+  pub secondary_oam: [u8; 32],
+  /// Number of sprites in secondary OAM for the current scanline (0-8).
+  pub sprites_on_scanline: u8,
+  /// Whether sprite 0 is in secondary OAM (for sprite zero hit detection).
+  pub sprite_zero_on_scanline: bool,
+}
+
+/// Sprite pixel result containing color and metadata for compositing.
+#[derive(Debug, Clone, Copy)]
+struct SpritePixel {
+  /// Color index from palette RAM (0x3F10-0x3F1F for sprites).
+  color: u8,
+  /// True if this is sprite 0 (for sprite zero hit detection).
+  is_sprite_zero: bool,
+  /// True if sprite has behind-background priority (attribute bit 5).
+  behind_background: bool,
 }
 
 impl PPU {
@@ -95,6 +113,9 @@ impl PPU {
       frame_count: 0,
       framebuffer: vec![0; SCREEN_WIDTH * SCREEN_HEIGHT * 3],
       frame_ready: false,
+      secondary_oam: [0xFF; 32],
+      sprites_on_scanline: 0,
+      sprite_zero_on_scanline: false,
     }
   }
 
@@ -214,6 +235,8 @@ impl PPU {
       self.v_address = self.t_address.clone();
     } else {
       self.t_address.set_high_byte(value);
+      // NES hardware clears bit 14 on the first PPUADDR write
+      self.t_address.0 &= !0x4000;
     }
     trace_u16!(self.v_address.address());
     trace_u16!(self.t_address.address());
@@ -307,6 +330,13 @@ impl PPU {
     let rendering_enabled =
       self.mask_register.get_show_background_flag() || self.mask_register.get_show_sprites_flag();
 
+    // Sprite evaluation: evaluate sprites for current scanline at dot 0
+    // Real hardware does this incrementally during dots 65-256 of the previous scanline,
+    // but for correctness we evaluate at the start of each visible scanline.
+    if self.scanline < 240 && self.dot == 0 {
+      self.evaluate_sprites();
+    }
+
     // Handle rendering for visible scanlines (0-239)
     if self.scanline < 240 {
       self.render_pixel();
@@ -347,17 +377,21 @@ impl PPU {
     let is_render_scanline = self.scanline < 240 || self.scanline == PRE_RENDER_SCANLINE;
 
     if rendering_enabled && is_render_scanline {
-      // Coarse X increment every 8 dots during visible portion (dots 8, 16, ... 256)
-      // Also at dots 328 and 336 for next scanline tile prefetch
-      if (self.dot >= 8 && self.dot <= 256 && self.dot % 8 == 0)
-        || self.dot == 328
-        || self.dot == 336
+      // Coarse X increment every 8 dots during visible portion
+      // On real hardware this happens at dots 8, 16, ..., 256, but since we check after
+      // dot increment and need scroll_x to happen AFTER the tile's last pixel is rendered,
+      // we check for dots 9, 17, ..., 257 (i.e., dot % 8 == 1 and dot >= 9 and dot <= 257)
+      // Also at dots 328 and 336 for next scanline tile prefetch (check 329, 337)
+      if (self.dot >= 9 && self.dot <= 257 && self.dot % 8 == 1)
+        || self.dot == 329
+        || self.dot == 337
       {
         self.v_address.scroll_x();
       }
 
-      // Fine Y increment at dot 256
-      if self.dot == 256 {
+      // Fine Y increment at dot 256 (we check for 257 because this runs after dot increment,
+      // and we need scroll_y to happen AFTER pixel 255 is rendered at dot 256)
+      if self.dot == 257 {
         self.v_address.scroll_y();
       }
 
@@ -413,19 +447,111 @@ impl PPU {
     let x = (self.dot - 1) as usize;
     let y = self.scanline as usize;
 
-    // Get background pixel color
+    // Get background pixel info
     let bg_color = self.get_background_pixel(x, y);
+    let bg_is_opaque = self.is_background_pixel_opaque(x, y);
 
-    // TODO: Get sprite pixel and handle priority
+    // Get sprite pixel info
+    let sprite_pixel = self.get_sprite_pixel(x, y);
+
+    // Sprite zero hit detection
+    // Conditions for sprite zero hit:
+    // 1. Both background and sprite rendering are enabled
+    // 2. Both background and sprite 0 have opaque pixels at this location
+    // 3. x != 255 (hardware quirk)
+    // 4. Not in the left 8 pixels if either left clipping is enabled
+    if let Some(ref sp) = sprite_pixel {
+      if sp.is_sprite_zero
+        && bg_is_opaque
+        && x != 255
+        && !self.status_register.get_sprite_zero_hit_flag()
+      {
+        // Additional clipping check for sprite zero hit
+        let bg_clipped = x < 8 && !self.mask_register.get_show_background_left_flag();
+        let sp_clipped = x < 8 && !self.mask_register.get_show_sprites_left_flag();
+
+        if !bg_clipped && !sp_clipped {
+          self.status_register.set_sprite_zero_hit_flag(true);
+        }
+      }
+    }
+
+    // Composite sprite and background based on priority
+    let final_color = match sprite_pixel {
+      Some(sp) => {
+        if sp.behind_background && bg_is_opaque {
+          // Sprite is behind background, and background is opaque - show background
+          bg_color
+        } else {
+          // Sprite is in front, or background is transparent - show sprite
+          sp.color
+        }
+      }
+      None => {
+        // No sprite at this pixel - show background
+        bg_color
+      }
+    };
 
     // Write to framebuffer (RGB format)
     let pixel_index = (y * SCREEN_WIDTH + x) * 3;
     if pixel_index + 2 < self.framebuffer.len() {
-      let (r, g, b) = self.palette_to_rgb(bg_color);
+      let (r, g, b) = self.palette_to_rgb(final_color);
       self.framebuffer[pixel_index] = r;
       self.framebuffer[pixel_index + 1] = g;
       self.framebuffer[pixel_index + 2] = b;
     }
+  }
+
+  /// Check if the background pixel at (x, y) is opaque (non-zero).
+  /// Used for sprite zero hit detection and priority.
+  fn is_background_pixel_opaque(&mut self, x: usize, _y: usize) -> bool {
+    // If background is disabled, treat as transparent
+    if !self.mask_register.get_show_background_flag() {
+      return false;
+    }
+
+    // If left-edge clipping, treat as transparent
+    if x < 8 && !self.mask_register.get_show_background_left_flag() {
+      return false;
+    }
+
+    // Get the actual pixel value (0 = transparent, 1-3 = opaque)
+    // This duplicates some logic from get_background_pixel but avoids the palette lookup
+    let coarse_y = self.v_address.coarse_y();
+    let fine_y = self.v_address.fine_y();
+    let nametable = self.v_address.nametable();
+
+    let start_coarse_x = self.t_address.coarse_x() as usize;
+    let start_nametable_x = (self.t_address.nametable() & 1) as usize;
+    let total_x = start_coarse_x * 8 + self.fine_x as usize + x;
+    let tile_x = (total_x / 8) % 32;
+    let nametable_x = ((total_x / 256) + start_nametable_x) % 2;
+
+    let nametable_y = (nametable >> 1) & 1;
+    let current_nametable = (nametable_y << 1) | nametable_x as u8;
+
+    let nametable_base = 0x2000u16 + (current_nametable as u16 * 0x400);
+    let nametable_addr = nametable_base + (coarse_y as u16 * 32) + tile_x as u16;
+
+    let tile_index = self.vram.read_u8(nametable_addr);
+
+    let pattern_base: u16 = if self.control_register.get_background_address_flag() {
+      0x1000
+    } else {
+      0x0000
+    };
+
+    let pattern_addr = pattern_base + (tile_index as u16 * 16) + fine_y as u16;
+    let pattern_low = self.vram.read_u8(pattern_addr);
+    let pattern_high = self.vram.read_u8(pattern_addr + 8);
+
+    let bit_position = 7 - ((self.fine_x as usize + x) % 8);
+    let pixel_low = (pattern_low >> bit_position) & 1;
+    let pixel_high = (pattern_high >> bit_position) & 1;
+    let pixel_value = (pixel_high << 1) | pixel_low;
+
+    pixel_value != 0
   }
 
   /// Get the background pixel color index at the given screen position.
@@ -586,6 +712,115 @@ impl PPU {
     NES_PALETTE[index]
   }
 
+  /// Get the sprite pixel at the given screen position.
+  ///
+  /// Returns Some(SpritePixel) if a sprite has an opaque pixel at this position,
+  /// None if no sprite covers this pixel or all sprites are transparent here.
+  ///
+  /// Uses secondary OAM which contains only sprites on the current scanline (up to 8).
+  /// Sprites are checked in secondary OAM order (preserves priority from primary OAM).
+  fn get_sprite_pixel(&mut self, x: usize, y: usize) -> Option<SpritePixel> {
+    // Check if sprite rendering is enabled
+    if !self.mask_register.get_show_sprites_flag() {
+      return None;
+    }
+
+    // Check left-edge clipping for sprites
+    if x < 8 && !self.mask_register.get_show_sprites_left_flag() {
+      return None;
+    }
+
+    // Get sprite size from control register
+    let sprite_height: usize = if self.control_register.get_sprite_size_flag() {
+      16 // 8x16 sprites
+    } else {
+      8 // 8x8 sprites
+    };
+
+    // Scan secondary OAM (only sprites on current scanline, up to 8)
+    for sprite_index in 0..self.sprites_on_scanline as usize {
+      let oam_offset = sprite_index * 4;
+
+      // Read sprite data from secondary OAM
+      let sprite_y = self.secondary_oam[oam_offset] as usize;
+      let tile_index = self.secondary_oam[oam_offset + 1];
+      let attributes = self.secondary_oam[oam_offset + 2];
+      let sprite_x = self.secondary_oam[oam_offset + 3] as usize;
+
+      // Check if this pixel is within the sprite's horizontal bounds
+      if x < sprite_x || x >= sprite_x + 8 {
+        continue;
+      }
+
+      // Calculate pixel position within the sprite
+      let mut pixel_x = x - sprite_x;
+      let mut pixel_y = y - sprite_y;
+
+      // Handle horizontal flip (attribute bit 6)
+      if attributes & 0x40 != 0 {
+        pixel_x = 7 - pixel_x;
+      }
+
+      // Handle vertical flip (attribute bit 7)
+      if attributes & 0x80 != 0 {
+        pixel_y = sprite_height - 1 - pixel_y;
+      }
+
+      // Get pattern table address
+      let pattern_addr = if sprite_height == 16 {
+        // 8x16 sprites: bit 0 of tile index selects pattern table
+        let pattern_table = (tile_index & 1) as u16 * 0x1000;
+        let tile = (tile_index & 0xFE) as u16;
+        // Top half or bottom half of the 8x16 sprite
+        let tile_offset = if pixel_y < 8 { tile } else { tile + 1 };
+        let row = (pixel_y % 8) as u16;
+        pattern_table + tile_offset * 16 + row
+      } else {
+        // 8x8 sprites: control register selects pattern table
+        let pattern_table: u16 = if self.control_register.get_sprite_address_flag() {
+          0x1000
+        } else {
+          0x0000
+        };
+        pattern_table + (tile_index as u16 * 16) + pixel_y as u16
+      };
+
+      // Read pattern data
+      let pattern_low = self.vram.read_u8(pattern_addr);
+      let pattern_high = self.vram.read_u8(pattern_addr + 8);
+
+      // Extract pixel value (2 bits)
+      let bit_position = 7 - pixel_x;
+      let pixel_low = (pattern_low >> bit_position) & 1;
+      let pixel_high = (pattern_high >> bit_position) & 1;
+      let pixel_value = (pixel_high << 1) | pixel_low;
+
+      // Skip transparent pixels (value 0)
+      if pixel_value == 0 {
+        continue;
+      }
+
+      // Get palette index from attributes (bits 0-1)
+      let palette_index = attributes & 0x03;
+
+      // Sprite palettes are at 0x3F10-0x3F1F (palettes 4-7)
+      let palette_addr = 0x3F10 + (palette_index as u16 * 4) + pixel_value as u16;
+      let color = self.vram.read_u8(palette_addr);
+
+      // Check if this is sprite 0 (only sprite_index 0 in secondary OAM
+      // if sprite 0 was found during evaluation)
+      let is_sprite_zero = sprite_index == 0 && self.sprite_zero_on_scanline;
+
+      return Some(SpritePixel {
+        color,
+        is_sprite_zero,
+        behind_background: attributes & 0x20 != 0,
+      });
+    }
+
+    None
+  }
+
   #[named]
   pub fn reset(&mut self) {
     trace_enter!();
@@ -600,7 +835,69 @@ impl PPU {
     self.frame_count = 0;
     self.framebuffer = vec![0; SCREEN_WIDTH * SCREEN_HEIGHT * 3];
     self.frame_ready = false;
+    self.secondary_oam = [0xFF; 32];
+    self.sprites_on_scanline = 0;
+    self.sprite_zero_on_scanline = false;
     trace_exit!();
+  }
+
+  /// Evaluate which sprites are on the current scanline.
+  ///
+  /// Scans primary OAM and copies up to 8 sprites to secondary OAM.
+  /// Sets the sprite overflow flag if more than 8 sprites are found.
+  fn evaluate_sprites(&mut self) {
+    // Clear secondary OAM
+    self.secondary_oam = [0xFF; 32];
+    self.sprites_on_scanline = 0;
+    self.sprite_zero_on_scanline = false;
+
+    // If sprite rendering is disabled, don't evaluate
+    if !self.mask_register.get_show_sprites_flag() {
+      return;
+    }
+
+    // Get sprite height from control register
+    let sprite_height: u16 = if self.control_register.get_sprite_size_flag() {
+      16 // 8x16 sprites
+    } else {
+      8 // 8x8 sprites
+    };
+
+    let current_scanline = self.scanline;
+
+    // Scan all 64 sprites in OAM
+    for sprite_index in 0..64 {
+      let oam_offset = sprite_index * 4;
+
+      // Read sprite Y position
+      let sprite_y = self.oam_ram[oam_offset] as u16;
+
+      // Check if sprite is on current scanline
+      // Y in OAM is the top of the sprite
+      if current_scanline >= sprite_y && current_scanline < sprite_y + sprite_height {
+        if self.sprites_on_scanline < 8 {
+          // Copy sprite to secondary OAM
+          let secondary_offset = self.sprites_on_scanline as usize * 4;
+          self.secondary_oam[secondary_offset] = self.oam_ram[oam_offset];
+          self.secondary_oam[secondary_offset + 1] = self.oam_ram[oam_offset + 1];
+          self.secondary_oam[secondary_offset + 2] = self.oam_ram[oam_offset + 2];
+          self.secondary_oam[secondary_offset + 3] = self.oam_ram[oam_offset + 3];
+
+          // Track if sprite 0 is on this scanline
+          if sprite_index == 0 {
+            self.sprite_zero_on_scanline = true;
+          }
+
+          self.sprites_on_scanline += 1;
+        } else {
+          // More than 8 sprites - set overflow flag
+          // Note: Real hardware has a bug here (diagonal evaluation),
+          // but we implement the correct behavior for now
+          self.status_register.set_sprite_overflow_flag(true);
+          break;
+        }
+      }
+    }
   }
 
   /// Check if an NMI is pending and should be sent to the CPU.
