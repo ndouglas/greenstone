@@ -15,13 +15,13 @@ impl CPU {
     let output = (operand << 1) | (self.status & CARRY_FLAG);
     trace_u8!(output);
     self.set_carry_flag(operand & NEGATIVE_FLAG != 0);
+    // RMW dummy write - write original value before modified value
+    self.write_u8(address, operand);
     self.write_u8(address, output);
     let answer = self.a & output;
     trace_u8!(answer);
     self.a = answer;
     self.set_value_flags(answer);
-    debug!("Ticking (processing data)...");
-    self.tick();
     trace_exit!();
   }
 }

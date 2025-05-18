@@ -54,7 +54,7 @@ impl Opcode {
 
 lazy_static! {
   pub static ref OPCODE_VECTOR: Vec<Opcode> = vec![
-    Opcode::new(0x00, "BRK", 1, 7, CPU::instruction_brk, Implied, 0b00010000, false, false, false, true),
+    Opcode::new(0x00, "BRK", 1, 7, CPU::instruction_brk, Implied, 0b00010100, false, false, false, true),
     Opcode::new(0x01, "ORA", 2, 6, CPU::instruction_ora, IndirectX, 0b10000010, false, false, false, true),
     Opcode::new(0x02, "JAM", 1, 2, CPU::instruction_jam, Implied, 0b00000000, true, true, false, true),
     Opcode::new(0x03, "SLO", 2, 8, CPU::instruction_slo, IndirectX, 0b10000011, false, true, false, true),

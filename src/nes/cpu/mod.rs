@@ -38,6 +38,8 @@ pub struct CPU {
   pub clock_counter: u64,
   #[derivative(Debug = "ignore")]
   pub bus: Box<dyn Busable>,
+  /// Flag to stop the run loop
+  pub running: bool,
 }
 
 impl CPU {
@@ -52,6 +54,7 @@ impl CPU {
       program_counter: 0x0000,
       clock_counter: 0,
       bus: Box::new(SimpleBus::new()),
+      running: true,
     }
   }
 
@@ -66,7 +69,43 @@ impl CPU {
       program_counter: 0x0000,
       clock_counter: 0,
       bus,
+      running: true,
     }
+  }
+
+  /// Stop the run loop
+  pub fn stop(&mut self) {
+    self.running = false;
+  }
+
+  /// Set the complete button state for controller 1.
+  pub fn set_controller1(&mut self, state: u8) {
+    self.bus.set_controller1(state);
+  }
+
+  /// Set the complete button state for controller 2.
+  pub fn set_controller2(&mut self, state: u8) {
+    self.bus.set_controller2(state);
+  }
+
+  /// Press a button on controller 1.
+  pub fn press_button1(&mut self, button: u8) {
+    self.bus.press_button1(button);
+  }
+
+  /// Release a button on controller 1.
+  pub fn release_button1(&mut self, button: u8) {
+    self.bus.release_button1(button);
+  }
+
+  /// Press a button on controller 2.
+  pub fn press_button2(&mut self, button: u8) {
+    self.bus.press_button2(button);
+  }
+
+  /// Release a button on controller 2.
+  pub fn release_button2(&mut self, button: u8) {
+    self.bus.release_button2(button);
   }
 
   #[named]
@@ -91,8 +130,12 @@ impl CPU {
     F: FnMut(&mut CPU),
   {
     trace_enter!();
-    loop {
+    self.running = true;
+    while self.running {
       callback(self);
+      if !self.running {
+        break;
+      }
       self.clock();
     }
     trace_exit!();

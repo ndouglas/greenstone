@@ -33,11 +33,34 @@ pub use busable::*;
 pub mod interruptible;
 pub use interruptible::*;
 
+/// NES Controller button bits (Active-HIGH for internal state)
+pub const BUTTON_A: u8 = 0b0000_0001;
+pub const BUTTON_B: u8 = 0b0000_0010;
+pub const BUTTON_SELECT: u8 = 0b0000_0100;
+pub const BUTTON_START: u8 = 0b0000_1000;
+pub const BUTTON_UP: u8 = 0b0001_0000;
+pub const BUTTON_DOWN: u8 = 0b0010_0000;
+pub const BUTTON_LEFT: u8 = 0b0100_0000;
+pub const BUTTON_RIGHT: u8 = 0b1000_0000;
+
 pub struct Bus {
   memory: [u8; (RAM_ACTUAL_END_ADDRESS + 1) as usize],
   cartridge: Option<Rc<RefCell<Cartridge>>>,
   clock_counter: u64,
   ppu: PPU,
+  /// Controller 1 button state (bits: A, B, Select, Start, Up, Down, Left, Right)
+  controller1_state: u8,
+  /// Controller 2 button state
+  controller2_state: u8,
+  /// Controller 1 shift register (latched state being read out)
+  controller1_shift: u8,
+  /// Controller 2 shift register
+  controller2_shift: u8,
+  /// Controller strobe state (when high, continuously reload shift registers)
+  controller_strobe: bool,
+  /// APU registers storage ($4000-$4017 excluding controller ports)
+  /// Used to return last written value for registers that don't have full read behavior
+  apu_registers: [u8; 24],
 }
 
 impl Bus {
@@ -47,6 +70,46 @@ impl Bus {
       cartridge: None,
       clock_counter: 0,
       ppu: PPU::new(),
+      controller1_state: 0,
+      controller2_state: 0,
+      controller1_shift: 0,
+      controller2_shift: 0,
+      controller_strobe: false,
+      apu_registers: [0xFF; 24],
+    }
+  }
+
+  /// Set the button state for controller 1.
+  /// Use the BUTTON_* constants to set individual buttons.
+  pub fn set_controller1(&mut self, state: u8) {
+    self.controller1_state = state;
+    // If strobe is high, immediately update shift register
+    if self.controller_strobe {
+      self.controller1_shift = state;
+    }
+  }
+
+  /// Set the button state for controller 2.
+  pub fn set_controller2(&mut self, state: u8) {
+    self.controller2_state = state;
+    if self.controller_strobe {
+      self.controller2_shift = state;
+    }
+  }
+
+  /// Press a button on controller 1.
+  pub fn press_button1(&mut self, button: u8) {
+    self.controller1_state |= button;
+    if self.controller_strobe {
+      self.controller1_shift = self.controller1_state;
+    }
+  }
+
+  /// Release a button on controller 1.
+  pub fn release_button1(&mut self, button: u8) {
+    self.controller1_state &= !button;
+    if self.controller_strobe {
+      self.controller1_shift = self.controller1_state;
     }
   }
 
@@ -67,9 +130,32 @@ impl Bus {
         self.ppu.read_register(index)
       }
       APU_IO_START_ADDRESS..=APU_IO_END_ADDRESS => {
-        // APU and I/O registers - most reads return 0 for now
-        // TODO: Implement APU status (0x4015) and controller reads (0x4016, 0x4017)
-        0x00
+        match address {
+          0x4016 => {
+            // Controller 1 read - return bit 0 of shift register, then shift
+            // Upper bits return open bus (typically last value on bus)
+            let result = (self.controller1_shift & 1) | 0x40;
+            // Shift right (next read gets next button)
+            // After all 8 buttons are read, subsequent reads return 1
+            self.controller1_shift = (self.controller1_shift >> 1) | 0x80;
+            result
+          }
+          0x4017 => {
+            // Controller 2 read
+            let result = (self.controller2_shift & 1) | 0x40;
+            self.controller2_shift = (self.controller2_shift >> 1) | 0x80;
+            result
+          }
+          0x4015 => {
+            // APU status - TODO: implement proper APU status
+            // For now return last written value (needed for nestest)
+            self.apu_registers[(address - APU_IO_START_ADDRESS) as usize]
+          }
+          _ => {
+            // Other APU registers - return last written value
+            self.apu_registers[(address - APU_IO_START_ADDRESS) as usize]
+          }
+        }
       }
       CARTRIDGE_START_ADDRESS..=CARTRIDGE_END_ADDRESS => {
         if let Some(ref cartridge) = self.cartridge {
@@ -106,6 +192,9 @@ impl Bus {
         self.ppu.write_register(index, value);
       }
       APU_IO_START_ADDRESS..=APU_IO_END_ADDRESS => {
+        // Store all APU register writes for later read-back
+        self.apu_registers[(address - APU_IO_START_ADDRESS) as usize] = value;
+
         if address == OAM_DMA_ADDRESS {
           // OAM DMA: copy 256 bytes from CPU page XX00-XXFF to OAM
           let source_page = (value as u16) << 8;
@@ -117,10 +206,22 @@ impl Bus {
           self.ppu.write_oam_dma(&oam_data);
           // Note: Real OAM DMA takes 513-514 CPU cycles
           // TODO: Add cycle-accurate DMA timing
+        } else if address == 0x4016 {
+          // Controller strobe
+          let new_strobe = (value & 1) != 0;
+          // When strobe goes from high to low, latch current button state
+          if self.controller_strobe && !new_strobe {
+            self.controller1_shift = self.controller1_state;
+            self.controller2_shift = self.controller2_state;
+          }
+          self.controller_strobe = new_strobe;
+          // While strobe is high, continuously reload
+          if self.controller_strobe {
+            self.controller1_shift = self.controller1_state;
+            self.controller2_shift = self.controller2_state;
+          }
         }
-        // Other APU/IO registers are ignored for now
-        // TODO: Implement APU registers (0x4000-0x4013, 0x4015)
-        // TODO: Implement controller registers (0x4016, 0x4017)
+        // TODO: Implement proper APU behavior (0x4000-0x4013, 0x4015, 0x4017)
       }
       CARTRIDGE_START_ADDRESS..=CARTRIDGE_END_ADDRESS => {
         if let Some(ref cartridge) = self.cartridge {

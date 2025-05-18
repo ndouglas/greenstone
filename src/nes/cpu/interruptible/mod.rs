@@ -46,7 +46,8 @@ impl Interruptible for CPU {
     debug!("Ticking twice (pushing program counter to the stack)...");
     self.push_u16(self.program_counter);
     debug!("Ticking (pushing status to stack)...");
-    self.push_u8(self.status | UNUSED_FLAG);
+    // Hardware interrupts (NMI/IRQ) push status with B flag CLEAR
+    self.push_u8((self.status | UNUSED_FLAG) & !BREAK_FLAG);
     self.set_interrupt_disable_flag(true);
     debug!("Ticking twice (reading NMI address)...");
     self.program_counter = self.read_u16(NMI_ADDRESS);
@@ -61,7 +62,8 @@ impl Interruptible for CPU {
     debug!("Ticking twice (pushing program counter to the stack)...");
     self.push_u16(self.program_counter);
     debug!("Ticking (pushing status to stack)...");
-    self.push_u8(self.status | UNUSED_FLAG);
+    // Hardware interrupts (NMI/IRQ) push status with B flag CLEAR
+    self.push_u8((self.status | UNUSED_FLAG) & !BREAK_FLAG);
     self.set_interrupt_disable_flag(true);
     debug!("Ticking twice (reading IRQ/Break address)...");
     self.program_counter = self.read_u16(IRQ_ADDRESS);

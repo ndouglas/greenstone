@@ -15,6 +15,8 @@ impl CPU {
     let output = (operand >> 1) | ((self.status & CARRY_FLAG) << 7);
     trace_u8!(output);
     self.set_carry_flag(operand & CARRY_FLAG != 0);
+    // RMW dummy write - write original value before modified value
+    self.write_u8(address, operand);
     self.write_u8(address, output);
     let (answer, set_carry, set_overflow) = add_u8s(self.a, output, self.get_carry_flag());
     trace_u8!(answer);
@@ -22,8 +24,6 @@ impl CPU {
     self.set_overflow_flag(set_overflow);
     self.set_carry_flag(set_carry);
     self.set_value_flags(answer);
-    debug!("Ticking (processing data)...");
-    self.tick();
     trace_exit!();
   }
 }

@@ -39,7 +39,12 @@ use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::EventPump;
 
-// Temporary
+// Handle NES controller input
+// Controller 1 mappings:
+//   W/Up    = Up       J = A
+//   S/Down  = Down     K = B
+//   A/Left  = Left     U = Select
+//   D/Right = Right    I = Start
 fn handle_user_input(cpu: &mut CPU, event_pump: &mut EventPump) {
   for event in event_pump.poll_iter() {
     match event {
@@ -48,26 +53,35 @@ fn handle_user_input(cpu: &mut CPU, event_pump: &mut EventPump) {
         keycode: Some(Keycode::Escape),
         ..
       } => std::process::exit(0),
-      Event::KeyDown {
-        keycode: Some(Keycode::W), ..
-      } => {
-        cpu.write_u8(0xff, 0x77);
-      }
-      Event::KeyDown {
-        keycode: Some(Keycode::S), ..
-      } => {
-        cpu.write_u8(0xff, 0x73);
-      }
-      Event::KeyDown {
-        keycode: Some(Keycode::A), ..
-      } => {
-        cpu.write_u8(0xff, 0x61);
-      }
-      Event::KeyDown {
-        keycode: Some(Keycode::D), ..
-      } => {
-        cpu.write_u8(0xff, 0x64);
-      }
+
+      // Button presses
+      Event::KeyDown { keycode: Some(Keycode::J), .. } => cpu.press_button1(BUTTON_A),
+      Event::KeyDown { keycode: Some(Keycode::K), .. } => cpu.press_button1(BUTTON_B),
+      Event::KeyDown { keycode: Some(Keycode::U), .. } => cpu.press_button1(BUTTON_SELECT),
+      Event::KeyDown { keycode: Some(Keycode::I), .. } => cpu.press_button1(BUTTON_START),
+      Event::KeyDown { keycode: Some(Keycode::W), .. } |
+      Event::KeyDown { keycode: Some(Keycode::Up), .. } => cpu.press_button1(BUTTON_UP),
+      Event::KeyDown { keycode: Some(Keycode::S), .. } |
+      Event::KeyDown { keycode: Some(Keycode::Down), .. } => cpu.press_button1(BUTTON_DOWN),
+      Event::KeyDown { keycode: Some(Keycode::A), .. } |
+      Event::KeyDown { keycode: Some(Keycode::Left), .. } => cpu.press_button1(BUTTON_LEFT),
+      Event::KeyDown { keycode: Some(Keycode::D), .. } |
+      Event::KeyDown { keycode: Some(Keycode::Right), .. } => cpu.press_button1(BUTTON_RIGHT),
+
+      // Button releases
+      Event::KeyUp { keycode: Some(Keycode::J), .. } => cpu.release_button1(BUTTON_A),
+      Event::KeyUp { keycode: Some(Keycode::K), .. } => cpu.release_button1(BUTTON_B),
+      Event::KeyUp { keycode: Some(Keycode::U), .. } => cpu.release_button1(BUTTON_SELECT),
+      Event::KeyUp { keycode: Some(Keycode::I), .. } => cpu.release_button1(BUTTON_START),
+      Event::KeyUp { keycode: Some(Keycode::W), .. } |
+      Event::KeyUp { keycode: Some(Keycode::Up), .. } => cpu.release_button1(BUTTON_UP),
+      Event::KeyUp { keycode: Some(Keycode::S), .. } |
+      Event::KeyUp { keycode: Some(Keycode::Down), .. } => cpu.release_button1(BUTTON_DOWN),
+      Event::KeyUp { keycode: Some(Keycode::A), .. } |
+      Event::KeyUp { keycode: Some(Keycode::Left), .. } => cpu.release_button1(BUTTON_LEFT),
+      Event::KeyUp { keycode: Some(Keycode::D), .. } |
+      Event::KeyUp { keycode: Some(Keycode::Right), .. } => cpu.release_button1(BUTTON_RIGHT),
+
       _ => { /* do nothing */ }
     }
   }

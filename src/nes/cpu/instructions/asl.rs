@@ -17,10 +17,10 @@ impl CPU {
     let output = operand << 1;
     trace_u8!(output);
     self.set_carry_flag(operand & NEGATIVE_FLAG != 0);
-    debug!("Ticking (processing instruction)...");
-    self.tick();
     self.set_value_flags(output);
-    debug!("Ticking twice (writing 2-byte result)...");
+    debug!("Ticking (dummy write - writing original value back)...");
+    self.write_u8(address, operand);
+    debug!("Ticking (writing modified result)...");
     self.write_u8(address, output);
     trace_exit!();
   }

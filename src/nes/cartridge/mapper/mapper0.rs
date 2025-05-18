@@ -20,6 +20,10 @@ impl Mappable for Mapper0 {
     trace_enter!();
     trace_u16!(address);
     let result = match address {
+      0x4020..=0x5FFF => {
+        // Expansion ROM area - open bus on Mapper 0
+        0x00
+      }
       0x6000..=0x7FFF => self.data.prg_ram.read_u8(First(EightKb), address - 0x6000),
       0x8000..=0xBFFF => self.data.prg_rom.read_u8(First(SixteenKb), address - 0x8000),
       0xC000..=0xFFFF => self.data.prg_rom.read_u8(Last(SixteenKb), address - 0xC000),
@@ -36,7 +40,13 @@ impl Mappable for Mapper0 {
     trace_u16!(address);
     trace_u8!(value);
     match address {
+      0x4020..=0x5FFF => {
+        // Expansion ROM area - ignore writes on Mapper 0
+      }
       0x6000..=0x7FFF => self.data.prg_ram.write_u8(First(EightKb), address - 0x6000, value),
+      0x8000..=0xFFFF => {
+        // PRG ROM is read-only on Mapper 0 - ignore writes
+      }
       _ => panic!("bad address: {}", format_u16!(address)),
     }
     trace_exit!();

@@ -74,10 +74,10 @@ impl CPU {
     trace_u8!(operand);
     let result = operand.wrapping_sub(1);
     trace_u8!(result);
-    debug!("Ticking (processing decrement instruction)...");
-    self.tick();
-    self.write_u8(address, result);
     self.set_value_flags(result);
+    // RMW dummy write - write original value before modified value
+    self.write_u8(address, operand);
+    self.write_u8(address, result);
     trace_exit!();
     result
   }

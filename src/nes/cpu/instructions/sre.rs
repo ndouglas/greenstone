@@ -15,7 +15,8 @@ impl CPU {
     trace_u8!(operand);
     let output = operand >> 1;
     trace_u8!(output);
-    self.tick();
+    // RMW dummy write - write original value before modified value
+    self.write_u8(address, operand);
     self.write_u8(address, output);
     let answer = self.a ^ output;
     trace_u8!(answer);

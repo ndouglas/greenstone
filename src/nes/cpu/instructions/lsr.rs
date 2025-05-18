@@ -16,8 +16,9 @@ impl CPU {
     let output = operand >> 1;
     trace_u8!(output);
     self.set_carry_flag(operand & CARRY_FLAG != 0);
-    self.tick();
     self.set_value_flags(output);
+    // RMW dummy write - write original value before modified value
+    self.write_u8(address, operand);
     self.write_u8(address, output);
     trace_exit!();
   }

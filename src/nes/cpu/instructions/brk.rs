@@ -3,12 +3,13 @@ use super::super::*;
 impl CPU {
   #[inline]
   #[named]
-  pub fn instruction_brk(&mut self, opcode: &Opcode) {
+  pub fn instruction_brk(&mut self, _opcode: &Opcode) {
     trace_enter!();
-    trace_var!(opcode);
+    // BRK is a 2-byte instruction (opcode + signature byte)
+    // The signature byte is skipped but PC after BRK points past it
     self.increment_program_counter();
     self.handle_break();
-    self.set_interrupt_disable_flag(false);
+    // Note: handle_break() already sets the interrupt disable flag to true
     trace_exit!();
   }
 }

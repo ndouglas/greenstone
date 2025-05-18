@@ -78,6 +78,12 @@ pub struct PPU {
   pub sprites_on_scanline: u8,
   /// Whether sprite 0 is in secondary OAM (for sprite zero hit detection).
   pub sprite_zero_on_scanline: bool,
+  /// Cached horizontal scroll values at the start of each scanline.
+  /// These are captured when copy_x happens at dot 257 of the previous scanline.
+  /// Using these instead of reading t_address directly prevents mid-frame
+  /// PPUSCROLL writes from corrupting the current scanline's rendering.
+  pub scanline_coarse_x: u8,
+  pub scanline_nametable_x: u8,
 }
 
 /// Sprite pixel result containing color and metadata for compositing.
@@ -116,6 +122,8 @@ impl PPU {
       secondary_oam: [0xFF; 32],
       sprites_on_scanline: 0,
       sprite_zero_on_scanline: false,
+      scanline_coarse_x: 0,
+      scanline_nametable_x: 0,
     }
   }
 
@@ -398,6 +406,10 @@ impl PPU {
       // Horizontal bits reload from t to v at dot 257
       if self.dot == 257 {
         self.v_address.copy_x(self.t_address);
+        // Cache horizontal scroll values for the next scanline's rendering.
+        // This prevents mid-frame PPUSCROLL writes from affecting the current scanline.
+        self.scanline_coarse_x = self.v_address.coarse_x();
+        self.scanline_nametable_x = self.v_address.nametable() & 1;
       }
 
       // Vertical bits reload from t to v during pre-render scanline dots 280-304
@@ -522,8 +534,9 @@ impl PPU {
     let fine_y = self.v_address.fine_y();
     let nametable = self.v_address.nametable();
 
-    let start_coarse_x = self.t_address.coarse_x() as usize;
-    let start_nametable_x = (self.t_address.nametable() & 1) as usize;
+    // Use cached horizontal scroll values (captured at dot 257 of previous scanline)
+    let start_coarse_x = self.scanline_coarse_x as usize;
+    let start_nametable_x = self.scanline_nametable_x as usize;
     let total_x = start_coarse_x * 8 + self.fine_x as usize + x;
     let tile_x = (total_x / 8) % 32;
     let nametable_x = ((total_x / 256) + start_nametable_x) % 2;
@@ -577,11 +590,12 @@ impl PPU {
     let nametable = self.v_address.nametable();
 
     // Calculate horizontal tile position
-    // v_address.coarse_x represents the starting tile, fine_x the sub-tile offset
+    // Use cached horizontal scroll values (captured at dot 257 of previous scanline)
+    // This prevents mid-frame PPUSCROLL writes from affecting the current scanline.
     // For screen pixel x: total_x = coarse_x * 8 + fine_x + x
     // tile_x = total_x / 8 = coarse_x + (fine_x + x) / 8
-    let start_coarse_x = self.t_address.coarse_x() as usize;
-    let start_nametable_x = (self.t_address.nametable() & 1) as usize;
+    let start_coarse_x = self.scanline_coarse_x as usize;
+    let start_nametable_x = self.scanline_nametable_x as usize;
     let total_x = start_coarse_x * 8 + self.fine_x as usize + x;
     let tile_x = (total_x / 8) % 32;
     let nametable_x = ((total_x / 256) + start_nametable_x) % 2;
@@ -838,6 +852,8 @@ impl PPU {
     self.secondary_oam = [0xFF; 32];
     self.sprites_on_scanline = 0;
     self.sprite_zero_on_scanline = false;
+    self.scanline_coarse_x = 0;
+    self.scanline_nametable_x = 0;
     trace_exit!();
   }
 
