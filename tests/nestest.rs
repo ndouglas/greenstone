@@ -63,7 +63,17 @@ pub fn format_3byte_instruction(cpu: &mut CPU, opcode: &Opcode, address: u16, st
   }
 }
 
+/// Generate a trace string for the current instruction (without PPU info).
 pub fn trace(cpu: &mut CPU) -> String {
+  trace_internal(cpu, false)
+}
+
+/// Generate a trace string for the current instruction (with PPU info).
+pub fn trace_with_ppu(cpu: &mut CPU) -> String {
+  trace_internal(cpu, true)
+}
+
+fn trace_internal(cpu: &mut CPU, include_ppu: bool) -> String {
   use AddressingMode::*;
   let ref opcodes: HashMap<u8, &'static Opcode> = *OPCODE_MAP;
   let start_address = cpu.program_counter;
@@ -97,11 +107,22 @@ pub fn trace(cpu: &mut CPU) -> String {
   let asm_string = format!("{:04x}  {:8} {: >4} {}", start_address, hex_string, mnemonic, temporary)
     .trim()
     .to_string();
-  format!(
-    "{:47} A:{:02x} X:{:02x} Y:{:02x} P:{:02x} SP:{:02x} CYC:{}",
-    asm_string, cpu.a, cpu.x, cpu.y, cpu.status, cpu.stack_pointer, cpu.clock_counter
-  )
-  .to_ascii_uppercase()
+
+  if include_ppu {
+    let scanline = cpu.get_ppu_scanline();
+    let dot = cpu.get_ppu_dot();
+    format!(
+      "{:47} A:{:02x} X:{:02x} Y:{:02x} P:{:02x} SP:{:02x} PPU:{:3},{:3} CYC:{}",
+      asm_string, cpu.a, cpu.x, cpu.y, cpu.status, cpu.stack_pointer, scanline, dot, cpu.clock_counter
+    )
+    .to_ascii_uppercase()
+  } else {
+    format!(
+      "{:47} A:{:02x} X:{:02x} Y:{:02x} P:{:02x} SP:{:02x} CYC:{}",
+      asm_string, cpu.a, cpu.x, cpu.y, cpu.status, cpu.stack_pointer, cpu.clock_counter
+    )
+    .to_ascii_uppercase()
+  }
 }
 
 #[cfg(test)]
@@ -121,9 +142,9 @@ mod test {
   }
 
   #[test]
-  fn test_nestest() {
+  fn test_nestest_minus_ppu() {
     init();
-    let bytes: Vec<u8> = std::fs::read("roms/nestest.nes").unwrap();
+    let bytes: Vec<u8> = std::fs::read("test_roms/nestest.nes").unwrap();
     let mut bus = Bus::new();
     bus.load_cartridge_data(&bytes);
 
@@ -137,6 +158,12 @@ mod test {
     let mut messages = VecDeque::new();
 
     cpu.run_with_callback(move |cpu| {
+      // Stop when we've verified all expected lines
+      if current_line >= lines.len() {
+        cpu.stop();
+        return;
+      }
+
       let trace_message = trace(cpu);
       messages.push_back(trace_message.clone());
       while messages.len() > 5 {
@@ -146,6 +173,44 @@ mod test {
         trace_message, lines[current_line],
         "Mismatch on line {}.  \nAdditional context: \n{}\n{}\n{}\n{}\n{}\n",
         current_line, messages[0], messages[1], messages[2], messages[3], messages[4]
+      );
+      current_line = current_line + 1;
+    });
+  }
+
+  #[test]
+  fn test_nestest() {
+    init();
+    let bytes: Vec<u8> = std::fs::read("test_roms/nestest.nes").unwrap();
+    let mut bus = Bus::new();
+    bus.load_cartridge_data(&bytes);
+
+    let mut cpu = CPU::new_with_bus(Box::new(bus));
+    cpu.handle_reset();
+    // Automated mode.
+    cpu.program_counter = 0xC000;
+
+    let lines = read_lines("test_fixtures/nestest.log");
+    let mut current_line = 0;
+    let mut messages = VecDeque::new();
+
+    cpu.run_with_callback(move |cpu| {
+      // Stop when we've verified all expected lines
+      if current_line >= lines.len() {
+        cpu.stop();
+        return;
+      }
+
+      let trace_message = trace_with_ppu(cpu);
+      messages.push_back(trace_message.clone());
+      while messages.len() > 5 {
+        messages.pop_front();
+      }
+      let context: Vec<&str> = messages.iter().map(|s| s.as_str()).collect();
+      assert_eq!(
+        trace_message, lines[current_line],
+        "Mismatch on line {}.  \nAdditional context: \n{}\n",
+        current_line, context.join("\n")
       );
       current_line = current_line + 1;
     });

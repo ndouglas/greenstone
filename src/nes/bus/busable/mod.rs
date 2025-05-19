@@ -31,4 +31,12 @@ impl Busable for Bus {
       self.controller2_shift = self.controller2_state;
     }
   }
+
+  fn get_ppu_scanline(&self) -> u16 {
+    Bus::get_ppu_scanline(self)
+  }
+
+  fn get_ppu_dot(&self) -> u16 {
+    Bus::get_ppu_dot(self)
+  }
 }

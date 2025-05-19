@@ -255,6 +255,16 @@ impl Bus {
     self.ppu.take_frame_ready()
   }
 
+  /// Get the current PPU scanline (0-261).
+  pub fn get_ppu_scanline(&self) -> u16 {
+    self.ppu.scanline
+  }
+
+  /// Get the current PPU dot (0-340).
+  pub fn get_ppu_dot(&self) -> u16 {
+    self.ppu.dot
+  }
+
   /// Get debug info about PPU state
   #[cfg(test)]
   pub fn get_ppu_debug_info(&self) -> String {

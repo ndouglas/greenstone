@@ -108,6 +108,16 @@ impl CPU {
     self.bus.release_button2(button);
   }
 
+  /// Get the current PPU scanline (0-261).
+  pub fn get_ppu_scanline(&self) -> u16 {
+    self.bus.get_ppu_scanline()
+  }
+
+  /// Get the current PPU dot (0-340).
+  pub fn get_ppu_dot(&self) -> u16 {
+    self.bus.get_ppu_dot()
+  }
+
   #[named]
   pub fn interpret(&mut self, program: Vec<u8>, start: u16) {
     trace_enter!();

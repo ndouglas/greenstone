@@ -28,7 +28,7 @@ impl Addressable for CPU {
     trace_enter!();
     trace_u16!(address);
     self.tick();
-    let result = self.bus.read_u8(address);
+    let result = self.bus.unclocked_read_u8(address);
     trace_result!(result);
     result
   }
@@ -40,7 +40,7 @@ impl Addressable for CPU {
     trace_u16!(address);
     trace_u8!(data);
     self.tick();
-    self.bus.write_u8(address, data);
+    self.bus.unclocked_write_u8(address, data);
     trace_exit!();
   }
 
