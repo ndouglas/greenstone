@@ -18,20 +18,22 @@ This project is my attempt to understand that timing at a deep level.
 - Cycle-accurate instruction timing
 - Cartridge loading with iNES format parsing
 - Mapper 0 (NROM) support—enough for Donkey Kong, Ice Climber, and similar early titles
-- PPU register interface and VRAM/OAM memory
+- PPU rendering with background tiles and sprites
 - Horizontal and vertical nametable mirroring
-- NMI generation on vblank
+- Cycle-accurate VBlank timing (passes blargg's ppu_vbl_nmi tests 01-04, 06)
+- NMI generation with proper edge cases (suppression race condition, mid-vblank enable)
+- Sprite-0 hit detection
+- Controller input
 - Optional WebSocket debug server for external tool integration
 
 **What's in progress:**
-- PPU rendering pipeline (scanline/dot timing, background tiles, sprites)
-- Sprite evaluation and priority
-- Scroll register behavior during rendering
+- Fine-tuning NMI timing (test 05 is off by 1 instruction in some cases)
+- Sprite overflow flag with hardware bug emulation
 
 **What's planned:**
 - Additional mappers (MMC1, MMC3, etc.)
 - APU (audio)
-- Controller input beyond the current test harness
+- More blargg test compatibility
 
 ## Architecture
 
@@ -40,10 +42,10 @@ The emulator is structured around trait-based abstractions that mirror the NES h
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                         Bus                             │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌───────────┐  │
-│  │   CPU   │  │   PPU   │  │   RAM   │  │ Cartridge │  │
-│  │  6502   │  │  2C02   │  │   2KB   │  │  + Mapper │  │
-│  └─────────┘  └─────────┘  └─────────┘  └───────────┘  │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌───────────┐   │
+│  │   CPU   │  │   PPU   │  │   RAM   │  │ Cartridge │   │
+│  │  6502   │  │  2C02   │  │   2KB   │  │  + Mapper │   │
+│  └─────────┘  └─────────┘  └─────────┘  └───────────┘   │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -82,6 +84,22 @@ cargo test
 # Run with trace logging
 RUST_LOG=trace cargo test test_name
 ```
+
+## Controls
+
+Controller 1 is mapped to the keyboard:
+
+| NES Button | Key |
+|------------|-----|
+| D-Pad      | Arrow keys |
+| A          | J |
+| B          | K |
+| Select     | U |
+| Start      | I |
+
+## Debug Server
+
+The `--serve` flag starts a WebSocket server on port 44553. This is intended for external debugging tools—you can connect to inspect emulator state, set breakpoints, or build visual debuggers without modifying the emulator itself. The server runs alongside the emulator and doesn't affect normal operation.
 
 ## Testing
 

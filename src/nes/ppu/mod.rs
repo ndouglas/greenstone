@@ -176,7 +176,12 @@ impl PPU {
     trace_var!(new_control_generates_nmi);
     let current_control_generates_nmi = self.control_register.get_generate_nmi_flag();
     trace_var!(current_control_generates_nmi);
-    let result = !current_control_generates_nmi && new_control_generates_nmi;
+    let vblank_flag_set = self.status_register.get_vertical_blank_flag();
+    trace_var!(vblank_flag_set);
+    // NMI fires immediately if:
+    // 1. NMI was disabled and is now being enabled
+    // 2. AND the VBlank flag is currently set
+    let result = !current_control_generates_nmi && new_control_generates_nmi && vblank_flag_set;
     trace_var!(result);
     trace_exit!();
     result
@@ -297,11 +302,18 @@ impl PPU {
     let mut result = self.status_register.read_u8();
     self.status_register.set_vertical_blank_flag(false);
     self.is_latched = false;
-    // Only suppress VBlank if reading at the exact cycle when VBlank would be set.
-    // This implements the NES "race condition" where reading at VBlank start
-    // returns 0 in bit 7 but prevents VBlank from being set.
+    // VBlank suppression race condition:
+    // - Reading at dot 0 of scanline 241: Flag is read as 0, VBlank is suppressed
+    // - Reading at dots 1-2 of scanline 241: Flag is read as set, but NMI is suppressed
+    // This implements the NES "race condition" behavior.
     if self.scanline == VBLANK_SCANLINE && self.dot == 0 {
+      // Reading at the exact cycle before VBlank is set - suppress the flag entirely
       self.suppress_vblanks = true;
+    }
+    if self.scanline == VBLANK_SCANLINE && self.dot >= 1 && self.dot <= 2 {
+      // Reading shortly after VBlank starts - flag was set but we suppress NMI
+      // This clears any pending NMI that was set when VBlank started
+      self.nmi_pending = false;
     }
     // Status register includes some garbage from the bus.
     result = result | (self.latching_bus & 0b0001_1111);
@@ -767,8 +779,9 @@ impl PPU {
       }
 
       // Calculate pixel position within the sprite
+      // Note: OAM Y is the scanline BEFORE the sprite, so actual sprite top is Y+1
       let mut pixel_x = x - sprite_x;
-      let mut pixel_y = y - sprite_y;
+      let mut pixel_y = y - sprite_y - 1;
 
       // Handle horizontal flip (attribute bit 6)
       if attributes & 0x40 != 0 {
@@ -886,10 +899,11 @@ impl PPU {
       let oam_offset = sprite_index * 4;
 
       // Read sprite Y position
-      let sprite_y = self.oam_ram[oam_offset] as u16;
+      // Note: OAM Y is the scanline BEFORE the sprite appears (off by 1)
+      // So Y=0 means sprite top is at scanline 1, Y=1 means scanline 2, etc.
+      let sprite_y = self.oam_ram[oam_offset] as u16 + 1;
 
       // Check if sprite is on current scanline
-      // Y in OAM is the top of the sprite
       if current_scanline >= sprite_y && current_scanline < sprite_y + sprite_height {
         if self.sprites_on_scanline < 8 {
           // Copy sprite to secondary OAM
