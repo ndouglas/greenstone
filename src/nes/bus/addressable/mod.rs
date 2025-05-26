@@ -36,12 +36,15 @@ impl Addressable for Bus {
     self.clock_counter = self.clock_counter.wrapping_add(1);
     let cycles = self.clock_counter;
     trace_var!(cycles);
+    // Tick PPU 3 times per CPU cycle (5.37 MHz vs 1.79 MHz)
     debug!("Ticking PPU and checking results...");
     self.ppu.tick();
     debug!("Ticking PPU and checking results...");
     self.ppu.tick();
     debug!("Ticking PPU and checking results...");
     self.ppu.tick();
+    // Tick APU once per CPU cycle
+    self.apu.tick();
     trace_exit!();
   }
 
@@ -51,5 +54,9 @@ impl Addressable for Bus {
 
   fn take_frame_ready(&mut self) -> bool {
     self.ppu.take_frame_ready()
+  }
+
+  fn take_audio_samples(&mut self) -> Vec<f32> {
+    self.apu.take_samples()
   }
 }

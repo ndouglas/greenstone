@@ -79,4 +79,9 @@ pub trait Addressable {
   fn take_frame_ready(&mut self) -> bool {
     false
   }
+
+  /// Take accumulated audio samples from the APU. Default returns empty vec.
+  fn take_audio_samples(&mut self) -> Vec<f32> {
+    Vec::new()
+  }
 }

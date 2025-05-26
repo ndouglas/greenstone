@@ -4,6 +4,7 @@ use std::rc::Rc;
 use crate::cartridge::Cartridge;
 use crate::traits::Mappable;
 
+use super::apu::APU;
 use super::ppu::PPU;
 
 const PROGRAM_CONTROL_ADDRESS: u16 = 0xFFFC;
@@ -58,9 +59,8 @@ pub struct Bus {
   controller2_shift: u8,
   /// Controller strobe state (when high, continuously reload shift registers)
   controller_strobe: bool,
-  /// APU registers storage ($4000-$4017 excluding controller ports)
-  /// Used to return last written value for registers that don't have full read behavior
-  apu_registers: [u8; 24],
+  /// APU (Audio Processing Unit)
+  apu: APU,
 }
 
 impl Bus {
@@ -75,7 +75,7 @@ impl Bus {
       controller1_shift: 0,
       controller2_shift: 0,
       controller_strobe: false,
-      apu_registers: [0xFF; 24],
+      apu: APU::new(),
     }
   }
 
@@ -141,19 +141,18 @@ impl Bus {
             result
           }
           0x4017 => {
-            // Controller 2 read
+            // Controller 2 read (not APU frame counter read!)
             let result = (self.controller2_shift & 1) | 0x40;
             self.controller2_shift = (self.controller2_shift >> 1) | 0x80;
             result
           }
           0x4015 => {
-            // APU status - TODO: implement proper APU status
-            // For now return last written value (needed for nestest)
-            self.apu_registers[(address - APU_IO_START_ADDRESS) as usize]
+            // APU status register
+            self.apu.read_register(address)
           }
           _ => {
-            // Other APU registers - return last written value
-            self.apu_registers[(address - APU_IO_START_ADDRESS) as usize]
+            // Other APU registers return open bus (not readable)
+            0
           }
         }
       }
@@ -192,9 +191,6 @@ impl Bus {
         self.ppu.write_register(index, value);
       }
       APU_IO_START_ADDRESS..=APU_IO_END_ADDRESS => {
-        // Store all APU register writes for later read-back
-        self.apu_registers[(address - APU_IO_START_ADDRESS) as usize] = value;
-
         if address == OAM_DMA_ADDRESS {
           // OAM DMA: copy 256 bytes from CPU page XX00-XXFF to OAM
           let source_page = (value as u16) << 8;
@@ -220,8 +216,10 @@ impl Bus {
             self.controller1_shift = self.controller1_state;
             self.controller2_shift = self.controller2_state;
           }
+        } else {
+          // All other APU registers ($4000-$4013, $4015, $4017)
+          self.apu.write_register(address, value);
         }
-        // TODO: Implement proper APU behavior (0x4000-0x4013, 0x4015, 0x4017)
       }
       CARTRIDGE_START_ADDRESS..=CARTRIDGE_END_ADDRESS => {
         if let Some(ref cartridge) = self.cartridge {
@@ -278,5 +276,15 @@ impl Bus {
       self.ppu.scanline,
       self.ppu.dot
     )
+  }
+
+  /// Take accumulated audio samples from the APU.
+  pub fn take_audio_samples(&mut self) -> Vec<f32> {
+    self.apu.take_samples()
+  }
+
+  /// Check if the APU is requesting an IRQ.
+  pub fn apu_irq_pending(&self) -> bool {
+    self.apu.irq_pending()
   }
 }

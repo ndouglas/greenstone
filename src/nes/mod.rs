@@ -1,3 +1,7 @@
+// APU.
+pub mod apu;
+pub use apu::*;
+
 // Bus.
 pub mod bus;
 pub use bus::*;

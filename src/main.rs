@@ -33,6 +33,7 @@ use tokio::runtime::Runtime;
 
 // Temporary.
 use rand::Rng;
+use sdl2::audio::{AudioQueue, AudioSpecDesired};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -158,6 +159,22 @@ async fn main() {
 
   let sdl_context = sdl2::init().unwrap();
   let video_subsystem = sdl_context.video().unwrap();
+  let audio_subsystem = sdl_context.audio().unwrap();
+
+  // Initialize audio
+  let desired_spec = AudioSpecDesired {
+    freq: Some(44100),
+    channels: Some(1), // Mono
+    samples: Some(1024), // Buffer size
+  };
+
+  let audio_queue: AudioQueue<f32> = audio_subsystem
+    .open_queue(None, &desired_spec)
+    .expect("Failed to open audio queue");
+
+  // Start audio playback
+  audio_queue.resume();
+
   let window = video_subsystem
     .window(
       "Greenstone NES Emulator",
@@ -203,6 +220,15 @@ async fn main() {
           .unwrap();
         canvas.copy(&texture, None, None).unwrap();
         canvas.present();
+      }
+
+      // Queue audio samples
+      let samples = cpu.take_audio_samples();
+      if !samples.is_empty() {
+        // Only queue if buffer isn't too full (avoid latency buildup)
+        if audio_queue.size() < 8192 {
+          let _ = audio_queue.queue(&samples);
+        }
       }
 
       // Frame rate limiting: sleep until next frame should start

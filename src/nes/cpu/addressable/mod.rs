@@ -68,4 +68,8 @@ impl Addressable for CPU {
   fn take_frame_ready(&mut self) -> bool {
     self.bus.take_frame_ready()
   }
+
+  fn take_audio_samples(&mut self) -> Vec<f32> {
+    self.bus.take_audio_samples()
+  }
 }
