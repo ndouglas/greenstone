@@ -458,3 +458,75 @@ mod instr_timing {
     }
   }
 }
+
+#[cfg(test)]
+mod apu_tests {
+  use super::*;
+
+  #[test]
+  fn test_1_len_ctr() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_test/1-len_ctr.nes") {
+      panic!("{}", e);
+    }
+  }
+
+  #[test]
+  fn test_2_len_table() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_test/2-len_table.nes") {
+      panic!("{}", e);
+    }
+  }
+
+  #[test]
+  fn test_3_irq_flag() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_test/3-irq_flag.nes") {
+      panic!("{}", e);
+    }
+  }
+
+  #[test]
+  #[ignore] // APU jitter test - very timing sensitive
+  fn test_4_jitter() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_test/4-jitter.nes") {
+      panic!("{}", e);
+    }
+  }
+
+  #[test]
+  fn test_5_len_timing() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_test/5-len_timing.nes") {
+      panic!("{}", e);
+    }
+  }
+
+  #[test]
+  fn test_6_irq_flag_timing() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_test/6-irq_flag_timing.nes") {
+      panic!("{}", e);
+    }
+  }
+
+  #[test]
+  #[ignore] // DMC not fully implemented
+  fn test_7_dmc_basics() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_test/7-dmc_basics.nes") {
+      panic!("{}", e);
+    }
+  }
+
+  #[test]
+  #[ignore] // DMC not fully implemented
+  fn test_8_dmc_rates() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_test/8-dmc_rates.nes") {
+      panic!("{}", e);
+    }
+  }
+}

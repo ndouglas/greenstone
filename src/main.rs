@@ -56,32 +56,86 @@ fn handle_user_input(cpu: &mut CPU, event_pump: &mut EventPump) {
       } => std::process::exit(0),
 
       // Button presses
-      Event::KeyDown { keycode: Some(Keycode::J), .. } => cpu.press_button1(BUTTON_A),
-      Event::KeyDown { keycode: Some(Keycode::K), .. } => cpu.press_button1(BUTTON_B),
-      Event::KeyDown { keycode: Some(Keycode::U), .. } => cpu.press_button1(BUTTON_SELECT),
-      Event::KeyDown { keycode: Some(Keycode::I), .. } => cpu.press_button1(BUTTON_START),
-      Event::KeyDown { keycode: Some(Keycode::W), .. } |
-      Event::KeyDown { keycode: Some(Keycode::Up), .. } => cpu.press_button1(BUTTON_UP),
-      Event::KeyDown { keycode: Some(Keycode::S), .. } |
-      Event::KeyDown { keycode: Some(Keycode::Down), .. } => cpu.press_button1(BUTTON_DOWN),
-      Event::KeyDown { keycode: Some(Keycode::A), .. } |
-      Event::KeyDown { keycode: Some(Keycode::Left), .. } => cpu.press_button1(BUTTON_LEFT),
-      Event::KeyDown { keycode: Some(Keycode::D), .. } |
-      Event::KeyDown { keycode: Some(Keycode::Right), .. } => cpu.press_button1(BUTTON_RIGHT),
+      Event::KeyDown {
+        keycode: Some(Keycode::J), ..
+      } => cpu.press_button1(BUTTON_A),
+      Event::KeyDown {
+        keycode: Some(Keycode::K), ..
+      } => cpu.press_button1(BUTTON_B),
+      Event::KeyDown {
+        keycode: Some(Keycode::U), ..
+      } => cpu.press_button1(BUTTON_SELECT),
+      Event::KeyDown {
+        keycode: Some(Keycode::I), ..
+      } => cpu.press_button1(BUTTON_START),
+      Event::KeyDown {
+        keycode: Some(Keycode::W), ..
+      }
+      | Event::KeyDown {
+        keycode: Some(Keycode::Up), ..
+      } => cpu.press_button1(BUTTON_UP),
+      Event::KeyDown {
+        keycode: Some(Keycode::S), ..
+      }
+      | Event::KeyDown {
+        keycode: Some(Keycode::Down),
+        ..
+      } => cpu.press_button1(BUTTON_DOWN),
+      Event::KeyDown {
+        keycode: Some(Keycode::A), ..
+      }
+      | Event::KeyDown {
+        keycode: Some(Keycode::Left),
+        ..
+      } => cpu.press_button1(BUTTON_LEFT),
+      Event::KeyDown {
+        keycode: Some(Keycode::D), ..
+      }
+      | Event::KeyDown {
+        keycode: Some(Keycode::Right),
+        ..
+      } => cpu.press_button1(BUTTON_RIGHT),
 
       // Button releases
-      Event::KeyUp { keycode: Some(Keycode::J), .. } => cpu.release_button1(BUTTON_A),
-      Event::KeyUp { keycode: Some(Keycode::K), .. } => cpu.release_button1(BUTTON_B),
-      Event::KeyUp { keycode: Some(Keycode::U), .. } => cpu.release_button1(BUTTON_SELECT),
-      Event::KeyUp { keycode: Some(Keycode::I), .. } => cpu.release_button1(BUTTON_START),
-      Event::KeyUp { keycode: Some(Keycode::W), .. } |
-      Event::KeyUp { keycode: Some(Keycode::Up), .. } => cpu.release_button1(BUTTON_UP),
-      Event::KeyUp { keycode: Some(Keycode::S), .. } |
-      Event::KeyUp { keycode: Some(Keycode::Down), .. } => cpu.release_button1(BUTTON_DOWN),
-      Event::KeyUp { keycode: Some(Keycode::A), .. } |
-      Event::KeyUp { keycode: Some(Keycode::Left), .. } => cpu.release_button1(BUTTON_LEFT),
-      Event::KeyUp { keycode: Some(Keycode::D), .. } |
-      Event::KeyUp { keycode: Some(Keycode::Right), .. } => cpu.release_button1(BUTTON_RIGHT),
+      Event::KeyUp {
+        keycode: Some(Keycode::J), ..
+      } => cpu.release_button1(BUTTON_A),
+      Event::KeyUp {
+        keycode: Some(Keycode::K), ..
+      } => cpu.release_button1(BUTTON_B),
+      Event::KeyUp {
+        keycode: Some(Keycode::U), ..
+      } => cpu.release_button1(BUTTON_SELECT),
+      Event::KeyUp {
+        keycode: Some(Keycode::I), ..
+      } => cpu.release_button1(BUTTON_START),
+      Event::KeyUp {
+        keycode: Some(Keycode::W), ..
+      }
+      | Event::KeyUp {
+        keycode: Some(Keycode::Up), ..
+      } => cpu.release_button1(BUTTON_UP),
+      Event::KeyUp {
+        keycode: Some(Keycode::S), ..
+      }
+      | Event::KeyUp {
+        keycode: Some(Keycode::Down),
+        ..
+      } => cpu.release_button1(BUTTON_DOWN),
+      Event::KeyUp {
+        keycode: Some(Keycode::A), ..
+      }
+      | Event::KeyUp {
+        keycode: Some(Keycode::Left),
+        ..
+      } => cpu.release_button1(BUTTON_LEFT),
+      Event::KeyUp {
+        keycode: Some(Keycode::D), ..
+      }
+      | Event::KeyUp {
+        keycode: Some(Keycode::Right),
+        ..
+      } => cpu.release_button1(BUTTON_RIGHT),
 
       _ => { /* do nothing */ }
     }
@@ -164,13 +218,11 @@ async fn main() {
   // Initialize audio
   let desired_spec = AudioSpecDesired {
     freq: Some(44100),
-    channels: Some(1), // Mono
-    samples: Some(1024), // Buffer size
+    channels: Some(1),   // Mono
+    samples: Some(2048), // Buffer size (larger to reduce underruns)
   };
 
-  let audio_queue: AudioQueue<f32> = audio_subsystem
-    .open_queue(None, &desired_spec)
-    .expect("Failed to open audio queue");
+  let audio_queue: AudioQueue<f32> = audio_subsystem.open_queue(None, &desired_spec).expect("Failed to open audio queue");
 
   // Start audio playback
   audio_queue.resume();
@@ -189,9 +241,7 @@ async fn main() {
   let mut event_pump = sdl_context.event_pump().unwrap();
   canvas.set_scale(SCALE, SCALE).unwrap();
   let creator = canvas.texture_creator();
-  let mut texture = creator
-    .create_texture_target(PixelFormatEnum::RGB24, NES_WIDTH, NES_HEIGHT)
-    .unwrap();
+  let mut texture = creator.create_texture_target(PixelFormatEnum::RGB24, NES_WIDTH, NES_HEIGHT).unwrap();
 
   // Load the ROM file
   let bytes: Vec<u8> = std::fs::read(args.file).unwrap();
@@ -215,9 +265,7 @@ async fn main() {
 
       let framebuffer = get_ppu_framebuffer(cpu);
       if framebuffer.len() == (NES_WIDTH * NES_HEIGHT * 3) as usize {
-        texture
-          .update(None, framebuffer, (NES_WIDTH * 3) as usize)
-          .unwrap();
+        texture.update(None, framebuffer, (NES_WIDTH * 3) as usize).unwrap();
         canvas.copy(&texture, None, None).unwrap();
         canvas.present();
       }

@@ -205,9 +205,14 @@ impl Pulse {
     pub fn output(&self) -> u8 {
         // Channel is silenced if:
         // - Length counter is 0
-        // - Sweep is muting
+        // - Timer period < 8 (prevents ultrasonic frequencies)
+        // - Sweep is muting (target period > 0x7FF)
         // - Duty cycle output is 0
         if self.length_counter == 0 {
+            return 0;
+        }
+        // Always check period < 8 directly (sweep_muting may not be current)
+        if self.timer_period < 8 {
             return 0;
         }
         if self.sweep_muting {

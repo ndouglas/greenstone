@@ -35,8 +35,8 @@ pub const LENGTH_TABLE: [u8; 32] = [
 ];
 
 /// Frame sequencer step timings (in CPU cycles).
-/// Mode 0 (4-step): steps at 7457, 14913, 22371, 29829, then IRQ at 29830
-/// Mode 1 (5-step): steps at 7457, 14913, 22371, 29829, 37281
+/// Mode 0 (4-step): steps at 7457, 14913, 22371, 29829, then reset at 29830
+/// Mode 1 (5-step): steps at 7457, 14913, 22371, (nothing at 29829), 37281
 pub const FRAME_STEP_CYCLES: [u32; 5] = [7457, 14913, 22371, 29829, 37281];
 
 /// NES APU state.
@@ -66,21 +66,28 @@ pub struct APU {
     frame_irq_flag: bool,
     /// DMC IRQ flag
     dmc_irq_flag: bool,
+    /// Pending frame counter reset (cycles until reset, 0 = no pending)
+    reset_pending: u8,
 
     // Audio output
     /// Sample buffer for audio output
     sample_buffer: Vec<f32>,
-    /// Cycle counter for sample generation
-    sample_cycle_count: u32,
-    /// Cycles per sample (CPU clock / sample rate)
-    cycles_per_sample: u32,
+    /// Fractional cycle accumulator for sample generation (16.16 fixed point)
+    sample_accumulator: u32,
+    /// Cycles per sample in 16.16 fixed point (CPU clock / sample rate)
+    /// 1789773 / 44100 ≈ 40.584 = 0x28959A in 16.16 fixed point
+    cycles_per_sample_fixed: u32,
+    /// High-pass filter state for DC offset removal
+    filter_prev_input: f32,
+    filter_prev_output: f32,
 }
 
 impl APU {
     pub fn new() -> Self {
-        // NTSC CPU clock is ~1.789773 MHz
-        // For 44100 Hz sample rate: 1789773 / 44100 ≈ 40.58 cycles per sample
-        let cycles_per_sample = 41; // Approximate
+        // NTSC CPU clock is 1789773 Hz
+        // For 44100 Hz sample rate: 1789773 / 44100 ≈ 40.584 cycles per sample
+        // In 16.16 fixed point: 40.584 * 65536 = 2660218 = 0x289B7A
+        let cycles_per_sample_fixed = (1789773u64 * 65536 / 44100) as u32;
 
         APU {
             pulse1: Pulse::new(1),
@@ -100,10 +107,13 @@ impl APU {
             frame_step: 0,
             frame_irq_flag: false,
             dmc_irq_flag: false,
+            reset_pending: 0,
 
             sample_buffer: Vec::with_capacity(1024),
-            sample_cycle_count: 0,
-            cycles_per_sample,
+            sample_accumulator: 0,
+            cycles_per_sample_fixed,
+            filter_prev_input: 0.0,
+            filter_prev_output: 0.0,
         }
     }
 
@@ -198,20 +208,18 @@ impl APU {
             // Frame counter ($4017)
             0x4017 => {
                 self.frame_counter = value;
-                // Reset frame sequencer
-                self.cycle_count = 0;
-                self.frame_step = 0;
 
                 // If bit 6 is set, disable frame IRQ
                 if (value & 0x40) != 0 {
                     self.frame_irq_flag = false;
                 }
 
+                // Frame counter reset happens after 3-4 cycles
+                // Using 4 cycles as a reasonable approximation
+                self.reset_pending = 4;
+
                 // If mode 1 (bit 7 set), clock all units immediately
-                if (value & 0x80) != 0 {
-                    self.clock_quarter_frame();
-                    self.clock_half_frame();
-                }
+                // (this happens on the actual reset, handled in tick)
             }
 
             _ => {}
@@ -221,6 +229,21 @@ impl APU {
 
     /// Tick the APU. Called once per CPU cycle.
     pub fn tick(&mut self) {
+        // Handle pending frame counter reset
+        if self.reset_pending > 0 {
+            self.reset_pending -= 1;
+            if self.reset_pending == 0 {
+                self.cycle_count = 0;
+                self.frame_step = 0;
+
+                // If mode 1 (bit 7 set), clock all units immediately on reset
+                if (self.frame_counter & 0x80) != 0 {
+                    self.clock_quarter_frame();
+                    self.clock_half_frame();
+                }
+            }
+        }
+
         // Increment cycle counter
         self.cycle_count += 1;
 
@@ -240,61 +263,89 @@ impl APU {
 
         match self.frame_step {
             0 => {
-                if self.cycle_count >= FRAME_STEP_CYCLES[0] {
+                if self.cycle_count == FRAME_STEP_CYCLES[0] {
                     self.clock_quarter_frame();
                     self.frame_step = 1;
                 }
             }
             1 => {
-                if self.cycle_count >= FRAME_STEP_CYCLES[1] {
+                if self.cycle_count == FRAME_STEP_CYCLES[1] {
                     self.clock_quarter_frame();
                     self.clock_half_frame();
                     self.frame_step = 2;
                 }
             }
             2 => {
-                if self.cycle_count >= FRAME_STEP_CYCLES[2] {
+                if self.cycle_count == FRAME_STEP_CYCLES[2] {
                     self.clock_quarter_frame();
                     self.frame_step = 3;
                 }
             }
             3 => {
-                if self.cycle_count >= FRAME_STEP_CYCLES[3] {
+                // In Mode 0, IRQ flag is set at cycle 29828 (1 cycle before length clock)
+                if !mode && !irq_inhibit && self.cycle_count == FRAME_STEP_CYCLES[3] - 1 {
+                    self.frame_irq_flag = true;
+                }
+
+                if self.cycle_count == FRAME_STEP_CYCLES[3] {
                     if !mode {
-                        // Mode 0: 4-step sequence
+                        // Mode 0: 4-step sequence - length counters clock at 29829
                         self.clock_quarter_frame();
                         self.clock_half_frame();
+                        // IRQ flag also set again at 29829 and 29830
                         if !irq_inhibit {
                             self.frame_irq_flag = true;
                         }
-                        // Reset for next frame
-                        self.cycle_count = 0;
-                        self.frame_step = 0;
+                        // Move to reset state (reset happens 1 cycle later at 29830)
+                        self.frame_step = 5;
                     } else {
                         // Mode 1: continue to step 4
                         self.frame_step = 4;
                     }
                 }
             }
+            5 => {
+                // Mode 0: reset happens 1 cycle after step 4 (at cycle 29830)
+                // IRQ flag is also set again at 29830
+                if !irq_inhibit {
+                    self.frame_irq_flag = true;
+                }
+                self.cycle_count = 0;
+                self.frame_step = 0;
+            }
             4 => {
-                if self.cycle_count >= FRAME_STEP_CYCLES[4] {
-                    // Mode 1: 5-step sequence
+                if self.cycle_count == FRAME_STEP_CYCLES[4] {
+                    // Mode 1: 5-step sequence - clock at 37281
                     self.clock_quarter_frame();
                     self.clock_half_frame();
-                    // Reset for next frame
-                    self.cycle_count = 0;
-                    self.frame_step = 0;
+                    // Move to reset state (reset happens 1 cycle later at 37282)
+                    self.frame_step = 6;
                 }
+            }
+            6 => {
+                // Mode 1: reset happens 1 cycle after step 5 (at cycle 37282)
+                self.cycle_count = 0;
+                self.frame_step = 0;
             }
             _ => {}
         }
 
-        // Generate audio sample
-        self.sample_cycle_count += 1;
-        if self.sample_cycle_count >= self.cycles_per_sample {
-            self.sample_cycle_count = 0;
-            let sample = self.mix_output();
-            self.sample_buffer.push(sample);
+        // Generate audio sample using fixed-point accumulator
+        // Add one cycle (1.0 in 16.16 fixed point = 65536)
+        self.sample_accumulator += 65536;
+        while self.sample_accumulator >= self.cycles_per_sample_fixed {
+            self.sample_accumulator -= self.cycles_per_sample_fixed;
+            let raw_sample = self.mix_output();
+
+            // Apply high-pass filter to remove DC offset (reduces clicks/pops)
+            // First-order high-pass: y[n] = alpha * (y[n-1] + x[n] - x[n-1])
+            // alpha = 0.996 gives ~90Hz cutoff at 44100Hz sample rate
+            const ALPHA: f32 = 0.996;
+            let filtered = ALPHA * (self.filter_prev_output + raw_sample - self.filter_prev_input);
+            self.filter_prev_input = raw_sample;
+            self.filter_prev_output = filtered;
+
+            self.sample_buffer.push(filtered.clamp(-1.0, 1.0));
         }
     }
 

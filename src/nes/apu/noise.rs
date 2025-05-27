@@ -137,10 +137,16 @@ impl Noise {
 
     /// Get the current output sample (0-15)
     pub fn output(&self) -> u8 {
-        // Silenced if length counter is 0 or shift register bit 0 is set
+        // Silenced if length counter is 0
         if self.length_counter == 0 {
             return 0;
         }
+        // Silenced if timer period is 0 (not properly initialized)
+        // Minimum valid period from table is 4
+        if self.timer_period == 0 {
+            return 0;
+        }
+        // Silenced when shift register bit 0 is set
         if (self.shift_register & 0x01) != 0 {
             return 0;
         }
