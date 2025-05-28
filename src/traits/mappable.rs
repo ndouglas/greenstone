@@ -2,6 +2,8 @@
 pub enum MirroringMode {
   Vertical,
   Horizontal,
+  SingleScreenLower,
+  SingleScreenUpper,
   None,
 }
 

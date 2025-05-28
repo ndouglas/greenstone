@@ -273,8 +273,10 @@ async fn main() {
       // Queue audio samples
       let samples = cpu.take_audio_samples();
       if !samples.is_empty() {
-        // Only queue if buffer isn't too full (avoid latency buildup)
-        if audio_queue.size() < 8192 {
+        // Always queue samples - dropping them causes glitches
+        // Allow up to ~5 frames of audio buffer (~120ms at 44100Hz) before skipping
+        // to prevent unbounded latency buildup
+        if audio_queue.size() < 22050 {
           let _ = audio_queue.queue(&samples);
         }
       }

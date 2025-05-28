@@ -136,6 +136,8 @@ impl VRAM {
       None => address - 0x2000,
       Horizontal => ((address / 2) & NAMETABLE_SIZE) + (address % NAMETABLE_SIZE),
       Vertical => address % (2 * NAMETABLE_SIZE),
+      SingleScreenLower => address % NAMETABLE_SIZE,
+      SingleScreenUpper => (address % NAMETABLE_SIZE) + NAMETABLE_SIZE,
     };
     trace_u16!(result);
     trace_exit!();

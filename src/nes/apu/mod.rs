@@ -78,8 +78,10 @@ pub struct APU {
     /// 1789773 / 44100 ≈ 40.584 = 0x28959A in 16.16 fixed point
     cycles_per_sample_fixed: u32,
     /// High-pass filter state for DC offset removal
-    filter_prev_input: f32,
-    filter_prev_output: f32,
+    hp_prev_input: f32,
+    hp_prev_output: f32,
+    /// Low-pass filter state for smoothing
+    lp_prev_output: f32,
 }
 
 impl APU {
@@ -112,8 +114,9 @@ impl APU {
             sample_buffer: Vec::with_capacity(1024),
             sample_accumulator: 0,
             cycles_per_sample_fixed,
-            filter_prev_input: 0.0,
-            filter_prev_output: 0.0,
+            hp_prev_input: 0.0,
+            hp_prev_output: 0.0,
+            lp_prev_output: 0.0,
         }
     }
 
@@ -340,12 +343,19 @@ impl APU {
             // Apply high-pass filter to remove DC offset (reduces clicks/pops)
             // First-order high-pass: y[n] = alpha * (y[n-1] + x[n] - x[n-1])
             // alpha = 0.996 gives ~90Hz cutoff at 44100Hz sample rate
-            const ALPHA: f32 = 0.996;
-            let filtered = ALPHA * (self.filter_prev_output + raw_sample - self.filter_prev_input);
-            self.filter_prev_input = raw_sample;
-            self.filter_prev_output = filtered;
+            const HP_ALPHA: f32 = 0.996;
+            let hp_out = HP_ALPHA * (self.hp_prev_output + raw_sample - self.hp_prev_input);
+            self.hp_prev_input = raw_sample;
+            self.hp_prev_output = hp_out;
 
-            self.sample_buffer.push(filtered.clamp(-1.0, 1.0));
+            // Apply low-pass filter to smooth high frequencies (reduces aliasing artifacts)
+            // First-order low-pass: y[n] = alpha * x[n] + (1 - alpha) * y[n-1]
+            // alpha = 0.5 gives ~14kHz cutoff at 44100Hz sample rate
+            const LP_ALPHA: f32 = 0.5;
+            let lp_out = LP_ALPHA * hp_out + (1.0 - LP_ALPHA) * self.lp_prev_output;
+            self.lp_prev_output = lp_out;
+
+            self.sample_buffer.push(lp_out.clamp(-1.0, 1.0));
         }
     }
 
@@ -391,8 +401,10 @@ impl APU {
             0.0
         };
 
-        // Combine and center around 0 (convert from 0..1 to -1..1 range)
-        (pulse_out + tnd_out) * 2.0 - 1.0
+        // Output 0.0-1.0 range directly - the high-pass filter will remove DC offset
+        // and center the signal around 0. This avoids the -1.0 DC offset from silence.
+        // Scale by 2.0 to use more of the output range (max output is ~0.5)
+        (pulse_out + tnd_out) * 2.0
     }
 
     /// Take the accumulated audio samples and clear the buffer.

@@ -530,3 +530,110 @@ mod apu_tests {
     }
   }
 }
+
+#[cfg(test)]
+mod apu_reset_tests {
+  use super::*;
+
+  // These tests require hardware reset functionality during test execution.
+  // They display "Press RESET" and wait for a reset signal.
+  // Ignored until reset mechanism is implemented.
+
+  #[test]
+  #[ignore = "Requires hardware reset support"]
+  fn test_4015_cleared() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_reset/4015_cleared.nes") {
+      panic!("{}", e);
+    }
+  }
+
+  #[test]
+  #[ignore = "Requires hardware reset support"]
+  fn test_4017_timing() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_reset/4017_timing.nes") {
+      panic!("{}", e);
+    }
+  }
+
+  #[test]
+  #[ignore = "Requires hardware reset support"]
+  fn test_4017_written() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_reset/4017_written.nes") {
+      panic!("{}", e);
+    }
+  }
+
+  #[test]
+  #[ignore = "Requires hardware reset support"]
+  fn test_irq_flag_cleared() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_reset/irq_flag_cleared.nes") {
+      panic!("{}", e);
+    }
+  }
+
+  #[test]
+  #[ignore = "Requires hardware reset support"]
+  fn test_len_ctrs_enabled() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_reset/len_ctrs_enabled.nes") {
+      panic!("{}", e);
+    }
+  }
+
+  #[test]
+  #[ignore = "Requires hardware reset support"]
+  fn test_works_immediately() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_reset/works_immediately.nes") {
+      panic!("{}", e);
+    }
+  }
+}
+
+#[cfg(test)]
+mod apu_mixer_tests {
+  use super::*;
+
+  // These tests use DMC DAC to generate inverse waveforms to cancel sound.
+  // They require DMC functionality to work properly.
+
+  #[test]
+  #[ignore = "Requires DMC for inverse waveform cancellation"]
+  fn test_square() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_mixer/square.nes") {
+      panic!("{}", e);
+    }
+  }
+
+  #[test]
+  #[ignore = "Requires DMC for inverse waveform cancellation"]
+  fn test_triangle() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_mixer/triangle.nes") {
+      panic!("{}", e);
+    }
+  }
+
+  #[test]
+  #[ignore = "Requires DMC for inverse waveform cancellation"]
+  fn test_noise() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_mixer/noise.nes") {
+      panic!("{}", e);
+    }
+  }
+
+  #[test]
+  #[ignore = "DMC not fully implemented"]
+  fn test_dmc() {
+    greenstone::test::init();
+    if let Err(e) = run_blargg_test("test_roms/apu_mixer/dmc.nes") {
+      panic!("{}", e);
+    }
+  }
+}
