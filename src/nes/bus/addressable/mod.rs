@@ -25,7 +25,7 @@ impl Addressable for Bus {
     trace_enter!();
     let start_address = start as usize;
     self.memory[start_address..(start_address + program.len())].copy_from_slice(&program[..]);
-    self.write_u16(PROGRAM_CONTROL_ADDRESS.try_into().unwrap(), start);
+    self.write_u16(PROGRAM_CONTROL_ADDRESS, start);
     trace_exit!();
   }
 

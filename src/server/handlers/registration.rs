@@ -9,7 +9,7 @@ pub async fn registration_handler(body: RegistrationRequest, clients: Clients) -
 
   register_client(uuid.clone(), user_id, clients).await;
   Ok(warp::reply::json(&RegistrationResponse {
-    url: format!("ws://{}/ws/{}", server, uuid),
+    url: format!("ws://{server}/ws/{uuid}"),
   }))
 }
 

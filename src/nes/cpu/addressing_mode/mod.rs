@@ -26,13 +26,12 @@ impl CPU {
   pub fn unclocked_get_operand_value(&mut self, mode: &AddressingMode, address: u16) -> Option<u8> {
     use AddressingMode::*;
     trace_enter!();
-    trace!("Using addressing mode {}", mode);
+    trace!("Using addressing mode {mode}");
     let result = match mode {
       Implied => None,
-      _ => match self.unclocked_get_operand_address(mode, address) {
-        Some(new_address) => Some(self.unclocked_read_u8(new_address)),
-        None => None,
-      },
+      _ => self
+        .unclocked_get_operand_address(mode, address)
+        .map(|new_address| self.unclocked_read_u8(new_address)),
     };
     trace_var!(result);
     trace_exit!();
@@ -43,7 +42,7 @@ impl CPU {
   pub fn unclocked_get_operand_address(&mut self, mode: &AddressingMode, address: u16) -> Option<u16> {
     use AddressingMode::*;
     trace_enter!();
-    trace!("Using addressing mode {}", mode);
+    trace!("Using addressing mode {mode}");
     let result = match mode {
       Implied => None,
       Immediate => Some(address),
@@ -57,14 +56,13 @@ impl CPU {
       Indirect => {
         let pointer = self.unclocked_read_u16(address);
         trace_u16!(pointer);
-        let address;
-        if pointer & 0x00FF == 0x00FF {
+        let address = if pointer & 0x00FF == 0x00FF {
           // Buggy behavior.
-          address = u16::from_le_bytes([self.unclocked_read_u8(pointer), self.unclocked_read_u8(pointer & 0xFF00)]);
+          u16::from_le_bytes([self.unclocked_read_u8(pointer), self.unclocked_read_u8(pointer & 0xFF00)])
         } else {
           // Normal behavior.
-          address = self.unclocked_read_u16(pointer);
-        }
+          self.unclocked_read_u16(pointer)
+        };
         trace_u16!(address);
         Some(address)
       }
@@ -93,7 +91,7 @@ impl CPU {
   pub fn get_operand_address(&mut self, opcode: &Opcode, mode: &AddressingMode) -> Option<u16> {
     use AddressingMode::*;
     trace_enter!();
-    trace!("Using addressing mode {}", mode);
+    trace!("Using addressing mode {mode}");
     let result = match mode {
       // The Implied mode does not require additional data.
       //
@@ -568,16 +566,15 @@ impl CPU {
         debug!("Ticking twice (reading 2-byte operand address)...");
         let pointer = self.get_next_u16();
         trace_u16!(pointer);
-        let address;
-        if pointer & 0x00FF == 0x00FF {
+        let address = if pointer & 0x00FF == 0x00FF {
           // Buggy behavior.
           debug!("Ticking twice (reading 2-byte address via buggy Indirect behavior)...");
-          address = u16::from_le_bytes([self.read_u8(pointer), self.read_u8(pointer & 0xFF00)]);
+          u16::from_le_bytes([self.read_u8(pointer), self.read_u8(pointer & 0xFF00)])
         } else {
           // Normal behavior.
           debug!("Ticking twice (reading 2-byte address via non-buggy Indirect behavior)...");
-          address = self.read_u16(pointer);
-        }
+          self.read_u16(pointer)
+        };
         trace_u16!(address);
         Some(address)
       }
@@ -750,6 +747,6 @@ impl CPU {
 
 impl fmt::Display for AddressingMode {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "{:?}", self)
+    write!(f, "{self:?}")
   }
 }

@@ -243,12 +243,7 @@ impl ControlRegister {
   #[inline]
   pub fn get_vram_address_increment(&self) -> u8 {
     trace_enter!();
-    let result;
-    if self.get_control_flag(ControlFlags::VramIncrementSize) {
-      result = 32;
-    } else {
-      result = 1;
-    }
+    let result = if self.get_control_flag(ControlFlags::VramIncrementSize) { 32 } else { 1 };
     trace_u8!(result);
     trace_exit!();
     result
@@ -274,12 +269,7 @@ impl ControlRegister {
   #[inline]
   pub fn get_sprite_pattern_address(&self) -> u16 {
     trace_enter!();
-    let result;
-    if self.get_sprite_address_flag() {
-      result = 0x1000;
-    } else {
-      result = 0x0000;
-    }
+    let result = if self.get_sprite_address_flag() { 0x1000 } else { 0x0000 };
     trace_u16!(result);
     trace_exit!();
     result
@@ -289,12 +279,7 @@ impl ControlRegister {
   #[inline]
   pub fn get_background_pattern_address(&self) -> u16 {
     trace_enter!();
-    let result;
-    if self.get_background_address_flag() {
-      result = 0x1000;
-    } else {
-      result = 0x0000;
-    }
+    let result = if self.get_background_address_flag() { 0x1000 } else { 0x0000 };
     trace_u16!(result);
     trace_exit!();
     result
@@ -304,12 +289,7 @@ impl ControlRegister {
   #[inline]
   pub fn get_sprite_size(&self) -> u8 {
     trace_enter!();
-    let result;
-    if self.get_sprite_size_flag() {
-      result = 16;
-    } else {
-      result = 8;
-    }
+    let result = if self.get_sprite_size_flag() { 16 } else { 8 };
     trace_u8!(result);
     trace_exit!();
     result

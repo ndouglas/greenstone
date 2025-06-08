@@ -251,7 +251,7 @@ impl PPU {
     trace_u8!(value);
     if self.is_latched {
       self.t_address.set_low_byte(value);
-      self.v_address = self.t_address.clone();
+      self.v_address = self.t_address;
     } else {
       self.t_address.set_high_byte(value);
       // NES hardware clears bit 14 on the first PPUADDR write

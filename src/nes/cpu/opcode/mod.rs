@@ -23,6 +23,7 @@ pub struct Opcode {
 
 impl Opcode {
   #[named]
+  #[allow(clippy::too_many_arguments)]
   fn new(
     code: u8,
     mnemonic: &'static str,
@@ -350,11 +351,11 @@ lazy_static! {
       map.insert(opcode.mnemonic, HashMap::new());
     }
     // Insert unofficial opcodes first...
-    for opcode in (&*OPCODE_VECTOR).iter().filter(|opcode| opcode.unofficial) {
+    for opcode in OPCODE_VECTOR.iter().filter(|opcode| opcode.unofficial) {
       map.get_mut(opcode.mnemonic).unwrap().insert(opcode.mode, opcode);
     }
     // So that official opcodes with the same addressing mode will take priority.
-    for opcode in (&*OPCODE_VECTOR).iter().filter(|opcode| !opcode.unofficial) {
+    for opcode in OPCODE_VECTOR.iter().filter(|opcode| !opcode.unofficial) {
       map.get_mut(opcode.mnemonic).unwrap().insert(opcode.mode, opcode);
     }
     map
@@ -363,6 +364,6 @@ lazy_static! {
 
 impl fmt::Display for Opcode {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "{:?}", self)
+    write!(f, "{self:?}")
   }
 }

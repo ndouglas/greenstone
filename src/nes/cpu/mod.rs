@@ -193,7 +193,7 @@ impl CPU {
     trace_u8!(code);
     // Use array-based lookup for O(1) performance without hashing
     let result = OPCODE_TABLE[code as usize]
-      .unwrap_or_else(|| panic!("Opcode {:#04X} is not recognized", code));
+      .unwrap_or_else(|| panic!("Opcode {code:#04X} is not recognized"));
     trace_result!(result);
     result
   }
@@ -203,7 +203,7 @@ impl CPU {
   fn execute_instruction(&mut self, opcode: &Opcode) {
     trace_enter!();
     trace_var!(opcode);
-    (opcode.function)(self, &opcode);
+    (opcode.function)(self, opcode);
     trace_exit!();
   }
 
@@ -246,6 +246,6 @@ impl CPU {
 
 impl fmt::Display for CPU {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "{:?}", self)
+    write!(f, "{self:?}")
   }
 }

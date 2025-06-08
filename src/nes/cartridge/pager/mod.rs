@@ -90,10 +90,10 @@ impl Pager {
         let last_page = page_count - 1;
         trace_var!(last_page);
         if offset > size as u16 {
-          panic!("Offset {} exceeded page bounds {:?}", offset, size);
+          panic!("Offset {offset} exceeded page bounds {size:?}");
         }
         if number > last_page {
-          panic!("Page {} out of bounds (max: {})", number, last_page);
+          panic!("Page {number} out of bounds (max: {last_page})");
         }
         number * (size as usize) + offset as usize
       }

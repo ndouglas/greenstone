@@ -25,7 +25,7 @@ impl Cartridge {
     let mapper: Box<dyn Mappable> = match data.header.mapper_number {
       0 => Box::new(Mapper0::new(data)),
       1 => Box::new(Mapper1::new(data)),
-      number => panic!("Mapper {} not implemented", number),
+      number => panic!("Mapper {number} not implemented"),
     };
     Cartridge { mapper }
   }

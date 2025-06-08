@@ -100,10 +100,10 @@ impl Noise {
         let mode = (self.period_reg & 0x80) != 0;
         let feedback_bit = if mode {
             // Mode 1: XOR bit 0 and bit 6
-            ((self.shift_register & 0x01) ^ ((self.shift_register >> 6) & 0x01)) as u16
+            (self.shift_register & 0x01) ^ ((self.shift_register >> 6) & 0x01)
         } else {
             // Mode 0: XOR bit 0 and bit 1
-            ((self.shift_register & 0x01) ^ ((self.shift_register >> 1) & 0x01)) as u16
+            (self.shift_register & 0x01) ^ ((self.shift_register >> 1) & 0x01)
         };
 
         // Shift right and insert feedback at bit 14

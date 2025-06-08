@@ -113,12 +113,7 @@ impl Header {
   #[inline]
   pub fn get_chr_ram_size(&self) -> usize {
     trace_enter!();
-    let result;
-    if self.chr_rom_pages > 0 {
-      result = 0;
-    } else {
-      result = CHR_RAM_PAGE_SIZE;
-    }
+    let result = if self.chr_rom_pages > 0 { 0 } else { CHR_RAM_PAGE_SIZE };
     trace_var!(result);
     trace_exit!();
     result
