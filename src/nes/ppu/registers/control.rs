@@ -41,6 +41,12 @@ pub struct ControlRegister {
   pub value: u8,
 }
 
+impl Default for ControlRegister {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl ControlRegister {
   pub fn new() -> ControlRegister {
     ControlRegister { value: 0 }
@@ -72,9 +78,9 @@ impl ControlRegister {
     trace_var!(flag);
     trace_var!(value);
     if value {
-      self.value = self.value | (flag as u8);
+      self.value |= flag as u8;
     } else {
-      self.value = self.value & !(flag as u8);
+      self.value &= !(flag as u8);
     }
     trace!("{}", format_ppu_control_register!(self.value));
     trace_exit!();

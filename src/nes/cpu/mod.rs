@@ -5,8 +5,7 @@ use crate::traits::Addressable;
 use crate::traits::Busable;
 use crate::traits::Interruptible;
 
-pub mod addressable;
-pub use addressable::*;
+mod addressable;
 
 pub mod addressing_mode;
 pub use addressing_mode::*;
@@ -14,8 +13,7 @@ pub use addressing_mode::*;
 pub mod instructions;
 pub use instructions::*;
 
-pub mod interruptible;
-pub use interruptible::*;
+mod interruptible;
 
 pub mod opcode;
 pub use opcode::*;
@@ -23,8 +21,15 @@ pub use opcode::*;
 pub mod stack;
 pub use stack::*;
 
-pub mod status;
-pub use status::*;
+mod status;
+pub use status::NEGATIVE_FLAG;
+pub use status::OVERFLOW_FLAG;
+pub use status::UNUSED_FLAG;
+pub use status::BREAK_FLAG;
+pub use status::DECIMAL_FLAG;
+pub use status::INTERRUPT_DISABLE_FLAG;
+pub use status::ZERO_FLAG;
+pub use status::CARRY_FLAG;
 
 #[derive(Derivative)]
 #[derivative(Debug)]
@@ -40,6 +45,12 @@ pub struct CPU {
   pub bus: Box<dyn Busable>,
   /// Flag to stop the run loop
   pub running: bool,
+}
+
+impl Default for CPU {
+  fn default() -> Self {
+    Self::new()
+  }
 }
 
 impl CPU {

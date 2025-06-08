@@ -89,13 +89,13 @@ RUST_LOG=trace cargo test test_name
 
 Controller 1 is mapped to the keyboard:
 
-| NES Button | Key |
-|------------|-----|
+| NES Button | Key        |
+| ---------- | ---------- |
 | D-Pad      | Arrow keys |
-| A          | J |
-| B          | K |
-| Select     | U |
-| Start      | I |
+| A          | J          |
+| B          | K          |
+| Select     | U          |
+| Start      | I          |
 
 ## Debug Server
 

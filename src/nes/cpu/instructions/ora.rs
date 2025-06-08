@@ -12,7 +12,7 @@ impl CPU {
     trace_u16!(address);
     let operand = self.read_u8(address);
     trace_u8!(operand);
-    self.a = self.a | operand;
+    self.a |= operand;
     self.set_value_flags(self.a);
     trace_exit!();
   }

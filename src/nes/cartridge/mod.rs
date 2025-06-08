@@ -7,8 +7,7 @@ pub use data::*;
 pub mod header;
 pub use header::*;
 
-pub mod mappable;
-pub use mappable::*;
+mod mappable;
 
 pub mod mapper;
 pub use mapper::*;

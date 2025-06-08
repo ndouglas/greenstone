@@ -1,8 +1,12 @@
-pub mod control;
-pub use control::*;
+mod control;
+pub use control::ControlRegister;
+pub use control::ControlFlags;
+pub use control::GENERATE_NMI_FLAG;
 
-pub mod mask;
-pub use mask::*;
+mod mask;
+pub use mask::MaskRegister;
+pub use mask::MaskFlags;
 
-pub mod status;
-pub use status::*;
+mod status;
+pub use status::StatusRegister;
+pub use status::StatusFlags;

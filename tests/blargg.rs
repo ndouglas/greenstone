@@ -25,7 +25,7 @@ fn debug_blargg_test(rom_path: &str, max_cycles: u64) -> String {
   let mut last_scanline = 0u16;
   let mut vblank_starts = 0u64;
   let mut ppuctrl_value = 0u8;
-  let mut first_pc = cpu.program_counter;
+  let first_pc = cpu.program_counter;
   let mut last_pc = cpu.program_counter;
   let mut min_pc = cpu.program_counter;
   let mut max_pc = cpu.program_counter;
@@ -45,7 +45,7 @@ fn debug_blargg_test(rom_path: &str, max_cycles: u64) -> String {
     // Capture all unique PCs visited
     let pc = cpu.program_counter;
     let scan = cpu.get_ppu_scanline();
-    if !trace_lines.iter().any(|l| l.starts_with(&format!("{:04X}", pc))) && trace_lines.len() < 500 {
+    if !trace_lines.iter().any(|l| l.starts_with(&format!("{pc:04X}"))) && trace_lines.len() < 500 {
       let opcode = cpu.unclocked_read_u8(pc);
       trace_lines.push(format!(
         "{:04X}: {:02X} A:{:02X} X:{:02X} Y:{:02X} S:{:02X} P:{:02X} SL:{} DOT:{} CYC:{}",
@@ -156,7 +156,7 @@ fn debug_blargg_test(rom_path: &str, max_cycles: u64) -> String {
 /// Run a blargg test ROM and return the result.
 /// Returns Ok(()) on pass, Err(message) on failure.
 fn run_blargg_test(rom_path: &str) -> std::result::Result<(), String> {
-  let bytes = std::fs::read(rom_path).map_err(|e| format!("Failed to read ROM: {}", e))?;
+  let bytes = std::fs::read(rom_path).map_err(|e| format!("Failed to read ROM: {e}"))?;
   let mut bus = Bus::new();
   bus.load_cartridge_data(&bytes);
 
@@ -203,13 +203,13 @@ fn run_blargg_test(rom_path: &str) -> std::result::Result<(), String> {
   }
 
   if cycles >= MAX_CYCLES {
-    return Err(format!("Test timed out after {} cycles. Output:\n{}", cycles, output));
+    return Err(format!("Test timed out after {cycles} cycles. Output:\n{output}"));
   }
 
   if result_code == 0 {
     Ok(())
   } else {
-    Err(format!("Test failed with code {}. Output:\n{}", result_code, output))
+    Err(format!("Test failed with code {result_code}. Output:\n{output}"))
   }
 }
 
@@ -248,9 +248,9 @@ mod debug_tests {
   fn test_debug_palette_ram() {
     greenstone::test::init();
     let result = debug_blargg_test("test_roms/blargg_ppu_tests/palette_ram.nes", 1_000_000);
-    println!("{}", result);
+    println!("{result}");
     // This test always fails to show output
-    panic!("Debug output:\n{}", result);
+    panic!("Debug output:\n{result}");
   }
 
   #[test]
@@ -259,9 +259,9 @@ mod debug_tests {
     greenstone::test::init();
     // Run for 10M cycles (~5 seconds of NES time)
     let result = debug_blargg_test("test_roms/ppu_vbl_nmi/01-vbl_basics.nes", 10_000_000);
-    println!("{}", result);
+    println!("{result}");
     // This test always fails to show output
-    panic!("Debug output:\n{}", result);
+    panic!("Debug output:\n{result}");
   }
 }
 

@@ -142,7 +142,8 @@ fn handle_user_input(cpu: &mut CPU, event_pump: &mut EventPump) {
   }
 }
 
-// Temporary
+// Temporary - for test ROMs that use RAM-based display
+#[allow(dead_code)]
 fn color(byte: u8) -> Color {
   match byte {
     0 => sdl2::pixels::Color::BLACK,
@@ -168,6 +169,7 @@ fn get_ppu_framebuffer(cpu: &CPU) -> &[u8] {
 }
 
 // Temporary - for test ROMs that write to RAM
+#[allow(dead_code)]
 fn read_screen_state(cpu: &mut CPU, frame: &mut [u8; 32 * 3 * 32]) -> bool {
   let mut frame_idx = 0;
   let mut update = false;
@@ -290,8 +292,8 @@ async fn main() {
     }
   });
 
-  std::thread::sleep(std::time::Duration::from_millis(3600_000));
+  std::thread::sleep(std::time::Duration::from_millis(3_600_000));
   if let Some(server_handle) = server_option {
-    tokio::join!(server_handle);
+    let _ = tokio::join!(server_handle);
   }
 }

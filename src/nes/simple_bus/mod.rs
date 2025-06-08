@@ -1,23 +1,26 @@
 const MAX_ADDRESS: usize = 0xFFFF;
 
-pub mod addressable;
-pub use addressable::*;
+mod addressable;
 
-pub mod busable;
-pub use busable::*;
+mod busable;
 
-pub mod interruptible;
-pub use interruptible::*;
+mod interruptible;
 
 pub struct SimpleBus {
-  memory: [u8; (MAX_ADDRESS + 1)],
+  memory: [u8; MAX_ADDRESS + 1],
 }
 
 impl SimpleBus {
   #[named]
   pub fn new() -> SimpleBus {
     SimpleBus {
-      memory: [0; (MAX_ADDRESS + 1)],
+      memory: [0; MAX_ADDRESS + 1],
     }
+  }
+}
+
+impl Default for SimpleBus {
+  fn default() -> Self {
+    Self::new()
   }
 }

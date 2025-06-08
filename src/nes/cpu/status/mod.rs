@@ -30,9 +30,9 @@ impl CPU {
     trace_var!(flag);
     trace_var!(value);
     if value {
-      self.status = self.status | (flag as u8);
+      self.status |= flag as u8;
     } else {
-      self.status = self.status & !(flag as u8);
+      self.status &= !(flag as u8);
     }
     trace!("{}", format_cpu_status_register!(self.status));
     trace_exit!();

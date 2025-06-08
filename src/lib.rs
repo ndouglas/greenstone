@@ -18,14 +18,12 @@ extern crate pretty_env_logger;
 extern crate tokio;
 extern crate tokio_stream;
 extern crate uuid;
-#[macro_use]
 extern crate warp;
 
 pub mod cli;
 pub use cli::*;
 #[macro_use]
 pub mod macros;
-pub use macros::*;
 pub mod nes;
 pub use nes::*;
 pub mod server;

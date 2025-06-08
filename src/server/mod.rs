@@ -10,8 +10,8 @@ pub use client::*;
 pub mod clients;
 pub use clients::*;
 
-pub mod event;
-pub use event::*;
+mod event;
+pub use event::Event as ServerEvent;
 
 pub mod handlers;
 pub use handlers::*;

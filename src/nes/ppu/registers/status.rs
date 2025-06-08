@@ -20,10 +20,16 @@
 pub const VERTICAL_BLANK_FLAG: u8 = 0b1000_0000;
 pub const SPRITE_ZERO_HIT_FLAG: u8 = 0b0100_0000;
 pub const SPRITE_OVERFLOW_FLAG: u8 = 0b0010_0000;
+// Open bus flags - reserved for NES spec completeness
+#[allow(dead_code)]
 pub const PPU_OPEN_BUS4_FLAG: u8 = 0b0001_0000;
+#[allow(dead_code)]
 pub const PPU_OPEN_BUS3_FLAG: u8 = 0b0000_1000;
+#[allow(dead_code)]
 pub const PPU_OPEN_BUS2_FLAG: u8 = 0b0000_0100;
+#[allow(dead_code)]
 pub const PPU_OPEN_BUS1_FLAG: u8 = 0b0000_0010;
+#[allow(dead_code)]
 pub const PPU_OPEN_BUS0_FLAG: u8 = 0b0000_0001;
 
 #[repr(u8)]
@@ -36,6 +42,12 @@ pub enum StatusFlags {
 
 pub struct StatusRegister {
   value: u8,
+}
+
+impl Default for StatusRegister {
+  fn default() -> Self {
+    Self::new()
+  }
 }
 
 impl StatusRegister {
@@ -69,9 +81,9 @@ impl StatusRegister {
     trace_var!(flag);
     trace_var!(value);
     if value {
-      self.value = self.value | (flag as u8);
+      self.value |= flag as u8;
     } else {
-      self.value = self.value & !(flag as u8);
+      self.value &= !(flag as u8);
     }
     trace!("{}", format_ppu_status_register!(self.value));
     trace_exit!();

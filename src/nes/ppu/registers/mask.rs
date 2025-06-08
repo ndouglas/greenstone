@@ -33,6 +33,8 @@ pub enum MaskFlags {
   Greyscale = GREYSCALE_FLAG,
 }
 
+// Color channel for emphasis - reserved for future use
+#[allow(dead_code)]
 pub enum ColorChannel {
   Red,
   Green,
@@ -41,6 +43,12 @@ pub enum ColorChannel {
 
 pub struct MaskRegister {
   pub value: u8,
+}
+
+impl Default for MaskRegister {
+  fn default() -> Self {
+    Self::new()
+  }
 }
 
 impl MaskRegister {
@@ -74,9 +82,9 @@ impl MaskRegister {
     trace_var!(flag);
     trace_var!(value);
     if value {
-      self.value = self.value | (flag as u8);
+      self.value |= flag as u8;
     } else {
-      self.value = self.value & !(flag as u8);
+      self.value &= !(flag as u8);
     }
     trace!("{}", format_ppu_mask_register!(self.value));
     trace_exit!();

@@ -1,11 +1,11 @@
-pub mod health;
-pub use health::*;
+mod health;
+pub use health::health_handler;
 
-pub mod registration;
-pub use registration::*;
+mod registration;
+pub use registration::registration_handler;
 
-pub mod deregistration;
-pub use deregistration::*;
+mod deregistration;
+pub use deregistration::deregistration_handler;
 
-pub mod websocket;
-pub use websocket::*;
+mod websocket;
+pub use websocket::websocket_handler;

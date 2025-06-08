@@ -25,14 +25,11 @@ const OAM_DMA_ADDRESS: u16 = 0x4014;
 const CARTRIDGE_START_ADDRESS: u16 = 0x4018;
 const CARTRIDGE_END_ADDRESS: u16 = MAX_ADDRESS;
 
-pub mod addressable;
-pub use addressable::*;
+mod addressable;
 
-pub mod busable;
-pub use busable::*;
+mod busable;
 
-pub mod interruptible;
-pub use interruptible::*;
+mod interruptible;
 
 /// NES Controller button bits (Active-HIGH for internal state)
 pub const BUTTON_A: u8 = 0b0000_0001;
@@ -61,6 +58,12 @@ pub struct Bus {
   controller_strobe: bool,
   /// APU (Audio Processing Unit)
   apu: APU,
+}
+
+impl Default for Bus {
+  fn default() -> Self {
+    Self::new()
+  }
 }
 
 impl Bus {
@@ -163,10 +166,6 @@ impl Bus {
           (address >> 8) as u8
         }
       }
-      _ => {
-        warn!("Ignoring out-of-bounds memory read at address {}", format_u16!(address));
-        0x00
-      }
     };
     trace_u8!(result);
     trace_exit!();
@@ -225,9 +224,6 @@ impl Bus {
         if let Some(ref cartridge) = self.cartridge {
           cartridge.borrow_mut().write_prg_u8(address, value);
         }
-      }
-      _ => {
-        warn!("Ignoring out-of-bounds memory write at address {}", format_u16!(address));
       }
     }
     trace_exit!();

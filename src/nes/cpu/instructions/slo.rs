@@ -21,7 +21,7 @@ impl CPU {
     // RMW dummy write - write original value before modified value
     self.write_u8(address, operand);
     self.write_u8(address, output);
-    self.a = self.a | output;
+    self.a |= output;
     self.set_value_flags(self.a);
     trace_exit!();
   }

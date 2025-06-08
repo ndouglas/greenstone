@@ -1,2 +1,2 @@
-pub mod registration;
-pub use registration::*;
+mod registration;
+pub use registration::RegistrationResponse;

@@ -3,265 +3,199 @@ pub mod common;
 pub use common::*;
 
 // ADC: Add to Accumulator With Carry.
-pub mod adc;
-pub use adc::*;
+mod adc;
 
 // AND: Bitwise AND Accumulator With Data.
-pub mod and;
-pub use and::*;
+mod and;
 
 // ASL: Arithmetic Shift Left
-pub mod asl;
-pub use asl::*;
+mod asl;
 
 // BCC: Branch if Carry Clear
-pub mod bcc;
-pub use bcc::*;
+mod bcc;
 
 // BCS: Branch if Carry Set
-pub mod bcs;
-pub use bcs::*;
+mod bcs;
 
 // BEQ: Branch if Equal
-pub mod beq;
-pub use beq::*;
+mod beq;
 
 // BIT: Test Bits.
-pub mod bit;
-pub use bit::*;
+mod bit;
 
 // BMI: Branch if Negative
-pub mod bmi;
-pub use bmi::*;
+mod bmi;
 
 // BNE: Branch if Not Equal
-pub mod bne;
-pub use bne::*;
+mod bne;
 
 // BPL: Branch if Positive
-pub mod bpl;
-pub use bpl::*;
+mod bpl;
 
 // BRK: Break
-pub mod brk;
-pub use brk::*;
+mod brk;
 
 // BVC: Branch if Negative
-pub mod bvc;
-pub use bvc::*;
+mod bvc;
 
 // BVS: Branch if Overflow Set
-pub mod bvs;
-pub use bvs::*;
+mod bvs;
 
 // CLC: Clear Carry
-pub mod clc;
-pub use clc::*;
+mod clc;
 
 // CLD: Clear Decimal Mode
-pub mod cld;
-pub use cld::*;
+mod cld;
 
 // CLI: Clear Interrupt Disable
-pub mod cli;
-pub use cli::*;
+mod cli;
 
 // CLV: Clear Overflow
-pub mod clv;
-pub use clv::*;
+mod clv;
 
 // CMP: Compare
-pub mod cmp;
-pub use cmp::*;
+mod cmp;
 
 // CPX: Compare X
-pub mod cpx;
-pub use cpx::*;
+mod cpx;
 
 // CPY: Compare Y
-pub mod cpy;
-pub use cpy::*;
+mod cpy;
 
 // DCP: Decrement and Compare (Unofficial)
-pub mod dcp;
-pub use dcp::*;
+mod dcp;
 
 // DEC: Decrement
-pub mod dec;
-pub use dec::*;
+mod dec;
 
 // DEX: Decrement X
-pub mod dex;
-pub use dex::*;
+mod dex;
 
 // DEY: Decrement Y
-pub mod dey;
-pub use dey::*;
+mod dey;
 
 // EOR: XOR A
-pub mod eor;
-pub use eor::*;
+mod eor;
 
 // INC: Increment
-pub mod inc;
-pub use inc::*;
+mod inc;
 
 // INX: Increment X
-pub mod inx;
-pub use inx::*;
+mod inx;
 
 // INY: Increment Y
-pub mod iny;
-pub use iny::*;
+mod iny;
 
 // ISB: Increment and Subtract from A
-pub mod isb;
-pub use isb::*;
+mod isb;
 
 // JAM: Die in a fire
-pub mod jam;
-pub use jam::*;
+mod jam;
 
 // JMP: Jump to Address
-pub mod jmp;
-pub use jmp::*;
+mod jmp;
 
 // JSR: Jump to Subroutine
-pub mod jsr;
-pub use jsr::*;
+mod jsr;
 
 // LAX: Load A and X
-pub mod lax;
-pub use lax::*;
+mod lax;
 
 // LDA: Load A
-pub mod lda;
-pub use lda::*;
+mod lda;
 
 // LDX: Load X
-pub mod ldx;
-pub use ldx::*;
+mod ldx;
 
 // LDY: Load Y
-pub mod ldy;
-pub use ldy::*;
+mod ldy;
 
 // LSR: Logical Shift Right
-pub mod lsr;
-pub use lsr::*;
+mod lsr;
 
 // NOP: No Operation
-pub mod nop;
-pub use nop::*;
+mod nop;
 
 // ORA: OR A
-pub mod ora;
-pub use ora::*;
+mod ora;
 
 // PHA: Push A onto the Stack
-pub mod pha;
-pub use pha::*;
+mod pha;
 
 // PHP: Push Status onto the Stack
-pub mod php;
-pub use php::*;
+mod php;
 
 // PLA: Pop A off the Stack
-pub mod pla;
-pub use pla::*;
+mod pla;
 
 // PLP: Pop Status off the Stack
-pub mod plp;
-pub use plp::*;
+mod plp;
 
 // RLA: Rotate Left and AND
-pub mod rla;
-pub use rla::*;
+mod rla;
 
 // ROL: Rotate Left
-pub mod rol;
-pub use rol::*;
+mod rol;
 
 // ROR: Rotate Right
-pub mod ror;
-pub use ror::*;
+mod ror;
 
 // RRA: Rotate Right and ADC
-pub mod rra;
-pub use rra::*;
+mod rra;
 
 // RTI: Return from Interrupt
-pub mod rti;
-pub use rti::*;
+mod rti;
 
 // RTS: Return from Subroutine
-pub mod rts;
-pub use rts::*;
+mod rts;
 
 // SAX: Store A & X to M
-pub mod sax;
-pub use sax::*;
+mod sax;
 
 // SBC: Subtract from Accumulator With Carry.
-pub mod sbc;
-pub use sbc::*;
+mod sbc;
 
 // SEC: Set the Carry Flag.
-pub mod sec;
-pub use sec::*;
+mod sec;
 
 // SED: Set the Decimal Mode Flag.
-pub mod sed;
-pub use sed::*;
+mod sed;
 
 // SEI: Set the Interrupt Disable Flag.
-pub mod sei;
-pub use sei::*;
+mod sei;
 
 // SLO: Arithmetic Shift Left + ORA
-pub mod slo;
-pub use slo::*;
+mod slo;
 
 // SRE: Logical Shift Right + EOR
-pub mod sre;
-pub use sre::*;
+mod sre;
 
 // STA: Store A.
-pub mod sta;
-pub use sta::*;
+mod sta;
 
 // STX: Store X.
-pub mod stx;
-pub use stx::*;
+mod stx;
 
 // STX: Store Y.
-pub mod sty;
-pub use sty::*;
+mod sty;
 
 // TAX: Transfer A -> X.
-pub mod tax;
-pub use tax::*;
+mod tax;
 
 // TAY: Transfer A -> Y.
-pub mod tay;
-pub use tay::*;
+mod tay;
 
 // TSX: Transfer Stack Pointer -> X.
-pub mod tsx;
-pub use tsx::*;
+mod tsx;
 
 // TXA: Transfer X -> A.
-pub mod txa;
-pub use txa::*;
+mod txa;
 
 // TXS: Transfer X -> Stack Pointer.
-pub mod txs;
-pub use txs::*;
+mod txs;
 
 // TYA: Transfer Y -> A.
-pub mod tya;
-pub use tya::*;
+mod tya;
 
 // WTF: Unimplemented/Unknown Instruction.
-pub mod wtf;
-pub use wtf::*;
+mod wtf;

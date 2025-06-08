@@ -97,6 +97,12 @@ struct SpritePixel {
   behind_background: bool,
 }
 
+impl Default for PPU {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl PPU {
   pub fn new() -> PPU {
     PPU {
@@ -316,7 +322,7 @@ impl PPU {
       self.nmi_pending = false;
     }
     // Status register includes some garbage from the bus.
-    result = result | (self.latching_bus & 0b0001_1111);
+    result |= self.latching_bus & 0b0001_1111;
     trace_result!(result);
     result
   }

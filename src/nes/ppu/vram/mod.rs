@@ -24,6 +24,12 @@ pub struct VRAM {
   pub read_buffer: u8,
 }
 
+impl Default for VRAM {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl VRAM {
   pub fn new() -> VRAM {
     VRAM {
