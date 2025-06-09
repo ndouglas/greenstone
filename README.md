@@ -17,7 +17,7 @@ This project is my attempt to understand that timing at a deep level.
 - All "illegal" (undocumented) opcodes that games actually use
 - Cycle-accurate instruction timing
 - Cartridge loading with iNES format parsing
-- Mapper 0 (NROM) support—enough for Donkey Kong, Ice Climber, and similar early titles
+- Mapper 0 (NROM), Mapper 1 (MMC1), and Mapper 2 (UxROM) support
 - PPU rendering with background tiles and sprites
 - Horizontal and vertical nametable mirroring
 - Cycle-accurate VBlank timing (passes blargg's ppu_vbl_nmi tests 01-04, 06)
@@ -31,9 +31,15 @@ This project is my attempt to understand that timing at a deep level.
 - Sprite overflow flag with hardware bug emulation
 
 **What's planned:**
-- Additional mappers (MMC1, MMC3, etc.)
+- Additional mappers (MMC3, etc.)
 - APU (audio)
 - More blargg test compatibility
+
+## Screenshots
+
+| Super Mario Bros | Tetris | Castlevania |
+|:---:|:---:|:---:|
+| ![Super Mario Bros](smb.png) | ![Tetris](tetris.png) | ![Castlevania](castlevania.png) |
 
 ## Architecture
 
