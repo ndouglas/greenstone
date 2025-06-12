@@ -27,6 +27,7 @@ impl Cartridge {
       1 => Box::new(Mapper1::new(data)),
       2 => Box::new(Mapper2::new(data)),
       3 => Box::new(Mapper3::new(data)),
+      4 => Box::new(Mapper4::new(data)),
       7 => Box::new(Mapper7::new(data)),
       number => panic!("Mapper {number} not implemented"),
     };

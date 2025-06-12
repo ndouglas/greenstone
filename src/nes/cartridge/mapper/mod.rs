@@ -10,5 +10,8 @@ pub use mapper2::*;
 pub mod mapper3;
 pub use mapper3::*;
 
+pub mod mapper4;
+pub use mapper4::*;
+
 pub mod mapper7;
 pub use mapper7::*;

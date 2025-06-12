@@ -37,12 +37,24 @@ impl Addressable for Bus {
     let cycles = self.clock_counter;
     trace_var!(cycles);
     // Tick PPU 3 times per CPU cycle (5.37 MHz vs 1.79 MHz)
-    debug!("Ticking PPU and checking results...");
-    self.ppu.tick();
-    debug!("Ticking PPU and checking results...");
-    self.ppu.tick();
-    debug!("Ticking PPU and checking results...");
-    self.ppu.tick();
+    // After each PPU tick, check if the mapper needs a scanline signal.
+    // MMC3 (and similar mappers) clock their scanline counter when A12 rises,
+    // which happens at dot 260 of visible/pre-render scanlines while rendering.
+    for _ in 0..3 {
+      let prev_dot = self.ppu.dot;
+      let prev_scanline = self.ppu.scanline;
+      debug!("Ticking PPU and checking results...");
+      self.ppu.tick();
+
+      // Signal scanline to mapper at the right moment:
+      // Dot 260 of scanlines 0-239 and pre-render (261) when rendering is enabled.
+      let rendering_enabled = self.ppu.mask_register.get_show_background_flag() || self.ppu.mask_register.get_show_sprites_flag();
+      if rendering_enabled && prev_dot == 260 && (prev_scanline < 240 || prev_scanline == 261) {
+        if let Some(ref cartridge) = self.cartridge {
+          cartridge.borrow_mut().signal_scanline();
+        }
+      }
+    }
     // Tick APU once per CPU cycle
     self.apu.tick();
     trace_exit!();

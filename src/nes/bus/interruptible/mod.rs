@@ -17,7 +17,12 @@ impl Interruptible for Bus {
   #[named]
   #[inline]
   fn is_irq_ready(&self) -> bool {
-    false
+    let mapper_irq = if let Some(ref cartridge) = self.cartridge {
+      cartridge.borrow().get_irq_flag()
+    } else {
+      false
+    };
+    self.apu.irq_pending() || mapper_irq
   }
 
   #[named]
