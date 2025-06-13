@@ -32,6 +32,7 @@ pub const VBLANK_SCANLINE: u16 = 241;
 pub const PRE_RENDER_SCANLINE: u16 = 261;
 
 /// NES Picture-Processing Unit
+#[derive(Serialize, Deserialize)]
 pub struct PPU {
   /// Control Register.
   pub control_register: ControlRegister,
@@ -353,8 +354,7 @@ impl PPU {
     trace_enter!();
 
     // Check if rendering is enabled
-    let rendering_enabled =
-      self.mask_register.get_show_background_flag() || self.mask_register.get_show_sprites_flag();
+    let rendering_enabled = self.mask_register.get_show_background_flag() || self.mask_register.get_show_sprites_flag();
 
     // Sprite evaluation: evaluate sprites for current scanline at dot 0
     // Real hardware does this incrementally during dots 65-256 of the previous scanline,
@@ -375,11 +375,7 @@ impl PPU {
     // On odd frames with rendering enabled, the pre-render scanline is one cycle shorter.
     // The PPU skips from dot 339 directly to dot 0 of the next frame (skipping dot 340).
     let is_odd_frame = self.frame_count % 2 == 1;
-    if rendering_enabled
-      && is_odd_frame
-      && self.scanline == PRE_RENDER_SCANLINE
-      && self.dot == 340
-    {
+    if rendering_enabled && is_odd_frame && self.scanline == PRE_RENDER_SCANLINE && self.dot == 340 {
       // Skip dot 340 - go directly to the next frame
       self.dot = 0;
       self.scanline = 0;
@@ -408,10 +404,7 @@ impl PPU {
       // dot increment and need scroll_x to happen AFTER the tile's last pixel is rendered,
       // we check for dots 9, 17, ..., 257 (i.e., dot % 8 == 1 and dot >= 9 and dot <= 257)
       // Also at dots 328 and 336 for next scanline tile prefetch (check 329, 337)
-      if (self.dot >= 9 && self.dot <= 257 && self.dot % 8 == 1)
-        || self.dot == 329
-        || self.dot == 337
-      {
+      if (self.dot >= 9 && self.dot <= 257 && self.dot % 8 == 1) || self.dot == 329 || self.dot == 337 {
         self.v_address.scroll_x();
       }
 
@@ -491,11 +484,7 @@ impl PPU {
     // 3. x != 255 (hardware quirk)
     // 4. Not in the left 8 pixels if either left clipping is enabled
     if let Some(ref sp) = sprite_pixel {
-      if sp.is_sprite_zero
-        && bg_is_opaque
-        && x != 255
-        && !self.status_register.get_sprite_zero_hit_flag()
-      {
+      if sp.is_sprite_zero && bg_is_opaque && x != 255 && !self.status_register.get_sprite_zero_hit_flag() {
         // Additional clipping check for sprite zero hit
         let bg_clipped = x < 8 && !self.mask_register.get_show_background_left_flag();
         let sp_clipped = x < 8 && !self.mask_register.get_show_sprites_left_flag();

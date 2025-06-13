@@ -9,6 +9,7 @@ use PageSize::*;
 /// PRG ROM: 16KB switchable bank at $8000-$BFFF, fixed last bank at $C000-$FFFF
 /// CHR: 8KB RAM (no ROM)
 /// Games: Mega Man, Castlevania, Contra, DuckTales, etc.
+#[derive(Serialize, Deserialize)]
 pub struct Mapper2 {
   data: Data,
   prg_bank: u8,
@@ -36,10 +37,7 @@ impl Mappable for Mapper2 {
       }
       0x8000..=0xBFFF => {
         // Switchable 16KB bank
-        self
-          .data
-          .prg_rom
-          .read_u8(Number(self.prg_bank as usize, SixteenKb), address - 0x8000)
+        self.data.prg_rom.read_u8(Number(self.prg_bank as usize, SixteenKb), address - 0x8000)
       }
       0xC000..=0xFFFF => {
         // Fixed to last 16KB bank
@@ -113,11 +111,11 @@ mod test {
   fn build_mapper2(prg_banks: u8) -> Mapper2 {
     // Build a UxROM cartridge with specified number of 16KB PRG banks
     let mut data = vec![
-      0x4e, 0x45, 0x53, 0x1a, // NES magic
-      prg_banks,              // PRG ROM pages (16KB each)
-      0x00,                   // CHR ROM pages (0 = uses CHR RAM)
-      0x20,                   // Flags 6: mapper low nibble = 2
-      0x00,                   // Flags 7: mapper high nibble = 0
+      0x4e, 0x45, 0x53, 0x1a,      // NES magic
+      prg_banks, // PRG ROM pages (16KB each)
+      0x00,      // CHR ROM pages (0 = uses CHR RAM)
+      0x20,      // Flags 6: mapper low nibble = 2
+      0x00,      // Flags 7: mapper high nibble = 0
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     ];
 

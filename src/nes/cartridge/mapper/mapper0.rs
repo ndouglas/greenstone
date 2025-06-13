@@ -4,6 +4,7 @@ use crate::traits::Mappable;
 use Page::*;
 use PageSize::*;
 
+#[derive(Serialize, Deserialize)]
 pub struct Mapper0 {
   data: Data,
 }

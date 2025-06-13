@@ -40,6 +40,7 @@ pub enum StatusFlags {
   SpriteOverflow = SPRITE_OVERFLOW_FLAG,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct StatusRegister {
   value: u8,
 }

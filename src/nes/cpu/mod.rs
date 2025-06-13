@@ -129,6 +129,14 @@ impl CPU {
     self.bus.get_ppu_dot()
   }
 
+  /// Print debug dump of CPU + PPU state.
+  pub fn debug_dump(&self) {
+    eprintln!("CPU: PC=${:04X} A=${:02X} X=${:02X} Y=${:02X} SP=${:02X} P=${:02X} clk={}",
+      self.program_counter, self.a, self.x, self.y,
+      self.stack_pointer, self.status, self.clock_counter);
+    self.bus.debug_dump();
+  }
+
   #[named]
   pub fn interpret(&mut self, program: Vec<u8>, start: u16) {
     trace_enter!();

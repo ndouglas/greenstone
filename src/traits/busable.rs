@@ -1,7 +1,14 @@
+use std::any::Any;
+
 use crate::traits::Addressable;
 use crate::traits::Interruptible;
 
 pub trait Busable: Addressable + Interruptible {
+  /// Downcast to concrete type (for save/load state in GymEnv).
+  fn as_any(&self) -> &dyn Any;
+  /// Downcast to concrete type (mutable).
+  fn as_any_mut(&mut self) -> &mut dyn Any;
+
   /// Set the complete button state for controller 1.
   fn set_controller1(&mut self, _state: u8) {}
 
@@ -29,4 +36,7 @@ pub trait Busable: Addressable + Interruptible {
   fn get_ppu_dot(&self) -> u16 {
     0
   }
+
+  /// Print debug dump of emulator state (PPU registers, nametable, palette, CHR).
+  fn debug_dump(&self) {}
 }

@@ -10,6 +10,7 @@ use crate::traits::Mappable;
 use Page::*;
 use PageSize::*;
 
+#[derive(Serialize, Deserialize)]
 pub struct Mapper7 {
   data: Data,
   /// The selected 32KB PRG bank (bits 0-2 of written value).

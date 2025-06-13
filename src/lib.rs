@@ -15,6 +15,8 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 extern crate pretty_env_logger;
+#[macro_use]
+extern crate serde;
 extern crate tokio;
 extern crate tokio_stream;
 extern crate uuid;

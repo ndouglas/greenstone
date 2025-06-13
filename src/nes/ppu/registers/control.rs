@@ -37,6 +37,7 @@ pub enum ControlFlags {
 }
 
 /// The PPU Control Register, or PPUCTRL ($2006)
+#[derive(Serialize, Deserialize)]
 pub struct ControlRegister {
   pub value: u8,
 }

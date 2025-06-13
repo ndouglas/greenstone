@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, Debug, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Serialize, Deserialize)]
 pub enum MirroringMode {
   Vertical,
   Horizontal,

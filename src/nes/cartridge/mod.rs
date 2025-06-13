@@ -1,5 +1,4 @@
 use crate::traits::mappable::MirroringMode;
-use crate::traits::Mappable;
 
 pub mod data;
 pub use data::*;
@@ -15,20 +14,21 @@ pub use mapper::*;
 pub mod pager;
 pub use pager::*;
 
+#[derive(Serialize, Deserialize)]
 pub struct Cartridge {
-  mapper: Box<dyn Mappable>,
+  mapper: Mapper,
 }
 
 impl Cartridge {
   pub fn new(data: &[u8]) -> Cartridge {
     let data = Data::new(data);
-    let mapper: Box<dyn Mappable> = match data.header.mapper_number {
-      0 => Box::new(Mapper0::new(data)),
-      1 => Box::new(Mapper1::new(data)),
-      2 => Box::new(Mapper2::new(data)),
-      3 => Box::new(Mapper3::new(data)),
-      4 => Box::new(Mapper4::new(data)),
-      7 => Box::new(Mapper7::new(data)),
+    let mapper = match data.header.mapper_number {
+      0 => Mapper::Nrom(Mapper0::new(data)),
+      1 => Mapper::Mmc1(Mapper1::new(data)),
+      2 => Mapper::UxRom(Mapper2::new(data)),
+      3 => Mapper::CnRom(Mapper3::new(data)),
+      4 => Mapper::Mmc3(Mapper4::new(data)),
+      7 => Mapper::AxRom(Mapper7::new(data)),
       number => panic!("Mapper {number} not implemented"),
     };
     Cartridge { mapper }
@@ -41,6 +41,7 @@ impl Cartridge {
 mod test {
   use super::*;
   use crate::test::init;
+  use crate::traits::Mappable;
 
   fn build_cartridge(chr_ram: bool) -> Cartridge {
     let mut data = vec![

@@ -14,6 +14,9 @@ pub use cartridge::*;
 pub mod cpu;
 pub use cpu::*;
 
+// Gym environment for RL training.
+pub mod gym;
+
 // PPU.
 pub mod ppu;
 pub use ppu::*;

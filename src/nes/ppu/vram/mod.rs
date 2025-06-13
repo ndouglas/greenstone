@@ -17,9 +17,11 @@ pub const PALETTE_START_ADDRESS: u16 = 0x3F00;
 pub const PALETTE_END_ADDRESS: u16 = VRAM_END_ADDRESS;
 pub const VRAM_LENGTH: usize = 2048;
 
+#[derive(Serialize, Deserialize)]
 pub struct VRAM {
   pub nametables: Vec<u8>,
   pub palettes: Vec<u8>,
+  #[serde(skip)]
   pub cartridge: Option<Rc<RefCell<Cartridge>>>,
   pub read_buffer: u8,
 }

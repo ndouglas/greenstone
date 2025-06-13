@@ -41,6 +41,7 @@ pub enum ColorChannel {
   Blue,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct MaskRegister {
   pub value: u8,
 }

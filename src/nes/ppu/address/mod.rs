@@ -2,6 +2,9 @@
 // because honestly I think it's just about perfect and I can't improve on it.
 // See https://github.com/starrhorne/nes-rust/blob/master/src/ppu/address.rs
 
+use serde::de::{Deserialize, Deserializer};
+use serde::ser::{Serialize, Serializer};
+
 bitfield! {
     #[derive(Copy, Clone, PartialEq)]
     pub struct Address(u16);
@@ -14,6 +17,19 @@ bitfield! {
     pub u8,  high_byte,  set_high_byte:  13,  8; // High 6 bits of PPUADDR address
     pub u8,  low_byte,   set_low_byte:    7,  0; // Low 7 bits of PPUADDR address
     pub u16, get,        _:              14,  0; // Full data
+}
+
+impl Serialize for Address {
+  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+    self.0.serialize(serializer)
+  }
+}
+
+impl<'de> Deserialize<'de> for Address {
+  fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+    let value = u16::deserialize(deserializer)?;
+    Ok(Address(value))
+  }
 }
 
 impl Address {

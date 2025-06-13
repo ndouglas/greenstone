@@ -3,6 +3,7 @@ use super::Pager;
 
 // This implementation comes directly from Starr Horne's rust-nes.
 // See https://github.com/starrhorne/nes-rust/blob/master/src/cartridge/cartridge_data.rs
+#[derive(Serialize, Deserialize)]
 pub struct Data {
   pub header: Header,
   pub prg_rom: Pager,

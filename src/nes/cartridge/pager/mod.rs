@@ -1,6 +1,6 @@
 // The design of this module comes directly from Starr Horne's rust-nes.
 // See https://github.com/starrhorne/nes-rust/blob/master/src/cartridge/pager.rs
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[repr(usize)]
 pub enum PageSize {
   OneKb = 0x400,
@@ -9,7 +9,7 @@ pub enum PageSize {
   SixteenKb = 0x4000,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum Page {
   First(PageSize),
   Last(PageSize),
@@ -17,7 +17,7 @@ pub enum Page {
   FromEnd(usize, PageSize),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Pager {
   pub data: Vec<u8>,
 }

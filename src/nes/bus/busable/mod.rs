@@ -2,6 +2,14 @@ use super::*;
 use crate::traits::Busable;
 
 impl Busable for Bus {
+  fn as_any(&self) -> &dyn std::any::Any {
+    self
+  }
+
+  fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+    self
+  }
+
   fn set_controller1(&mut self, state: u8) {
     Bus::set_controller1(self, state);
   }
@@ -38,5 +46,9 @@ impl Busable for Bus {
 
   fn get_ppu_dot(&self) -> u16 {
     Bus::get_ppu_dot(self)
+  }
+
+  fn debug_dump(&self) {
+    Bus::debug_dump(self);
   }
 }

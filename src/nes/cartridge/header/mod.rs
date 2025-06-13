@@ -36,7 +36,7 @@ pub fn get_mirroring_mode(byte: u8) -> MirroringMode {
   result
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Header {
   pub has_valid_magic_string: bool,
   pub prg_rom_pages: usize,

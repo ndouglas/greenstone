@@ -55,6 +55,13 @@ fn handle_user_input(cpu: &mut CPU, event_pump: &mut EventPump) {
         ..
       } => std::process::exit(0),
 
+      // Debug dump (F1)
+      Event::KeyDown {
+        keycode: Some(Keycode::F1), ..
+      } => {
+        cpu.debug_dump();
+      }
+
       // Button presses
       Event::KeyDown {
         keycode: Some(Keycode::J), ..
@@ -259,9 +266,16 @@ async fn main() {
   let frame_duration = std::time::Duration::from_nanos(16_639_267); // 1/60.0988 seconds
   let mut last_frame_time = std::time::Instant::now();
 
+  let mut frame_count: u64 = 0;
   cpu.run_with_callback(move |cpu| {
     // Check if PPU has rendered a new frame
     if check_ppu_frame_ready(cpu) {
+      frame_count += 1;
+      // Auto-dump on first frame for debugging
+      if frame_count == 5 {
+        eprintln!("--- Auto debug dump (frame {}) ---", frame_count);
+        cpu.debug_dump();
+      }
       // Only handle input once per frame (not every CPU cycle)
       handle_user_input(cpu, &mut event_pump);
 

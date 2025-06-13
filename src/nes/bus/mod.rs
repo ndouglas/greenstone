@@ -1,6 +1,9 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use serde::de::Deserializer;
+use serde::ser::Serializer;
+
 use crate::cartridge::Cartridge;
 use crate::traits::Mappable;
 
@@ -41,8 +44,49 @@ pub const BUTTON_DOWN: u8 = 0b0010_0000;
 pub const BUTTON_LEFT: u8 = 0b0100_0000;
 pub const BUTTON_RIGHT: u8 = 0b1000_0000;
 
+/// Serialize a fixed-size byte array as a byte sequence.
+fn serialize_memory<S: Serializer>(memory: &[u8; (RAM_ACTUAL_END_ADDRESS + 1) as usize], serializer: S) -> Result<S::Ok, S::Error> {
+  serializer.serialize_bytes(memory)
+}
+
+/// Deserialize a byte sequence into a fixed-size array.
+fn deserialize_memory<'de, D: Deserializer<'de>>(deserializer: D) -> Result<[u8; (RAM_ACTUAL_END_ADDRESS + 1) as usize], D::Error> {
+  let bytes: Vec<u8> = serde::Deserialize::deserialize(deserializer)?;
+  if bytes.len() != (RAM_ACTUAL_END_ADDRESS + 1) as usize {
+    return Err(serde::de::Error::custom(format!(
+      "expected {} bytes for RAM, got {}",
+      RAM_ACTUAL_END_ADDRESS + 1,
+      bytes.len()
+    )));
+  }
+  let mut memory = [0u8; (RAM_ACTUAL_END_ADDRESS + 1) as usize];
+  memory.copy_from_slice(&bytes);
+  Ok(memory)
+}
+
+/// Serialize Option<Rc<RefCell<Cartridge>>> by borrowing the inner Cartridge.
+fn serialize_cartridge<S: Serializer>(cartridge: &Option<Rc<RefCell<Cartridge>>>, serializer: S) -> Result<S::Ok, S::Error> {
+  match cartridge {
+    Some(rc) => {
+      let cart = rc.borrow();
+      serde::Serialize::serialize(&Some(&*cart), serializer)
+    }
+    None => serde::Serialize::serialize(&None::<Cartridge>, serializer),
+  }
+}
+
+/// Deserialize Option<Cartridge> and wrap in Rc<RefCell<>>.
+/// After deserializing Bus, call `reconnect_cartridge()` to share with VRAM.
+fn deserialize_cartridge<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<Rc<RefCell<Cartridge>>>, D::Error> {
+  let opt: Option<Cartridge> = serde::Deserialize::deserialize(deserializer)?;
+  Ok(opt.map(|c| Rc::new(RefCell::new(c))))
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct Bus {
+  #[serde(serialize_with = "serialize_memory", deserialize_with = "deserialize_memory")]
   memory: [u8; (RAM_ACTUAL_END_ADDRESS + 1) as usize],
+  #[serde(serialize_with = "serialize_cartridge", deserialize_with = "deserialize_cartridge")]
   cartridge: Option<Rc<RefCell<Cartridge>>>,
   clock_counter: u64,
   ppu: PPU,
@@ -274,6 +318,122 @@ impl Bus {
     )
   }
 
+  /// Print comprehensive debug dump to stderr.
+  pub fn debug_dump(&self) {
+    eprintln!("=== GREENSTONE DEBUG DUMP ===");
+
+    // PPU registers
+    let ctrl = self.ppu.control_register.read_u8();
+    let mask = self.ppu.mask_register.read_u8();
+    let status = self.ppu.status_register.read_u8();
+    eprintln!("PPU CTRL:   0x{:02X}  (NMI={}, BG_table={}, SPR_table={})",
+      ctrl,
+      if ctrl & 0x80 != 0 { "ON" } else { "off" },
+      if ctrl & 0x10 != 0 { "$1000" } else { "$0000" },
+      if ctrl & 0x08 != 0 { "$1000" } else { "$0000" });
+    eprintln!("PPU MASK:   0x{:02X}  (show_bg={}, show_spr={}, left_bg={}, left_spr={})",
+      mask,
+      self.ppu.mask_register.get_show_background_flag(),
+      self.ppu.mask_register.get_show_sprites_flag(),
+      self.ppu.mask_register.get_show_background_left_flag(),
+      self.ppu.mask_register.get_show_sprites_left_flag());
+    eprintln!("PPU STATUS: 0x{:02X}  (vblank={}, spr0_hit={}, overflow={})",
+      status,
+      self.ppu.status_register.get_vertical_blank_flag(),
+      self.ppu.status_register.get_sprite_zero_hit_flag(),
+      self.ppu.status_register.get_sprite_overflow_flag());
+    eprintln!("PPU scan/dot: {}/{}", self.ppu.scanline, self.ppu.dot);
+
+    // Palette
+    eprint!("Palette BG: ");
+    for i in 0..16 {
+      eprint!("{:02X} ", self.ppu.vram.palettes[i]);
+    }
+    eprintln!();
+    eprint!("Palette SP: ");
+    for i in 16..32 {
+      eprint!("{:02X} ", self.ppu.vram.palettes[i]);
+    }
+    eprintln!();
+
+    // Nametable 0, first 4 rows (to see if text was written)
+    eprintln!("Nametable 0 (first 4 rows, non-zero tiles shown):");
+    for row in 0..4 {
+      let mut any_nonzero = false;
+      for col in 0..32 {
+        let tile = self.ppu.vram.nametables[row * 32 + col];
+        if tile != 0 {
+          any_nonzero = true;
+        }
+      }
+      if any_nonzero {
+        eprint!("  row {:2}: ", row);
+        for col in 0..32 {
+          let tile = self.ppu.vram.nametables[row * 32 + col];
+          if tile != 0 {
+            eprint!("{:02X} ", tile);
+          } else {
+            eprint!(".. ");
+          }
+        }
+        eprintln!();
+      }
+    }
+
+    // Check rows 10 and 14 specifically (title screen text positions)
+    eprintln!("Nametable 0 (rows 10, 14 — title screen text):");
+    for row in [10, 14] {
+      eprint!("  row {:2}: ", row);
+      for col in 0..32 {
+        let tile = self.ppu.vram.nametables[row * 32 + col];
+        if tile != 0 {
+          eprint!("{:02X} ", tile);
+        } else {
+          eprint!(".. ");
+        }
+      }
+      eprintln!();
+    }
+
+    // Count total non-zero nametable entries
+    let nonzero_count = self.ppu.vram.nametables.iter()
+      .take(960) // 32*30 = 960 tiles in one nametable
+      .filter(|&&t| t != 0)
+      .count();
+    eprintln!("Nametable 0: {}/960 non-zero tiles", nonzero_count);
+
+    // Pattern table spot check (first few tiles to verify CHR loaded)
+    eprintln!("CHR spot check (tile $20='space', $53='S'):");
+    if let Some(ref cartridge) = self.cartridge {
+      let cart = cartridge.borrow();
+      // Tile $20 (space) - should be blank
+      let t20_byte0 = cart.read_chr_u8(0x20 * 16);
+      let t20_byte1 = cart.read_chr_u8(0x20 * 16 + 8);
+      eprintln!("  Tile $20 plane0[0]: {:02X}  plane1[0]: {:02X}", t20_byte0, t20_byte1);
+      // Tile $53 ('S') - should have pixel data
+      let t53_byte0 = cart.read_chr_u8(0x53 * 16);
+      let t53_byte1 = cart.read_chr_u8(0x53 * 16 + 8);
+      eprintln!("  Tile $53 plane0[0]: {:02X}  plane1[0]: {:02X}", t53_byte0, t53_byte1);
+    } else {
+      eprintln!("  No cartridge loaded!");
+    }
+
+    // CPU RAM spot check: ZP $02-$03 (cc65 sp), first few BSS bytes
+    eprintln!("CPU RAM:");
+    eprint!("  ZP $00-$1F: ");
+    for i in 0..0x20 {
+      eprint!("{:02X} ", self.memory[i]);
+    }
+    eprintln!();
+    eprint!("  $0300-$031F: ");
+    for i in 0x0300..0x0320 {
+      eprint!("{:02X} ", self.memory[i]);
+    }
+    eprintln!();
+
+    eprintln!("=== END DEBUG DUMP ===");
+  }
+
   /// Take accumulated audio samples from the APU.
   pub fn take_audio_samples(&mut self) -> Vec<f32> {
     self.apu.take_samples()
@@ -282,5 +442,13 @@ impl Bus {
   /// Check if the APU is requesting an IRQ.
   pub fn apu_irq_pending(&self) -> bool {
     self.apu.irq_pending()
+  }
+
+  /// Reconnect the shared Rc<RefCell<Cartridge>> to the PPU's VRAM.
+  /// Must be called after deserialization to restore the shared reference.
+  pub fn reconnect_cartridge(&mut self) {
+    if let Some(ref cartridge) = self.cartridge {
+      self.ppu.vram.set_cartridge(cartridge.clone());
+    }
   }
 }
