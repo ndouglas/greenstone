@@ -35,6 +35,33 @@ buckets of water and octopus arms; nobody has used Tetris.
 Likely UNEXPLORED as an ML cell. Named family: echo state networks,
 physical reservoir computing.
 
+Result (2026-10-13): built as `src/nes/gym/reservoir/` and
+`examples/tetris_reservoir.rs`. The demonstration is a beam search over
+save states (228 steps, x=2014 in 1-1, not cleared). Readout is ridge
+regression, lambda 1, trained on the first 80% of steps. Closed loop is
+five episodes with random no-op starts.
+
+```
+condition          |  rows | held-out accuracy | held-out mse |  mean x | max x | reservoir resets
+-------------------+-------+-------------------+--------------+---------+-------+-----------------
+raw                |   228 |             0.964 |       0.0456 |   338.0 |   434 |                0
+undriven           |   228 |             0.775 |       0.1551 |   781.4 |   899 |                0
+driven-controller  |   228 |             0.768 |       0.1919 |   314.0 |   316 |                0
+driven-playfield   |   228 |             0.971 |       0.0404 |   410.0 |   434 |                0
+```
+
+The playfield-driven reservoir beats the raw baseline on held-out error
+and on closed-loop distance, by a small margin from one demonstration and
+five episodes. The controller drive is worse than raw on every column.
+The undriven control is the surprise: it fits the demonstration worst yet
+travels furthest in closed loop. Undriven Tetris RAM advances
+deterministically from the snapshot, so it is a clock, and a readout on a
+clock is a time-indexed replay of the demonstration, which survives the
+first 800 pixels of 1-1 even with a random start offset. A clock-only
+baseline (features = step index) is the next experiment, to separate
+replay from any reservoir effect in the playfield condition. Tetris never
+left play mode under either drive.
+
 ### 2. Second-mover polarity  `DEPOSIT`
 
 ml-mad-science stop 1 tags "data moves freely, no tether" as DEGENERATE.
