@@ -7,6 +7,246 @@ pub mod drive;
 pub mod features;
 pub mod ridge;
 
+use crate::nes::bus::{BUTTON_SELECT, BUTTON_START};
+use crate::nes::gym::NesEmulator;
+use demo::{beam_search, smb_cleared, smb_dead, smb_start_state, smb_window, smb_x, Demonstration, MACRO_FRAMES};
+use drive::{fold_to_controller, Reservoir};
+use features::{feature_row, Condition};
+use ridge::{fit, Readout};
+
+pub struct ExperimentConfig {
+  pub lambda: f64,
+  pub beam: usize,
+  pub demo_max_steps: usize,
+  pub episodes: usize,
+  pub max_steps: usize,
+  pub noop_max: usize,
+  pub train_fraction: f64,
+}
+
+impl Default for ExperimentConfig {
+  fn default() -> Self {
+    ExperimentConfig {
+      lambda: 1.0,
+      beam: 16,
+      demo_max_steps: 600,
+      episodes: 5,
+      max_steps: 750,
+      noop_max: 30,
+      train_fraction: 0.8,
+    }
+  }
+}
+
+#[derive(Debug, Clone)]
+pub struct ConditionResult {
+  pub condition: Condition,
+  pub rows: usize,
+  pub accuracy: f64,
+  pub mean_x: f64,
+  pub max_x: i32,
+  pub resets: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct ExperimentReport {
+  pub demo_steps: usize,
+  pub demo_x: i32,
+  pub demo_cleared: bool,
+  pub active_bits: u8,
+  pub results: Vec<ConditionResult>,
+}
+
+/// First index of the test split. Needs at least ten rows so the test split is non-empty.
+pub fn split_index(n: usize, train_fraction: f64) -> Result<usize, String> {
+  if n < 10 {
+    return Err(format!("demonstration has only {} steps; need at least 10", n));
+  }
+  Ok(((n as f64) * train_fraction).floor() as usize)
+}
+
+pub fn buttons_to_targets(buttons: u8) -> Vec<f32> {
+  (0..8).map(|i| ((buttons >> i) & 1) as f32).collect()
+}
+
+/// Threshold each output at 0.5. Start and Select are never pressed.
+pub fn outputs_to_buttons(outputs: &[f64]) -> u8 {
+  let mut buttons = 0u8;
+  for (i, &o) in outputs.iter().enumerate().take(8) {
+    if o > 0.5 {
+      buttons |= 1 << i;
+    }
+  }
+  buttons & !(BUTTON_START | BUTTON_SELECT)
+}
+
+pub fn active_bits(buttons: &[u8]) -> u8 {
+  buttons.iter().fold(0, |acc, &b| acc | b)
+}
+
+/// Fraction of masked bits on which prediction and truth agree.
+pub fn bit_accuracy(pred: &[u8], truth: &[u8], mask: u8) -> f64 {
+  let per_row = mask.count_ones() as usize;
+  if per_row == 0 || pred.is_empty() {
+    return 0.0;
+  }
+  let correct: usize = pred.iter().zip(truth).map(|(&p, &t)| (!(p ^ t) & mask).count_ones() as usize).sum();
+  correct as f64 / (per_row * pred.len()) as f64
+}
+
+/// Deterministic per-episode no-op count in `[0, noop_max)`.
+pub fn noop_frames(episode: usize, noop_max: usize) -> usize {
+  if noop_max == 0 {
+    return 0;
+  }
+  let h = (episode as u64 + 1).wrapping_mul(2654435761).wrapping_mul(0x9E3779B97F4A7C15);
+  ((h >> 33) as usize) % noop_max
+}
+
+struct Dataset {
+  rows: Vec<Vec<f32>>,
+  targets: Vec<Vec<f32>>,
+  buttons: Vec<u8>,
+  resets: u32,
+}
+
+/// Step the reservoir with the current window (if the condition has one) and build the row.
+fn observe(condition: Condition, window: &[u8], reservoir: Option<&mut Reservoir>) -> Vec<f32> {
+  match (condition, reservoir) {
+    (Condition::Raw, _) => feature_row(window, None),
+    (c, Some(r)) => {
+      r.step(c.drive(), window, MACRO_FRAMES);
+      let bits = if c.appends_drive_bits() {
+        Some(fold_to_controller(window))
+      } else {
+        None
+      };
+      feature_row(&r.ram(), bits)
+    }
+    (c, None) => panic!("condition {} needs a reservoir", c.name()),
+  }
+}
+
+fn collect(condition: Condition, smb_rom: &[u8], tetris_rom: &[u8], start: &[u8], demo: &Demonstration) -> Result<Dataset, String> {
+  let mut smb = NesEmulator::new(smb_rom);
+  smb.load_state(start);
+  let mut reservoir = if condition.uses_reservoir() {
+    Some(Reservoir::new(tetris_rom)?)
+  } else {
+    None
+  };
+  let mut data = Dataset {
+    rows: Vec::new(),
+    targets: Vec::new(),
+    buttons: Vec::new(),
+    resets: 0,
+  };
+  for &action in &demo.buttons {
+    let window = smb_window(&mut smb);
+    data.rows.push(observe(condition, &window, reservoir.as_mut()));
+    data.targets.push(buttons_to_targets(action));
+    data.buttons.push(action);
+    smb.step_frames(action, MACRO_FRAMES);
+  }
+  data.resets = reservoir.map(|r| r.resets).unwrap_or(0);
+  Ok(data)
+}
+
+/// One closed-loop episode. Returns (max x reached, reservoir resets).
+fn episode(
+  condition: Condition,
+  readout: &Readout,
+  smb_rom: &[u8],
+  tetris_rom: &[u8],
+  start: &[u8],
+  noops: usize,
+  max_steps: usize,
+) -> Result<(i32, u32), String> {
+  let mut smb = NesEmulator::new(smb_rom);
+  smb.load_state(start);
+  smb.step_frames(0, noops);
+  let mut reservoir = if condition.uses_reservoir() {
+    Some(Reservoir::new(tetris_rom)?)
+  } else {
+    None
+  };
+  let mut max_x = 0;
+  for _ in 0..max_steps {
+    let window = smb_window(&mut smb);
+    let row = observe(condition, &window, reservoir.as_mut());
+    let buttons = outputs_to_buttons(&readout.predict(&row));
+    smb.step_frames(buttons, MACRO_FRAMES);
+    max_x = max_x.max(smb_x(&mut smb));
+    if smb_dead(&mut smb) || smb_cleared(&mut smb) {
+      break;
+    }
+  }
+  Ok((max_x, reservoir.map(|r| r.resets).unwrap_or(0)))
+}
+
+/// Run every condition and return the report. `log` receives progress lines.
+pub fn run(smb_rom: &[u8], tetris_rom: &[u8], config: &ExperimentConfig, log: &mut dyn FnMut(&str)) -> Result<ExperimentReport, String> {
+  let start = smb_start_state(smb_rom);
+  log("searching for a demonstration");
+  let demo = beam_search(smb_rom, &start, config.beam, config.demo_max_steps);
+  log(&format!(
+    "demonstration: {} steps, x={}, cleared={}",
+    demo.buttons.len(),
+    demo.x_reached,
+    demo.cleared
+  ));
+  let split = split_index(demo.buttons.len(), config.train_fraction)?;
+  let mask = active_bits(&demo.buttons);
+  let mut results = Vec::new();
+  for condition in Condition::ALL {
+    log(&format!("{}: collecting features", condition.name()));
+    let data = collect(condition, smb_rom, tetris_rom, &start, &demo)?;
+    log(&format!(
+      "{}: fitting readout on {} rows of {}",
+      condition.name(),
+      split,
+      data.rows[0].len()
+    ));
+    let readout = fit(&data.rows[..split], &data.targets[..split], config.lambda)?;
+    let preds: Vec<u8> = data.rows[split..].iter().map(|r| outputs_to_buttons(&readout.predict(r))).collect();
+    let accuracy = bit_accuracy(&preds, &data.buttons[split..], mask);
+    log(&format!("{}: running {} episodes", condition.name(), config.episodes));
+    let outcomes: Vec<(i32, u32)> = std::thread::scope(|s| {
+      let handles: Vec<_> = (0..config.episodes)
+        .map(|e| {
+          let readout = &readout;
+          let start = &start;
+          let noops = noop_frames(e, config.noop_max);
+          let max_steps = config.max_steps;
+          s.spawn(move || episode(condition, readout, smb_rom, tetris_rom, start, noops, max_steps))
+        })
+        .collect();
+      handles
+        .into_iter()
+        .map(|h| h.join().expect("episode worker panicked"))
+        .collect::<Result<Vec<_>, _>>()
+    })?;
+    let mean_x = outcomes.iter().map(|o| o.0 as f64).sum::<f64>() / outcomes.len().max(1) as f64;
+    let max_x = outcomes.iter().map(|o| o.0).max().unwrap_or(0);
+    let resets = data.resets + outcomes.iter().map(|o| o.1).sum::<u32>();
+    results.push(ConditionResult {
+      condition,
+      rows: data.rows.len(),
+      accuracy,
+      mean_x,
+      max_x,
+      resets,
+    });
+  }
+  Ok(ExperimentReport {
+    demo_steps: demo.buttons.len(),
+    demo_x: demo.x_reached,
+    demo_cleared: demo.cleared,
+    active_bits: mask,
+    results,
+  })
+}
+
 /// Read a ROM for an integration test, or print a skip notice and return None.
 #[cfg(test)]
 pub(crate) fn rom_or_skip(path: &str) -> Option<Vec<u8>> {
@@ -16,5 +256,60 @@ pub(crate) fn rom_or_skip(path: &str) -> Option<Vec<u8>> {
       eprintln!("skipping: {} is not present", path);
       None
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_RIGHT, BUTTON_SELECT, BUTTON_START};
+
+  #[test]
+  fn split_rejects_fewer_than_ten_rows() {
+    assert!(split_index(9, 0.8).is_err());
+    assert_eq!(split_index(10, 0.8).unwrap(), 8);
+    assert_eq!(split_index(100, 0.8).unwrap(), 80);
+  }
+
+  #[test]
+  fn targets_and_buttons_round_trip() {
+    let b = BUTTON_A | BUTTON_RIGHT;
+    let t = buttons_to_targets(b);
+    assert_eq!(t.len(), 8);
+    let out: Vec<f64> = t.iter().map(|&v| v as f64).collect();
+    assert_eq!(outputs_to_buttons(&out), b);
+  }
+
+  #[test]
+  fn outputs_never_press_start_or_select() {
+    let out = vec![1.0; 8];
+    let b = outputs_to_buttons(&out);
+    assert_eq!(b & (BUTTON_START | BUTTON_SELECT), 0);
+    assert_eq!(b & BUTTON_A, BUTTON_A);
+  }
+
+  #[test]
+  fn active_bits_is_the_union() {
+    assert_eq!(active_bits(&[BUTTON_A, BUTTON_RIGHT, 0]), BUTTON_A | BUTTON_RIGHT);
+  }
+
+  #[test]
+  fn bit_accuracy_counts_only_masked_bits() {
+    let truth = [BUTTON_A | BUTTON_RIGHT, BUTTON_B];
+    let pred = [BUTTON_A, BUTTON_B | BUTTON_RIGHT];
+    let mask = BUTTON_A | BUTTON_B | BUTTON_RIGHT;
+    // Row 0: A right, B right, Right wrong. Row 1: A right, B right, Right wrong. 4 of 6.
+    assert!((bit_accuracy(&pred, &truth, mask) - 4.0 / 6.0).abs() < 1e-9);
+    assert_eq!(bit_accuracy(&pred, &truth, BUTTON_A), 1.0);
+  }
+
+  #[test]
+  fn noop_frames_are_deterministic_and_bounded() {
+    for e in 0..100 {
+      let n = noop_frames(e, 30);
+      assert!(n < 30);
+      assert_eq!(n, noop_frames(e, 30));
+    }
+    assert_eq!(noop_frames(5, 0), 0);
   }
 }
