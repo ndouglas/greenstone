@@ -22,6 +22,7 @@
 pub mod action;
 pub mod env;
 pub mod preprocess;
+pub mod reservoir;
 pub mod reward;
 
 pub use action::ActionSpace;
