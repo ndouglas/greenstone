@@ -22,8 +22,10 @@ pub fn smb_x(emu: &mut NesEmulator) -> i32 {
   emu.ram_read(smb1_ram::PLAYER_X_PAGE) as i32 * 256 + emu.ram_read(smb1_ram::PLAYER_X_PIXEL) as i32
 }
 
+/// Player state `$000E` is `0x0B` while dying and `0x06` on the final death frame.
+/// This fires about 200 frames before the lives counter drops.
 pub fn smb_dead(emu: &mut NesEmulator) -> bool {
-  emu.ram_read(smb1_ram::GAME_ENGINE_STATE) == 0x0B || emu.ram_read(smb1_ram::PLAYER_FLOAT_STATE) == 0x03
+  matches!(emu.ram_read(smb1_ram::PLAYER_STATE), 0x06 | 0x0B)
 }
 
 /// True once the level counter has advanced past 1-1.
@@ -66,7 +68,7 @@ pub struct Candidate {
 /// Drop dead candidates, order by x descending, keep `beam`.
 pub fn prune_and_rank(mut cands: Vec<Candidate>, beam: usize) -> Vec<Candidate> {
   cands.retain(|c| !c.dead);
-  cands.sort_by(|a, b| b.x.cmp(&a.x));
+  cands.sort_by_key(|c| std::cmp::Reverse(c.x));
   cands.truncate(beam);
   cands
 }
@@ -90,7 +92,7 @@ pub fn beam_search(rom: &[u8], start: &[u8], beam: usize, max_steps: usize) -> D
   let mut best = frontier[0].clone();
   for _ in 0..max_steps {
     let jobs: Vec<(usize, u8)> = (0..frontier.len()).flat_map(|p| ACTIONS.iter().map(move |&a| (p, a))).collect();
-    let chunk = (jobs.len() + threads - 1) / threads;
+    let chunk = jobs.len().div_ceil(threads);
     let expanded: Vec<Candidate> = std::thread::scope(|s| {
       let handles: Vec<_> = jobs
         .chunks(chunk)
@@ -204,5 +206,36 @@ mod tests {
     let demo = beam_search(&rom, &start, 8, 150);
     assert!(demo.buttons.len() <= 150);
     assert!(demo.x_reached > 500, "reached only x={}", demo.x_reached);
+  }
+
+  #[test]
+  #[ignore]
+  fn death_is_detected_well_before_the_lives_counter_drops() {
+    let rom = match rom_or_skip("roms2/super_mario_bros.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let mut emu = NesEmulator::new(&rom);
+    emu.load_state(&smb_start_state(&rom));
+    let lives_at_start = emu.ram_read(smb1_ram::LIVES);
+    let mut dead_frame = None;
+    let mut lives_frame = None;
+    for frame in 0..700 {
+      emu.step_frame(crate::nes::bus::BUTTON_RIGHT);
+      if dead_frame.is_none() && smb_dead(&mut emu) {
+        dead_frame = Some(frame);
+      }
+      if lives_frame.is_none() && emu.ram_read(smb1_ram::LIVES) < lives_at_start {
+        lives_frame = Some(frame);
+      }
+    }
+    let lives_frame = lives_frame.expect("walking right into the first Goomba should cost a life");
+    let dead_frame = dead_frame.expect("smb_dead should fire during the death animation");
+    assert!(
+      dead_frame + 60 < lives_frame,
+      "dead at frame {}, lives dropped at frame {}",
+      dead_frame,
+      lives_frame
+    );
   }
 }
