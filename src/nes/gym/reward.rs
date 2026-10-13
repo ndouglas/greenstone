@@ -94,7 +94,7 @@ impl RewardExtractor for SingleByteReward {
 /// Sources:
 /// - <https://datacrystal.tcrf.net/wiki/Super_Mario_Bros.:RAM_map>
 /// - <https://www.nesdev.org/wiki/Super_Mario_Bros.>
-mod smb1_ram {
+pub mod smb1_ram {
   #![allow(dead_code)]
   /// Player X position within the current screen (0-255 pixels).
   pub const PLAYER_X_PIXEL: u16 = 0x0086;
