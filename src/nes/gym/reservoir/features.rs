@@ -39,6 +39,14 @@ impl Condition {
     }
   }
 
+  pub fn drive(self) -> Option<super::drive::Drive> {
+    match self {
+      Condition::DrivenController => Some(super::drive::Drive::Controller),
+      Condition::DrivenPlayfield => Some(super::drive::Drive::Playfield),
+      _ => None,
+    }
+  }
+
   pub fn uses_reservoir(self) -> bool {
     !matches!(self, Condition::Raw)
   }

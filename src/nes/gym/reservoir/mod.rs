@@ -2,6 +2,7 @@
 //!
 //! See `docs/superpowers/specs/2026-10-13-tetris-reservoir-design.md`.
 
+pub mod drive;
 pub mod features;
 pub mod ridge;
 
