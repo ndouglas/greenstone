@@ -2,6 +2,7 @@
 //!
 //! See `docs/superpowers/specs/2026-10-13-tetris-reservoir-design.md`.
 
+pub mod features;
 pub mod ridge;
 
 /// Read a ROM for an integration test, or print a skip notice and return None.
