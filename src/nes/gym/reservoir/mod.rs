@@ -43,6 +43,8 @@ pub struct ConditionResult {
   pub condition: Condition,
   pub rows: usize,
   pub accuracy: f64,
+  /// Mean squared error of the raw outputs on the held-out rows, over the active bits.
+  pub mse: f64,
   pub mean_x: f64,
   pub max_x: i32,
   pub resets: u32,
@@ -92,6 +94,25 @@ pub fn bit_accuracy(pred: &[u8], truth: &[u8], mask: u8) -> f64 {
   }
   let correct: usize = pred.iter().zip(truth).map(|(&p, &t)| (!(p ^ t) & mask).count_ones() as usize).sum();
   correct as f64 / (per_row * pred.len()) as f64
+}
+
+/// Mean squared error of raw outputs against 0/1 targets, over the masked bits.
+pub fn output_mse(outputs: &[Vec<f64>], targets: &[Vec<f32>], mask: u8) -> f64 {
+  let per_row = mask.count_ones() as usize;
+  if per_row == 0 || outputs.is_empty() {
+    return 0.0;
+  }
+  let total: f64 = outputs
+    .iter()
+    .zip(targets)
+    .map(|(out, target)| {
+      (0..8)
+        .filter(|i| (mask >> i) & 1 == 1)
+        .map(|i| (out[i] - target[i] as f64).powi(2))
+        .sum::<f64>()
+    })
+    .sum();
+  total / (per_row * outputs.len()) as f64
 }
 
 /// Deterministic per-episode no-op count in `[0, noop_max)`.
@@ -208,8 +229,10 @@ pub fn run(smb_rom: &[u8], tetris_rom: &[u8], config: &ExperimentConfig, log: &m
       data.rows[0].len()
     ));
     let readout = fit(&data.rows[..split], &data.targets[..split], config.lambda)?;
-    let preds: Vec<u8> = data.rows[split..].iter().map(|r| outputs_to_buttons(&readout.predict(r))).collect();
+    let outputs: Vec<Vec<f64>> = data.rows[split..].iter().map(|r| readout.predict(r)).collect();
+    let preds: Vec<u8> = outputs.iter().map(|o| outputs_to_buttons(o)).collect();
     let accuracy = bit_accuracy(&preds, &data.buttons[split..], mask);
+    let mse = output_mse(&outputs, &data.targets[split..], mask);
     log(&format!("{}: running {} episodes", condition.name(), config.episodes));
     let outcomes: Vec<(i32, u32)> = std::thread::scope(|s| {
       let handles: Vec<_> = (0..config.episodes)
@@ -233,6 +256,7 @@ pub fn run(smb_rom: &[u8], tetris_rom: &[u8], config: &ExperimentConfig, log: &m
       condition,
       rows: data.rows.len(),
       accuracy,
+      mse,
       mean_x,
       max_x,
       resets,
@@ -301,6 +325,15 @@ mod tests {
     // Row 0: A right, B right, Right wrong. Row 1: A right, B right, Right wrong. 4 of 6.
     assert!((bit_accuracy(&pred, &truth, mask) - 4.0 / 6.0).abs() < 1e-9);
     assert_eq!(bit_accuracy(&pred, &truth, BUTTON_A), 1.0);
+  }
+
+  #[test]
+  fn output_mse_averages_squared_error_over_masked_bits() {
+    // Two rows, mask of two bits (A and B). Outputs are off by 0.5 on A only.
+    let outputs = vec![vec![0.5, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], vec![0.5, 0.0, 9.0, 0.0, 0.0, 0.0, 0.0, 0.0]];
+    let targets = vec![buttons_to_targets(BUTTON_A | BUTTON_B), buttons_to_targets(0)];
+    let mse = output_mse(&outputs, &targets, BUTTON_A | BUTTON_B);
+    assert!((mse - 0.125).abs() < 1e-9, "got {}", mse);
   }
 
   #[test]

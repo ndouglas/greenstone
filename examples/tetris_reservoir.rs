@@ -34,16 +34,17 @@ fn main() {
   println!("accuracy is over the buttons the demonstration uses: {:08b}", report.active_bits);
   println!();
   println!(
-    "{:<18} | {:>5} | {:>17} | {:>7} | {:>5} | {:>16}",
-    "condition", "rows", "held-out accuracy", "mean x", "max x", "reservoir resets"
+    "{:<18} | {:>5} | {:>17} | {:>12} | {:>7} | {:>5} | {:>16}",
+    "condition", "rows", "held-out accuracy", "held-out mse", "mean x", "max x", "reservoir resets"
   );
-  println!("{}", "-".repeat(84));
+  println!("{}", "-".repeat(99));
   for r in &report.results {
     println!(
-      "{:<18} | {:>5} | {:>17.3} | {:>7.1} | {:>5} | {:>16}",
+      "{:<18} | {:>5} | {:>17.3} | {:>12.4} | {:>7.1} | {:>5} | {:>16}",
       r.condition.name(),
       r.rows,
       r.accuracy,
+      r.mse,
       r.mean_x,
       r.max_x,
       r.resets
