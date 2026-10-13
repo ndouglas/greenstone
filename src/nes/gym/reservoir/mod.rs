@@ -17,7 +17,7 @@ use ridge::{fit, Readout};
 pub struct ExperimentConfig {
   pub lambda: f64,
   pub beam: usize,
-  pub demo_max_steps: usize,
+  pub demo_max_rounds: usize,
   pub episodes: usize,
   pub max_steps: usize,
   pub noop_max: usize,
@@ -29,7 +29,7 @@ impl Default for ExperimentConfig {
     ExperimentConfig {
       lambda: 1.0,
       beam: 16,
-      demo_max_steps: 600,
+      demo_max_rounds: 80,
       episodes: 5,
       max_steps: 750,
       noop_max: 30,
@@ -188,7 +188,7 @@ fn episode(
 pub fn run(smb_rom: &[u8], tetris_rom: &[u8], config: &ExperimentConfig, log: &mut dyn FnMut(&str)) -> Result<ExperimentReport, String> {
   let start = smb_start_state(smb_rom);
   log("searching for a demonstration");
-  let demo = beam_search(smb_rom, &start, config.beam, config.demo_max_steps);
+  let demo = beam_search(smb_rom, &start, config.beam, config.demo_max_rounds);
   log(&format!(
     "demonstration: {} steps, x={}, cleared={}",
     demo.buttons.len(),
