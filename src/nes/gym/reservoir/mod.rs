@@ -27,6 +27,9 @@ pub struct ExperimentConfig {
   pub episodes: usize,
   pub max_steps: usize,
   pub noop_max: usize,
+  /// The A label at a step is "A within the next `jump_horizon` steps", which
+  /// absorbs the demonstrations' arbitrary jump phase. 0 is the raw label.
+  pub jump_horizon: usize,
 }
 
 impl Default for ExperimentConfig {
@@ -39,8 +42,24 @@ impl Default for ExperimentConfig {
       episodes: 5,
       max_steps: 750,
       noop_max: 30,
+      jump_horizon: 4,
     }
   }
+}
+
+/// Set A at every step that has A pressed within the next `horizon` steps
+/// (including itself). Other bits are untouched.
+pub fn smooth_a(buttons: &[u8], horizon: usize) -> Vec<u8> {
+  (0..buttons.len())
+    .map(|i| {
+      let due = buttons[i..buttons.len().min(i + horizon + 1)].iter().any(|&b| b & BUTTON_A != 0);
+      if due {
+        buttons[i] | BUTTON_A
+      } else {
+        buttons[i]
+      }
+    })
+    .collect()
 }
 
 #[derive(Debug, Clone)]
@@ -364,7 +383,14 @@ pub(crate) fn observe(condition: Condition, window: &[u8], reservoir: Option<&mu
   }
 }
 
-pub(crate) fn collect(condition: Condition, smb_rom: &[u8], tetris_rom: &[u8], start: &[u8], demo: &Demonstration) -> Result<Dataset, String> {
+pub(crate) fn collect(
+  condition: Condition,
+  smb_rom: &[u8],
+  tetris_rom: &[u8],
+  start: &[u8],
+  demo: &Demonstration,
+  horizon: usize,
+) -> Result<Dataset, String> {
   let mut smb = NesEmulator::new(smb_rom);
   smb.load_state(start);
   smb.step_frames(0, demo.noops);
@@ -385,6 +411,8 @@ pub(crate) fn collect(condition: Condition, smb_rom: &[u8], tetris_rom: &[u8], s
     }
     smb.step_frames(action, MACRO_FRAMES);
   }
+  data.buttons = smooth_a(&data.buttons, horizon);
+  data.targets = data.buttons.iter().map(|&b| buttons_to_targets(b)).collect();
   data.resets = reservoir.map(|r| r.resets).unwrap_or(0);
   Ok(data)
 }
@@ -462,7 +490,8 @@ pub fn run(
         .iter()
         .map(|demo| {
           let start = &start;
-          s.spawn(move || collect(condition, smb_rom, tetris_rom, start, demo))
+          let horizon = config.jump_horizon;
+          s.spawn(move || collect(condition, smb_rom, tetris_rom, start, demo, horizon))
         })
         .collect();
       handles
@@ -588,6 +617,20 @@ mod tests {
     let row = observe(Condition::PlacementOnehot(Encoder::Salient), &window, None, 0);
     assert_eq!(row.len(), Condition::PlacementOnehot(Encoder::Salient).row_len());
     assert_eq!(row[0], 1.0);
+  }
+
+  #[test]
+  fn smoothing_sets_a_when_a_jump_is_due_within_the_horizon() {
+    let a = BUTTON_A | BUTTON_RIGHT;
+    let r = BUTTON_RIGHT;
+    let seq = [r, r, a, r, r, r, a, a, r];
+    let out = smooth_a(&seq, 2);
+    let expect = [a, a, a, r, a, a, a, a, r];
+    assert_eq!(out, expect);
+    assert_eq!(smooth_a(&seq, 0), seq, "horizon 0 is the raw label");
+    assert_eq!(smooth_a(&[], 3), Vec::<u8>::new());
+    let b = BUTTON_B;
+    assert_eq!(smooth_a(&[b, a], 1), vec![b | BUTTON_A, a], "other bits are kept");
   }
 
   #[test]

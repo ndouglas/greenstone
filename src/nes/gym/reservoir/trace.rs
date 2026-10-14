@@ -10,14 +10,21 @@ use crate::nes::gym::NesEmulator;
 use std::io::Write;
 
 /// Fit one condition's readout on every given demonstration, collecting one demonstration per thread.
-pub fn fit_condition(condition: Condition, smb_rom: &[u8], tetris_rom: &[u8], demos: &[Demonstration], lambda: f64) -> Result<Readout, String> {
+pub fn fit_condition(
+  condition: Condition,
+  smb_rom: &[u8],
+  tetris_rom: &[u8],
+  demos: &[Demonstration],
+  lambda: f64,
+  horizon: usize,
+) -> Result<Readout, String> {
   let start = smb_start_state(smb_rom);
   let datasets: Vec<Dataset> = std::thread::scope(|s| {
     let handles: Vec<_> = demos
       .iter()
       .map(|demo| {
         let start = &start;
-        s.spawn(move || collect(condition, smb_rom, tetris_rom, start, demo))
+        s.spawn(move || collect(condition, smb_rom, tetris_rom, start, demo, horizon))
       })
       .collect();
     handles

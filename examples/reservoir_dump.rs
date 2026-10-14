@@ -54,7 +54,10 @@ fn main() {
     .iter()
     .map(|&c| {
       eprintln!("fitting {} on demonstrations 1..{}", c.name(), demos.len());
-      (c, fit_condition(c, &smb_rom, &tetris_rom, &demos[1..], config.lambda).expect("fit"))
+      (
+        c,
+        fit_condition(c, &smb_rom, &tetris_rom, &demos[1..], config.lambda, config.jump_horizon).expect("fit"),
+      )
     })
     .collect();
 

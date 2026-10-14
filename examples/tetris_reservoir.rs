@@ -1,8 +1,9 @@
 //! Tetris as a reservoir computer for Super Mario Bros.
 //!
-//! Usage: cargo run --release --example tetris_reservoir -- [smb.nes] [tetris.nes] [demo-dir] [--legacy]
+//! Usage: cargo run --release --example tetris_reservoir -- [smb.nes] [tetris.nes] [demo-dir] [--legacy] [--horizon=N]
 //!
 //! `--legacy` adds the undriven, controller-driven and playfield conditions to the table.
+//! `--horizon=N` sets the jump-label horizon in steps (default 4; 0 is the raw label).
 //! Demonstrations are cached in `demo-dir` (default `target/tetris-reservoir-demos`)
 //! as `demo-N.bin`; delete the directory to search again.
 
@@ -17,6 +18,7 @@ use std::path::{Path, PathBuf};
 
 fn main() {
   let legacy = std::env::args().any(|a| a == "--legacy");
+  let horizon = std::env::args().find_map(|a| a.strip_prefix("--horizon=").map(|v| v.parse::<usize>().expect("--horizon=N")));
   let args: Vec<String> = std::env::args().filter(|a| !a.starts_with("--")).collect();
   let smb_path = args.get(1).map(String::as_str).unwrap_or("roms2/super_mario_bros.nes");
   let tetris_path = args.get(2).map(String::as_str).unwrap_or("roms2/tetris.nes");
@@ -29,7 +31,10 @@ fn main() {
   }
   let smb_rom = std::fs::read(smb_path).expect("read smb");
   let tetris_rom = std::fs::read(tetris_path).expect("read tetris");
-  let config = ExperimentConfig::default();
+  let mut config = ExperimentConfig::default();
+  if let Some(h) = horizon {
+    config.jump_horizon = h;
+  }
   let mut log = |line: &str| eprintln!("{}", line);
   let demos = match load_cached(&demo_dir, config.demonstrations) {
     Some(demos) => {
@@ -45,7 +50,7 @@ fn main() {
   };
   let mask = demos.iter().fold(0u8, |acc, d| acc | active_bits(&d.buttons));
   log("searching the encoder on the one-hot control");
-  let searched = search_encoder(&smb_rom, &demos, config.lambda, mask, &mut log);
+  let searched = search_encoder(&smb_rom, &demos, config.lambda, mask, config.jump_horizon, &mut log);
   let mut conditions = Condition::default_table(Some(searched));
   if legacy {
     conditions.extend(Condition::LEGACY);
@@ -67,6 +72,11 @@ fn main() {
   }
   println!("accuracy is over the buttons the demonstrations use: {:08b}", report.active_bits);
   println!("held-out columns are leave-one-demonstration-out, pooled over folds");
+  println!(
+    "A label: pressed within the next {} steps ({} frames); 0 would be the raw label",
+    config.jump_horizon,
+    config.jump_horizon * 4
+  );
   println!(
     "placements: {} per step, enemy bins {} px, Tetris level {} via the menu, {} frames per piece at most",
     PIECES_PER_STEP, ENEMY_BIN_PX, FAST_LEVEL, PIECE_FRAME_LIMIT

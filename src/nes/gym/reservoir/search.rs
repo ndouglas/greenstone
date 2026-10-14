@@ -3,7 +3,7 @@
 
 use super::demo::{smb_in_cutscene, smb_start_state, smb_window, Demonstration, MACRO_FRAMES};
 use super::encode::{onehot_row, Encoder, Feature, Placement, PIECES_PER_STEP};
-use super::{buttons_to_targets, evaluate_folds, row_is_informative, Dataset};
+use super::{buttons_to_targets, evaluate_folds, row_is_informative, smooth_a, Dataset};
 use crate::nes::gym::NesEmulator;
 
 /// Bin widths tried, as bits dropped: 4, 8, 16 and 32 values per column.
@@ -122,9 +122,15 @@ pub fn search_features(
   chosen.try_into().expect("PIECES_PER_STEP features")
 }
 
-/// Search the encoder on the given demonstrations.
-pub fn search_encoder(smb_rom: &[u8], demos: &[Demonstration], lambda: f64, mask: u8, log: &mut dyn FnMut(&str)) -> Encoder {
-  let (windows, buttons): (Vec<_>, Vec<_>) = demos.iter().map(|d| collect_windows(smb_rom, d)).unzip();
+/// Search the encoder on the given demonstrations, against the smoothed A label.
+pub fn search_encoder(smb_rom: &[u8], demos: &[Demonstration], lambda: f64, mask: u8, horizon: usize, log: &mut dyn FnMut(&str)) -> Encoder {
+  let (windows, buttons): (Vec<_>, Vec<_>) = demos
+    .iter()
+    .map(|d| {
+      let (w, b) = collect_windows(smb_rom, d);
+      (w, smooth_a(&b, horizon))
+    })
+    .unzip();
   Encoder::Searched(search_features(&windows, &buttons, lambda, mask, log))
 }
 
