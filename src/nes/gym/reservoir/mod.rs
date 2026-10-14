@@ -18,10 +18,11 @@ pub struct ExperimentConfig {
   pub lambda: f64,
   pub beam: usize,
   pub demo_max_rounds: usize,
+  /// Demonstrations to search for, each from its own no-op offset and tie-break seed.
+  pub demonstrations: usize,
   pub episodes: usize,
   pub max_steps: usize,
   pub noop_max: usize,
-  pub train_fraction: f64,
 }
 
 impl Default for ExperimentConfig {
@@ -30,10 +31,10 @@ impl Default for ExperimentConfig {
       lambda: 1.0,
       beam: 16,
       demo_max_rounds: 100,
+      demonstrations: 6,
       episodes: 5,
       max_steps: 750,
       noop_max: 30,
-      train_fraction: 0.8,
     }
   }
 }
@@ -41,7 +42,11 @@ impl Default for ExperimentConfig {
 #[derive(Debug, Clone)]
 pub struct ConditionResult {
   pub condition: Condition,
+  /// Informative rows over all demonstrations.
   pub rows: usize,
+  /// Bit accuracy on the training rows, pooled over folds.
+  pub train_accuracy: f64,
+  /// Bit accuracy on the held-out demonstration, pooled over folds.
   pub accuracy: f64,
   /// Mean squared error of the raw outputs on the held-out rows, over the active bits.
   pub mse: f64,
@@ -51,27 +56,18 @@ pub struct ConditionResult {
 }
 
 #[derive(Debug, Clone)]
-pub struct ExperimentReport {
-  pub demo_steps: usize,
-  pub demo_x: i32,
-  pub demo_cleared: bool,
-  pub active_bits: u8,
-  pub results: Vec<ConditionResult>,
+pub struct DemoSummary {
+  pub steps: usize,
+  pub x_reached: i32,
+  pub cleared: bool,
+  pub noops: usize,
 }
 
-/// First index of the test split. Needs at least ten rows so the test split is non-empty.
-pub fn split_index(n: usize, train_fraction: f64) -> Result<usize, String> {
-  if n < 10 {
-    return Err(format!("demonstration has only {} steps; need at least 10", n));
-  }
-  if !(train_fraction > 0.0 && train_fraction < 1.0) {
-    return Err(format!("train_fraction must be strictly between 0 and 1, got {}", train_fraction));
-  }
-  let split = ((n as f64) * train_fraction).floor() as usize;
-  if split == 0 || split >= n {
-    return Err(format!("split {} of {} rows leaves an empty train or test set", split, n));
-  }
-  Ok(split)
+#[derive(Debug, Clone)]
+pub struct ExperimentReport {
+  pub demos: Vec<DemoSummary>,
+  pub active_bits: u8,
+  pub results: Vec<ConditionResult>,
 }
 
 pub fn buttons_to_targets(buttons: u8) -> Vec<f32> {
@@ -135,13 +131,16 @@ pub fn row_is_informative(in_cutscene: bool) -> bool {
   !in_cutscene
 }
 
-/// Deterministic per-episode no-op count in `[0, noop_max)`.
-pub fn noop_frames(episode: usize, noop_max: usize) -> usize {
-  if noop_max == 0 {
-    return 0;
-  }
-  let h = (episode as u64 + 1).wrapping_mul(2654435761).wrapping_mul(0x9E3779B97F4A7C15);
-  ((h >> 33) as usize) % noop_max
+/// Idle frames before demonstration `index` starts: evenly spaced over `[0, noop_max)`.
+pub fn demonstration_noops(index: usize, demonstrations: usize, noop_max: usize) -> usize {
+  index * noop_max / demonstrations.max(1)
+}
+
+/// Idle frames before closed-loop episode `index` starts: the midpoints between
+/// demonstration offsets, so an episode never starts where a demonstration did.
+pub fn episode_noops(index: usize, demonstrations: usize, noop_max: usize) -> usize {
+  let demonstrations = demonstrations.max(1);
+  (2 * (index % demonstrations) + 1) * noop_max / (2 * demonstrations)
 }
 
 struct Dataset {
@@ -149,6 +148,63 @@ struct Dataset {
   targets: Vec<Vec<f32>>,
   buttons: Vec<u8>,
   resets: u32,
+}
+
+/// Pooled leave-one-dataset-out metrics.
+#[derive(Debug, Clone)]
+pub struct FoldMetrics {
+  pub rows: usize,
+  pub train_accuracy: f64,
+  pub accuracy: f64,
+  pub mse: f64,
+}
+
+/// Hold each dataset out in turn, fit on the rest, and pool the predictions.
+fn evaluate_folds(datasets: &[Dataset], lambda: f64, mask: u8) -> Result<FoldMetrics, String> {
+  if datasets.len() < 2 {
+    return Err(format!("leave-one-out needs at least two demonstrations, got {}", datasets.len()));
+  }
+  let mut train_preds = Vec::new();
+  let mut train_truth = Vec::new();
+  let mut test_outputs = Vec::new();
+  let mut test_targets = Vec::new();
+  let mut test_preds = Vec::new();
+  let mut test_truth = Vec::new();
+  for held_out in 0..datasets.len() {
+    let rows: Vec<Vec<f32>> = datasets
+      .iter()
+      .enumerate()
+      .filter(|(i, _)| *i != held_out)
+      .flat_map(|(_, d)| d.rows.iter().cloned())
+      .collect();
+    let targets: Vec<Vec<f32>> = datasets
+      .iter()
+      .enumerate()
+      .filter(|(i, _)| *i != held_out)
+      .flat_map(|(_, d)| d.targets.iter().cloned())
+      .collect();
+    let readout = fit(&rows, &targets, lambda)?;
+    for (i, d) in datasets.iter().enumerate() {
+      for (row, &buttons) in d.rows.iter().zip(&d.buttons) {
+        let out = readout.predict(row);
+        if i == held_out {
+          test_preds.push(outputs_to_buttons(&out));
+          test_truth.push(buttons);
+          test_targets.push(buttons_to_targets(buttons));
+          test_outputs.push(out);
+        } else {
+          train_preds.push(outputs_to_buttons(&out));
+          train_truth.push(buttons);
+        }
+      }
+    }
+  }
+  Ok(FoldMetrics {
+    rows: test_preds.len(),
+    train_accuracy: bit_accuracy(&train_preds, &train_truth, mask),
+    accuracy: bit_accuracy(&test_preds, &test_truth, mask),
+    mse: output_mse(&test_outputs, &test_targets, mask),
+  })
 }
 
 /// Step the reservoir with the current window (if the condition has one) and build the row.
@@ -172,6 +228,7 @@ fn observe(condition: Condition, window: &[u8], reservoir: Option<&mut Reservoir
 fn collect(condition: Condition, smb_rom: &[u8], tetris_rom: &[u8], start: &[u8], demo: &Demonstration) -> Result<Dataset, String> {
   let mut smb = NesEmulator::new(smb_rom);
   smb.load_state(start);
+  smb.step_frames(0, demo.noops);
   let mut reservoir = if condition.uses_reservoir() {
     Some(Reservoir::new(tetris_rom)?)
   } else {
@@ -229,50 +286,87 @@ fn episode(
   Ok((max_x, reservoir.map(|r| r.resets).unwrap_or(0)))
 }
 
-/// Run every condition and return the report. `log` receives progress lines.
-pub fn run(smb_rom: &[u8], tetris_rom: &[u8], config: &ExperimentConfig, log: &mut dyn FnMut(&str)) -> Result<ExperimentReport, String> {
+/// Search for `config.demonstrations` demonstrations, each from its own no-op
+/// offset and tie-break seed. `log` receives progress lines.
+pub fn find_demonstrations(smb_rom: &[u8], config: &ExperimentConfig, log: &mut dyn FnMut(&str)) -> Vec<Demonstration> {
   let start = smb_start_state(smb_rom);
-  log("searching for a demonstration");
-  let demo = beam_search(smb_rom, &start, config.beam, config.demo_max_rounds, 0);
-  log(&format!(
-    "demonstration: {} steps, x={}, cleared={}",
-    demo.buttons.len(),
-    demo.x_reached,
-    demo.cleared
-  ));
-  let mask = active_bits(&demo.buttons);
+  (0..config.demonstrations)
+    .map(|i| {
+      let noops = demonstration_noops(i, config.demonstrations, config.noop_max);
+      log(&format!("searching for demonstration {} from {} idle frames", i, noops));
+      let demo = beam_search(smb_rom, &start, noops, config.beam, config.demo_max_rounds, i as u64);
+      log(&format!(
+        "demonstration {}: {} steps, x={}, cleared={}",
+        i,
+        demo.buttons.len(),
+        demo.x_reached,
+        demo.cleared
+      ));
+      demo
+    })
+    .collect()
+}
+
+/// Run every condition on the given demonstrations and return the report.
+/// `log` receives progress lines.
+pub fn run(
+  smb_rom: &[u8],
+  tetris_rom: &[u8],
+  demos: &[Demonstration],
+  config: &ExperimentConfig,
+  log: &mut dyn FnMut(&str),
+) -> Result<ExperimentReport, String> {
+  if demos.len() < 2 {
+    return Err(format!("leave-one-out needs at least two demonstrations, got {}", demos.len()));
+  }
+  let start = smb_start_state(smb_rom);
+  let mask = demos.iter().fold(0, |acc, d| acc | active_bits(&d.buttons));
+  let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
   let mut results = Vec::new();
   for condition in Condition::ALL {
-    log(&format!("{}: collecting features", condition.name()));
-    let data = collect(condition, smb_rom, tetris_rom, &start, &demo)?;
-    let split = split_index(data.rows.len(), config.train_fraction)?;
+    log(&format!("{}: collecting features from {} demonstrations", condition.name(), demos.len()));
+    let datasets: Vec<Dataset> = std::thread::scope(|s| {
+      let handles: Vec<_> = demos
+        .iter()
+        .map(|demo| {
+          let start = &start;
+          s.spawn(move || collect(condition, smb_rom, tetris_rom, start, demo))
+        })
+        .collect();
+      handles
+        .into_iter()
+        .map(|h| h.join().expect("collect worker panicked"))
+        .collect::<Result<Vec<_>, _>>()
+    })?;
+    let rows: usize = datasets.iter().map(|d| d.rows.len()).sum();
     log(&format!(
-      "{}: {} informative rows of {} steps; fitting readout on {} rows of {}",
+      "{}: {} informative rows of {}; leave-one-out over {} folds",
       condition.name(),
-      data.rows.len(),
-      demo.buttons.len(),
-      split,
-      data.rows[0].len()
+      rows,
+      datasets[0].rows[0].len(),
+      datasets.len()
     ));
-    let readout = fit(&data.rows[..split], &data.targets[..split], config.lambda)?;
-    let outputs: Vec<Vec<f64>> = data.rows[split..].iter().map(|r| readout.predict(r)).collect();
-    let preds: Vec<u8> = outputs.iter().map(|o| outputs_to_buttons(o)).collect();
-    let accuracy = bit_accuracy(&preds, &data.buttons[split..], mask);
-    let mse = output_mse(&outputs, &data.targets[split..], mask);
+    let folds = evaluate_folds(&datasets, config.lambda, mask)?;
+    let all_rows: Vec<Vec<f32>> = datasets.iter().flat_map(|d| d.rows.iter().cloned()).collect();
+    let all_targets: Vec<Vec<f32>> = datasets.iter().flat_map(|d| d.targets.iter().cloned()).collect();
+    let readout = fit(&all_rows, &all_targets, config.lambda)?;
     log(&format!("{}: running {} episodes", condition.name(), config.episodes));
-    let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
     let outcomes: Vec<(i32, u32)> = std::thread::scope(|s| {
       let handles: Vec<_> = assign_round_robin(config.episodes, threads)
         .into_iter()
         .map(|episodes| {
           let readout = &readout;
           let start = &start;
+          let demonstrations = demos.len();
           let noop_max = config.noop_max;
           let max_steps = config.max_steps;
           s.spawn(move || {
             episodes
               .into_iter()
-              .map(|e| episode(condition, readout, smb_rom, tetris_rom, start, noop_frames(e, noop_max), max_steps))
+              .map(|e| {
+                let noops = episode_noops(e, demonstrations, noop_max);
+                episode(condition, readout, smb_rom, tetris_rom, start, noops, max_steps)
+              })
               .collect::<Result<Vec<_>, _>>()
           })
         })
@@ -285,21 +379,28 @@ pub fn run(smb_rom: &[u8], tetris_rom: &[u8], config: &ExperimentConfig, log: &m
     })?;
     let mean_x = outcomes.iter().map(|o| o.0 as f64).sum::<f64>() / outcomes.len().max(1) as f64;
     let max_x = outcomes.iter().map(|o| o.0).max().unwrap_or(0);
-    let resets = data.resets + outcomes.iter().map(|o| o.1).sum::<u32>();
+    let resets = datasets.iter().map(|d| d.resets).sum::<u32>() + outcomes.iter().map(|o| o.1).sum::<u32>();
     results.push(ConditionResult {
       condition,
-      rows: data.rows.len(),
-      accuracy,
-      mse,
+      rows,
+      train_accuracy: folds.train_accuracy,
+      accuracy: folds.accuracy,
+      mse: folds.mse,
       mean_x,
       max_x,
       resets,
     });
   }
   Ok(ExperimentReport {
-    demo_steps: demo.buttons.len(),
-    demo_x: demo.x_reached,
-    demo_cleared: demo.cleared,
+    demos: demos
+      .iter()
+      .map(|d| DemoSummary {
+        steps: d.buttons.len(),
+        x_reached: d.x_reached,
+        cleared: d.cleared,
+        noops: d.noops,
+      })
+      .collect(),
     active_bits: mask,
     results,
   })
@@ -345,22 +446,6 @@ mod tests {
   }
 
   #[test]
-  fn split_rejects_fewer_than_ten_rows() {
-    assert!(split_index(9, 0.8).is_err());
-    assert_eq!(split_index(10, 0.8).unwrap(), 8);
-    assert_eq!(split_index(100, 0.8).unwrap(), 80);
-  }
-
-  #[test]
-  fn split_rejects_fractions_that_leave_no_test_rows() {
-    assert!(split_index(100, 1.0).is_err());
-    assert!(split_index(100, 1.5).is_err());
-    assert!(split_index(100, 0.0).is_err());
-    assert!(split_index(100, -0.2).is_err());
-    assert_eq!(split_index(10, 0.95).unwrap(), 9);
-  }
-
-  #[test]
   fn targets_and_buttons_round_trip() {
     let b = BUTTON_A | BUTTON_RIGHT;
     let t = buttons_to_targets(b);
@@ -401,13 +486,51 @@ mod tests {
     assert!((mse - 0.125).abs() < 1e-9, "got {}", mse);
   }
 
-  #[test]
-  fn noop_frames_are_deterministic_and_bounded() {
-    for e in 0..100 {
-      let n = noop_frames(e, 30);
-      assert!(n < 30);
-      assert_eq!(n, noop_frames(e, 30));
+  fn synthetic_dataset(seed: u32, n: usize) -> Dataset {
+    // Target bit A is set exactly when the second feature is above one half.
+    let mut data = Dataset {
+      rows: Vec::new(),
+      targets: Vec::new(),
+      buttons: Vec::new(),
+      resets: 0,
+    };
+    for i in 0..n {
+      let f = ((i as u32 * 7919 + seed * 104729) % 1000) as f32 / 1000.0;
+      let buttons = if f > 0.5 { BUTTON_A } else { 0 };
+      data.rows.push(vec![1.0, f]);
+      data.targets.push(buttons_to_targets(buttons));
+      data.buttons.push(buttons);
     }
-    assert_eq!(noop_frames(5, 0), 0);
+    data
+  }
+
+  #[test]
+  fn folds_hold_out_each_dataset_in_turn() {
+    let datasets: Vec<Dataset> = (0..3).map(|s| synthetic_dataset(s, 40)).collect();
+    let m = evaluate_folds(&datasets, 1e-6, BUTTON_A).unwrap();
+    assert!(m.accuracy > 0.9, "held-out accuracy {}", m.accuracy);
+    assert!(m.train_accuracy > 0.9, "train accuracy {}", m.train_accuracy);
+    assert!(m.mse < 0.1, "mse {}", m.mse);
+    assert_eq!(m.rows, 120);
+  }
+
+  #[test]
+  fn folds_need_at_least_two_datasets() {
+    let datasets = vec![synthetic_dataset(0, 40)];
+    assert!(evaluate_folds(&datasets, 1.0, BUTTON_A).is_err());
+    assert!(evaluate_folds(&[], 1.0, BUTTON_A).is_err());
+  }
+
+  #[test]
+  fn demonstration_and_episode_offsets_are_disjoint_for_small_counts() {
+    let demos: Vec<usize> = (0..6).map(|i| demonstration_noops(i, 6, 30)).collect();
+    assert_eq!(demos, vec![0, 5, 10, 15, 20, 25]);
+    let episodes: Vec<usize> = (0..8).map(|e| episode_noops(e, 6, 30)).collect();
+    assert_eq!(episodes, vec![2, 7, 12, 17, 22, 27, 2, 7]);
+    for e in &episodes {
+      assert!(!demos.contains(e), "episode offset {} replays a demonstration", e);
+    }
+    assert_eq!(demonstration_noops(0, 0, 30), 0);
+    assert_eq!(episode_noops(3, 0, 30), 15);
   }
 }

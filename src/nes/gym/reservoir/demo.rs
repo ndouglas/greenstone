@@ -79,6 +79,34 @@ pub struct Demonstration {
   /// Highest x seen along the path. The level reset after a clear does not lower it.
   pub x_reached: i32,
   pub cleared: bool,
+  /// Idle frames after the level starts before the first button.
+  pub noops: usize,
+}
+
+const DEMO_HEADER: usize = 7;
+
+impl Demonstration {
+  /// `[noops u16 LE][x_reached i32 LE][cleared u8][buttons...]`.
+  pub fn to_bytes(&self) -> Vec<u8> {
+    let mut out = Vec::with_capacity(DEMO_HEADER + self.buttons.len());
+    out.extend_from_slice(&(self.noops as u16).to_le_bytes());
+    out.extend_from_slice(&self.x_reached.to_le_bytes());
+    out.push(self.cleared as u8);
+    out.extend_from_slice(&self.buttons);
+    out
+  }
+
+  pub fn from_bytes(bytes: &[u8]) -> Result<Demonstration, String> {
+    if bytes.len() < DEMO_HEADER {
+      return Err(format!("demonstration needs at least {} bytes, got {}", DEMO_HEADER, bytes.len()));
+    }
+    Ok(Demonstration {
+      noops: u16::from_le_bytes([bytes[0], bytes[1]]) as usize,
+      x_reached: i32::from_le_bytes([bytes[2], bytes[3], bytes[4], bytes[5]]),
+      cleared: bytes[6] != 0,
+      buttons: bytes[DEMO_HEADER..].to_vec(),
+    })
+  }
 }
 
 #[derive(Debug, Clone)]
@@ -152,18 +180,19 @@ pub fn prune_and_rank(mut cands: Vec<Candidate>, beam: usize, seed: u64) -> Vec<
   cands
 }
 
-/// Beam search over save states. Each round expands every frontier candidate by
-/// every macro across threads, one emulator per thread. `seed` only breaks
-/// exact ranking ties.
-pub fn beam_search(rom: &[u8], start: &[u8], beam: usize, max_rounds: usize, seed: u64) -> Demonstration {
+/// Beam search over save states from `noops` idle frames after `start`. Each
+/// round expands every frontier candidate by every macro across threads, one
+/// emulator per thread. `seed` only breaks exact ranking ties.
+pub fn beam_search(rom: &[u8], start: &[u8], noops: usize, beam: usize, max_rounds: usize, seed: u64) -> Demonstration {
   let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
-  let lives_at_start = {
+  let (first, lives_at_start) = {
     let mut emu = NesEmulator::new(rom);
     emu.load_state(start);
-    emu.ram_read(smb1_ram::LIVES)
+    emu.step_frames(0, noops);
+    (emu.save_state(), emu.ram_read(smb1_ram::LIVES))
   };
   let mut frontier = vec![Candidate {
-    state: start.to_vec(),
+    state: first,
     path: Vec::new(),
     x: 0,
     y: 0,
@@ -236,6 +265,7 @@ pub fn beam_search(rom: &[u8], start: &[u8], beam: usize, max_rounds: usize, see
     buttons: best.path,
     x_reached: max_x,
     cleared: best.cleared,
+    noops,
   }
 }
 
@@ -323,7 +353,7 @@ mod tests {
       None => return,
     };
     let start = smb_start_state(&rom);
-    let demo = beam_search(&rom, &start, 16, 100, 0);
+    let demo = beam_search(&rom, &start, 0, 16, 100, 0);
     assert!(demo.cleared, "did not clear: x={} in {} steps", demo.x_reached, demo.buttons.len());
     assert!(demo.x_reached > 3000, "x_reached should be the highest x seen, got {}", demo.x_reached);
   }
@@ -336,7 +366,7 @@ mod tests {
       None => return,
     };
     let start = smb_start_state(&rom);
-    let demo = beam_search(&rom, &start, 16, 60, 0);
+    let demo = beam_search(&rom, &start, 0, 16, 60, 0);
     assert!(demo.x_reached > 2200, "reached only x={} in {} steps", demo.x_reached, demo.buttons.len());
   }
 
@@ -348,8 +378,24 @@ mod tests {
       None => return,
     };
     let start = smb_start_state(&rom);
-    let demo = beam_search(&rom, &start, 16, 60, 0);
+    let demo = beam_search(&rom, &start, 0, 16, 60, 0);
     assert!(demo.x_reached > 1000, "reached only x={} in {} steps", demo.x_reached, demo.buttons.len());
+  }
+
+  #[test]
+  fn demonstration_round_trips_through_bytes() {
+    let demo = Demonstration {
+      buttons: vec![0, RUN, RUN_JUMP, 0xFF],
+      x_reached: 70000,
+      cleared: true,
+      noops: 17,
+    };
+    let back = Demonstration::from_bytes(&demo.to_bytes()).unwrap();
+    assert_eq!(back.buttons, demo.buttons);
+    assert_eq!(back.x_reached, 70000);
+    assert!(back.cleared);
+    assert_eq!(back.noops, 17);
+    assert!(Demonstration::from_bytes(&[1, 2, 3]).is_err());
   }
 
   #[test]
@@ -415,7 +461,7 @@ mod tests {
       None => return,
     };
     let start = smb_start_state(&rom);
-    let demo = beam_search(&rom, &start, 8, 30, 0);
+    let demo = beam_search(&rom, &start, 0, 8, 30, 0);
     assert!(demo.buttons.len() <= 30 * ROUND_STEPS);
     assert!(demo.x_reached > 500, "reached only x={}", demo.x_reached);
   }
