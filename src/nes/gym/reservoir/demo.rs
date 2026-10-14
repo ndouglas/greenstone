@@ -120,6 +120,16 @@ pub struct Candidate {
   pub cleared: bool,
   /// Consecutive steps without an x improvement.
   pub stuck: u32,
+  /// Hash of the zero page. Two candidates with the same key are the same
+  /// game state reached by different paths.
+  pub key: u64,
+}
+
+/// Hash of the SMB zero page, the beam's notion of state identity.
+pub fn state_key(emu: &mut NesEmulator) -> u64 {
+  smb_window(emu)
+    .iter()
+    .fold(0xCBF2_9CE4_8422_2325u64, |h, &b| (h ^ b as u64).wrapping_mul(0x100_0000_01B3))
 }
 
 /// Continuations tried when asking whether a candidate can survive the next
@@ -167,15 +177,20 @@ fn tie_break(path: &[u8], seed: u64) -> u64 {
   h
 }
 
-/// Drop dead and stuck candidates, order by x descending then height, keep `beam`.
+/// Drop dead and stuck candidates, order by x descending then height, keep
+/// one candidate per game state, and keep `beam` of them.
 ///
 /// The height tie-break keeps lineages that started a jump a few steps ago
 /// alive at a wall, where ranking by x alone would let ground-huggers crowd
 /// them out of the beam. Exact ties break by a seeded hash of the path, so
-/// searches with different seeds find different demonstrations.
+/// searches with different seeds find different demonstrations. Without the
+/// dedupe, the beam fills with copies of the single best state and dies
+/// together at the first obstacle that state cannot pass.
 pub fn prune_and_rank(mut cands: Vec<Candidate>, beam: usize, seed: u64) -> Vec<Candidate> {
   cands.retain(|c| !c.dead && c.stuck < STUCK_LIMIT);
   cands.sort_by_key(|c| (std::cmp::Reverse(c.x), c.y, tie_break(&c.path, seed)));
+  let mut seen = std::collections::HashSet::new();
+  cands.retain(|c| seen.insert(c.key));
   cands.truncate(beam);
   cands
 }
@@ -185,11 +200,11 @@ pub fn prune_and_rank(mut cands: Vec<Candidate>, beam: usize, seed: u64) -> Vec<
 /// emulator per thread. `seed` only breaks exact ranking ties.
 pub fn beam_search(rom: &[u8], start: &[u8], noops: usize, beam: usize, max_rounds: usize, seed: u64) -> Demonstration {
   let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
-  let (first, lives_at_start) = {
+  let (first, lives_at_start, key) = {
     let mut emu = NesEmulator::new(rom);
     emu.load_state(start);
     emu.step_frames(0, noops);
-    (emu.save_state(), emu.ram_read(smb1_ram::LIVES))
+    (emu.save_state(), emu.ram_read(smb1_ram::LIVES), state_key(&mut emu))
   };
   let mut frontier = vec![Candidate {
     state: first,
@@ -199,6 +214,7 @@ pub fn beam_search(rom: &[u8], start: &[u8], noops: usize, beam: usize, max_roun
     dead: false,
     cleared: false,
     stuck: 0,
+    key,
   }];
   let mut best = frontier[0].clone();
   let mut max_x = 0;
@@ -230,6 +246,7 @@ pub fn beam_search(rom: &[u8], start: &[u8], noops: usize, beam: usize, max_roun
                 let stuck = next_stuck(frontier[parent].stuck, x > frontier[parent].x, smb_in_cutscene(&mut emu));
                 let cleared = smb_cleared(&mut emu);
                 let y = smb_y(&mut emu);
+                let key = state_key(&mut emu);
                 let state = emu.save_state();
                 let dead = dead || (!cleared && doomed_next_round(&mut emu, &state, lives_at_start));
                 Candidate {
@@ -240,6 +257,7 @@ pub fn beam_search(rom: &[u8], start: &[u8], noops: usize, beam: usize, max_roun
                   state,
                   path,
                   stuck,
+                  key,
                 }
               })
               .collect::<Vec<_>>()
@@ -283,8 +301,12 @@ mod tests {
       dead,
       cleared: false,
       stuck: 0,
+      key: NEXT_KEY.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
     }
   }
+
+  /// Every test candidate is a distinct state unless a test says otherwise.
+  static NEXT_KEY: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1000);
 
   #[test]
   fn prune_prefers_the_higher_candidate_at_equal_x() {
@@ -295,6 +317,21 @@ mod tests {
     let kept = prune_and_rank(vec![on_ground, in_air], 1, 0);
     assert_eq!(kept.len(), 1);
     assert_eq!(kept[0].y, 0x60);
+  }
+
+  #[test]
+  fn prune_keeps_one_candidate_per_state() {
+    let mut a = cand(100, false);
+    a.key = 7;
+    a.path = vec![1];
+    let mut same = cand(100, false);
+    same.key = 7;
+    same.path = vec![2];
+    let mut other = cand(90, false);
+    other.key = 8;
+    let kept = prune_and_rank(vec![a, same, other], 3, 0);
+    let keys: Vec<u64> = kept.iter().map(|c| c.key).collect();
+    assert_eq!(keys, vec![7, 8], "two paths to the same state are one candidate");
   }
 
   #[test]

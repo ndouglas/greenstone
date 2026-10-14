@@ -123,9 +123,14 @@ pub mod smb1_ram {
   /// Flag area offset (increments on level clear).
   pub const LEVEL_CLEAR_FLAG: u16 = 0x0001;
 
-  /// True while the player is dying. Fires about 200 frames before the lives counter drops.
+  /// Player vertical screen page: 0 above the screen, 1 on it, 2 or more below it.
+  pub const PLAYER_Y_PAGE: u16 = 0x00B5;
+
+  /// True while the player is dying, or has fallen below the screen into a pit.
+  /// The state byte fires about 200 frames before the lives counter drops; a
+  /// pit fall never changes the state byte at all, only the vertical page.
   pub fn player_is_dead(emu: &mut super::NesEmulator) -> bool {
-    matches!(emu.ram_read(PLAYER_STATE), 0x06 | 0x0B)
+    matches!(emu.ram_read(PLAYER_STATE), 0x06 | 0x0B) || emu.ram_read(PLAYER_Y_PAGE) >= 2
   }
 }
 
@@ -342,6 +347,20 @@ mod tests {
     assert!(smb1_ram::player_is_dead(&mut emu));
     emu.ram_write(smb1_ram::PLAYER_STATE, 0x06);
     assert!(smb1_ram::player_is_dead(&mut emu));
+  }
+
+  #[test]
+  fn player_is_dead_once_below_the_screen() {
+    init();
+    let rom = build_test_rom();
+    let mut emu = NesEmulator::new(&rom);
+    emu.ram_write(smb1_ram::PLAYER_STATE, 0x08);
+    emu.ram_write(smb1_ram::PLAYER_Y_PAGE, 0x01);
+    assert!(!smb1_ram::player_is_dead(&mut emu));
+    emu.ram_write(smb1_ram::PLAYER_Y_PAGE, 0x02);
+    assert!(smb1_ram::player_is_dead(&mut emu), "falling into a pit never changes the player state");
+    emu.ram_write(smb1_ram::PLAYER_Y_PAGE, 0x00);
+    assert!(!smb1_ram::player_is_dead(&mut emu), "above the screen is a high jump, not a pit");
   }
 
   #[test]
