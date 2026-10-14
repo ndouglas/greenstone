@@ -79,7 +79,7 @@ fn main() {
     );
   } else {
     println!(
-      "A label: pressed within the next {} steps ({} frames); window: zero page plus terrain, {} bytes",
+      "A label: pressed within the next {} steps ({} frames); window: zero page plus 8 terrain columns ahead, {} bytes",
       config.jump_horizon,
       config.jump_horizon * 4,
       SMB_WINDOW_LEN

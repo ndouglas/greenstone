@@ -2,7 +2,9 @@
 
 #[cfg(test)]
 use super::features::SMB_WINDOW_LEN;
-use super::features::{SMB_TERRAIN_LEN, SMB_TERRAIN_START, SMB_WINDOW_START, SMB_ZERO_PAGE_LEN};
+use super::features::{
+  BLOCK_COLUMNS, BLOCK_ROWS, SMB_BLOCK_BUFFER_1, SMB_BLOCK_BUFFER_2, SMB_BLOCK_BUFFER_LEN, SMB_WINDOW_START, SMB_ZERO_PAGE_LEN, TERRAIN_COLUMNS,
+};
 use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_RIGHT, BUTTON_START};
 use crate::nes::gym::reward::smb1_ram;
 use crate::nes::gym::NesEmulator;
@@ -64,13 +66,33 @@ pub fn smb_y(emu: &mut NesEmulator) -> u8 {
 /// condition can read the previous action back; the window is state, not input.
 pub const SMB_INPUT_BYTES: [u16; 4] = [0x000A, 0x000B, 0x000C, 0x000D];
 
-/// The zero page with the controller bytes hidden, then the terrain buffer.
+/// The terrain from Mario's column rightwards, `TERRAIN_COLUMNS` columns of
+/// `BLOCK_ROWS` bytes each, read from whichever block buffer holds each page.
+pub fn terrain_ahead(zero_page: &[u8], buffer_1: &[u8], buffer_2: &[u8]) -> Vec<u8> {
+  let x = zero_page[smb1_ram::PLAYER_X_PAGE as usize] as usize * 256 + zero_page[smb1_ram::PLAYER_X_PIXEL as usize] as usize;
+  let first = x / 16;
+  let mut out = Vec::with_capacity(TERRAIN_COLUMNS * BLOCK_ROWS);
+  for d in 0..TERRAIN_COLUMNS {
+    let column = first + d;
+    let page = column / BLOCK_COLUMNS;
+    let within = column % BLOCK_COLUMNS;
+    let buffer = if page % 2 == 0 { buffer_1 } else { buffer_2 };
+    for row in 0..BLOCK_ROWS {
+      out.push(buffer[row * BLOCK_COLUMNS + within]);
+    }
+  }
+  out
+}
+
+/// The zero page with the controller bytes hidden, then the terrain ahead of Mario.
 pub fn smb_window(emu: &mut NesEmulator) -> Vec<u8> {
   let mut window = emu.ram_read_range(SMB_WINDOW_START, SMB_ZERO_PAGE_LEN);
   for &address in &SMB_INPUT_BYTES {
     window[(address - SMB_WINDOW_START) as usize] = 0;
   }
-  window.extend(emu.ram_read_range(SMB_TERRAIN_START, SMB_TERRAIN_LEN));
+  let buffer_1 = emu.ram_read_range(SMB_BLOCK_BUFFER_1, SMB_BLOCK_BUFFER_LEN);
+  let buffer_2 = emu.ram_read_range(SMB_BLOCK_BUFFER_2, SMB_BLOCK_BUFFER_LEN);
+  window.extend(terrain_ahead(&window, &buffer_1, &buffer_2));
   window
 }
 
@@ -487,18 +509,41 @@ mod tests {
     }
     emu.ram_write(0x0009, 0x42);
     emu.ram_write(0x000E, 0x08);
-    emu.ram_write(SMB_TERRAIN_START, 0x54);
-    emu.ram_write(SMB_TERRAIN_START + SMB_TERRAIN_LEN - 1, 0x55);
+    // Mario at x 0, page 0: his column is buffer 1 column 0.
+    emu.ram_write(SMB_BLOCK_BUFFER_1 + 11 * 16, 0x54);
     let window = smb_window(&mut emu);
     assert_eq!(window.len(), SMB_WINDOW_LEN);
-    assert_eq!(window.len(), 256 + 416);
+    assert_eq!(window.len(), 256 + 8 * 13);
     for &address in &SMB_INPUT_BYTES {
       assert_eq!(window[address as usize], 0, "input byte ${:02X} must be hidden", address);
     }
     assert_eq!(window[0x09], 0x42, "neighbouring bytes pass through");
     assert_eq!(window[0x0E], 0x08);
-    assert_eq!(window[256], 0x54, "the terrain buffer follows the zero page");
-    assert_eq!(window[SMB_WINDOW_LEN - 1], 0x55);
+    assert_eq!(window[256 + 11], 0x54, "the terrain ahead follows the zero page, column 0 row 11");
+  }
+
+  #[test]
+  fn terrain_ahead_reads_columns_from_mario_across_the_page_boundary() {
+    // Mario at x = 256 + 14 * 16 + 3: page 1, column 14. Page 1 is buffer 2.
+    let mut zero_page = vec![0u8; 256];
+    zero_page[0x6D] = 1;
+    zero_page[0x86] = 14 * 16 + 3;
+    let mut buf1 = vec![0u8; 208];
+    let mut buf2 = vec![0u8; 208];
+    // Page 1 column 14 row 11 is ground, column 15 row 11 is a pit (empty).
+    buf2[11 * 16 + 14] = 0x54;
+    buf2[11 * 16 + 15] = 0x00;
+    // Page 2 (buffer 1 again) column 0 row 11 is ground, column 1 row 9 is a pipe top.
+    buf1[11 * 16] = 0x54;
+    buf1[9 * 16 + 1] = 0x12;
+    let t = terrain_ahead(&zero_page, &buf1, &buf2);
+    assert_eq!(t.len(), TERRAIN_COLUMNS * BLOCK_ROWS);
+    let cell = |col: usize, row: usize| t[col * BLOCK_ROWS + row];
+    assert_eq!(cell(0, 11), 0x54, "Mario's own column");
+    assert_eq!(cell(1, 11), 0x00, "the pit one column ahead");
+    assert_eq!(cell(2, 11), 0x54, "two ahead wraps into the next page's buffer");
+    assert_eq!(cell(3, 9), 0x12, "three ahead, the pipe top");
+    assert_eq!(cell(7, 11), 0x00);
   }
 
   #[test]

@@ -9,12 +9,18 @@ use super::encode::{Encoder, ONEHOT_ROW_LEN};
 pub const SMB_WINDOW_START: u16 = 0x0000;
 /// The zero page, the first part of the window.
 pub const SMB_ZERO_PAGE_LEN: u16 = 256;
-/// SMB's metatile buffer: two screens of terrain columns, the second part of
-/// the window. Pits, pipes and stairs live here and nowhere in the zero page.
-pub const SMB_TERRAIN_START: u16 = 0x0500;
-pub const SMB_TERRAIN_LEN: u16 = 0x01A0;
-/// Length of the SMB state window: zero page then terrain.
-pub const SMB_WINDOW_LEN: usize = SMB_ZERO_PAGE_LEN as usize + SMB_TERRAIN_LEN as usize;
+/// SMB's block buffers: one per screen page, 13 rows of 16 columns, row-major.
+/// Even pages use the first, odd pages the second. Pits, pipes and stairs live
+/// here and nowhere in the zero page.
+pub const SMB_BLOCK_BUFFER_1: u16 = 0x0500;
+pub const SMB_BLOCK_BUFFER_2: u16 = 0x05D0;
+pub const BLOCK_ROWS: usize = 13;
+pub const BLOCK_COLUMNS: usize = 16;
+pub const SMB_BLOCK_BUFFER_LEN: u16 = (BLOCK_ROWS * BLOCK_COLUMNS) as u16;
+/// Terrain columns in the window, from Mario's own column rightwards.
+pub const TERRAIN_COLUMNS: usize = 8;
+/// Length of the SMB state window: zero page, then the terrain ahead column by column.
+pub const SMB_WINDOW_LEN: usize = SMB_ZERO_PAGE_LEN as usize + TERRAIN_COLUMNS * BLOCK_ROWS;
 /// Tetris work RAM read as the reservoir state.
 pub const TETRIS_RAM_LEN: u16 = 2048;
 /// Number of drive bits appended for the controller-driven condition.
@@ -193,7 +199,7 @@ mod tests {
   #[test]
   fn row_lengths_match_conditions() {
     assert_eq!(Condition::Clock.row_len(), 1 + CLOCK_CAPACITY);
-    assert_eq!(Condition::Raw.row_len(), 1 + 256 + 416);
+    assert_eq!(Condition::Raw.row_len(), 1 + 256 + 8 * 13);
     assert_eq!(Condition::RandomA.row_len(), 1 + CLOCK_CAPACITY);
     assert_eq!(Condition::Undriven.row_len(), 1 + 2048);
     assert_eq!(Condition::DrivenController.row_len(), 1 + 2048 + 8);
