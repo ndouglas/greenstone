@@ -139,6 +139,65 @@ jumping at random while running right gets further through the start of
 1-1 than any faithful copy of the demonstration does. Closed loop needs a
 random-A baseline before it says anything, and this table is the reason.
 
+Result (2026-10-14, encoder search and random-A floor): two additions and
+one correction. The correction first: the SMB zero page holds the game's
+own reading of the controller at `$0A` to `$0D`, and the encoder search's
+first pick was `$0A`, last frame's A and B buttons. Every condition had
+been reading the previous action back. The window now zeroes those four
+bytes; the table below is the first honest one. The search then picks a
+feature at a time, each a window byte, optionally relative to Mario's x,
+binned by a power of two, scored by leave-one-out accuracy of the one-hot
+readout, with no Tetris in the loop. The random-A row has no readout: it
+runs right and presses A by a two-state chain fitted to how often and how
+long the demonstrations hold A.
+
+```
+searched encoder: $9F /4, $6F-x /4, $CE /4, $CE-x /32
+  (vertical speed; enemy slot 1 x page relative to Mario; Mario y; Mario y relative to Mario x)
+
+condition          |  rows | train acc | held-out acc | held-out mse |  mean x | max x | resets
+-------------------+-------+-----------+--------------+--------------+---------+-------+-------
+clock              |  2012 |     0.861 |        0.808 |       0.1376 |   999.4 |  1442 |      0
+raw                |  2012 |     0.865 |        0.859 |       0.1184 |   313.2 |   314 |      0
+random-a           |  2012 |     0.779 |        0.779 |       0.2207 |   472.6 |   722 |      0
+placement-onehot   |  2012 |     0.865 |        0.860 |       0.1134 |   313.6 |   315 |      0
+placement-tetris   |  2012 |     0.854 |        0.794 |       0.1591 |   866.6 |  1512 |    889
+searched-onehot    |  2012 |     0.869 |        0.867 |       0.1097 |   337.8 |   435 |      0
+searched-tetris    |  2012 |     0.861 |        0.805 |       0.1534 |   423.2 |   898 |    774
+placement-hash     |  2012 |     0.843 |        0.782 |       0.1668 |   791.0 |  1127 |    793
+```
+
+Raw fell from 0.891 to 0.859 once it could not see the controller: three
+points of its score, a third of its margin over the floor, was the last
+action. With that gone, raw, the hand-picked encoder and the searched
+encoder all land within a point of each other, 0.859 to 0.867, with
+training accuracy the same as held-out for every one. That is a ceiling,
+and it is the same ceiling for 256 scalars, four hand-picked bins and
+four searched bins. The search's picks after the first add a thousandth
+each, and the last two are Mario's y binned two ways. There is no better
+byte to send.
+
+The ceiling is the demonstrations, not the encoder. The search that
+produced them jumps whenever a jump survives, so when it presses A within
+a window of equivalent moments is arbitrary, and six runs disagree with
+one another by phase. A readout that sees only the current state cannot
+know which of several equally good moments this run chose. About an
+eighth of the A bits are unpredictable from state in principle, and every
+condition stops there. The way past it is either a smoother target (jump
+within the next k steps, rather than this step) or demonstrations from a
+policy that is itself a function of state.
+
+Tetris still subtracts, by the same six points as before: 0.867 to 0.805
+for the searched encoder, 0.860 to 0.794 for the hand-picked one. The
+hash control stays worst.
+
+The random-A row settles the closed-loop column. Jumping at the
+demonstrations' rate with no state at all reaches a mean x of 473. The
+three Tetris readouts land at 867, 423 and 791 around it, and the hash,
+which cannot understand anything, beats the searched encoder. Those
+numbers are the spread of a noisy jump rate, not a ranking of policies.
+The clock's 999 remains a replay.
+
 A captioned explainer video of the experiment, six chapters ending with
 the whole level in real time, is built by `examples/reservoir_dump.rs`
 followed by `tools/reservoir_video.py`; see
