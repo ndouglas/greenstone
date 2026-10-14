@@ -138,10 +138,20 @@ impl Reservoir {
   }
 }
 
+/// True if any consecutive pair of samples differs.
+fn changed_at_any_frame(samples: &[u8]) -> bool {
+  samples.windows(2).any(|w| w[0] != w[1])
+}
+
+/// Sample the falling piece's Y every frame for `frames` frames.
 fn piece_moves(emu: &mut NesEmulator, frames: usize) -> bool {
-  let before = emu.ram_read(TETRIS_PIECE_Y);
-  emu.step_frames(0, frames);
-  emu.ram_read(TETRIS_PIECE_Y) != before
+  let mut samples = Vec::with_capacity(frames + 1);
+  samples.push(emu.ram_read(TETRIS_PIECE_Y));
+  for _ in 0..frames {
+    emu.step_frame(0);
+    samples.push(emu.ram_read(TETRIS_PIECE_Y));
+  }
+  changed_at_any_frame(&samples)
 }
 
 #[cfg(test)]
@@ -149,6 +159,14 @@ mod tests {
   use super::*;
   use crate::nes::bus::{BUTTON_SELECT, BUTTON_START};
   use crate::nes::gym::reservoir::rom_or_skip;
+
+  #[test]
+  fn liveness_sees_a_change_that_returns_to_the_starting_value() {
+    assert!(!changed_at_any_frame(&[5, 5, 5, 5]));
+    assert!(changed_at_any_frame(&[5, 6, 7, 5]));
+    assert!(!changed_at_any_frame(&[]));
+    assert!(!changed_at_any_frame(&[9]));
+  }
 
   #[test]
   fn fold_is_deterministic() {

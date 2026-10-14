@@ -122,6 +122,12 @@ pub fn output_mse(outputs: &[Vec<f64>], targets: &[Vec<f32>], mask: u8) -> f64 {
   total / (per_row * outputs.len()) as f64
 }
 
+/// Episode indices per worker thread, round-robin, with no more threads than episodes.
+pub fn assign_round_robin(episodes: usize, threads: usize) -> Vec<Vec<usize>> {
+  let threads = threads.min(episodes);
+  (0..threads).map(|t| (t..episodes).step_by(threads).collect()).collect()
+}
+
 /// Deterministic per-episode no-op count in `[0, noop_max)`.
 pub fn noop_frames(episode: usize, noop_max: usize) -> usize {
   if noop_max == 0 {
@@ -242,20 +248,28 @@ pub fn run(smb_rom: &[u8], tetris_rom: &[u8], config: &ExperimentConfig, log: &m
     let accuracy = bit_accuracy(&preds, &data.buttons[split..], mask);
     let mse = output_mse(&outputs, &data.targets[split..], mask);
     log(&format!("{}: running {} episodes", condition.name(), config.episodes));
+    let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
     let outcomes: Vec<(i32, u32)> = std::thread::scope(|s| {
-      let handles: Vec<_> = (0..config.episodes)
-        .map(|e| {
+      let handles: Vec<_> = assign_round_robin(config.episodes, threads)
+        .into_iter()
+        .map(|episodes| {
           let readout = &readout;
           let start = &start;
-          let noops = noop_frames(e, config.noop_max);
+          let noop_max = config.noop_max;
           let max_steps = config.max_steps;
-          s.spawn(move || episode(condition, readout, smb_rom, tetris_rom, start, noops, max_steps))
+          s.spawn(move || {
+            episodes
+              .into_iter()
+              .map(|e| episode(condition, readout, smb_rom, tetris_rom, start, noop_frames(e, noop_max), max_steps))
+              .collect::<Result<Vec<_>, _>>()
+          })
         })
         .collect();
       handles
         .into_iter()
         .map(|h| h.join().expect("episode worker panicked"))
-        .collect::<Result<Vec<_>, _>>()
+        .collect::<Result<Vec<Vec<_>>, _>>()
+        .map(|v| v.into_iter().flatten().collect())
     })?;
     let mean_x = outcomes.iter().map(|o| o.0 as f64).sum::<f64>() / outcomes.len().max(1) as f64;
     let max_x = outcomes.iter().map(|o| o.0).max().unwrap_or(0);
@@ -295,6 +309,13 @@ pub(crate) fn rom_or_skip(path: &str) -> Option<Vec<u8>> {
 mod tests {
   use super::*;
   use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_RIGHT, BUTTON_SELECT, BUTTON_START};
+
+  #[test]
+  fn episodes_are_assigned_round_robin_to_capped_threads() {
+    assert_eq!(assign_round_robin(7, 3), vec![vec![0, 3, 6], vec![1, 4], vec![2, 5]]);
+    assert_eq!(assign_round_robin(2, 8), vec![vec![0], vec![1]]);
+    assert!(assign_round_robin(0, 3).is_empty());
+  }
 
   #[test]
   fn observe_clock_needs_no_reservoir_and_encodes_the_step() {

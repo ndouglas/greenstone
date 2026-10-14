@@ -40,6 +40,13 @@ pub fn smb_dead(emu: &mut NesEmulator) -> bool {
   smb1_ram::player_is_dead(emu)
 }
 
+/// True while the game is driving Mario rather than the player: the flagpole
+/// slide, the walk into the castle, pipes. Progress stalls here without the
+/// candidate being stuck.
+pub fn smb_in_cutscene(emu: &mut NesEmulator) -> bool {
+  emu.ram_read(smb1_ram::PLAYER_FLOAT_STATE) == 0x03 || emu.ram_read(smb1_ram::PLAYER_STATE) != 0x08
+}
+
 /// True once the level counter has advanced past 1-1.
 pub fn smb_cleared(emu: &mut NesEmulator) -> bool {
   emu.ram_read(smb1_ram::LEVEL) != 0 || emu.ram_read(smb1_ram::WORLD) != 0
@@ -84,6 +91,17 @@ pub struct Candidate {
   pub cleared: bool,
   /// Consecutive steps without an x improvement.
   pub stuck: u32,
+}
+
+/// Next stuck count: reset on progress, hold during a cutscene, otherwise grow.
+pub fn next_stuck(parent: u32, improved: bool, in_cutscene: bool) -> u32 {
+  if improved {
+    0
+  } else if in_cutscene {
+    parent
+  } else {
+    parent + 1
+  }
 }
 
 /// Drop dead and stuck candidates, order by x descending then height, keep `beam`.
@@ -142,7 +160,7 @@ pub fn beam_search(rom: &[u8], start: &[u8], beam: usize, max_rounds: usize) -> 
                   }
                 }
                 let x = smb_x(&mut emu);
-                let stuck = if x > frontier[parent].x { 0 } else { frontier[parent].stuck + 1 };
+                let stuck = next_stuck(frontier[parent].stuck, x > frontier[parent].x, smb_in_cutscene(&mut emu));
                 Candidate {
                   x,
                   y: smb_y(&mut emu),
@@ -227,6 +245,14 @@ mod tests {
     let start = smb_start_state(&rom);
     let demo = beam_search(&rom, &start, 16, 60);
     assert!(demo.x_reached > 1000, "reached only x={} in {} steps", demo.x_reached, demo.buttons.len());
+  }
+
+  #[test]
+  fn stuck_count_pauses_during_cutscenes() {
+    assert_eq!(next_stuck(4, true, false), 0);
+    assert_eq!(next_stuck(4, false, false), 5);
+    assert_eq!(next_stuck(4, false, true), 4);
+    assert_eq!(next_stuck(4, true, true), 0);
   }
 
   #[test]
