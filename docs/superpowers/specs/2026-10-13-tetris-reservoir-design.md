@@ -92,17 +92,23 @@ later by anything that produces the same `Vec<u8>` of per-step buttons.
 ### Drive (`drive.rs`)
 
 Tetris is brought to gameplay by tapping Start until RAM `$00C0` reads 4,
-then a save state is taken. Every episode reset reloads that snapshot. If
-the game mode ever leaves 4 during a run (game over), the snapshot is
-reloaded and the event is counted.
+then a save state is taken. Every episode reset reloads that snapshot. Game
+over in NES Tetris is a play state inside game mode 4 (`$0048` reads
+`0x0A`) rather than a mode change, so "in play" means mode 4 and play state
+not game over. Whenever that fails during a run, the snapshot is reloaded
+and the event is counted.
 
 The SMB state window is 256 bytes: zero page `$0000..$00FF`, which holds
 player position, speed, animation state, and the enemy slots. Two drives:
 
 - `Controller`: fold the window to 8 bits by XOR over bytes, one bit per
   32-byte block, and hold it on Tetris's controller for the macro step.
-- `Playfield`: copy the first 200 bytes of the window into Tetris's
-  playfield at `$0400..$04C7` at the start of each macro step.
+- `Playfield`: at the start of each macro step, clear the top four rows of
+  Tetris's playfield at `$0400..$04C7` so a piece can always spawn, then
+  fill the remaining 160 cells one per window byte: a block tile where the
+  byte is at or above `0xC0`, empty (`0xEF`) otherwise. Raw bytes cannot be
+  copied in, because Tetris treats every non-empty value as solid and the
+  game tops out within a few pieces.
 
 ### Features (`features.rs`)
 
@@ -119,9 +125,10 @@ DrivenPlayfield   | Tetris RAM (2048)             | no
 ```
 
 `Raw` is the real baseline: a linear policy on the signal the reservoir
-receives. `Undriven` is the control. `DrivenPlayfield` contains the window
-verbatim inside the playfield, so it is a superset of `Raw` and the
-comparison asks whether the rest of Tetris adds anything.
+receives. `Undriven` is the control. `DrivenPlayfield` carries one
+thresholded bit of each of the first 160 window bytes inside the
+playfield, so it is a lossy view of `Raw` plus whatever Tetris does with
+it, not a superset.
 
 ### Readout (`ridge.rs`)
 

@@ -64,7 +64,14 @@ pub fn split_index(n: usize, train_fraction: f64) -> Result<usize, String> {
   if n < 10 {
     return Err(format!("demonstration has only {} steps; need at least 10", n));
   }
-  Ok(((n as f64) * train_fraction).floor() as usize)
+  if !(train_fraction > 0.0 && train_fraction < 1.0) {
+    return Err(format!("train_fraction must be strictly between 0 and 1, got {}", train_fraction));
+  }
+  let split = ((n as f64) * train_fraction).floor() as usize;
+  if split == 0 || split >= n {
+    return Err(format!("split {} of {} rows leaves an empty train or test set", split, n));
+  }
+  Ok(split)
 }
 
 pub fn buttons_to_targets(buttons: u8) -> Vec<f32> {
@@ -293,6 +300,15 @@ mod tests {
     assert!(split_index(9, 0.8).is_err());
     assert_eq!(split_index(10, 0.8).unwrap(), 8);
     assert_eq!(split_index(100, 0.8).unwrap(), 80);
+  }
+
+  #[test]
+  fn split_rejects_fractions_that_leave_no_test_rows() {
+    assert!(split_index(100, 1.0).is_err());
+    assert!(split_index(100, 1.5).is_err());
+    assert!(split_index(100, 0.0).is_err());
+    assert!(split_index(100, -0.2).is_err());
+    assert_eq!(split_index(10, 0.95).unwrap(), 9);
   }
 
   #[test]
