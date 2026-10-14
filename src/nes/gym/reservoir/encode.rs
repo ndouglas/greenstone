@@ -30,8 +30,8 @@ pub struct Placement {
 /// One window byte binned into a placement: a candidate for the encoder search.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Feature {
-  /// Window index of the byte.
-  pub address: u8,
+  /// Window index of the byte: zero page first, then the terrain buffer.
+  pub address: u16,
   /// Subtract Mario's x pixel first, so the byte reads as a distance from Mario.
   pub relative: bool,
   /// Bits dropped before the column: the bin width is `1 << shift`.

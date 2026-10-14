@@ -61,7 +61,7 @@ class Dump:
     self.demo = json.loads((d / "demo.json").read_text())
     self.steps = self.demo["steps"]
     for s in self.steps:
-      s["window_bytes"] = bytes.fromhex(s["window"])
+      s["window_bytes"] = bytes.fromhex(s["window"])[:256]  # the zero page; the terrain buffer follows
       s["board_bytes"] = bytes.fromhex(s["board"])
       s["tetris_bytes"] = bytes.fromhex(s.get("tetris_ram", ""))
     n_steps = len(self.steps)

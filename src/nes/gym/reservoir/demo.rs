@@ -1,6 +1,8 @@
 //! A demonstration for SMB 1-1 found by beam search over save states.
 
-use super::features::{SMB_WINDOW_LEN, SMB_WINDOW_START};
+#[cfg(test)]
+use super::features::SMB_WINDOW_LEN;
+use super::features::{SMB_TERRAIN_LEN, SMB_TERRAIN_START, SMB_WINDOW_START, SMB_ZERO_PAGE_LEN};
 use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_RIGHT, BUTTON_START};
 use crate::nes::gym::reward::smb1_ram;
 use crate::nes::gym::NesEmulator;
@@ -62,11 +64,13 @@ pub fn smb_y(emu: &mut NesEmulator) -> u8 {
 /// condition can read the previous action back; the window is state, not input.
 pub const SMB_INPUT_BYTES: [u16; 4] = [0x000A, 0x000B, 0x000C, 0x000D];
 
+/// The zero page with the controller bytes hidden, then the terrain buffer.
 pub fn smb_window(emu: &mut NesEmulator) -> Vec<u8> {
-  let mut window = emu.ram_read_range(SMB_WINDOW_START, SMB_WINDOW_LEN);
+  let mut window = emu.ram_read_range(SMB_WINDOW_START, SMB_ZERO_PAGE_LEN);
   for &address in &SMB_INPUT_BYTES {
     window[(address - SMB_WINDOW_START) as usize] = 0;
   }
+  window.extend(emu.ram_read_range(SMB_TERRAIN_START, SMB_TERRAIN_LEN));
   window
 }
 
@@ -483,13 +487,18 @@ mod tests {
     }
     emu.ram_write(0x0009, 0x42);
     emu.ram_write(0x000E, 0x08);
+    emu.ram_write(SMB_TERRAIN_START, 0x54);
+    emu.ram_write(SMB_TERRAIN_START + SMB_TERRAIN_LEN - 1, 0x55);
     let window = smb_window(&mut emu);
-    assert_eq!(window.len(), SMB_WINDOW_LEN as usize);
+    assert_eq!(window.len(), SMB_WINDOW_LEN);
+    assert_eq!(window.len(), 256 + 416);
     for &address in &SMB_INPUT_BYTES {
       assert_eq!(window[address as usize], 0, "input byte ${:02X} must be hidden", address);
     }
     assert_eq!(window[0x09], 0x42, "neighbouring bytes pass through");
     assert_eq!(window[0x0E], 0x08);
+    assert_eq!(window[256], 0x54, "the terrain buffer follows the zero page");
+    assert_eq!(window[SMB_WINDOW_LEN - 1], 0x55);
   }
 
   #[test]

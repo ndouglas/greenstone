@@ -28,7 +28,8 @@ pub struct ExperimentConfig {
   pub max_steps: usize,
   pub noop_max: usize,
   /// The A label at a step is "A within the next `jump_horizon` steps", which
-  /// absorbs the demonstrations' arbitrary jump phase. 0 is the raw label.
+  /// absorbs the demonstrations' arbitrary jump phase. 0 is the raw label; the
+  /// smoothed label raised the floors more than the readouts, so 0 is the default.
   pub jump_horizon: usize,
 }
 
@@ -42,7 +43,7 @@ impl Default for ExperimentConfig {
       episodes: 5,
       max_steps: 750,
       noop_max: 30,
-      jump_horizon: 4,
+      jump_horizon: 0,
     }
   }
 }

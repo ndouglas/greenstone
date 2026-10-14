@@ -3,7 +3,7 @@
 //! Usage: cargo run --release --example tetris_reservoir -- [smb.nes] [tetris.nes] [demo-dir] [--legacy] [--horizon=N]
 //!
 //! `--legacy` adds the undriven, controller-driven and playfield conditions to the table.
-//! `--horizon=N` sets the jump-label horizon in steps (default 4; 0 is the raw label).
+//! `--horizon=N` sets the jump-label horizon in steps (default 0, the raw label).
 //! Demonstrations are cached in `demo-dir` (default `target/tetris-reservoir-demos`)
 //! as `demo-N.bin`; delete the directory to search again.
 
@@ -11,7 +11,7 @@ use greenstone::nes::gym::reservoir::demo::{load_cached, save_cached};
 use greenstone::nes::gym::reservoir::drive::{FAST_LEVEL, PIECE_FRAME_LIMIT};
 use greenstone::nes::gym::reservoir::encode::Encoder;
 use greenstone::nes::gym::reservoir::encode::{ENEMY_BIN_PX, PIECES_PER_STEP};
-use greenstone::nes::gym::reservoir::features::Condition;
+use greenstone::nes::gym::reservoir::features::{Condition, SMB_WINDOW_LEN};
 use greenstone::nes::gym::reservoir::search::search_encoder;
 use greenstone::nes::gym::reservoir::{active_bits, find_demonstrations, run, ExperimentConfig};
 use std::path::{Path, PathBuf};
@@ -72,11 +72,19 @@ fn main() {
   }
   println!("accuracy is over the buttons the demonstrations use: {:08b}", report.active_bits);
   println!("held-out columns are leave-one-demonstration-out, pooled over folds");
-  println!(
-    "A label: pressed within the next {} steps ({} frames); 0 would be the raw label",
-    config.jump_horizon,
-    config.jump_horizon * 4
-  );
+  if config.jump_horizon == 0 {
+    println!(
+      "A label: raw; window: zero page (controller bytes hidden) plus the terrain buffer, {} bytes",
+      SMB_WINDOW_LEN
+    );
+  } else {
+    println!(
+      "A label: pressed within the next {} steps ({} frames); window: zero page plus terrain, {} bytes",
+      config.jump_horizon,
+      config.jump_horizon * 4,
+      SMB_WINDOW_LEN
+    );
+  }
   println!(
     "placements: {} per step, enemy bins {} px, Tetris level {} via the menu, {} frames per piece at most",
     PIECES_PER_STEP, ENEMY_BIN_PX, FAST_LEVEL, PIECE_FRAME_LIMIT

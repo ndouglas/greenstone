@@ -3,6 +3,7 @@
 
 use super::demo::{smb_in_cutscene, smb_start_state, smb_window, Demonstration, MACRO_FRAMES};
 use super::encode::{onehot_row, Encoder, Feature, Placement, PIECES_PER_STEP};
+use super::features::SMB_WINDOW_LEN;
 use super::{buttons_to_targets, evaluate_folds, row_is_informative, smooth_a, Dataset};
 use crate::nes::gym::NesEmulator;
 
@@ -11,8 +12,8 @@ pub const SHIFTS: [u8; 4] = [2, 3, 4, 5];
 
 /// Every window byte, absolute and relative to Mario's x, at every width.
 pub fn candidates() -> Vec<Feature> {
-  let mut out = Vec::with_capacity(256 * 2 * SHIFTS.len());
-  for address in 0..=255u8 {
+  let mut out = Vec::with_capacity(SMB_WINDOW_LEN * 2 * SHIFTS.len());
+  for address in 0..SMB_WINDOW_LEN as u16 {
     for relative in [false, true] {
       for shift in SHIFTS {
         out.push(Feature { address, relative, shift });
@@ -147,7 +148,7 @@ mod tests {
       let mut ws = Vec::new();
       let mut bs = Vec::new();
       for i in 0..120u32 {
-        let mut w = vec![0u8; 256];
+        let mut w = vec![0u8; SMB_WINDOW_LEN];
         for (a, b) in w.iter_mut().enumerate() {
           *b = ((a as u32 * 31 + i * 17 + demo * 101) % 256) as u8;
         }
@@ -165,7 +166,8 @@ mod tests {
   #[test]
   fn candidates_cover_every_address_both_ways_at_four_widths() {
     let c = candidates();
-    assert_eq!(c.len(), 256 * 2 * 4);
+    assert_eq!(c.len(), SMB_WINDOW_LEN * 2 * 4);
+    assert!(c.iter().any(|f| f.address == 256 + 100), "terrain bytes are candidates");
     assert!(c.contains(&Feature {
       address: 0x87,
       relative: true,

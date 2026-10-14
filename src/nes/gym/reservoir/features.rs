@@ -7,8 +7,14 @@ use super::encode::{Encoder, ONEHOT_ROW_LEN};
 
 /// Start of the SMB state window handed to the reservoir: zero page.
 pub const SMB_WINDOW_START: u16 = 0x0000;
-/// Length of the SMB state window.
-pub const SMB_WINDOW_LEN: u16 = 256;
+/// The zero page, the first part of the window.
+pub const SMB_ZERO_PAGE_LEN: u16 = 256;
+/// SMB's metatile buffer: two screens of terrain columns, the second part of
+/// the window. Pits, pipes and stairs live here and nowhere in the zero page.
+pub const SMB_TERRAIN_START: u16 = 0x0500;
+pub const SMB_TERRAIN_LEN: u16 = 0x01A0;
+/// Length of the SMB state window: zero page then terrain.
+pub const SMB_WINDOW_LEN: usize = SMB_ZERO_PAGE_LEN as usize + SMB_TERRAIN_LEN as usize;
 /// Tetris work RAM read as the reservoir state.
 pub const TETRIS_RAM_LEN: u16 = 2048;
 /// Number of drive bits appended for the controller-driven condition.
@@ -116,7 +122,7 @@ impl Condition {
   pub fn row_len(self) -> usize {
     match self {
       Condition::Clock | Condition::RandomA => 1 + CLOCK_CAPACITY,
-      Condition::Raw => 1 + SMB_WINDOW_LEN as usize,
+      Condition::Raw => 1 + SMB_WINDOW_LEN,
       Condition::PlacementOnehot(_) => ONEHOT_ROW_LEN,
       Condition::DrivenController => 1 + TETRIS_RAM_LEN as usize + DRIVE_BITS,
       Condition::Undriven | Condition::DrivenPlayfield | Condition::PlacementTetris(_) => 1 + TETRIS_RAM_LEN as usize,
@@ -187,7 +193,7 @@ mod tests {
   #[test]
   fn row_lengths_match_conditions() {
     assert_eq!(Condition::Clock.row_len(), 1 + CLOCK_CAPACITY);
-    assert_eq!(Condition::Raw.row_len(), 1 + 256);
+    assert_eq!(Condition::Raw.row_len(), 1 + 256 + 416);
     assert_eq!(Condition::RandomA.row_len(), 1 + CLOCK_CAPACITY);
     assert_eq!(Condition::Undriven.row_len(), 1 + 2048);
     assert_eq!(Condition::DrivenController.row_len(), 1 + 2048 + 8);
