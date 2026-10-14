@@ -233,7 +233,7 @@ fn episode(
 pub fn run(smb_rom: &[u8], tetris_rom: &[u8], config: &ExperimentConfig, log: &mut dyn FnMut(&str)) -> Result<ExperimentReport, String> {
   let start = smb_start_state(smb_rom);
   log("searching for a demonstration");
-  let demo = beam_search(smb_rom, &start, config.beam, config.demo_max_rounds);
+  let demo = beam_search(smb_rom, &start, config.beam, config.demo_max_rounds, 0);
   log(&format!(
     "demonstration: {} steps, x={}, cleared={}",
     demo.buttons.len(),

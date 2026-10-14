@@ -130,21 +130,32 @@ pub fn next_stuck(parent: u32, improved: bool, in_cutscene: bool) -> u32 {
   }
 }
 
+/// Seeded hash of a path, so exact ties in the ranking break differently per seed.
+fn tie_break(path: &[u8], seed: u64) -> u64 {
+  let mut h = seed ^ 0x9E37_79B9_7F4A_7C15;
+  for &b in path {
+    h = (h ^ b as u64).wrapping_mul(0x100_0000_01B3);
+  }
+  h
+}
+
 /// Drop dead and stuck candidates, order by x descending then height, keep `beam`.
 ///
 /// The height tie-break keeps lineages that started a jump a few steps ago
 /// alive at a wall, where ranking by x alone would let ground-huggers crowd
-/// them out of the beam.
-pub fn prune_and_rank(mut cands: Vec<Candidate>, beam: usize) -> Vec<Candidate> {
+/// them out of the beam. Exact ties break by a seeded hash of the path, so
+/// searches with different seeds find different demonstrations.
+pub fn prune_and_rank(mut cands: Vec<Candidate>, beam: usize, seed: u64) -> Vec<Candidate> {
   cands.retain(|c| !c.dead && c.stuck < STUCK_LIMIT);
-  cands.sort_by_key(|c| (std::cmp::Reverse(c.x), c.y));
+  cands.sort_by_key(|c| (std::cmp::Reverse(c.x), c.y, tie_break(&c.path, seed)));
   cands.truncate(beam);
   cands
 }
 
 /// Beam search over save states. Each round expands every frontier candidate by
-/// every macro across threads, one emulator per thread.
-pub fn beam_search(rom: &[u8], start: &[u8], beam: usize, max_rounds: usize) -> Demonstration {
+/// every macro across threads, one emulator per thread. `seed` only breaks
+/// exact ranking ties.
+pub fn beam_search(rom: &[u8], start: &[u8], beam: usize, max_rounds: usize, seed: u64) -> Demonstration {
   let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
   let lives_at_start = {
     let mut emu = NesEmulator::new(rom);
@@ -208,7 +219,7 @@ pub fn beam_search(rom: &[u8], start: &[u8], beam: usize, max_rounds: usize) -> 
         .collect();
       handles.into_iter().flat_map(|h| h.join().expect("beam worker panicked")).collect()
     });
-    let survivors = prune_and_rank(expanded, beam);
+    let survivors = prune_and_rank(expanded, beam, seed);
     if survivors.is_empty() {
       break;
     }
@@ -251,9 +262,25 @@ mod tests {
     on_ground.y = 0xAB;
     let mut in_air = cand(100, false);
     in_air.y = 0x60;
-    let kept = prune_and_rank(vec![on_ground, in_air], 1);
+    let kept = prune_and_rank(vec![on_ground, in_air], 1, 0);
     assert_eq!(kept.len(), 1);
     assert_eq!(kept[0].y, 0x60);
+  }
+
+  #[test]
+  fn prune_breaks_exact_ties_by_seed() {
+    let mut a = cand(100, false);
+    a.path = vec![1, 2, 3];
+    let mut b = cand(100, false);
+    b.path = vec![4, 5, 6];
+    let firsts: std::collections::HashSet<Vec<u8>> = (0..32)
+      .map(|seed| prune_and_rank(vec![a.clone(), b.clone()], 1, seed)[0].path.clone())
+      .collect();
+    assert_eq!(firsts.len(), 2, "some seed must prefer each of two tied candidates");
+    assert_eq!(
+      prune_and_rank(vec![a.clone(), b.clone()], 1, 7)[0].path,
+      prune_and_rank(vec![b, a], 1, 7)[0].path
+    );
   }
 
   #[test]
@@ -262,7 +289,7 @@ mod tests {
     stuck.stuck = STUCK_LIMIT;
     let mut moving = cand(90, false);
     moving.stuck = STUCK_LIMIT - 1;
-    let kept = prune_and_rank(vec![stuck, moving], 4);
+    let kept = prune_and_rank(vec![stuck, moving], 4, 0);
     let xs: Vec<i32> = kept.iter().map(|c| c.x).collect();
     assert_eq!(xs, vec![90]);
   }
@@ -296,7 +323,7 @@ mod tests {
       None => return,
     };
     let start = smb_start_state(&rom);
-    let demo = beam_search(&rom, &start, 16, 100);
+    let demo = beam_search(&rom, &start, 16, 100, 0);
     assert!(demo.cleared, "did not clear: x={} in {} steps", demo.x_reached, demo.buttons.len());
     assert!(demo.x_reached > 3000, "x_reached should be the highest x seen, got {}", demo.x_reached);
   }
@@ -309,7 +336,7 @@ mod tests {
       None => return,
     };
     let start = smb_start_state(&rom);
-    let demo = beam_search(&rom, &start, 16, 60);
+    let demo = beam_search(&rom, &start, 16, 60, 0);
     assert!(demo.x_reached > 2200, "reached only x={} in {} steps", demo.x_reached, demo.buttons.len());
   }
 
@@ -321,7 +348,7 @@ mod tests {
       None => return,
     };
     let start = smb_start_state(&rom);
-    let demo = beam_search(&rom, &start, 16, 60);
+    let demo = beam_search(&rom, &start, 16, 60, 0);
     assert!(demo.x_reached > 1000, "reached only x={} in {} steps", demo.x_reached, demo.buttons.len());
   }
 
@@ -336,7 +363,7 @@ mod tests {
   #[test]
   fn prune_drops_dead_and_keeps_best_by_x() {
     let cands = vec![cand(10, false), cand(50, true), cand(30, false), cand(20, false)];
-    let kept = prune_and_rank(cands, 2);
+    let kept = prune_and_rank(cands, 2, 0);
     let xs: Vec<i32> = kept.iter().map(|c| c.x).collect();
     assert_eq!(xs, vec![30, 20]);
   }
@@ -344,7 +371,7 @@ mod tests {
   #[test]
   fn prune_returns_empty_when_everything_is_dead() {
     let cands = vec![cand(10, true), cand(50, true)];
-    assert!(prune_and_rank(cands, 4).is_empty());
+    assert!(prune_and_rank(cands, 4, 0).is_empty());
   }
 
   #[test]
@@ -388,7 +415,7 @@ mod tests {
       None => return,
     };
     let start = smb_start_state(&rom);
-    let demo = beam_search(&rom, &start, 8, 30);
+    let demo = beam_search(&rom, &start, 8, 30, 0);
     assert!(demo.buttons.len() <= 30 * ROUND_STEPS);
     assert!(demo.x_reached > 500, "reached only x={}", demo.x_reached);
   }
