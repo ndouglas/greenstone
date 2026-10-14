@@ -198,6 +198,61 @@ which cannot understand anything, beats the searched encoder. Those
 numbers are the spread of a noisy jump rate, not a ranking of policies.
 The clock's 999 remains a replay.
 
+Result (2026-10-14, smoothed jump label): the A label at a step became "A
+is pressed within the next 4 steps" (16 frames), which covers the three
+jump phases the search chooses between, so demonstrations that jump at
+different phases of the same obstacle now agree. Every condition, the
+random-A chain and the encoder search use the smoothed label. Absolute
+numbers are not comparable with the raw-label table because the label's
+base rate changed; compare each row with this table's floors.
+
+```
+searched encoder: $F9 /4, $CE /4, $CF /32, $9F /16
+  ($F9; Mario y; enemy slot 0 y; vertical speed)
+
+condition          |  rows | train acc | held-out acc | held-out mse |  mean x | max x | resets
+-------------------+-------+-----------+--------------+--------------+---------+-------+-------
+clock              |  2012 |     0.890 |        0.866 |       0.1129 |   313.6 |   314 |      0
+raw                |  2012 |     0.875 |        0.862 |       0.1143 |   313.6 |   316 |      0
+random-a           |  2012 |     0.819 |        0.819 |       0.1811 |   387.2 |   682 |      0
+placement-onehot   |  2012 |     0.871 |        0.860 |       0.1098 |   313.6 |   316 |      0
+placement-tetris   |  2012 |     0.892 |        0.851 |       0.1339 |   623.8 |   713 |    839
+searched-onehot    |  2012 |     0.881 |        0.877 |       0.1054 |   313.8 |   315 |      0
+searched-tetris    |  2012 |     0.894 |        0.858 |       0.1294 |   385.8 |   678 |    779
+placement-hash     |  2012 |     0.887 |        0.849 |       0.1398 |   544.0 |   710 |    697
+```
+
+The smoother target did not open the ceiling; it raised the floors. The
+best readout went from 0.867 to 0.877, one point. The random-A floor went
+from 0.779 to 0.819, four points, and the clock from 0.808 to 0.866, six.
+The clock now beats raw. Under a label that forgives four steps of phase,
+knowing roughly where you are in the level predicts "a jump is due" as
+well as any reading of the state does, and the best state readout adds
+one point over it. Every margin over the floors shrank.
+
+That is the finding. A linear readout of the zero page, in bytes, in
+bins, or through Tetris, knows nothing about when to jump that a clock
+does not. The reason is in the memory map rather than the readout: pits,
+pipes and stairs are not in the zero page. The terrain Mario is about to
+meet lives in the metatile buffer at `$0500` to `$069F`, two screens of
+tile columns, and the window has never included it. The state a jumping
+policy needs was never in the 256 bytes we gave it, so the readouts fell
+back on timing and on Mario's own vertical speed, which is a jump already
+in progress.
+
+Tetris subtracts less under the forgiving label, one to two points
+instead of six, with training accuracy now above held-out by three to
+four points: the 2,048 noisy features overfit, and the label stopped
+punishing noise as hard. Closed loop collapsed for everyone: holding A
+early and long dies at the first Goomba, including the clock's replay,
+which had reached 999 under the raw label.
+
+Next: widen the window to the metatile buffer, so a readout can see the
+terrain ahead, and rerun the raw-label table. If raw with terrain beats
+the clock by a clear margin, the state was the problem all along, and the
+reservoir question can be asked again on a readout that has something to
+work with.
+
 A captioned explainer video of the experiment, six chapters ending with
 the whole level in real time, is built by `examples/reservoir_dump.rs`
 followed by `tools/reservoir_video.py`; see
