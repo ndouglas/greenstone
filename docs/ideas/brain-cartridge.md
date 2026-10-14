@@ -35,47 +35,65 @@ buckets of water and octopus arms; nobody has used Tetris.
 Likely UNEXPLORED as an ML cell. Named family: echo state networks,
 physical reservoir computing.
 
-Result (2026-10-13): built as `src/nes/gym/reservoir/` and
-`examples/tetris_reservoir.rs`. The demonstration is a beam search over
+Result (2026-10-14): built as `src/nes/gym/reservoir/` and
+`examples/tetris_reservoir.rs`. Demonstrations come from a beam search over
 save states in 24-frame rounds of jump macros, with a one-round survival
-peek so candidates committed to a collision do not crowd out the beam. It
-clears 1-1 in 89 rounds (534 steps, highest x 3266). Steps where the game
-has control (flagpole slide, castle countdown) are not training rows,
-which leaves 363. Readout is ridge regression, lambda 1, intercept
-unpenalised, trained on the first 80% of those rows and tested on the
-last 20% (73 steps, 219 button bits). Closed loop is five episodes from
-the start of 1-1 with random no-op starts. The `clock` condition is a
-one-hot of the step index and nothing else.
+peek so candidates committed to a collision do not crowd out the beam, and
+one candidate per game state so the beam does not collapse to copies of
+its best lineage. Six searches, each from a different no-op offset (0 to
+25 frames, in steps of 5) and tie-break seed, all clear 1-1 in 492 to 540
+steps. Steps where the game has control (flagpole slide, castle countdown)
+are not training rows, which leaves 2012. Readout is ridge regression,
+lambda 1, intercept unpenalised. Held-out columns are
+leave-one-demonstration-out, pooled over the six folds. Closed loop is
+five episodes from no-op offsets halfway between the demonstrations' (2,
+7, 12, 17, 22 frames). The `clock` condition is a one-hot of the step
+index and nothing else; because the demonstrations are offset from one
+another, its held-out accuracy is close to the majority bit per button,
+which makes it the floor.
 
 ```
-condition          |  rows | held-out accuracy | held-out mse |  mean x | max x | reservoir resets
--------------------+-------+-------------------+--------------+---------+-------+-----------------
-clock              |   363 |             0.817 |       0.1119 |  1135.4 |  1563 |                0
-raw                |   363 |             0.877 |       0.1293 |   313.6 |   314 |                0
-undriven           |   363 |             0.817 |       0.1365 |  1007.0 |  1242 |                0
-driven-controller  |   363 |             0.785 |       0.1401 |   860.4 |  1547 |                0
-driven-playfield   |   363 |             0.927 |       0.0729 |   313.6 |   314 |                2
+condition          |  rows | train acc | held-out acc | held-out mse |  mean x | max x | resets
+-------------------+-------+-----------+--------------+--------------+---------+-------+-------
+clock              |  2012 |     0.861 |        0.808 |       0.1376 |   999.4 |  1442 |      0
+raw                |  2012 |     0.896 |        0.891 |       0.0909 |   313.2 |   314 |      0
+undriven           |  2012 |     0.806 |        0.797 |       0.1371 |   813.6 |  1129 |      0
+driven-controller  |  2012 |     0.805 |        0.793 |       0.1435 |   764.8 |  1673 |      0
+driven-playfield   |  2012 |     0.888 |        0.886 |       0.1015 |   313.6 |   314 |      3
 ```
 
-On held-out error the playfield-driven reservoir beats the raw baseline,
-eleven bits in 219 and a mean squared error of 0.073 against 0.129. That
-is the first table where a driven condition separates from raw, and it
-comes from one demonstration whose held-out stretch is the last fifth of
-the level, so it is a hint and not a result. The controller drive is
-worse than raw.
+The single-demonstration hint that the playfield drive beat raw does not
+survive. Across six demonstrations raw is best on held-out error, the
+playfield drive is a point behind it, and the undriven and
+controller-driven reservoirs sit on the clock floor: Tetris RAM driven
+through the controller carries nothing a linear readout can use, and
+Tetris RAM with the window pasted into its playfield carries roughly what
+the window itself carries, a little degraded.
 
-Closed loop tells a different story. Raw and playfield both die at the
-first Goomba in every episode, so neither readout reproduces even the
-training segment from the start. The clock travels furthest by replaying
-the demonstration, and undriven Tetris, which is a noisier clock, is next.
-Every closed-loop number here measures replay of a stretch the readout
-was trained on, not a policy. A fair test needs a held-out level or a
-clock-subtracted score, and the playfield hint above needs more than one
-demonstration before it means anything.
+The column that explains the rest is training accuracy. Raw fits its own
+training rows at 0.896 and holds out at 0.891: the readout is not
+overfitting, it is underfitting, and more demonstrations will not move it.
+Three buttons are active (A, B, Right); B and Right are held almost always,
+so nearly all the error is the A bit, and a linear map from byte values
+cannot express "jump when the next enemy is this many pixels ahead". The
+closed-loop column says the same: every state-based readout dies at the
+first Goomba in every episode, and only the clock gets anywhere, by
+replaying the demonstrations' timing.
 
-Earlier tables from this day, with a demonstration that stalled at x=2014
-and with cutscene rows included, showed no separation at all; those are in
-the git history of this file.
+So the bottleneck is the readout's encoding, not the number of
+demonstrations and not which reservoir sits in front of it. The next
+experiment is a `raw-bits` condition, the window expanded to one feature
+per bit (2048 features, the same width as Tetris RAM): a fixed nonlinear
+expansion with no game in it. If raw-bits learns the jump and Tetris does
+not, Tetris is a worse expansion than bits, and the reservoir idea is
+closed for this readout. If neither does, the readout needs a second
+layer, or the DAgger-style corrections from the design note, before any
+reservoir comparison means anything.
+
+Earlier tables from this day, including the single-demonstration run
+where the playfield drive led raw on a time split, are in the git history
+of this file.
+
 ### 2. Second-mover polarity  `DEPOSIT`
 
 ml-mad-science stop 1 tags "data moves freely, no tether" as DEGENERATE.
