@@ -133,6 +133,11 @@ impl Reservoir {
   }
 
   /// The whole of Tetris's work RAM.
+  /// The Tetris screen, 256x240 RGB.
+  pub fn framebuffer(&self) -> &[u8] {
+    self.emu.framebuffer()
+  }
+
   pub fn ram(&mut self) -> Vec<u8> {
     self.emu.ram_read_range(0, TETRIS_RAM_LEN)
   }
