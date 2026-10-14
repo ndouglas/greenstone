@@ -1,5 +1,6 @@
 //! How SMB state enters Tetris, and the Tetris lifecycle as a reservoir.
 
+use super::encode::{encode, Encoder, Placement};
 use super::features::TETRIS_RAM_LEN;
 use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_DOWN, BUTTON_LEFT, BUTTON_RIGHT, BUTTON_START, BUTTON_UP};
 use crate::nes::gym::NesEmulator;
@@ -26,6 +27,40 @@ pub const TETRIS_LEVEL: u16 = 0x0044;
 pub const TETRIS_MODE_LEVEL_MENU: u8 = 0x03;
 /// Level the placement drive plays at: one row per two frames.
 pub const FAST_LEVEL: u8 = 19;
+/// Tetris RAM: falling piece x and orientation id.
+pub const TETRIS_PIECE_X: u16 = 0x0040;
+pub const TETRIS_PIECE_ORIENTATION: u16 = 0x0042;
+pub const TETRIS_PLAY_STATE_FALLING: u8 = 0x01;
+/// Frames one placement may take before the drive moves on.
+pub const PIECE_FRAME_LIMIT: usize = 120;
+
+const CYCLES: [&[u8]; 7] = [
+  &[0x02, 0x03, 0x00, 0x01], // T
+  &[0x07, 0x04, 0x05, 0x06], // J
+  &[0x08, 0x09],             // Z
+  &[0x0A],                   // O
+  &[0x0B, 0x0C],             // S
+  &[0x0E, 0x0F, 0x10, 0x0D], // L
+  &[0x12, 0x11],             // I
+];
+
+/// The orientation ids a piece passes through under A presses, starting at spawn.
+pub fn rotation_cycle(orientation: u8) -> &'static [u8] {
+  for cycle in CYCLES {
+    if cycle.contains(&orientation) {
+      return cycle;
+    }
+  }
+  &[0x13]
+}
+
+/// What one placement did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlaceOutcome {
+  pub frames: usize,
+  pub locked: bool,
+  pub reset: bool,
+}
 /// Tetris RAM: the 10x20 playfield.
 pub const TETRIS_PLAYFIELD: u16 = 0x0400;
 pub const TETRIS_PLAYFIELD_LEN: u16 = 200;
@@ -42,6 +77,8 @@ pub enum Drive {
   Controller,
   /// Copy the window into Tetris's playfield.
   Playfield,
+  /// Steer four real placements per step, chosen by the encoder.
+  Placements(Encoder),
 }
 
 /// Fold a window to controller bits: block `i` of 32 bytes sets `LIVE_BUTTONS[i]`
@@ -70,7 +107,7 @@ impl Reservoir {
   pub fn new(rom: &[u8]) -> Result<Reservoir, String> {
     let mut emu = NesEmulator::new(rom);
     boot_until(&mut emu, TETRIS_MODE_PLAY)?;
-    Self::settle(emu)
+    Self::settle(emu, 120)
   }
 
   /// Boot Tetris to the level menu, pick level 9 and start with A held, which
@@ -93,16 +130,17 @@ impl Reservoir {
     if emu.ram_read(TETRIS_LEVEL) != FAST_LEVEL {
       return Err(format!("expected level {}, got {}", FAST_LEVEL, emu.ram_read(TETRIS_LEVEL)));
     }
-    Self::settle(emu)
+    // The first piece of a game waits about 96 frames before it drops.
+    Self::settle(emu, 200)
   }
 
-  /// Confirm a piece is falling (un-pausing once if not) and snapshot.
-  fn settle(mut emu: NesEmulator) -> Result<Reservoir, String> {
-    // A piece should fall during 120 idle frames. If not, the game is paused: tap Start once.
-    if !piece_moves(&mut emu, 120) {
+  /// Step until the falling piece first moves, within `limit` frames (un-pausing
+  /// once if it does not), and snapshot at that moment, before anything locks.
+  fn settle(mut emu: NesEmulator, limit: usize) -> Result<Reservoir, String> {
+    if !wait_for_piece_motion(&mut emu, limit) {
       emu.step_frames(BUTTON_START, 4);
       emu.step_frames(0, 4);
-      if !piece_moves(&mut emu, 120) {
+      if !wait_for_piece_motion(&mut emu, limit) {
         return Err("Tetris reached play mode but no piece is falling".to_string());
       }
     }
@@ -137,13 +175,95 @@ impl Reservoir {
     }
   }
 
+  fn tap(&mut self, buttons: u8) -> usize {
+    self.emu.step_frame(buttons);
+    self.emu.step_frame(0);
+    2
+  }
+
+  fn piece(&mut self) -> (u8, u8, u8) {
+    (
+      self.emu.ram_read(TETRIS_PIECE_X),
+      self.emu.ram_read(TETRIS_PIECE_ORIENTATION),
+      self.emu.ram_read(TETRIS_PLAY_STATE),
+    )
+  }
+
+  fn reset_if_over(&mut self) -> bool {
+    if self.in_play() {
+      return false;
+    }
+    self.reset();
+    self.resets += 1;
+    true
+  }
+
+  /// Steer the falling piece to `target` by controller taps and let it lock.
+  /// Resets on game over, before or after the piece.
+  pub fn place(&mut self, target: Placement) -> PlaceOutcome {
+    let mut frames = 0;
+    let mut reset = false;
+    // Wait for a falling piece.
+    while frames < PIECE_FRAME_LIMIT && self.emu.ram_read(TETRIS_PLAY_STATE) != TETRIS_PLAY_STATE_FALLING {
+      reset |= self.reset_if_over();
+      self.emu.step_frame(0);
+      frames += 1;
+    }
+    let (_, orientation, _) = self.piece();
+    let cycle = rotation_cycle(orientation);
+    let want = cycle[target.rotation as usize % cycle.len()];
+    let mut taps = 0;
+    while frames < PIECE_FRAME_LIMIT && self.piece().1 != want && taps < 4 {
+      frames += self.tap(BUTTON_A);
+      taps += 1;
+    }
+    let mut stuck = false;
+    loop {
+      let (x, _, state) = self.piece();
+      if frames >= PIECE_FRAME_LIMIT || state != TETRIS_PLAY_STATE_FALLING || stuck || x == target.column {
+        break;
+      }
+      let button = if x < target.column { BUTTON_RIGHT } else { BUTTON_LEFT };
+      frames += self.tap(button);
+      stuck = self.piece().0 == x;
+    }
+    // Let it fall and lock.
+    let mut locked = false;
+    while frames < PIECE_FRAME_LIMIT {
+      if self.piece().2 != TETRIS_PLAY_STATE_FALLING {
+        locked = true;
+        break;
+      }
+      self.emu.step_frame(0);
+      frames += 1;
+    }
+    // Wait through the lock sequence for the next spawn, so the board holds this piece.
+    while frames < PIECE_FRAME_LIMIT && self.piece().2 != TETRIS_PLAY_STATE_FALLING {
+      if self.reset_if_over() {
+        reset = true;
+        break;
+      }
+      self.emu.step_frame(0);
+      frames += 1;
+    }
+    reset |= self.reset_if_over();
+    PlaceOutcome { frames, locked, reset }
+  }
+
   /// Apply the drive, advance `frames`, and restore the snapshot if the game ended.
+  /// For the placement drive, `frames` is ignored: the step is four placements.
   pub fn step(&mut self, drive: Option<Drive>, window: &[u8], frames: usize) {
     let buttons = match drive {
       Some(Drive::Controller) => fold_to_controller(window),
       Some(Drive::Playfield) => {
         self.write_playfield(window);
         0
+      }
+      Some(Drive::Placements(encoder)) => {
+        for target in encode(encoder, window) {
+          self.place(target);
+        }
+        return;
       }
       None => 0,
     };
@@ -165,11 +285,6 @@ impl Reservoir {
   }
 }
 
-/// True if any consecutive pair of samples differs.
-fn changed_at_any_frame(samples: &[u8]) -> bool {
-  samples.windows(2).any(|w| w[0] != w[1])
-}
-
 /// Tap Start every 30 frames until `mode` is reached.
 fn boot_until(emu: &mut NesEmulator, mode: u8) -> Result<(), String> {
   for frame in 0..BOOT_FRAME_LIMIT {
@@ -182,15 +297,16 @@ fn boot_until(emu: &mut NesEmulator, mode: u8) -> Result<(), String> {
   Err(format!("Tetris did not reach mode {} within {} frames", mode, BOOT_FRAME_LIMIT))
 }
 
-/// Sample the falling piece's Y every frame for `frames` frames.
-fn piece_moves(emu: &mut NesEmulator, frames: usize) -> bool {
-  let mut samples = Vec::with_capacity(frames + 1);
-  samples.push(emu.ram_read(TETRIS_PIECE_Y));
-  for _ in 0..frames {
+/// Step until the falling piece's Y changes, up to `limit` frames. True if it moved.
+fn wait_for_piece_motion(emu: &mut NesEmulator, limit: usize) -> bool {
+  let y0 = emu.ram_read(TETRIS_PIECE_Y);
+  for _ in 0..limit {
     emu.step_frame(0);
-    samples.push(emu.ram_read(TETRIS_PIECE_Y));
+    if emu.ram_read(TETRIS_PIECE_Y) != y0 {
+      return true;
+    }
   }
-  changed_at_any_frame(&samples)
+  false
 }
 
 #[cfg(test)]
@@ -198,6 +314,95 @@ mod tests {
   use super::*;
   use crate::nes::bus::{BUTTON_SELECT, BUTTON_START};
   use crate::nes::gym::reservoir::rom_or_skip;
+
+  #[test]
+  fn rotation_cycles_follow_the_a_button_from_spawn() {
+    assert_eq!(rotation_cycle(0x0E), &[0x0E, 0x0F, 0x10, 0x0D]);
+    assert_eq!(rotation_cycle(0x10), &[0x0E, 0x0F, 0x10, 0x0D], "any member maps to its cycle");
+    assert_eq!(rotation_cycle(0x02), &[0x02, 0x03, 0x00, 0x01]);
+    assert_eq!(rotation_cycle(0x07), &[0x07, 0x04, 0x05, 0x06]);
+    assert_eq!(rotation_cycle(0x08), &[0x08, 0x09]);
+    assert_eq!(rotation_cycle(0x0A), &[0x0A]);
+    assert_eq!(rotation_cycle(0x0B), &[0x0B, 0x0C]);
+    assert_eq!(rotation_cycle(0x12), &[0x12, 0x11]);
+    assert_eq!(rotation_cycle(0x13), &[0x13], "no piece: a one-element cycle, never a panic");
+  }
+
+  #[test]
+  #[ignore]
+  fn place_steers_to_the_column_and_rotation_and_locks() {
+    let rom = match rom_or_skip("roms2/tetris.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let mut r = Reservoir::new_fast(&rom).unwrap();
+    let out = r.place(Placement { column: 1, rotation: 1 });
+    assert!(out.locked, "piece should lock within {} frames", PIECE_FRAME_LIMIT);
+    assert!(out.frames < PIECE_FRAME_LIMIT);
+    assert!(!out.reset);
+    // The locked cells sit in the low columns of the board.
+    let board = r.emu.ram_read_range(TETRIS_PLAYFIELD, TETRIS_PLAYFIELD_LEN);
+    let filled: Vec<usize> = board
+      .iter()
+      .enumerate()
+      .filter(|(_, &c)| c != PLAYFIELD_EMPTY)
+      .map(|(i, _)| i % 10)
+      .collect();
+    assert!(!filled.is_empty());
+    assert!(filled.iter().all(|&c| c <= 3), "cells in columns {:?}", filled);
+  }
+
+  #[test]
+  #[ignore]
+  fn place_gives_up_on_an_unreachable_column_without_looping() {
+    let rom = match rom_or_skip("roms2/tetris.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let mut r = Reservoir::new_fast(&rom).unwrap();
+    // Column 9 is unreachable for wide pieces; steering must stop at the wall and still lock.
+    let out = r.place(Placement { column: 9, rotation: 0 });
+    assert!(out.locked);
+    assert!(out.frames < PIECE_FRAME_LIMIT);
+  }
+
+  #[test]
+  #[ignore]
+  fn placements_in_one_column_reach_game_over_and_reset() {
+    let rom = match rom_or_skip("roms2/tetris.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let mut r = Reservoir::new_fast(&rom).unwrap();
+    let mut resets = 0;
+    for _ in 0..16 {
+      let out = r.place(Placement { column: 5, rotation: 0 });
+      resets += out.reset as u32;
+    }
+    assert!(resets >= 1, "sixteen pieces in one column must top out at least once");
+    assert_eq!(r.resets, resets);
+    assert!(r.in_play());
+    assert_eq!(r.emu.ram_read(TETRIS_LEVEL), FAST_LEVEL);
+  }
+
+  #[test]
+  #[ignore]
+  fn step_with_placements_runs_four_pieces() {
+    let rom = match rom_or_skip("roms2/tetris.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let mut r = Reservoir::new_fast(&rom).unwrap();
+    let window = vec![0u8; 256];
+    let before = r.emu.ram_read_range(TETRIS_PLAYFIELD, TETRIS_PLAYFIELD_LEN);
+    r.step(Some(Drive::Placements(Encoder::Salient)), &window, 4);
+    let after = r.emu.ram_read_range(TETRIS_PLAYFIELD, TETRIS_PLAYFIELD_LEN);
+    let cells = |b: &[u8]| b.iter().filter(|&&c| c != PLAYFIELD_EMPTY).count();
+    assert!(
+      cells(&after) >= cells(&before) + 12,
+      "four locked pieces add at least sixteen cells minus any cleared line"
+    );
+  }
 
   #[test]
   #[ignore]
@@ -217,14 +422,6 @@ mod tests {
     r.reset();
     assert_eq!(r.emu.ram_read(TETRIS_LEVEL), FAST_LEVEL);
     assert!(r.in_play());
-  }
-
-  #[test]
-  fn liveness_sees_a_change_that_returns_to_the_starting_value() {
-    assert!(!changed_at_any_frame(&[5, 5, 5, 5]));
-    assert!(changed_at_any_frame(&[5, 6, 7, 5]));
-    assert!(!changed_at_any_frame(&[]));
-    assert!(!changed_at_any_frame(&[9]));
   }
 
   #[test]
