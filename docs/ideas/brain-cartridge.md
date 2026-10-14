@@ -90,6 +90,15 @@ closed for this readout. If neither does, the readout needs a second
 layer, or the DAgger-style corrections from the design note, before any
 reservoir comparison means anything.
 
+A captioned explainer video of the experiment, six chapters ending with
+the whole level in real time, is built by `examples/reservoir_dump.rs`
+followed by `tools/reservoir_video.py`; see
+`docs/superpowers/specs/2026-10-14-reservoir-video-design.md`. Two facts
+the video surfaced: only the first 160 window bytes fit the 16 playable
+board rows, so the last 96 never reach Tetris, and the Tetris screen never
+shows the pasted window, because the game redraws rows only when a piece
+lands; the board the readout sees is RAM.
+
 Earlier tables from this day, including the single-demonstration run
 where the playfield drive led raw on a time split, are in the git history
 of this file.
