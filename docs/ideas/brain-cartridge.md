@@ -40,36 +40,37 @@ Result (2026-10-13): built as `src/nes/gym/reservoir/` and
 save states (228 steps, x=2014 in 1-1, not cleared). Readout is ridge
 regression, lambda 1, trained on the first 80% of steps, tested on the
 last 20% (46 steps, 138 button bits). Closed loop is five episodes with
-random no-op starts. One run of the final code; earlier runs used a
-broken death check or a playfield drive that had topped Tetris out.
+random no-op starts. The `clock` condition is a one-hot of the step index
+and nothing else, the most any readout can get from a clock.
 
 ```
 condition          |  rows | held-out accuracy | held-out mse |  mean x | max x | reservoir resets
 -------------------+-------+-------------------+--------------+---------+-------+-----------------
+clock              |   228 |             0.870 |       0.0821 |  1135.4 |  1563 |                0
 raw                |   228 |             0.964 |       0.0456 |   338.0 |   434 |                0
 undriven           |   228 |             0.775 |       0.1551 |   781.4 |   899 |                0
 driven-controller  |   228 |             0.768 |       0.1919 |   314.0 |   316 |                0
 driven-playfield   |   228 |             0.971 |       0.0408 |   313.6 |   314 |                3
 ```
 
-No distinguishable difference between the playfield-driven reservoir and
-the raw baseline on held-out error: the accuracy gap is one bit in 138,
-and in closed loop the reservoir readout does worse, dying at the first
-Goomba in every episode. The controller drive is worse than raw on every
-column. So, as driven here, Tetris adds nothing a linear readout on the
-SMB window did not already have.
+Tetris adds nothing. The playfield-driven reservoir ties the raw baseline
+on held-out error (one bit in 138) and does worse in closed loop, dying at
+the first Goomba in every episode. The controller drive is worse than raw
+on every column.
 
-The undriven control is the interesting row. It fits the demonstration
-worst yet travels furthest in closed loop. Undriven Tetris RAM advances
-deterministically from the snapshot, so it is a clock, and a readout on a
-clock is a time-indexed replay of the demonstration, which survives the
-first 800 pixels of 1-1 even with a random start offset. Closed-loop
-distance here is measured on the same stretch of the same level the
-readout was trained on, so every row measures replay more than
-generalisation. A clock-only baseline (features = bits of the step index)
-is the next experiment, to put a number on the replay effect before any
-driven condition can be credited.
+The clock row explains the undriven row. A readout on a one-hot step index
+cannot generalise to unseen steps, so its held-out numbers are the bias
+alone, yet in closed loop it replays the training segment and travels
+further than anything else, past the pipes to x=1563 at best. Undriven
+Tetris RAM advances deterministically from its snapshot, so it is a clock
+too, and its 781 is the same replay effect through a noisier clock. Both
+rows are tape recorders, not policies.
 
+Closed-loop distance is measured on the same stretch of the same level the
+readout was trained on, so no row here measures generalisation. A fair
+test of any reservoir needs either a held-out level or a clock-subtracted
+score, and neither exists yet. Tetris left play mode three times under the
+playfield drive and was reset each time.
 ### 2. Second-mover polarity  `DEPOSIT`
 
 ml-mad-science stop 1 tags "data moves freely, no tether" as DEGENERATE.
