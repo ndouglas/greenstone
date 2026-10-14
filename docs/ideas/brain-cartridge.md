@@ -37,41 +37,45 @@ physical reservoir computing.
 
 Result (2026-10-13): built as `src/nes/gym/reservoir/` and
 `examples/tetris_reservoir.rs`. The demonstration is a beam search over
-save states (228 steps, x=2014 in 1-1, not cleared). Readout is ridge
-regression, lambda 1, trained on the first 80% of steps, tested on the
-last 20% (46 steps, 138 button bits). Closed loop is five episodes with
-random no-op starts. The `clock` condition is a one-hot of the step index
-and nothing else, the most any readout can get from a clock. The intercept
-is unpenalised; the solver uses the dual form since rows are fewer than
-features.
+save states in 24-frame rounds of jump macros, with a one-round survival
+peek so candidates committed to a collision do not crowd out the beam. It
+clears 1-1 in 89 rounds (534 steps, highest x 3266). Steps where the game
+has control (flagpole slide, castle countdown) are not training rows,
+which leaves 363. Readout is ridge regression, lambda 1, intercept
+unpenalised, trained on the first 80% of those rows and tested on the
+last 20% (73 steps, 219 button bits). Closed loop is five episodes from
+the start of 1-1 with random no-op starts. The `clock` condition is a
+one-hot of the step index and nothing else.
 
 ```
 condition          |  rows | held-out accuracy | held-out mse |  mean x | max x | reservoir resets
 -------------------+-------+-------------------+--------------+---------+-------+-----------------
-clock              |   228 |             0.870 |       0.0818 |  1135.4 |  1563 |                0
-raw                |   228 |             0.971 |       0.0468 |   313.6 |   314 |                0
-undriven           |   228 |             0.775 |       0.1550 |   781.4 |   899 |                0
-driven-controller  |   228 |             0.768 |       0.1919 |   314.0 |   316 |                0
-driven-playfield   |   228 |             0.971 |       0.0406 |   313.6 |   314 |                3
+clock              |   363 |             0.817 |       0.1119 |  1135.4 |  1563 |                0
+raw                |   363 |             0.877 |       0.1293 |   313.6 |   314 |                0
+undriven           |   363 |             0.817 |       0.1365 |  1007.0 |  1242 |                0
+driven-controller  |   363 |             0.785 |       0.1401 |   860.4 |  1547 |                0
+driven-playfield   |   363 |             0.927 |       0.0729 |   313.6 |   314 |                2
 ```
 
-Tetris adds nothing. The playfield-driven reservoir ties the raw baseline
-on held-out error, and both die at the first Goomba in every closed-loop
-episode. The controller drive is worse than raw on every column.
+On held-out error the playfield-driven reservoir beats the raw baseline,
+eleven bits in 219 and a mean squared error of 0.073 against 0.129. That
+is the first table where a driven condition separates from raw, and it
+comes from one demonstration whose held-out stretch is the last fifth of
+the level, so it is a hint and not a result. The controller drive is
+worse than raw.
 
-The clock row explains the undriven row. A readout on a one-hot step index
-cannot generalise to unseen steps, so its held-out numbers are the bias
-alone, yet in closed loop it replays the training segment and travels
-further than anything else, past the pipes to x=1563 at best. Undriven
-Tetris RAM advances deterministically from its snapshot, so it is a clock
-too, and its 781 is the same replay effect through a noisier clock. Both
-rows are tape recorders, not policies.
+Closed loop tells a different story. Raw and playfield both die at the
+first Goomba in every episode, so neither readout reproduces even the
+training segment from the start. The clock travels furthest by replaying
+the demonstration, and undriven Tetris, which is a noisier clock, is next.
+Every closed-loop number here measures replay of a stretch the readout
+was trained on, not a policy. A fair test needs a held-out level or a
+clock-subtracted score, and the playfield hint above needs more than one
+demonstration before it means anything.
 
-Closed-loop distance is measured on the same stretch of the same level the
-readout was trained on, so no row here measures generalisation. A fair
-test of any reservoir needs either a held-out level or a clock-subtracted
-score, and neither exists yet. Tetris left play mode three times under the
-playfield drive and was reset each time.
+Earlier tables from this day, with a demonstration that stalled at x=2014
+and with cutscene rows included, showed no separation at all; those are in
+the git history of this file.
 ### 2. Second-mover polarity  `DEPOSIT`
 
 ml-mad-science stop 1 tags "data moves freely, no tether" as DEGENERATE.
