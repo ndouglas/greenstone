@@ -57,8 +57,17 @@ pub fn smb_y(emu: &mut NesEmulator) -> u8 {
   emu.ram_read(PLAYER_Y)
 }
 
+/// SMB zero-page bytes that hold the controller's own input: A/B buttons,
+/// up/down, left/right, and last frame's A/B. Zeroed in the window so no
+/// condition can read the previous action back; the window is state, not input.
+pub const SMB_INPUT_BYTES: [u16; 4] = [0x000A, 0x000B, 0x000C, 0x000D];
+
 pub fn smb_window(emu: &mut NesEmulator) -> Vec<u8> {
-  emu.ram_read_range(SMB_WINDOW_START, SMB_WINDOW_LEN)
+  let mut window = emu.ram_read_range(SMB_WINDOW_START, SMB_WINDOW_LEN);
+  for &address in &SMB_INPUT_BYTES {
+    window[(address - SMB_WINDOW_START) as usize] = 0;
+  }
+  window
 }
 
 /// Boot SMB, tap Start through the title, wait for 1-1 to begin, and snapshot.
@@ -463,6 +472,24 @@ mod tests {
     assert!(back.cleared);
     assert_eq!(back.noops, 17);
     assert!(Demonstration::from_bytes(&[1, 2, 3]).is_err());
+  }
+
+  #[test]
+  fn window_hides_the_controller_bytes() {
+    let rom = std::fs::read("roms/snake.nes").expect("tracked test ROM");
+    let mut emu = NesEmulator::new(&rom);
+    for &address in &SMB_INPUT_BYTES {
+      emu.ram_write(address, 0xFF);
+    }
+    emu.ram_write(0x0009, 0x42);
+    emu.ram_write(0x000E, 0x08);
+    let window = smb_window(&mut emu);
+    assert_eq!(window.len(), SMB_WINDOW_LEN as usize);
+    for &address in &SMB_INPUT_BYTES {
+      assert_eq!(window[address as usize], 0, "input byte ${:02X} must be hidden", address);
+    }
+    assert_eq!(window[0x09], 0x42, "neighbouring bytes pass through");
+    assert_eq!(window[0x0E], 0x08);
   }
 
   #[test]
