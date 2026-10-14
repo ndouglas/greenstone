@@ -9,7 +9,7 @@ pub mod ridge;
 
 use crate::nes::bus::{BUTTON_SELECT, BUTTON_START};
 use crate::nes::gym::NesEmulator;
-use demo::{beam_search, smb_cleared, smb_dead, smb_start_state, smb_window, smb_x, Demonstration, MACRO_FRAMES};
+use demo::{beam_search, smb_cleared, smb_dead, smb_in_cutscene, smb_start_state, smb_window, smb_x, Demonstration, MACRO_FRAMES};
 use drive::{fold_to_controller, Reservoir};
 use features::{clock_row, feature_row, Condition};
 use ridge::{fit, Readout};
@@ -128,6 +128,13 @@ pub fn assign_round_robin(episodes: usize, threads: usize) -> Vec<Vec<usize>> {
   (0..threads).map(|t| (t..episodes).step_by(threads).collect()).collect()
 }
 
+/// A demonstration step is a training row only while the player has control.
+/// During a cutscene, such as the castle countdown after the flagpole, the
+/// recorded buttons are arbitrary and say nothing about the policy.
+pub fn row_is_informative(in_cutscene: bool) -> bool {
+  !in_cutscene
+}
+
 /// Deterministic per-episode no-op count in `[0, noop_max)`.
 pub fn noop_frames(episode: usize, noop_max: usize) -> usize {
   if noop_max == 0 {
@@ -178,9 +185,12 @@ fn collect(condition: Condition, smb_rom: &[u8], tetris_rom: &[u8], start: &[u8]
   };
   for (step, &action) in demo.buttons.iter().enumerate() {
     let window = smb_window(&mut smb);
-    data.rows.push(observe(condition, &window, reservoir.as_mut(), step));
-    data.targets.push(buttons_to_targets(action));
-    data.buttons.push(action);
+    let row = observe(condition, &window, reservoir.as_mut(), step);
+    if row_is_informative(smb_in_cutscene(&mut smb)) {
+      data.rows.push(row);
+      data.targets.push(buttons_to_targets(action));
+      data.buttons.push(action);
+    }
     smb.step_frames(action, MACRO_FRAMES);
   }
   data.resets = reservoir.map(|r| r.resets).unwrap_or(0);
@@ -230,15 +240,17 @@ pub fn run(smb_rom: &[u8], tetris_rom: &[u8], config: &ExperimentConfig, log: &m
     demo.x_reached,
     demo.cleared
   ));
-  let split = split_index(demo.buttons.len(), config.train_fraction)?;
   let mask = active_bits(&demo.buttons);
   let mut results = Vec::new();
   for condition in Condition::ALL {
     log(&format!("{}: collecting features", condition.name()));
     let data = collect(condition, smb_rom, tetris_rom, &start, &demo)?;
+    let split = split_index(data.rows.len(), config.train_fraction)?;
     log(&format!(
-      "{}: fitting readout on {} rows of {}",
+      "{}: {} informative rows of {} steps; fitting readout on {} rows of {}",
       condition.name(),
+      data.rows.len(),
+      demo.buttons.len(),
       split,
       data.rows[0].len()
     ));
@@ -309,6 +321,12 @@ pub(crate) fn rom_or_skip(path: &str) -> Option<Vec<u8>> {
 mod tests {
   use super::*;
   use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_RIGHT, BUTTON_SELECT, BUTTON_START};
+
+  #[test]
+  fn cutscene_steps_are_not_training_rows() {
+    assert!(row_is_informative(false));
+    assert!(!row_is_informative(true));
+  }
 
   #[test]
   fn episodes_are_assigned_round_robin_to_capped_threads() {
