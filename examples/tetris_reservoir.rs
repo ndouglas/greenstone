@@ -8,9 +8,11 @@
 
 use greenstone::nes::gym::reservoir::demo::{load_cached, save_cached};
 use greenstone::nes::gym::reservoir::drive::{FAST_LEVEL, PIECE_FRAME_LIMIT};
+use greenstone::nes::gym::reservoir::encode::Encoder;
 use greenstone::nes::gym::reservoir::encode::{ENEMY_BIN_PX, PIECES_PER_STEP};
 use greenstone::nes::gym::reservoir::features::Condition;
-use greenstone::nes::gym::reservoir::{find_demonstrations, run, ExperimentConfig};
+use greenstone::nes::gym::reservoir::search::search_encoder;
+use greenstone::nes::gym::reservoir::{active_bits, find_demonstrations, run, ExperimentConfig};
 use std::path::{Path, PathBuf};
 
 fn main() {
@@ -41,7 +43,10 @@ fn main() {
       demos
     }
   };
-  let mut conditions: Vec<Condition> = Condition::ALL.to_vec();
+  let mask = demos.iter().fold(0u8, |acc, d| acc | active_bits(&d.buttons));
+  log("searching the encoder on the one-hot control");
+  let searched = search_encoder(&smb_rom, &demos, config.lambda, mask, &mut log);
+  let mut conditions = Condition::default_table(Some(searched));
   if legacy {
     conditions.extend(Condition::LEGACY);
   }
@@ -66,6 +71,13 @@ fn main() {
     "placements: {} per step, enemy bins {} px, Tetris level {} via the menu, {} frames per piece at most",
     PIECES_PER_STEP, ENEMY_BIN_PX, FAST_LEVEL, PIECE_FRAME_LIMIT
   );
+  if let Encoder::Searched(features) = searched {
+    let picks: Vec<String> = features
+      .iter()
+      .map(|f| format!("${:02X}{} /{}", f.address, if f.relative { "-x" } else { "" }, 1 << f.shift))
+      .collect();
+    println!("searched encoder: {}", picks.join(", "));
+  }
   println!();
   println!(
     "{:<18} | {:>5} | {:>9} | {:>12} | {:>12} | {:>7} | {:>5} | {:>6}",

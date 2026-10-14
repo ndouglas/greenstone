@@ -5,6 +5,7 @@
 
 use greenstone::nes::bus::BUTTON_A;
 use greenstone::nes::gym::reservoir::demo::load_cached;
+use greenstone::nes::gym::reservoir::encode::Encoder;
 use greenstone::nes::gym::reservoir::features::Condition;
 use greenstone::nes::gym::reservoir::ridge::Readout;
 use greenstone::nes::gym::reservoir::trace::{fit_condition, replay, trace_episode};
@@ -43,7 +44,12 @@ fn main() {
   });
   std::fs::create_dir_all(&out).expect("create out dir");
 
-  let conditions = [Condition::Raw, Condition::PlacementOnehot, Condition::PlacementTetris, Condition::Clock];
+  let conditions = [
+    Condition::Raw,
+    Condition::PlacementOnehot(Encoder::Salient),
+    Condition::PlacementTetris(Encoder::Salient),
+    Condition::Clock,
+  ];
   let readouts: Vec<(Condition, Readout)> = conditions
     .iter()
     .map(|&c| {

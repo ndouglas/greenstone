@@ -27,12 +27,37 @@ pub struct Placement {
   pub rotation: u8,
 }
 
+/// One window byte binned into a placement: a candidate for the encoder search.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Feature {
+  /// Window index of the byte.
+  pub address: u8,
+  /// Subtract Mario's x pixel first, so the byte reads as a distance from Mario.
+  pub relative: bool,
+  /// Bits dropped before the column: the bin width is `1 << shift`.
+  pub shift: u8,
+}
+
+impl Feature {
+  pub fn placement(self, window: &[u8]) -> Placement {
+    let mut v = window[self.address as usize];
+    if self.relative {
+      v = v.wrapping_sub(window[MARIO_X_PIXEL]);
+    }
+    let column = (v >> self.shift).min(9);
+    let rotation = (v >> self.shift.saturating_sub(2)) & 3;
+    Placement { column, rotation }
+  }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Encoder {
   /// Four hand-chosen features: the two nearest enemies ahead, Mario's height, Mario's speed.
   Salient,
   /// A hash of the whole window. Control: shows that locality in the encoding matters.
   Hash,
+  /// Four features chosen by `search::search_features`.
+  Searched([Feature; PIECES_PER_STEP]),
 }
 
 fn mario_x(window: &[u8]) -> i32 {
@@ -102,6 +127,7 @@ pub fn encode(encoder: Encoder, window: &[u8]) -> [Placement; PIECES_PER_STEP] {
   match encoder {
     Encoder::Salient => salient(window),
     Encoder::Hash => hash(window),
+    Encoder::Searched(features) => features.map(|f| f.placement(window)),
   }
 }
 
@@ -183,6 +209,54 @@ mod tests {
     w[MARIO_Y] = 255;
     assert_eq!(encode(Encoder::Salient, &w)[3].column, 0);
     assert_eq!(encode(Encoder::Salient, &w)[2].column, 9, "y clamps to the last bin");
+  }
+
+  #[test]
+  fn a_feature_bins_one_byte_optionally_relative_to_mario() {
+    let mut w = window_with_mario(0x0120, 176);
+    w[0x87] = 0x60; // enemy x pixel
+    let absolute = Feature {
+      address: 0x87,
+      relative: false,
+      shift: 4,
+    };
+    assert_eq!(
+      absolute.placement(&w),
+      Placement { column: 6, rotation: 0 },
+      "0x60 >> 4 = 6, bits below are 0"
+    );
+    let relative = Feature {
+      address: 0x87,
+      relative: true,
+      shift: 4,
+    };
+    // 0x60 - 0x20 = 0x40: column 4, rotation from the two bits under the column bits.
+    assert_eq!(relative.placement(&w), Placement { column: 4, rotation: 0 });
+    w[0x87] = 0x2C;
+    assert_eq!(
+      relative.placement(&w),
+      Placement { column: 0, rotation: 3 },
+      "0x0C: column 0, bits 3..2 are 11"
+    );
+    let wide = Feature {
+      address: 0x87,
+      relative: false,
+      shift: 1,
+    };
+    assert_eq!(wide.placement(&w).column, 9, "0x2C >> 1 = 22 clamps to 9");
+  }
+
+  #[test]
+  fn searched_encoder_applies_its_four_features() {
+    let mut w = window_with_mario(0, 0);
+    w[0x10] = 0x30;
+    let f = Feature {
+      address: 0x10,
+      relative: false,
+      shift: 4,
+    };
+    let p = encode(Encoder::Searched([f; PIECES_PER_STEP]), &w);
+    assert!(p.iter().all(|p| p.column == 3));
   }
 
   #[test]

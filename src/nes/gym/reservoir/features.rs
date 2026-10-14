@@ -1,6 +1,8 @@
 //! Feature rows for each experimental condition.
 
 use super::drive::Drive;
+#[cfg(test)]
+use super::encode::Feature;
 use super::encode::{Encoder, ONEHOT_ROW_LEN};
 
 /// Start of the SMB state window handed to the reservoir: zero page.
@@ -22,42 +24,59 @@ pub enum Condition {
   Clock,
   /// The SMB window itself. The real baseline.
   Raw,
+  /// No readout: run right and press A by a two-state chain fitted to the
+  /// demonstrations' jump statistics. The closed-loop floor.
+  RandomA,
   /// Tetris RAM with no input. The control.
   Undriven,
   /// Tetris RAM, Tetris driven through its controller by a fold of the window.
   DrivenController,
   /// Tetris RAM, the window copied into Tetris's playfield.
   DrivenPlayfield,
-  /// The four placements as one-hot features, no Tetris. The control for the two below.
-  PlacementOnehot,
-  /// Tetris RAM after steering the four salient placements.
-  PlacementTetris,
-  /// Tetris RAM after steering placements hashed from the whole window.
-  PlacementHash,
+  /// The encoder's four placements as one-hot features, no Tetris. The control for the next.
+  PlacementOnehot(Encoder),
+  /// Tetris RAM after steering the encoder's four placements.
+  PlacementTetris(Encoder),
 }
 
 impl Condition {
-  /// The default table.
-  pub const ALL: [Condition; 5] = [
-    Condition::Clock,
-    Condition::Raw,
-    Condition::PlacementOnehot,
-    Condition::PlacementTetris,
-    Condition::PlacementHash,
-  ];
   /// The earlier drives, still runnable.
   pub const LEGACY: [Condition; 3] = [Condition::Undriven, Condition::DrivenController, Condition::DrivenPlayfield];
 
-  pub fn name(self) -> &'static str {
+  /// The default table: floors, raw, the hand-picked encoder straight and
+  /// through Tetris, the searched encoder likewise when given, and the hash control.
+  pub fn default_table(searched: Option<Encoder>) -> Vec<Condition> {
+    let mut table = vec![
+      Condition::Clock,
+      Condition::Raw,
+      Condition::RandomA,
+      Condition::PlacementOnehot(Encoder::Salient),
+      Condition::PlacementTetris(Encoder::Salient),
+    ];
+    if let Some(e) = searched {
+      table.push(Condition::PlacementOnehot(e));
+      table.push(Condition::PlacementTetris(e));
+    }
+    table.push(Condition::PlacementTetris(Encoder::Hash));
+    table
+  }
+
+  pub fn name(self) -> String {
+    let encoder = |e: Encoder| match e {
+      Encoder::Salient => "placement",
+      Encoder::Hash => "hashed",
+      Encoder::Searched(_) => "searched",
+    };
     match self {
-      Condition::Clock => "clock",
-      Condition::Raw => "raw",
-      Condition::Undriven => "undriven",
-      Condition::DrivenController => "driven-controller",
-      Condition::DrivenPlayfield => "driven-playfield",
-      Condition::PlacementOnehot => "placement-onehot",
-      Condition::PlacementTetris => "placement-tetris",
-      Condition::PlacementHash => "placement-hash",
+      Condition::Clock => "clock".to_string(),
+      Condition::Raw => "raw".to_string(),
+      Condition::RandomA => "random-a".to_string(),
+      Condition::Undriven => "undriven".to_string(),
+      Condition::DrivenController => "driven-controller".to_string(),
+      Condition::DrivenPlayfield => "driven-playfield".to_string(),
+      Condition::PlacementOnehot(e) => format!("{}-onehot", encoder(e)),
+      Condition::PlacementTetris(Encoder::Hash) => "placement-hash".to_string(),
+      Condition::PlacementTetris(e) => format!("{}-tetris", encoder(e)),
     }
   }
 
@@ -65,14 +84,16 @@ impl Condition {
     match self {
       Condition::DrivenController => Some(Drive::Controller),
       Condition::DrivenPlayfield => Some(Drive::Playfield),
-      Condition::PlacementTetris => Some(Drive::Placements(Encoder::Salient)),
-      Condition::PlacementHash => Some(Drive::Placements(Encoder::Hash)),
-      _ => None,
+      Condition::PlacementTetris(e) => Some(Drive::Placements(e)),
+      Condition::Clock | Condition::Raw | Condition::RandomA | Condition::Undriven | Condition::PlacementOnehot(_) => None,
     }
   }
 
   pub fn uses_reservoir(self) -> bool {
-    !matches!(self, Condition::Raw | Condition::Clock | Condition::PlacementOnehot)
+    matches!(
+      self,
+      Condition::Undriven | Condition::DrivenController | Condition::DrivenPlayfield | Condition::PlacementTetris(_)
+    )
   }
 
   /// Placement drives play at level 19 so a piece drops in a few dozen frames.
@@ -84,14 +105,21 @@ impl Condition {
     matches!(self, Condition::DrivenController)
   }
 
+  /// The one-hot encoder's placements for this row, when the condition has one.
+  pub fn onehot_encoder(self) -> Option<Encoder> {
+    match self {
+      Condition::PlacementOnehot(e) => Some(e),
+      _ => None,
+    }
+  }
+
   pub fn row_len(self) -> usize {
     match self {
-      Condition::Clock => 1 + CLOCK_CAPACITY,
-      Condition::PlacementOnehot => ONEHOT_ROW_LEN,
-      _ => {
-        let body = if self.uses_reservoir() { TETRIS_RAM_LEN } else { SMB_WINDOW_LEN } as usize;
-        1 + body + if self.appends_drive_bits() { DRIVE_BITS } else { 0 }
-      }
+      Condition::Clock | Condition::RandomA => 1 + CLOCK_CAPACITY,
+      Condition::Raw => 1 + SMB_WINDOW_LEN as usize,
+      Condition::PlacementOnehot(_) => ONEHOT_ROW_LEN,
+      Condition::DrivenController => 1 + TETRIS_RAM_LEN as usize + DRIVE_BITS,
+      Condition::Undriven | Condition::DrivenPlayfield | Condition::PlacementTetris(_) => 1 + TETRIS_RAM_LEN as usize,
     }
   }
 }
@@ -160,21 +188,27 @@ mod tests {
   fn row_lengths_match_conditions() {
     assert_eq!(Condition::Clock.row_len(), 1 + CLOCK_CAPACITY);
     assert_eq!(Condition::Raw.row_len(), 1 + 256);
+    assert_eq!(Condition::RandomA.row_len(), 1 + CLOCK_CAPACITY);
     assert_eq!(Condition::Undriven.row_len(), 1 + 2048);
     assert_eq!(Condition::DrivenController.row_len(), 1 + 2048 + 8);
     assert_eq!(Condition::DrivenPlayfield.row_len(), 1 + 2048);
-    assert_eq!(Condition::PlacementOnehot.row_len(), ONEHOT_ROW_LEN);
-    assert_eq!(Condition::PlacementTetris.row_len(), 1 + 2048);
-    assert_eq!(Condition::PlacementHash.row_len(), 1 + 2048);
+    assert_eq!(Condition::PlacementOnehot(Encoder::Salient).row_len(), ONEHOT_ROW_LEN);
+    assert_eq!(Condition::PlacementTetris(Encoder::Salient).row_len(), 1 + 2048);
+    assert_eq!(Condition::PlacementTetris(Encoder::Hash).row_len(), 1 + 2048);
   }
 
   #[test]
   fn reservoir_use_and_speed_follow_the_drive() {
-    for c in [Condition::Clock, Condition::Raw, Condition::PlacementOnehot] {
+    for c in [
+      Condition::Clock,
+      Condition::Raw,
+      Condition::RandomA,
+      Condition::PlacementOnehot(Encoder::Hash),
+    ] {
       assert!(!c.uses_reservoir(), "{}", c.name());
       assert!(c.drive().is_none());
     }
-    for c in [Condition::PlacementTetris, Condition::PlacementHash] {
+    for c in [Condition::PlacementTetris(Encoder::Salient), Condition::PlacementTetris(Encoder::Hash)] {
       assert!(c.uses_reservoir(), "{}", c.name());
       assert!(c.fast_tetris(), "{}", c.name());
     }
@@ -182,17 +216,29 @@ mod tests {
       assert!(c.uses_reservoir());
       assert!(!c.fast_tetris());
     }
-    assert_eq!(Condition::PlacementTetris.drive(), Some(Drive::Placements(Encoder::Salient)));
-    assert_eq!(Condition::PlacementHash.drive(), Some(Drive::Placements(Encoder::Hash)));
+    assert_eq!(
+      Condition::PlacementTetris(Encoder::Salient).drive(),
+      Some(Drive::Placements(Encoder::Salient))
+    );
   }
 
   #[test]
-  fn names_are_distinct_across_default_and_legacy() {
-    let mut names: Vec<&str> = Condition::ALL.iter().chain(Condition::LEGACY.iter()).map(|c| c.name()).collect();
+  fn default_table_names_are_distinct_and_searched_rows_are_optional() {
+    let f = Feature {
+      address: 0x87,
+      relative: true,
+      shift: 4,
+    };
+    let searched = Encoder::Searched([f; 4]);
+    let with = Condition::default_table(Some(searched));
+    let without = Condition::default_table(None);
+    assert_eq!(with.len(), without.len() + 2);
+    let mut names: Vec<String> = with.iter().chain(Condition::LEGACY.iter()).map(|c| c.name()).collect();
     names.sort();
     names.dedup();
-    assert_eq!(names.len(), Condition::ALL.len() + Condition::LEGACY.len());
-    assert_eq!(Condition::ALL.len(), 5);
-    assert_eq!(Condition::LEGACY.len(), 3);
+    assert_eq!(names.len(), with.len() + Condition::LEGACY.len());
+    assert_eq!(Condition::PlacementTetris(Encoder::Hash).name(), "placement-hash");
+    assert_eq!(Condition::PlacementOnehot(searched).name(), "searched-onehot");
+    assert!(without.contains(&Condition::RandomA));
   }
 }

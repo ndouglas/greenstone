@@ -7,9 +7,10 @@ pub mod drive;
 pub mod encode;
 pub mod features;
 pub mod ridge;
+pub mod search;
 pub mod trace;
 
-use crate::nes::bus::{BUTTON_SELECT, BUTTON_START};
+use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_RIGHT, BUTTON_SELECT, BUTTON_START};
 use crate::nes::gym::NesEmulator;
 use demo::{beam_search, smb_cleared, smb_dead, smb_in_cutscene, smb_start_state, smb_window, smb_x, Demonstration, MACRO_FRAMES};
 use drive::{fold_to_controller, Reservoir};
@@ -153,6 +154,73 @@ pub(crate) struct Dataset {
   pub(crate) resets: u32,
 }
 
+/// A small deterministic generator for the random-A policy.
+#[derive(Debug, Clone)]
+pub struct Lcg(u64);
+
+impl Lcg {
+  pub fn new(seed: u64) -> Lcg {
+    Lcg(seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407))
+  }
+
+  /// Uniform in [0, 1).
+  pub fn next_f64(&mut self) -> f64 {
+    self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+    (self.0 >> 11) as f64 / (1u64 << 53) as f64
+  }
+}
+
+/// A two-state chain over the A button: how often a jump starts, how long it holds.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct JumpChain {
+  /// P(A this step | no A last step).
+  pub p_start: f64,
+  /// P(A this step | A last step).
+  pub p_hold: f64,
+}
+
+impl JumpChain {
+  /// Fit the transition rates to button sequences.
+  pub fn fit(sequences: &[&[u8]]) -> JumpChain {
+    let (mut from_off, mut starts, mut from_on, mut holds) = (0usize, 0usize, 0usize, 0usize);
+    for seq in sequences {
+      for pair in seq.windows(2) {
+        let (prev, next) = (pair[0] & BUTTON_A != 0, pair[1] & BUTTON_A != 0);
+        if prev {
+          from_on += 1;
+          holds += next as usize;
+        } else {
+          from_off += 1;
+          starts += next as usize;
+        }
+      }
+    }
+    let rate = |n: usize, d: usize| if d == 0 { 0.0 } else { n as f64 / d as f64 };
+    JumpChain {
+      p_start: rate(starts, from_off),
+      p_hold: rate(holds, from_on),
+    }
+  }
+
+  /// A deterministic sequence of `len` A decisions for `seed`, starting from no A.
+  pub fn sample(&self, seed: u64, len: usize) -> Vec<bool> {
+    let mut rng = Lcg::new(seed);
+    let mut prev = false;
+    (0..len)
+      .map(|_| {
+        let p = if prev { self.p_hold } else { self.p_start };
+        prev = rng.next_f64() < p;
+        prev
+      })
+      .collect()
+  }
+}
+
+/// The random-A policy's buttons: always run right, A when the chain says so.
+pub fn random_a_buttons(a: bool) -> u8 {
+  BUTTON_B | BUTTON_RIGHT | if a { BUTTON_A } else { 0 }
+}
+
 /// Pooled leave-one-dataset-out metrics.
 #[derive(Debug, Clone)]
 pub struct FoldMetrics {
@@ -163,7 +231,7 @@ pub struct FoldMetrics {
 }
 
 /// Hold each dataset out in turn, fit on the rest, and pool the predictions.
-fn evaluate_folds(datasets: &[Dataset], lambda: f64, mask: u8) -> Result<FoldMetrics, String> {
+pub(crate) fn evaluate_folds(datasets: &[Dataset], lambda: f64, mask: u8) -> Result<FoldMetrics, String> {
   if datasets.len() < 2 {
     return Err(format!("leave-one-out needs at least two demonstrations, got {}", datasets.len()));
   }
@@ -222,12 +290,67 @@ pub(crate) fn reservoir_for(condition: Condition, tetris_rom: &[u8]) -> Result<O
   }
 }
 
+/// Leave-one-out metrics of the random-A policy: the chain is fitted on the
+/// other demonstrations and sampled once per held-out demonstration.
+fn random_a_folds(datasets: &[Dataset], mask: u8) -> Result<FoldMetrics, String> {
+  if datasets.len() < 2 {
+    return Err(format!("leave-one-out needs at least two demonstrations, got {}", datasets.len()));
+  }
+  let mut preds = Vec::new();
+  let mut truth = Vec::new();
+  let mut outputs = Vec::new();
+  let mut targets = Vec::new();
+  for held_out in 0..datasets.len() {
+    let others: Vec<&[u8]> = datasets
+      .iter()
+      .enumerate()
+      .filter(|(i, _)| *i != held_out)
+      .map(|(_, d)| d.buttons.as_slice())
+      .collect();
+    let chain = JumpChain::fit(&others);
+    let d = &datasets[held_out];
+    for (a, &b) in chain.sample(held_out as u64, d.buttons.len()).into_iter().zip(&d.buttons) {
+      let p = random_a_buttons(a);
+      preds.push(p);
+      truth.push(b);
+      outputs.push(buttons_to_targets(p).into_iter().map(|v| v as f64).collect());
+      targets.push(buttons_to_targets(b));
+    }
+  }
+  let accuracy = bit_accuracy(&preds, &truth, mask);
+  Ok(FoldMetrics {
+    rows: preds.len(),
+    train_accuracy: accuracy,
+    accuracy,
+    mse: output_mse(&outputs, &targets, mask),
+  })
+}
+
+/// What chooses the buttons in a closed-loop episode.
+enum Driver<'a> {
+  Readout(&'a Readout),
+  Random(JumpChain, Lcg, bool),
+}
+
+impl Driver<'_> {
+  fn buttons(&mut self, row: &[f32]) -> u8 {
+    match self {
+      Driver::Readout(r) => outputs_to_buttons(&r.predict(row)),
+      Driver::Random(chain, rng, prev) => {
+        let p = if *prev { chain.p_hold } else { chain.p_start };
+        *prev = rng.next_f64() < p;
+        random_a_buttons(*prev)
+      }
+    }
+  }
+}
+
 /// Step the reservoir with the current window (if the condition has one) and build the row.
 pub(crate) fn observe(condition: Condition, window: &[u8], reservoir: Option<&mut Reservoir>, step: usize) -> Vec<f32> {
   match (condition, reservoir) {
-    (Condition::Clock, _) => clock_row(step),
+    (Condition::Clock | Condition::RandomA, _) => clock_row(step),
     (Condition::Raw, _) => feature_row(window, None),
-    (Condition::PlacementOnehot, _) => onehot_row(&encode(Encoder::Salient, window)),
+    (Condition::PlacementOnehot(e), _) => onehot_row(&encode(e, window)),
     (c, Some(r)) => {
       r.step(c.drive(), window, MACRO_FRAMES);
       let bits = if c.appends_drive_bits() {
@@ -269,7 +392,7 @@ pub(crate) fn collect(condition: Condition, smb_rom: &[u8], tetris_rom: &[u8], s
 /// One closed-loop episode. Returns (max x reached, reservoir resets).
 fn episode(
   condition: Condition,
-  readout: &Readout,
+  mut driver: Driver,
   smb_rom: &[u8],
   tetris_rom: &[u8],
   start: &[u8],
@@ -284,7 +407,7 @@ fn episode(
   for step in 0..max_steps {
     let window = smb_window(&mut smb);
     let row = observe(condition, &window, reservoir.as_mut(), step);
-    let buttons = outputs_to_buttons(&readout.predict(&row));
+    let buttons = driver.buttons(&row);
     smb.step_frames(buttons, MACRO_FRAMES);
     max_x = max_x.max(smb_x(&mut smb));
     if smb_dead(&mut smb) || smb_cleared(&mut smb) {
@@ -355,10 +478,20 @@ pub fn run(
       datasets[0].rows[0].len(),
       datasets.len()
     ));
-    let folds = evaluate_folds(&datasets, config.lambda, mask)?;
+    let random = condition == Condition::RandomA;
+    let folds = if random {
+      random_a_folds(&datasets, mask)?
+    } else {
+      evaluate_folds(&datasets, config.lambda, mask)?
+    };
     let all_rows: Vec<Vec<f32>> = datasets.iter().flat_map(|d| d.rows.iter().cloned()).collect();
     let all_targets: Vec<Vec<f32>> = datasets.iter().flat_map(|d| d.targets.iter().cloned()).collect();
-    let readout = fit(&all_rows, &all_targets, config.lambda)?;
+    let readout = if random {
+      None
+    } else {
+      Some(fit(&all_rows, &all_targets, config.lambda)?)
+    };
+    let chain = JumpChain::fit(&datasets.iter().map(|d| d.buttons.as_slice()).collect::<Vec<_>>());
     log(&format!("{}: running {} episodes", condition.name(), config.episodes));
     let outcomes: Vec<(i32, u32)> = std::thread::scope(|s| {
       let handles: Vec<_> = assign_round_robin(config.episodes, threads)
@@ -374,7 +507,11 @@ pub fn run(
               .into_iter()
               .map(|e| {
                 let noops = episode_noops(e, demonstrations, noop_max);
-                episode(condition, readout, smb_rom, tetris_rom, start, noops, max_steps)
+                let driver = match readout {
+                  Some(r) => Driver::Readout(r),
+                  None => Driver::Random(chain, Lcg::new(1000 + e as u64), false),
+                };
+                episode(condition, driver, smb_rom, tetris_rom, start, noops, max_steps)
               })
               .collect::<Result<Vec<_>, _>>()
           })
@@ -448,9 +585,36 @@ mod tests {
   #[test]
   fn observe_onehot_needs_no_reservoir() {
     let window = vec![0u8; 256];
-    let row = observe(Condition::PlacementOnehot, &window, None, 0);
-    assert_eq!(row.len(), Condition::PlacementOnehot.row_len());
+    let row = observe(Condition::PlacementOnehot(Encoder::Salient), &window, None, 0);
+    assert_eq!(row.len(), Condition::PlacementOnehot(Encoder::Salient).row_len());
     assert_eq!(row[0], 1.0);
+  }
+
+  #[test]
+  fn jump_chain_fits_start_and_hold_rates() {
+    let a = BUTTON_A | BUTTON_RIGHT;
+    let seq = [a, a, a, 0, 0, 0, a, a, 0, 0];
+    let chain = JumpChain::fit(&[&seq]);
+    assert!((chain.p_hold - 0.6).abs() < 1e-9, "p_hold {}", chain.p_hold);
+    assert!((chain.p_start - 0.25).abs() < 1e-9, "p_start {}", chain.p_start);
+  }
+
+  #[test]
+  fn jump_chain_samples_are_deterministic_per_seed_and_match_the_rate() {
+    let chain = JumpChain { p_start: 0.2, p_hold: 0.75 };
+    let a: Vec<bool> = chain.sample(7, 4000);
+    let b: Vec<bool> = chain.sample(7, 4000);
+    assert_eq!(a, b);
+    assert_ne!(a, chain.sample(8, 4000));
+    // Stationary A rate is p_start / (p_start + 1 - p_hold) = 0.2 / 0.45.
+    let rate = a.iter().filter(|&&x| x).count() as f64 / a.len() as f64;
+    assert!((rate - 0.2 / 0.45).abs() < 0.05, "rate {}", rate);
+  }
+
+  #[test]
+  fn random_a_buttons_hold_run_and_toggle_only_a() {
+    assert_eq!(random_a_buttons(true), BUTTON_A | BUTTON_B | BUTTON_RIGHT);
+    assert_eq!(random_a_buttons(false), BUTTON_B | BUTTON_RIGHT);
   }
 
   #[test]
