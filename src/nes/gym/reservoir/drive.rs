@@ -21,6 +21,11 @@ pub const PLAYFIELD_BLOCK: u8 = 0x7B;
 pub const PLAYFIELD_THRESHOLD: u8 = 0xC0;
 /// Tetris RAM: falling piece Y, used as a liveness check.
 pub const TETRIS_PIECE_Y: u16 = 0x0041;
+/// Tetris RAM: current level.
+pub const TETRIS_LEVEL: u16 = 0x0044;
+pub const TETRIS_MODE_LEVEL_MENU: u8 = 0x03;
+/// Level the placement drive plays at: one row per two frames.
+pub const FAST_LEVEL: u8 = 19;
 /// Tetris RAM: the 10x20 playfield.
 pub const TETRIS_PLAYFIELD: u16 = 0x0400;
 pub const TETRIS_PLAYFIELD_LEN: u16 = 200;
@@ -61,21 +66,38 @@ pub struct Reservoir {
 }
 
 impl Reservoir {
-  /// Boot Tetris, tap Start until gameplay, confirm a piece is falling, snapshot.
+  /// Boot Tetris, tap Start through the menus to gameplay at level 0, snapshot.
   pub fn new(rom: &[u8]) -> Result<Reservoir, String> {
     let mut emu = NesEmulator::new(rom);
-    let mut reached = false;
-    for frame in 0..BOOT_FRAME_LIMIT {
-      let buttons = if frame % 30 < 4 { BUTTON_START } else { 0 };
-      emu.step_frame(buttons);
-      if emu.ram_read(TETRIS_GAME_MODE) == TETRIS_MODE_PLAY {
-        reached = true;
-        break;
-      }
+    boot_until(&mut emu, TETRIS_MODE_PLAY)?;
+    Self::settle(emu)
+  }
+
+  /// Boot Tetris to the level menu, pick level 9 and start with A held, which
+  /// the game reads as level 19. Snapshot there, so resets return to level 19.
+  pub fn new_fast(rom: &[u8]) -> Result<Reservoir, String> {
+    let mut emu = NesEmulator::new(rom);
+    boot_until(&mut emu, TETRIS_MODE_LEVEL_MENU)?;
+    emu.step_frames(0, 30);
+    for _ in 0..9 {
+      emu.step_frame(BUTTON_RIGHT);
+      emu.step_frame(0);
+      emu.step_frames(0, 6);
     }
-    if !reached {
-      return Err(format!("Tetris did not reach play mode within {} frames", BOOT_FRAME_LIMIT));
+    emu.step_frames(BUTTON_A, 4);
+    emu.step_frames(BUTTON_A | BUTTON_START, 4);
+    emu.step_frames(BUTTON_A, 30);
+    if emu.ram_read(TETRIS_GAME_MODE) != TETRIS_MODE_PLAY {
+      return Err("Tetris did not start from the level menu".to_string());
     }
+    if emu.ram_read(TETRIS_LEVEL) != FAST_LEVEL {
+      return Err(format!("expected level {}, got {}", FAST_LEVEL, emu.ram_read(TETRIS_LEVEL)));
+    }
+    Self::settle(emu)
+  }
+
+  /// Confirm a piece is falling (un-pausing once if not) and snapshot.
+  fn settle(mut emu: NesEmulator) -> Result<Reservoir, String> {
     // A piece should fall during 120 idle frames. If not, the game is paused: tap Start once.
     if !piece_moves(&mut emu, 120) {
       emu.step_frames(BUTTON_START, 4);
@@ -148,6 +170,18 @@ fn changed_at_any_frame(samples: &[u8]) -> bool {
   samples.windows(2).any(|w| w[0] != w[1])
 }
 
+/// Tap Start every 30 frames until `mode` is reached.
+fn boot_until(emu: &mut NesEmulator, mode: u8) -> Result<(), String> {
+  for frame in 0..BOOT_FRAME_LIMIT {
+    let buttons = if frame % 30 < 4 { BUTTON_START } else { 0 };
+    emu.step_frame(buttons);
+    if emu.ram_read(TETRIS_GAME_MODE) == mode {
+      return Ok(());
+    }
+  }
+  Err(format!("Tetris did not reach mode {} within {} frames", mode, BOOT_FRAME_LIMIT))
+}
+
 /// Sample the falling piece's Y every frame for `frames` frames.
 fn piece_moves(emu: &mut NesEmulator, frames: usize) -> bool {
   let mut samples = Vec::with_capacity(frames + 1);
@@ -164,6 +198,26 @@ mod tests {
   use super::*;
   use crate::nes::bus::{BUTTON_SELECT, BUTTON_START};
   use crate::nes::gym::reservoir::rom_or_skip;
+
+  #[test]
+  #[ignore]
+  fn new_fast_starts_at_level_19_and_resets_there() {
+    let rom = match rom_or_skip("roms2/tetris.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let mut r = Reservoir::new_fast(&rom).unwrap();
+    assert!(r.in_play());
+    assert_eq!(r.emu.ram_read(TETRIS_LEVEL), FAST_LEVEL);
+    // A piece reaches the floor in well under 60 frames at this level.
+    let y0 = r.emu.ram_read(TETRIS_PIECE_Y);
+    r.emu.step_frames(0, 30);
+    assert!(r.emu.ram_read(TETRIS_PIECE_Y) >= y0 + 10, "gravity should be two frames per row");
+    r.emu.step_frames(0, 600);
+    r.reset();
+    assert_eq!(r.emu.ram_read(TETRIS_LEVEL), FAST_LEVEL);
+    assert!(r.in_play());
+  }
 
   #[test]
   fn liveness_sees_a_change_that_returns_to_the_starting_value() {
