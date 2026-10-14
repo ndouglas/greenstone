@@ -85,6 +85,31 @@ pub struct Demonstration {
 
 const DEMO_HEADER: usize = 7;
 
+/// Path of cached demonstration `index` under `dir`.
+pub fn cached_demo_path(dir: &std::path::Path, index: usize) -> std::path::PathBuf {
+  dir.join(format!("demo-{}.bin", index))
+}
+
+/// Load `count` cached demonstrations from `dir`, or None if any is missing or malformed.
+pub fn load_cached(dir: &std::path::Path, count: usize) -> Option<Vec<Demonstration>> {
+  (0..count)
+    .map(|i| {
+      std::fs::read(cached_demo_path(dir, i))
+        .ok()
+        .and_then(|b| Demonstration::from_bytes(&b).ok())
+    })
+    .collect()
+}
+
+/// Write demonstrations to `dir` as `demo-N.bin`.
+pub fn save_cached(dir: &std::path::Path, demos: &[Demonstration]) -> std::io::Result<()> {
+  std::fs::create_dir_all(dir)?;
+  for (i, demo) in demos.iter().enumerate() {
+    std::fs::write(cached_demo_path(dir, i), demo.to_bytes())?;
+  }
+  Ok(())
+}
+
 impl Demonstration {
   /// `[noops u16 LE][x_reached i32 LE][cleared u8][buttons...]`.
   pub fn to_bytes(&self) -> Vec<u8> {

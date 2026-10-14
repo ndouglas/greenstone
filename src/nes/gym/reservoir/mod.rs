@@ -6,6 +6,7 @@ pub mod demo;
 pub mod drive;
 pub mod features;
 pub mod ridge;
+pub mod trace;
 
 use crate::nes::bus::{BUTTON_SELECT, BUTTON_START};
 use crate::nes::gym::NesEmulator;
@@ -143,11 +144,11 @@ pub fn episode_noops(index: usize, demonstrations: usize, noop_max: usize) -> us
   (2 * (index % demonstrations) + 1) * noop_max / (2 * demonstrations)
 }
 
-struct Dataset {
-  rows: Vec<Vec<f32>>,
-  targets: Vec<Vec<f32>>,
-  buttons: Vec<u8>,
-  resets: u32,
+pub(crate) struct Dataset {
+  pub(crate) rows: Vec<Vec<f32>>,
+  pub(crate) targets: Vec<Vec<f32>>,
+  pub(crate) buttons: Vec<u8>,
+  pub(crate) resets: u32,
 }
 
 /// Pooled leave-one-dataset-out metrics.
@@ -208,7 +209,7 @@ fn evaluate_folds(datasets: &[Dataset], lambda: f64, mask: u8) -> Result<FoldMet
 }
 
 /// Step the reservoir with the current window (if the condition has one) and build the row.
-fn observe(condition: Condition, window: &[u8], reservoir: Option<&mut Reservoir>, step: usize) -> Vec<f32> {
+pub(crate) fn observe(condition: Condition, window: &[u8], reservoir: Option<&mut Reservoir>, step: usize) -> Vec<f32> {
   match (condition, reservoir) {
     (Condition::Clock, _) => clock_row(step),
     (Condition::Raw, _) => feature_row(window, None),
@@ -225,7 +226,7 @@ fn observe(condition: Condition, window: &[u8], reservoir: Option<&mut Reservoir
   }
 }
 
-fn collect(condition: Condition, smb_rom: &[u8], tetris_rom: &[u8], start: &[u8], demo: &Demonstration) -> Result<Dataset, String> {
+pub(crate) fn collect(condition: Condition, smb_rom: &[u8], tetris_rom: &[u8], start: &[u8], demo: &Demonstration) -> Result<Dataset, String> {
   let mut smb = NesEmulator::new(smb_rom);
   smb.load_state(start);
   smb.step_frames(0, demo.noops);

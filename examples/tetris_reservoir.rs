@@ -5,26 +5,9 @@
 //! Demonstrations are cached in `demo-dir` (default `target/tetris-reservoir-demos`)
 //! as `demo-N.bin`; delete the directory to search again.
 
-use greenstone::nes::gym::reservoir::demo::Demonstration;
+use greenstone::nes::gym::reservoir::demo::{load_cached, save_cached};
 use greenstone::nes::gym::reservoir::{find_demonstrations, run, ExperimentConfig};
 use std::path::{Path, PathBuf};
-
-fn demo_path(dir: &Path, index: usize) -> PathBuf {
-  dir.join(format!("demo-{}.bin", index))
-}
-
-fn load_demos(dir: &Path, count: usize) -> Option<Vec<Demonstration>> {
-  (0..count)
-    .map(|i| std::fs::read(demo_path(dir, i)).ok().and_then(|b| Demonstration::from_bytes(&b).ok()))
-    .collect()
-}
-
-fn save_demos(dir: &Path, demos: &[Demonstration]) {
-  std::fs::create_dir_all(dir).expect("create demo dir");
-  for (i, demo) in demos.iter().enumerate() {
-    std::fs::write(demo_path(dir, i), demo.to_bytes()).expect("write demo");
-  }
-}
 
 fn main() {
   let args: Vec<String> = std::env::args().collect();
@@ -41,14 +24,14 @@ fn main() {
   let tetris_rom = std::fs::read(tetris_path).expect("read tetris");
   let config = ExperimentConfig::default();
   let mut log = |line: &str| eprintln!("{}", line);
-  let demos = match load_demos(&demo_dir, config.demonstrations) {
+  let demos = match load_cached(&demo_dir, config.demonstrations) {
     Some(demos) => {
       log(&format!("loaded {} demonstrations from {}", demos.len(), demo_dir.display()));
       demos
     }
     None => {
       let demos = find_demonstrations(&smb_rom, &config, &mut log);
-      save_demos(&demo_dir, &demos);
+      save_cached(&demo_dir, &demos).expect("write demos");
       log(&format!("saved {} demonstrations to {}", demos.len(), demo_dir.display()));
       demos
     }
