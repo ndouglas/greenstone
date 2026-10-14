@@ -154,6 +154,8 @@ pub struct Enemy {
   pub slot: u8,
   pub kind: u8,
   pub x: i32,
+  /// Screen y, smaller is higher.
+  pub y: u8,
 }
 
 /// SMB zero page: enemy slot active flags, types, x pages and x pixels.
@@ -161,6 +163,7 @@ const ENEMY_ACTIVE: usize = 0x000F;
 const ENEMY_KIND: usize = 0x0016;
 const ENEMY_X_PAGE: usize = 0x006E;
 const ENEMY_X_PIXEL: usize = 0x0087;
+const ENEMY_Y: usize = 0x00CF;
 const ENEMY_SLOTS: usize = 5;
 
 /// The active enemy slots in a window of at least 256 bytes.
@@ -171,6 +174,7 @@ pub fn enemies(window: &[u8]) -> Vec<Enemy> {
       slot: i as u8,
       kind: window[ENEMY_KIND + i],
       x: window[ENEMY_X_PAGE + i] as i32 * 256 + window[ENEMY_X_PIXEL + i] as i32,
+      y: window[ENEMY_Y + i],
     })
     .collect()
 }
@@ -188,6 +192,15 @@ mod tests {
     window[ENEMY_X_PIXEL + 1] = 0x10;
     window[ENEMY_KIND + 3] = 0x02;
     window[ENEMY_X_PIXEL + 3] = 0x99;
-    assert_eq!(enemies(&window), vec![Enemy { slot: 1, kind: 0x06, x: 528 }]);
+    window[ENEMY_Y + 1] = 0xB0;
+    assert_eq!(
+      enemies(&window),
+      vec![Enemy {
+        slot: 1,
+        kind: 0x06,
+        x: 528,
+        y: 0xB0
+      }]
+    );
   }
 }

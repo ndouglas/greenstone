@@ -4,6 +4,7 @@
 
 pub mod demo;
 pub mod drive;
+pub mod encode;
 pub mod features;
 pub mod ridge;
 pub mod trace;
