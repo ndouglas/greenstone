@@ -1,5 +1,8 @@
 //! Feature rows for each experimental condition.
 
+use super::drive::Drive;
+use super::encode::{Encoder, ONEHOT_ROW_LEN};
+
 /// Start of the SMB state window handed to the reservoir: zero page.
 pub const SMB_WINDOW_START: u16 = 0x0000;
 /// Length of the SMB state window.
@@ -25,16 +28,25 @@ pub enum Condition {
   DrivenController,
   /// Tetris RAM, the window copied into Tetris's playfield.
   DrivenPlayfield,
+  /// The four placements as one-hot features, no Tetris. The control for the two below.
+  PlacementOnehot,
+  /// Tetris RAM after steering the four salient placements.
+  PlacementTetris,
+  /// Tetris RAM after steering placements hashed from the whole window.
+  PlacementHash,
 }
 
 impl Condition {
+  /// The default table.
   pub const ALL: [Condition; 5] = [
     Condition::Clock,
     Condition::Raw,
-    Condition::Undriven,
-    Condition::DrivenController,
-    Condition::DrivenPlayfield,
+    Condition::PlacementOnehot,
+    Condition::PlacementTetris,
+    Condition::PlacementHash,
   ];
+  /// The earlier drives, still runnable.
+  pub const LEGACY: [Condition; 3] = [Condition::Undriven, Condition::DrivenController, Condition::DrivenPlayfield];
 
   pub fn name(self) -> &'static str {
     match self {
@@ -43,19 +55,29 @@ impl Condition {
       Condition::Undriven => "undriven",
       Condition::DrivenController => "driven-controller",
       Condition::DrivenPlayfield => "driven-playfield",
+      Condition::PlacementOnehot => "placement-onehot",
+      Condition::PlacementTetris => "placement-tetris",
+      Condition::PlacementHash => "placement-hash",
     }
   }
 
-  pub fn drive(self) -> Option<super::drive::Drive> {
+  pub fn drive(self) -> Option<Drive> {
     match self {
-      Condition::DrivenController => Some(super::drive::Drive::Controller),
-      Condition::DrivenPlayfield => Some(super::drive::Drive::Playfield),
+      Condition::DrivenController => Some(Drive::Controller),
+      Condition::DrivenPlayfield => Some(Drive::Playfield),
+      Condition::PlacementTetris => Some(Drive::Placements(Encoder::Salient)),
+      Condition::PlacementHash => Some(Drive::Placements(Encoder::Hash)),
       _ => None,
     }
   }
 
   pub fn uses_reservoir(self) -> bool {
-    !matches!(self, Condition::Raw | Condition::Clock)
+    !matches!(self, Condition::Raw | Condition::Clock | Condition::PlacementOnehot)
+  }
+
+  /// Placement drives play at level 19 so a piece drops in a few dozen frames.
+  pub fn fast_tetris(self) -> bool {
+    matches!(self.drive(), Some(Drive::Placements(_)))
   }
 
   pub fn appends_drive_bits(self) -> bool {
@@ -63,11 +85,14 @@ impl Condition {
   }
 
   pub fn row_len(self) -> usize {
-    if self == Condition::Clock {
-      return 1 + CLOCK_CAPACITY;
+    match self {
+      Condition::Clock => 1 + CLOCK_CAPACITY,
+      Condition::PlacementOnehot => ONEHOT_ROW_LEN,
+      _ => {
+        let body = if self.uses_reservoir() { TETRIS_RAM_LEN } else { SMB_WINDOW_LEN } as usize;
+        1 + body + if self.appends_drive_bits() { DRIVE_BITS } else { 0 }
+      }
     }
-    let body = if self.uses_reservoir() { TETRIS_RAM_LEN } else { SMB_WINDOW_LEN } as usize;
-    1 + body + if self.appends_drive_bits() { DRIVE_BITS } else { 0 }
   }
 }
 
@@ -138,23 +163,36 @@ mod tests {
     assert_eq!(Condition::Undriven.row_len(), 1 + 2048);
     assert_eq!(Condition::DrivenController.row_len(), 1 + 2048 + 8);
     assert_eq!(Condition::DrivenPlayfield.row_len(), 1 + 2048);
+    assert_eq!(Condition::PlacementOnehot.row_len(), ONEHOT_ROW_LEN);
+    assert_eq!(Condition::PlacementTetris.row_len(), 1 + 2048);
+    assert_eq!(Condition::PlacementHash.row_len(), 1 + 2048);
   }
 
   #[test]
-  fn only_clock_and_raw_skip_the_reservoir() {
-    assert!(!Condition::Clock.uses_reservoir());
-    assert!(!Condition::Raw.uses_reservoir());
-    for c in Condition::ALL.iter().filter(|c| **c != Condition::Raw && **c != Condition::Clock) {
-      assert!(c.uses_reservoir(), "{}", c.name());
+  fn reservoir_use_and_speed_follow_the_drive() {
+    for c in [Condition::Clock, Condition::Raw, Condition::PlacementOnehot] {
+      assert!(!c.uses_reservoir(), "{}", c.name());
+      assert!(c.drive().is_none());
     }
+    for c in [Condition::PlacementTetris, Condition::PlacementHash] {
+      assert!(c.uses_reservoir(), "{}", c.name());
+      assert!(c.fast_tetris(), "{}", c.name());
+    }
+    for c in Condition::LEGACY {
+      assert!(c.uses_reservoir());
+      assert!(!c.fast_tetris());
+    }
+    assert_eq!(Condition::PlacementTetris.drive(), Some(Drive::Placements(Encoder::Salient)));
+    assert_eq!(Condition::PlacementHash.drive(), Some(Drive::Placements(Encoder::Hash)));
   }
 
   #[test]
-  fn names_are_distinct() {
-    let mut names: Vec<&str> = Condition::ALL.iter().map(|c| c.name()).collect();
+  fn names_are_distinct_across_default_and_legacy() {
+    let mut names: Vec<&str> = Condition::ALL.iter().chain(Condition::LEGACY.iter()).map(|c| c.name()).collect();
     names.sort();
     names.dedup();
-    assert_eq!(names.len(), Condition::ALL.len());
+    assert_eq!(names.len(), Condition::ALL.len() + Condition::LEGACY.len());
     assert_eq!(Condition::ALL.len(), 5);
+    assert_eq!(Condition::LEGACY.len(), 3);
   }
 }

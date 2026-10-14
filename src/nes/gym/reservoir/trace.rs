@@ -4,7 +4,7 @@ use super::demo::{smb_cleared, smb_dead, smb_in_cutscene, smb_start_state, smb_w
 use super::drive::{Reservoir, TETRIS_PLAYFIELD, TETRIS_PLAYFIELD_LEN};
 use super::features::Condition;
 use super::ridge::{fit, Readout};
-use super::{collect, observe, outputs_to_buttons, Dataset};
+use super::{collect, observe, outputs_to_buttons, reservoir_for, Dataset};
 use crate::nes::gym::NesEmulator;
 use std::io::Write;
 
@@ -51,16 +51,7 @@ pub fn replay(
   let mut smb = NesEmulator::new(smb_rom);
   smb.load_state(&smb_start_state(smb_rom));
   smb.step_frames(0, demo.noops);
-  let mut reservoirs: Vec<Option<Reservoir>> = readouts
-    .iter()
-    .map(|(c, _)| {
-      if c.uses_reservoir() {
-        Reservoir::new(tetris_rom).map(Some)
-      } else {
-        Ok(None)
-      }
-    })
-    .collect::<Result<_, _>>()?;
+  let mut reservoirs: Vec<Option<Reservoir>> = readouts.iter().map(|(c, _)| reservoir_for(*c, tetris_rom)).collect::<Result<_, _>>()?;
   let screen = reservoirs.iter().position(|r| r.is_some());
   let mut steps = Vec::with_capacity(demo.buttons.len());
   for (step, &action) in demo.buttons.iter().enumerate() {
@@ -122,11 +113,7 @@ pub fn trace_episode(
   let mut smb = NesEmulator::new(smb_rom);
   smb.load_state(&smb_start_state(smb_rom));
   smb.step_frames(0, noops);
-  let mut reservoir = if condition.uses_reservoir() {
-    Some(Reservoir::new(tetris_rom)?)
-  } else {
-    None
-  };
+  let mut reservoir = reservoir_for(condition, tetris_rom)?;
   let mut steps = Vec::new();
   for step in 0..max_steps {
     let window = smb_window(&mut smb);

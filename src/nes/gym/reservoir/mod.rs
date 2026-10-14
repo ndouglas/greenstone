@@ -13,6 +13,7 @@ use crate::nes::bus::{BUTTON_SELECT, BUTTON_START};
 use crate::nes::gym::NesEmulator;
 use demo::{beam_search, smb_cleared, smb_dead, smb_in_cutscene, smb_start_state, smb_window, smb_x, Demonstration, MACRO_FRAMES};
 use drive::{fold_to_controller, Reservoir};
+use encode::{encode, onehot_row, Encoder};
 use features::{clock_row, feature_row, Condition};
 use ridge::{fit, Readout};
 
@@ -209,11 +210,24 @@ fn evaluate_folds(datasets: &[Dataset], lambda: f64, mask: u8) -> Result<FoldMet
   })
 }
 
+/// The reservoir a condition needs, booted the way its drive needs it, or None.
+pub(crate) fn reservoir_for(condition: Condition, tetris_rom: &[u8]) -> Result<Option<Reservoir>, String> {
+  if !condition.uses_reservoir() {
+    return Ok(None);
+  }
+  if condition.fast_tetris() {
+    Reservoir::new_fast(tetris_rom).map(Some)
+  } else {
+    Reservoir::new(tetris_rom).map(Some)
+  }
+}
+
 /// Step the reservoir with the current window (if the condition has one) and build the row.
 pub(crate) fn observe(condition: Condition, window: &[u8], reservoir: Option<&mut Reservoir>, step: usize) -> Vec<f32> {
   match (condition, reservoir) {
     (Condition::Clock, _) => clock_row(step),
     (Condition::Raw, _) => feature_row(window, None),
+    (Condition::PlacementOnehot, _) => onehot_row(&encode(Encoder::Salient, window)),
     (c, Some(r)) => {
       r.step(c.drive(), window, MACRO_FRAMES);
       let bits = if c.appends_drive_bits() {
@@ -231,11 +245,7 @@ pub(crate) fn collect(condition: Condition, smb_rom: &[u8], tetris_rom: &[u8], s
   let mut smb = NesEmulator::new(smb_rom);
   smb.load_state(start);
   smb.step_frames(0, demo.noops);
-  let mut reservoir = if condition.uses_reservoir() {
-    Some(Reservoir::new(tetris_rom)?)
-  } else {
-    None
-  };
+  let mut reservoir = reservoir_for(condition, tetris_rom)?;
   let mut data = Dataset {
     rows: Vec::new(),
     targets: Vec::new(),
@@ -269,11 +279,7 @@ fn episode(
   let mut smb = NesEmulator::new(smb_rom);
   smb.load_state(start);
   smb.step_frames(0, noops);
-  let mut reservoir = if condition.uses_reservoir() {
-    Some(Reservoir::new(tetris_rom)?)
-  } else {
-    None
-  };
+  let mut reservoir = reservoir_for(condition, tetris_rom)?;
   let mut max_x = 0;
   for step in 0..max_steps {
     let window = smb_window(&mut smb);
@@ -436,6 +442,14 @@ mod tests {
     assert_eq!(assign_round_robin(7, 3), vec![vec![0, 3, 6], vec![1, 4], vec![2, 5]]);
     assert_eq!(assign_round_robin(2, 8), vec![vec![0], vec![1]]);
     assert!(assign_round_robin(0, 3).is_empty());
+  }
+
+  #[test]
+  fn observe_onehot_needs_no_reservoir() {
+    let window = vec![0u8; 256];
+    let row = observe(Condition::PlacementOnehot, &window, None, 0);
+    assert_eq!(row.len(), Condition::PlacementOnehot.row_len());
+    assert_eq!(row[0], 1.0);
   }
 
   #[test]
