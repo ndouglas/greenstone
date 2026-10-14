@@ -315,12 +315,13 @@ pub fn find_demonstrations(smb_rom: &[u8], config: &ExperimentConfig, log: &mut 
     .collect()
 }
 
-/// Run every condition on the given demonstrations and return the report.
+/// Run the given conditions on the given demonstrations and return the report.
 /// `log` receives progress lines.
 pub fn run(
   smb_rom: &[u8],
   tetris_rom: &[u8],
   demos: &[Demonstration],
+  conditions: &[Condition],
   config: &ExperimentConfig,
   log: &mut dyn FnMut(&str),
 ) -> Result<ExperimentReport, String> {
@@ -331,7 +332,7 @@ pub fn run(
   let mask = demos.iter().fold(0, |acc, d| acc | active_bits(&d.buttons));
   let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
   let mut results = Vec::new();
-  for condition in Condition::ALL {
+  for &condition in conditions {
     log(&format!("{}: collecting features from {} demonstrations", condition.name(), demos.len()));
     let datasets: Vec<Dataset> = std::thread::scope(|s| {
       let handles: Vec<_> = demos

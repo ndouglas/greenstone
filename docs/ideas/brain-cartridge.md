@@ -90,6 +90,55 @@ closed for this readout. If neither does, the readout needs a second
 layer, or the DAgger-style corrections from the design note, before any
 reservoir comparison means anything.
 
+Result (2026-10-14, placement drive): the first version where Tetris is a
+real reservoir. Each SMB step is encoded as four tetromino placements, a
+column and a rotation each: the distance to the nearest enemy ahead in
+32-pixel bins and its height, the same for the second enemy, Mario's
+height with his airborne state, and his speed with his state byte. Tetris
+runs at level 19, selected through its own menu, and a scripted player
+steers each piece by controller taps: rotate, slide, drop, and wait for
+the lock. Game over resets the board. Two controls: `placement-onehot`
+feeds the same four placements to the readout as 56 one-hot features with
+no Tetris in between, and `placement-hash` drives Tetris from a hash of
+the whole window. Same six demonstrations, same leave-one-out.
+
+```
+condition          |  rows | train acc | held-out acc | held-out mse |  mean x | max x | resets
+-------------------+-------+-----------+--------------+--------------+---------+-------+-------
+clock              |  2012 |     0.861 |        0.808 |       0.1376 |   999.4 |  1442 |      0
+raw                |  2012 |     0.896 |        0.891 |       0.0909 |   313.2 |   314 |      0
+placement-onehot   |  2012 |     0.865 |        0.860 |       0.1134 |   313.6 |   315 |      0
+placement-tetris   |  2012 |     0.854 |        0.794 |       0.1591 |   866.6 |  1512 |    889
+placement-hash     |  2012 |     0.846 |        0.768 |       0.1707 |   934.8 |  1433 |    868
+```
+
+Four things, in order of how much they matter.
+
+Tetris subtracts. The one-hot control holds out at 0.860 and the same
+placements played through Tetris hold out at 0.794, below the clock
+floor, with training accuracy above held-out for the first time. Tetris
+turned 56 clean features into 2,048 noisy ones, and with a game over
+every nine pieces the board never held more than two steps of history.
+The dynamics scrambled the signal rather than enriching it.
+
+Locality matters, as predicted. The hash drive is the worst row at 0.768,
+below the floor: unrelated stacks for similar Mario states give the
+readout nothing but features to overfit.
+
+The encoder is weaker than the bytes. The one-hot control, which is the
+encoder's ceiling, sits three points under raw. The four features know
+about enemies and Mario, and nothing about terrain, and most A presses in
+1-1 are for pipes, pits and stairs, not Goombas. The encoder search in
+the design note's second phase is the fix, and it needs no Tetris to run.
+
+The closed-loop column has been flattered by noise. The two Tetris
+readouts travel to 867 and 935 on average while raw and one-hot die at
+the first Goomba, and the hash does better than the salient drive. A
+readout whose A output hovers around one half jumps at random, and
+jumping at random while running right gets further through the start of
+1-1 than any faithful copy of the demonstration does. Closed loop needs a
+random-A baseline before it says anything, and this table is the reason.
+
 A captioned explainer video of the experiment, six chapters ending with
 the whole level in real time, is built by `examples/reservoir_dump.rs`
 followed by `tools/reservoir_video.py`; see

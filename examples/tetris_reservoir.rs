@@ -1,16 +1,21 @@
 //! Tetris as a reservoir computer for Super Mario Bros.
 //!
-//! Usage: cargo run --release --example tetris_reservoir -- [smb.nes] [tetris.nes] [demo-dir]
+//! Usage: cargo run --release --example tetris_reservoir -- [smb.nes] [tetris.nes] [demo-dir] [--legacy]
 //!
+//! `--legacy` adds the undriven, controller-driven and playfield conditions to the table.
 //! Demonstrations are cached in `demo-dir` (default `target/tetris-reservoir-demos`)
 //! as `demo-N.bin`; delete the directory to search again.
 
 use greenstone::nes::gym::reservoir::demo::{load_cached, save_cached};
+use greenstone::nes::gym::reservoir::drive::{FAST_LEVEL, PIECE_FRAME_LIMIT};
+use greenstone::nes::gym::reservoir::encode::{ENEMY_BIN_PX, PIECES_PER_STEP};
+use greenstone::nes::gym::reservoir::features::Condition;
 use greenstone::nes::gym::reservoir::{find_demonstrations, run, ExperimentConfig};
 use std::path::{Path, PathBuf};
 
 fn main() {
-  let args: Vec<String> = std::env::args().collect();
+  let legacy = std::env::args().any(|a| a == "--legacy");
+  let args: Vec<String> = std::env::args().filter(|a| !a.starts_with("--")).collect();
   let smb_path = args.get(1).map(String::as_str).unwrap_or("roms2/super_mario_bros.nes");
   let tetris_path = args.get(2).map(String::as_str).unwrap_or("roms2/tetris.nes");
   let demo_dir = PathBuf::from(args.get(3).map(String::as_str).unwrap_or("target/tetris-reservoir-demos"));
@@ -36,7 +41,11 @@ fn main() {
       demos
     }
   };
-  let report = match run(&smb_rom, &tetris_rom, &demos, &config, &mut log) {
+  let mut conditions: Vec<Condition> = Condition::ALL.to_vec();
+  if legacy {
+    conditions.extend(Condition::LEGACY);
+  }
+  let report = match run(&smb_rom, &tetris_rom, &demos, &conditions, &config, &mut log) {
     Ok(r) => r,
     Err(e) => {
       eprintln!("error: {}", e);
@@ -53,6 +62,10 @@ fn main() {
   }
   println!("accuracy is over the buttons the demonstrations use: {:08b}", report.active_bits);
   println!("held-out columns are leave-one-demonstration-out, pooled over folds");
+  println!(
+    "placements: {} per step, enemy bins {} px, Tetris level {} via the menu, {} frames per piece at most",
+    PIECES_PER_STEP, ENEMY_BIN_PX, FAST_LEVEL, PIECE_FRAME_LIMIT
+  );
   println!();
   println!(
     "{:<18} | {:>5} | {:>9} | {:>12} | {:>12} | {:>7} | {:>5} | {:>6}",
