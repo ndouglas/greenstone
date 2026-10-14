@@ -43,7 +43,7 @@ fn main() {
   });
   std::fs::create_dir_all(&out).expect("create out dir");
 
-  let conditions = [Condition::Raw, Condition::DrivenPlayfield, Condition::Clock];
+  let conditions = [Condition::Raw, Condition::PlacementOnehot, Condition::PlacementTetris, Condition::Clock];
   let readouts: Vec<(Condition, Readout)> = conditions
     .iter()
     .map(|&c| {
@@ -61,18 +61,20 @@ fn main() {
     "conditions": conditions.iter().map(|c| c.name()).collect::<Vec<_>>(),
     "weights": {
       "raw_a": a_weights(&readouts[0].1),
-      "playfield_a": a_weights(&readouts[1].1),
+      "onehot_a": a_weights(&readouts[1].1),
+      "tetris_a": a_weights(&readouts[2].1),
     },
     "steps": steps.iter().map(|s| json!({
       "x": s.x, "y": s.y, "buttons": s.buttons, "cutscene": s.cutscene,
       "window": hex(&s.window), "board": hex(&s.board), "tetris_ram": hex(&s.tetris_ram),
-      "enemies": s.enemies.iter().map(|e| json!({"slot": e.slot, "kind": e.kind, "x": e.x})).collect::<Vec<_>>(),
+      "enemies": s.enemies.iter().map(|e| json!({"slot": e.slot, "kind": e.kind, "x": e.x, "y": e.y})).collect::<Vec<_>>(),
+      "placements": s.placements,
       "outputs": s.outputs,
     })).collect::<Vec<_>>(),
   });
   std::fs::write(out.join("demo.json"), serde_json::to_string(&demo_json).unwrap()).expect("write json");
 
-  for (name, index) in [("raw", 0usize), ("clock", 2usize)] {
+  for (name, index) in [("raw", 0usize), ("clock", 3usize)] {
     eprintln!("tracing a closed-loop {} episode", name);
     let noops = episode_noops(0, demos.len(), config.noop_max);
     let mut sink = BufWriter::new(File::create(out.join(format!("episode-{}.smb.rgb", name))).expect("create"));

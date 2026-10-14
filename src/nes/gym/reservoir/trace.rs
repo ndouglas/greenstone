@@ -2,19 +2,29 @@
 
 use super::demo::{smb_cleared, smb_dead, smb_in_cutscene, smb_start_state, smb_window, smb_x, smb_y, Demonstration, MACRO_FRAMES};
 use super::drive::{Reservoir, TETRIS_PLAYFIELD, TETRIS_PLAYFIELD_LEN};
+use super::encode::{encode, Encoder};
 use super::features::Condition;
 use super::ridge::{fit, Readout};
 use super::{collect, observe, outputs_to_buttons, reservoir_for, Dataset};
 use crate::nes::gym::NesEmulator;
 use std::io::Write;
 
-/// Fit one condition's readout on every given demonstration.
+/// Fit one condition's readout on every given demonstration, collecting one demonstration per thread.
 pub fn fit_condition(condition: Condition, smb_rom: &[u8], tetris_rom: &[u8], demos: &[Demonstration], lambda: f64) -> Result<Readout, String> {
   let start = smb_start_state(smb_rom);
-  let datasets: Vec<Dataset> = demos
-    .iter()
-    .map(|demo| collect(condition, smb_rom, tetris_rom, &start, demo))
-    .collect::<Result<_, _>>()?;
+  let datasets: Vec<Dataset> = std::thread::scope(|s| {
+    let handles: Vec<_> = demos
+      .iter()
+      .map(|demo| {
+        let start = &start;
+        s.spawn(move || collect(condition, smb_rom, tetris_rom, start, demo))
+      })
+      .collect();
+    handles
+      .into_iter()
+      .map(|h| h.join().expect("collect worker panicked"))
+      .collect::<Result<Vec<_>, _>>()
+  })?;
   let rows: Vec<Vec<f32>> = datasets.iter().flat_map(|d| d.rows.iter().cloned()).collect();
   let targets: Vec<Vec<f32>> = datasets.iter().flat_map(|d| d.targets.iter().cloned()).collect();
   fit(&rows, &targets, lambda)
@@ -33,6 +43,8 @@ pub struct StepRecord {
   /// The whole of Tetris's work RAM after this step, empty when no reservoir is traced.
   pub tetris_ram: Vec<u8>,
   pub enemies: Vec<Enemy>,
+  /// The salient encoder's placements for this window, as (column, rotation).
+  pub placements: Vec<(u8, u8)>,
   /// Each traced readout's raw outputs for this step, in the order given.
   pub outputs: Vec<Vec<f64>>,
 }
@@ -79,6 +91,7 @@ pub fn replay(
       buttons: action,
       cutscene,
       enemies: enemies(&window),
+      placements: encode(Encoder::Salient, &window).iter().map(|p| (p.column, p.rotation)).collect(),
       window,
       board,
       tetris_ram,

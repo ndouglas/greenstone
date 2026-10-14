@@ -253,7 +253,7 @@ def trace_panel(draw, box, dump, step, span=150):
     if dump.a_pressed(s):
       draw.rectangle((px(s), plot_top, px(s + 1), plot_bot), fill=(40, 70, 40))
   draw.line((x0, mid, x1, mid), fill=(120, 120, 130), width=1)
-  for cond, color in (("raw", RAW_COLOR), ("driven-playfield", PLAY_COLOR)):
+  for cond, color in (("raw", RAW_COLOR), ("placement-tetris", PLAY_COLOR)):
     pts = [(px(s), py(dump.a_output(s, cond))) for s in range(lo, step + 1)]
     if len(pts) > 1:
       draw.line(pts, fill=color, width=2)
@@ -434,8 +434,57 @@ def chapter_reservoir(dump, n):
     panel(d, (1110, 70, 1250, 480), "RAM")
     if s["tetris_bytes"]:
       byte_grid(d, (1118, 96), s["tetris_bytes"], 32, 4)
-    gauge(d, (60, 560, 600, 590), dump.a_output(step, "driven-playfield"), PLAY_COLOR, "Tetris readout, A")
-    gauge(d, (660, 560, 1200, 590), dump.a_output(step, "raw"), RAW_COLOR, "raw readout, A")
+    gauge(d, (60, 560, 600, 590), dump.a_output(step, "raw"), RAW_COLOR, "raw readout, A")
+    d.text((660, 560), "This paste left Tetris nothing to do, and its readout scored a point under raw.", font=font(16), fill=DIM)
+    caption(img, caption_at(t, schedule))
+    yield img
+
+
+PLACEMENT_LABELS = ("enemy 1 distance", "enemy 2 distance", "Mario height", "Mario speed")
+
+
+def placement_bars(draw, origin, placements):
+  """Four labelled ten-column bars with the chosen column lit and the rotation printed."""
+  ox, oy = origin
+  for i, (label, (col, rot)) in enumerate(zip(PLACEMENT_LABELS, placements)):
+    y = oy + i * 70
+    draw.text((ox, y), f"piece {i + 1}: {label}", font=font(15), fill=DIM)
+    for c in range(10):
+      x = ox + c * 24
+      fill = ACCENT if c == col else (44, 44, 54)
+      draw.rectangle((x, y + 22, x + 20, y + 44), fill=fill)
+    draw.text((ox + 250, y + 22), f"col {col}  rot {rot}", font=font(15), fill=TEXT)
+
+
+def chapter_placement(dump, n):
+  schedule = [
+    (0, "Second try. Instead of pasting bytes, we read four numbers off Mario and play them as tetrominoes."),
+    (8, "Piece one: how far ahead the nearest enemy is, 32 pixels per column. Piece two: the next enemy. Three: Mario's height. Four: his speed."),
+    (18, "Tetris plays them at level 19 by tapping the controller: rotate, slide, drop. It tops out often; a game over just clears the board."),
+    (28, "Now the board is a picture of what is around Mario, and a cell in it is the kind of feature a weighted sum could never build from bytes."),
+  ]
+  fps = dump.frames_per_step
+  for i in range(n):
+    t = i / FPS
+    frame = min(i, dump.smb.shape[0] - 1)
+    step = frame // fps
+    s = dump.steps[step]
+    img = Image.new("RGB", (W, H), BG)
+    d = ImageDraw.Draw(img)
+    d.text((40, 20), "4b. A placement", font=font(30), fill=TEXT)
+    img.paste(screen(dump.smb[frame], 1), (40, 70))
+    buttons_lamp(d, (40, 320), s["buttons"])
+    d.text((40, 360), f"step {step}   x {s['x']}", font=font(16), fill=DIM)
+    panel(d, (320, 70, 720, 400), "the four numbers, as placements")
+    placement_bars(d, (340, 100), s.get("placements", [(9, 0)] * 4))
+    d.text((732, 220), ">", font=font(30), fill=DIM)
+    panel(d, (760, 70, 960, 480), "board, from RAM")
+    board(d, (780, 100), s["board_bytes"], 17)
+    panel(d, (980, 70, 1240, 480), "Tetris screen")
+    img.paste(screen(dump.tetris[step], 1), (984, 100))
+    gauge(d, (60, 450, 600, 480), dump.a_output(step, "placement-onehot"), TRUTH_COLOR, "one-hot readout, A (no Tetris)")
+    gauge(d, (60, 540, 600, 570), dump.a_output(step, "placement-tetris"), PLAY_COLOR, "Tetris readout, A")
+    d.text((640, 540), "example pressed A: " + ("yes" if dump.a_pressed(step) else "no"), font=font(18), fill=TRUTH_COLOR if dump.a_pressed(step) else DIM)
     caption(img, caption_at(t, schedule))
     yield img
 
@@ -444,7 +493,7 @@ def chapter_realtime(dump, n):
   schedule = [
     (0, "Everything together, in real time. The example plays. The two readouts watch the same bytes and say what they would press."),
     (10, ""),
-    (30, "Level clear. Both readouts agreed with the examples about 89% of the time. Nearly every miss is the A button."),
+    (30, "Level clear. Raw agreed with the examples 89% of the time, the Tetris readout 79%. Nearly every miss is the A button."),
   ]
   fps = dump.frames_per_step
   total = dump.smb.shape[0]
@@ -470,7 +519,7 @@ def chapter_realtime(dump, n):
     strip(d, (40, 545, 1240, 600), dump, x_now=dump.progress[step])
     gauge(d, (60, 630, 420, 650), 1.0 if dump.a_pressed(step) else 0.0, TRUTH_COLOR, "example")
     gauge(d, (460, 630, 820, 650), dump.a_output(step, "raw"), RAW_COLOR, "raw readout")
-    gauge(d, (860, 630, 1220, 650), dump.a_output(step, "driven-playfield"), PLAY_COLOR, "Tetris readout")
+    gauge(d, (860, 630, 1220, 650), dump.a_output(step, "placement-tetris"), PLAY_COLOR, "Tetris readout")
     text = caption_at(t, schedule)
     if text:
       caption(img, text)
@@ -519,17 +568,18 @@ def chapter_coda(dump, n):
 
 def chapter_verdict(dump, n):
   rows = [
-    "condition          train acc  held-out acc  mean x (closed loop)",
-    "clock                  0.861         0.808   999",
-    "raw                    0.896         0.891   313",
-    "undriven Tetris        0.806         0.797   814",
-    "Tetris, controller     0.805         0.793   765",
-    "Tetris, playfield      0.888         0.886   314",
+    "condition          train acc  held-out acc  mean x (closed loop)  resets",
+    "clock                  0.861         0.808   999                       0",
+    "raw                    0.896         0.891   313                       0",
+    "placements, one-hot    0.865         0.860   314                       0",
+    "placements, Tetris     0.854         0.794   867                     889",
+    "placements, hashed     0.846         0.768   935                     868",
   ]
   lines = [
-    "Tetris carries at best what the window already carries, a little degraded.",
-    "The readout cannot copy its own examples: a weighted sum of bytes cannot see 'the Goomba is close'.",
-    "So the bottleneck is the readout, not the reservoir. Next: give the readout bits instead of bytes.",
+    "Tetris subtracts: the same four placements score 0.860 straight and 0.794 after Tetris plays them.",
+    "The hash is worst of all, so locality matters. And the four features know nothing about pipes or pits.",
+    "The far closed-loop x is noise: a readout hovering at one half jumps at random, and random jumping gets far.",
+    "Next: let a search choose the features, and give closed loop a random-A baseline.",
   ]
   for i in range(n):
     img = Image.new("RGB", (W, H), BG)
@@ -539,7 +589,7 @@ def chapter_verdict(dump, n):
       d.text((60, 90 + k * 30), row, font=font(20, mono=True), fill=TEXT if k else DIM)
     for k, line in enumerate(lines):
       if i > (k + 1) * FPS:
-        d.text((60, 320 + k * 60), line, font=font(24), fill=TEXT)
+        d.text((60, 300 + k * 60), line, font=font(22), fill=TEXT)
     yield img
 
 
@@ -550,10 +600,11 @@ def chapters(dump, quick):
     (chapter_demo, 32, ()),
     (chapter_readout, 34, ()),
     (chapter_reservoir, 42, ()),
+    (chapter_placement, 38, ()),
     (title_card, 3, ("Now all of it, in real time", "One level of Super Mario Bros., 36 seconds")),
     (chapter_realtime, None, ()),
     (chapter_coda, None, ()),
-    (chapter_verdict, 14, ()),
+    (chapter_verdict, 18, ()),
   ]
   for fn, seconds, extra in spec:
     if fn is chapter_realtime:
