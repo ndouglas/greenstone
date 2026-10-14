@@ -8,10 +8,15 @@ pub const SMB_WINDOW_LEN: u16 = 256;
 pub const TETRIS_RAM_LEN: u16 = 2048;
 /// Number of drive bits appended for the controller-driven condition.
 pub const DRIVE_BITS: usize = 8;
+/// Slots in the clock condition's one-hot step index. Later steps clamp to the last slot.
+pub const CLOCK_CAPACITY: usize = 1024;
 
 /// Which features the readout sees.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Condition {
+  /// A one-hot of the step index and nothing else. The upper bound on what a
+  /// readout can get from a clock, which is what undriven Tetris RAM amounts to.
+  Clock,
   /// The SMB window itself. The real baseline.
   Raw,
   /// Tetris RAM with no input. The control.
@@ -23,7 +28,8 @@ pub enum Condition {
 }
 
 impl Condition {
-  pub const ALL: [Condition; 4] = [
+  pub const ALL: [Condition; 5] = [
+    Condition::Clock,
     Condition::Raw,
     Condition::Undriven,
     Condition::DrivenController,
@@ -32,6 +38,7 @@ impl Condition {
 
   pub fn name(self) -> &'static str {
     match self {
+      Condition::Clock => "clock",
       Condition::Raw => "raw",
       Condition::Undriven => "undriven",
       Condition::DrivenController => "driven-controller",
@@ -48,7 +55,7 @@ impl Condition {
   }
 
   pub fn uses_reservoir(self) -> bool {
-    !matches!(self, Condition::Raw)
+    !matches!(self, Condition::Raw | Condition::Clock)
   }
 
   pub fn appends_drive_bits(self) -> bool {
@@ -56,9 +63,20 @@ impl Condition {
   }
 
   pub fn row_len(self) -> usize {
+    if self == Condition::Clock {
+      return 1 + CLOCK_CAPACITY;
+    }
     let body = if self.uses_reservoir() { TETRIS_RAM_LEN } else { SMB_WINDOW_LEN } as usize;
     1 + body + if self.appends_drive_bits() { DRIVE_BITS } else { 0 }
   }
+}
+
+/// `[1.0, one-hot of step over CLOCK_CAPACITY slots]`.
+pub fn clock_row(step: usize) -> Vec<f32> {
+  let mut row = vec![0.0; 1 + CLOCK_CAPACITY];
+  row[0] = 1.0;
+  row[1 + step.min(CLOCK_CAPACITY - 1)] = 1.0;
+  row
 }
 
 /// `[1.0, body / 255 ..., drive bit 0 .. drive bit 7]`.
@@ -98,7 +116,24 @@ mod tests {
   }
 
   #[test]
+  fn clock_row_is_a_one_hot_of_the_step_index_after_the_bias() {
+    let row = clock_row(3);
+    assert_eq!(row.len(), 1 + CLOCK_CAPACITY);
+    assert_eq!(row[0], 1.0);
+    assert_eq!(row[1 + 3], 1.0);
+    assert_eq!(row.iter().filter(|&&v| v != 0.0).count(), 2);
+  }
+
+  #[test]
+  fn clock_row_clamps_steps_past_capacity_to_the_last_slot() {
+    let row = clock_row(CLOCK_CAPACITY + 50);
+    assert_eq!(row[1 + CLOCK_CAPACITY - 1], 1.0);
+    assert_eq!(row.iter().filter(|&&v| v != 0.0).count(), 2);
+  }
+
+  #[test]
   fn row_lengths_match_conditions() {
+    assert_eq!(Condition::Clock.row_len(), 1 + CLOCK_CAPACITY);
     assert_eq!(Condition::Raw.row_len(), 1 + 256);
     assert_eq!(Condition::Undriven.row_len(), 1 + 2048);
     assert_eq!(Condition::DrivenController.row_len(), 1 + 2048 + 8);
@@ -106,9 +141,10 @@ mod tests {
   }
 
   #[test]
-  fn only_raw_skips_the_reservoir() {
+  fn only_clock_and_raw_skip_the_reservoir() {
+    assert!(!Condition::Clock.uses_reservoir());
     assert!(!Condition::Raw.uses_reservoir());
-    for c in Condition::ALL.iter().filter(|c| **c != Condition::Raw) {
+    for c in Condition::ALL.iter().filter(|c| **c != Condition::Raw && **c != Condition::Clock) {
       assert!(c.uses_reservoir(), "{}", c.name());
     }
   }
@@ -118,6 +154,7 @@ mod tests {
     let mut names: Vec<&str> = Condition::ALL.iter().map(|c| c.name()).collect();
     names.sort();
     names.dedup();
-    assert_eq!(names.len(), 4);
+    assert_eq!(names.len(), Condition::ALL.len());
+    assert_eq!(Condition::ALL.len(), 5);
   }
 }

@@ -100,7 +100,7 @@ pub mod smb1_ram {
   pub const PLAYER_X_PIXEL: u16 = 0x0086;
   /// Player X position in pages (each page = 256 pixels).
   pub const PLAYER_X_PAGE: u16 = 0x006D;
-  /// Player state: 0=dead, else alive.
+  /// Player state. 0x08 is normal play, 0x0B is dying, 0x06 is the last death frame.
   pub const PLAYER_STATE: u16 = 0x000E;
   /// Current world (0-indexed).
   pub const WORLD: u16 = 0x075F;
@@ -116,12 +116,17 @@ pub mod smb1_ram {
   pub const TIMER_TENS: u16 = 0x07F9;
   /// Timer ones digit.
   pub const TIMER_ONES: u16 = 0x07FA;
-  /// Player float state (0x03 = dying animation).
+  /// Player float state: 0 on ground, 1 jumping, 2 walked off a ledge, 3 sliding down the flagpole.
   pub const PLAYER_FLOAT_STATE: u16 = 0x001D;
-  /// Game engine state (e.g., 0x0B = dying, 0x06 = playing).
+  /// Operating mode: 0 title, 1 game, 2 victory, 3 game over. Does not change on death.
   pub const GAME_ENGINE_STATE: u16 = 0x0770;
   /// Flag area offset (increments on level clear).
   pub const LEVEL_CLEAR_FLAG: u16 = 0x0001;
+
+  /// True while the player is dying. Fires about 200 frames before the lives counter drops.
+  pub fn player_is_dead(emu: &mut super::NesEmulator) -> bool {
+    matches!(emu.ram_read(PLAYER_STATE), 0x06 | 0x0B)
+  }
 }
 
 /// Reward extractor for Super Mario Bros. (US).
@@ -170,9 +175,7 @@ impl SuperMarioBrosReward {
   }
 
   fn is_dead(emu: &mut NesEmulator) -> bool {
-    let engine_state = emu.ram_read(smb1_ram::GAME_ENGINE_STATE);
-    let float_state = emu.ram_read(smb1_ram::PLAYER_FLOAT_STATE);
-    engine_state == 0x0B || float_state == 0x03
+    smb1_ram::player_is_dead(emu)
   }
 }
 
@@ -326,6 +329,41 @@ mod tests {
     data[16 + 0x7FFD] = 0x80;
     data.resize(16 + 0x8000 + 0x2000, 0x00);
     data
+  }
+
+  #[test]
+  fn player_is_dead_follows_the_player_state_byte() {
+    init();
+    let rom = build_test_rom();
+    let mut emu = NesEmulator::new(&rom);
+    emu.ram_write(smb1_ram::PLAYER_STATE, 0x08);
+    assert!(!smb1_ram::player_is_dead(&mut emu));
+    emu.ram_write(smb1_ram::PLAYER_STATE, 0x0B);
+    assert!(smb1_ram::player_is_dead(&mut emu));
+    emu.ram_write(smb1_ram::PLAYER_STATE, 0x06);
+    assert!(smb1_ram::player_is_dead(&mut emu));
+  }
+
+  #[test]
+  fn smb_reward_penalises_dying_once_and_not_the_flagpole_slide() {
+    init();
+    let rom = build_test_rom();
+    let mut emu = NesEmulator::new(&rom);
+    let mut reward = SuperMarioBrosReward::new();
+    emu.ram_write(smb1_ram::PLAYER_STATE, 0x08);
+    reward.extract(&mut emu);
+
+    // Sliding down the flagpole: float state 3, player state still normal. Not a death.
+    emu.ram_write(smb1_ram::PLAYER_FLOAT_STATE, 0x03);
+    let r = reward.extract(&mut emu);
+    assert!(r > -1.0, "flagpole slide was penalised as death: {}", r);
+
+    // Dying: player state 0x0B. Penalised once, then not again while still dying.
+    emu.ram_write(smb1_ram::PLAYER_STATE, 0x0B);
+    let r = reward.extract(&mut emu);
+    assert!(r < -14.0, "death not penalised: {}", r);
+    let r = reward.extract(&mut emu);
+    assert!(r > -1.0, "death penalised twice: {}", r);
   }
 
   #[test]

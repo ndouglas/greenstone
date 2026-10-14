@@ -11,7 +11,7 @@ use crate::nes::bus::{BUTTON_SELECT, BUTTON_START};
 use crate::nes::gym::NesEmulator;
 use demo::{beam_search, smb_cleared, smb_dead, smb_start_state, smb_window, smb_x, Demonstration, MACRO_FRAMES};
 use drive::{fold_to_controller, Reservoir};
-use features::{feature_row, Condition};
+use features::{clock_row, feature_row, Condition};
 use ridge::{fit, Readout};
 
 pub struct ExperimentConfig {
@@ -139,8 +139,9 @@ struct Dataset {
 }
 
 /// Step the reservoir with the current window (if the condition has one) and build the row.
-fn observe(condition: Condition, window: &[u8], reservoir: Option<&mut Reservoir>) -> Vec<f32> {
+fn observe(condition: Condition, window: &[u8], reservoir: Option<&mut Reservoir>, step: usize) -> Vec<f32> {
   match (condition, reservoir) {
+    (Condition::Clock, _) => clock_row(step),
     (Condition::Raw, _) => feature_row(window, None),
     (c, Some(r)) => {
       r.step(c.drive(), window, MACRO_FRAMES);
@@ -169,9 +170,9 @@ fn collect(condition: Condition, smb_rom: &[u8], tetris_rom: &[u8], start: &[u8]
     buttons: Vec::new(),
     resets: 0,
   };
-  for &action in &demo.buttons {
+  for (step, &action) in demo.buttons.iter().enumerate() {
     let window = smb_window(&mut smb);
-    data.rows.push(observe(condition, &window, reservoir.as_mut()));
+    data.rows.push(observe(condition, &window, reservoir.as_mut(), step));
     data.targets.push(buttons_to_targets(action));
     data.buttons.push(action);
     smb.step_frames(action, MACRO_FRAMES);
@@ -199,9 +200,9 @@ fn episode(
     None
   };
   let mut max_x = 0;
-  for _ in 0..max_steps {
+  for step in 0..max_steps {
     let window = smb_window(&mut smb);
-    let row = observe(condition, &window, reservoir.as_mut());
+    let row = observe(condition, &window, reservoir.as_mut(), step);
     let buttons = outputs_to_buttons(&readout.predict(&row));
     smb.step_frames(buttons, MACRO_FRAMES);
     max_x = max_x.max(smb_x(&mut smb));
@@ -294,6 +295,15 @@ pub(crate) fn rom_or_skip(path: &str) -> Option<Vec<u8>> {
 mod tests {
   use super::*;
   use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_RIGHT, BUTTON_SELECT, BUTTON_START};
+
+  #[test]
+  fn observe_clock_needs_no_reservoir_and_encodes_the_step() {
+    let row = observe(Condition::Clock, &[1, 2, 3], None, 7);
+    assert_eq!(row.len(), Condition::Clock.row_len());
+    assert_eq!(row[1 + 7], 1.0);
+    let raw = observe(Condition::Raw, &[1, 2, 3], None, 7);
+    assert_eq!(raw.len(), 4);
+  }
 
   #[test]
   fn split_rejects_fewer_than_ten_rows() {

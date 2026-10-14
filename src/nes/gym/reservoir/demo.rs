@@ -36,10 +36,8 @@ pub fn smb_x(emu: &mut NesEmulator) -> i32 {
   emu.ram_read(smb1_ram::PLAYER_X_PAGE) as i32 * 256 + emu.ram_read(smb1_ram::PLAYER_X_PIXEL) as i32
 }
 
-/// Player state `$000E` is `0x0B` while dying and `0x06` on the final death frame.
-/// This fires about 200 frames before the lives counter drops.
 pub fn smb_dead(emu: &mut NesEmulator) -> bool {
-  matches!(emu.ram_read(smb1_ram::PLAYER_STATE), 0x06 | 0x0B)
+  smb1_ram::player_is_dead(emu)
 }
 
 /// True once the level counter has advanced past 1-1.
