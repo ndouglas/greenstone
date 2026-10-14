@@ -93,6 +93,31 @@ pub struct Candidate {
   pub stuck: u32,
 }
 
+/// Continuations tried when asking whether a candidate can survive the next
+/// round: run on, or jump now.
+const PEEK_MACROS: [usize; 2] = [0, 1];
+
+/// True if every peek continuation from `state` dies within one round. A
+/// candidate in this position is committed to a collision the x ranking
+/// cannot see, and would otherwise crowd survivors out of the beam.
+pub fn doomed_next_round(emu: &mut NesEmulator, state: &[u8], lives_at_start: u8) -> bool {
+  for &m in &PEEK_MACROS {
+    emu.load_state(state);
+    let mut died = false;
+    for &buttons in &MACROS[m] {
+      emu.step_frames(buttons, MACRO_FRAMES);
+      if smb_dead(emu) || emu.ram_read(smb1_ram::LIVES) < lives_at_start {
+        died = true;
+        break;
+      }
+    }
+    if !died {
+      return false;
+    }
+  }
+  true
+}
+
 /// Next stuck count: reset on progress, hold during a cutscene, otherwise grow.
 pub fn next_stuck(parent: u32, improved: bool, in_cutscene: bool) -> u32 {
   if improved {
@@ -161,12 +186,16 @@ pub fn beam_search(rom: &[u8], start: &[u8], beam: usize, max_rounds: usize) -> 
                 }
                 let x = smb_x(&mut emu);
                 let stuck = next_stuck(frontier[parent].stuck, x > frontier[parent].x, smb_in_cutscene(&mut emu));
+                let cleared = smb_cleared(&mut emu);
+                let y = smb_y(&mut emu);
+                let state = emu.save_state();
+                let dead = dead || (!cleared && doomed_next_round(&mut emu, &state, lives_at_start));
                 Candidate {
                   x,
-                  y: smb_y(&mut emu),
+                  y,
                   dead,
-                  cleared: smb_cleared(&mut emu),
-                  state: emu.save_state(),
+                  cleared,
+                  state,
                   path,
                   stuck,
                 }
@@ -233,6 +262,39 @@ mod tests {
     let kept = prune_and_rank(vec![stuck, moving], 4);
     let xs: Vec<i32> = kept.iter().map(|c| c.x).collect();
     assert_eq!(xs, vec![90]);
+  }
+
+  #[test]
+  #[ignore]
+  fn peek_sees_the_first_goomba_coming_but_not_from_far_away() {
+    let rom = match rom_or_skip("roms2/super_mario_bros.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let mut emu = NesEmulator::new(&rom);
+    emu.load_state(&smb_start_state(&rom));
+    let lives = emu.ram_read(smb1_ram::LIVES);
+    emu.step_frames(crate::nes::bus::BUTTON_RIGHT, 100);
+    let far = emu.save_state();
+    assert!(!doomed_next_round(&mut emu, &far, lives), "a jump still saves Mario 100 frames in");
+    // A jump still clears the Goomba up to two frames before contact at frame 205.
+    emu.load_state(&far);
+    emu.step_frames(crate::nes::bus::BUTTON_RIGHT, 103);
+    let near = emu.save_state();
+    assert!(!smb_dead(&mut emu), "not dead yet at frame 203");
+    assert!(doomed_next_round(&mut emu, &near, lives), "two frames from the Goomba nothing saves him");
+  }
+
+  #[test]
+  #[ignore]
+  fn beam_search_passes_the_goombas_before_the_stairs_in_1_1() {
+    let rom = match rom_or_skip("roms2/super_mario_bros.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let start = smb_start_state(&rom);
+    let demo = beam_search(&rom, &start, 16, 60);
+    assert!(demo.x_reached > 2200, "reached only x={} in {} steps", demo.x_reached, demo.buttons.len());
   }
 
   #[test]
