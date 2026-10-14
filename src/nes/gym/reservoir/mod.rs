@@ -29,7 +29,7 @@ impl Default for ExperimentConfig {
     ExperimentConfig {
       lambda: 1.0,
       beam: 16,
-      demo_max_rounds: 80,
+      demo_max_rounds: 100,
       episodes: 5,
       max_steps: 750,
       noop_max: 30,

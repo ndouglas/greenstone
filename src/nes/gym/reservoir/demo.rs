@@ -76,6 +76,7 @@ pub fn smb_start_state(rom: &[u8]) -> Vec<u8> {
 pub struct Demonstration {
   /// One button byte per macro step.
   pub buttons: Vec<u8>,
+  /// Highest x seen along the path. The level reset after a clear does not lower it.
   pub x_reached: i32,
   pub cleared: bool,
 }
@@ -160,6 +161,7 @@ pub fn beam_search(rom: &[u8], start: &[u8], beam: usize, max_rounds: usize) -> 
     stuck: 0,
   }];
   let mut best = frontier[0].clone();
+  let mut max_x = 0;
   for _ in 0..max_rounds {
     let jobs: Vec<(usize, usize)> = (0..frontier.len()).flat_map(|p| (0..MACROS.len()).map(move |m| (p, m))).collect();
     let chunk = jobs.len().div_ceil(threads);
@@ -213,6 +215,7 @@ pub fn beam_search(rom: &[u8], start: &[u8], beam: usize, max_rounds: usize) -> 
     if survivors[0].cleared || survivors[0].x > best.x {
       best = survivors[0].clone();
     }
+    max_x = max_x.max(survivors[0].x);
     if best.cleared {
       break;
     }
@@ -220,7 +223,7 @@ pub fn beam_search(rom: &[u8], start: &[u8], beam: usize, max_rounds: usize) -> 
   }
   Demonstration {
     buttons: best.path,
-    x_reached: best.x,
+    x_reached: max_x,
     cleared: best.cleared,
   }
 }
@@ -283,6 +286,19 @@ mod tests {
     let near = emu.save_state();
     assert!(!smb_dead(&mut emu), "not dead yet at frame 203");
     assert!(doomed_next_round(&mut emu, &near, lives), "two frames from the Goomba nothing saves him");
+  }
+
+  #[test]
+  #[ignore]
+  fn beam_search_clears_1_1_within_a_hundred_rounds() {
+    let rom = match rom_or_skip("roms2/super_mario_bros.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let start = smb_start_state(&rom);
+    let demo = beam_search(&rom, &start, 16, 100);
+    assert!(demo.cleared, "did not clear: x={} in {} steps", demo.x_reached, demo.buttons.len());
+    assert!(demo.x_reached > 3000, "x_reached should be the highest x seen, got {}", demo.x_reached);
   }
 
   #[test]
