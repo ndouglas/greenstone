@@ -41,22 +41,23 @@ save states (228 steps, x=2014 in 1-1, not cleared). Readout is ridge
 regression, lambda 1, trained on the first 80% of steps, tested on the
 last 20% (46 steps, 138 button bits). Closed loop is five episodes with
 random no-op starts. The `clock` condition is a one-hot of the step index
-and nothing else, the most any readout can get from a clock.
+and nothing else, the most any readout can get from a clock. The intercept
+is unpenalised; the solver uses the dual form since rows are fewer than
+features.
 
 ```
 condition          |  rows | held-out accuracy | held-out mse |  mean x | max x | reservoir resets
 -------------------+-------+-------------------+--------------+---------+-------+-----------------
-clock              |   228 |             0.870 |       0.0821 |  1135.4 |  1563 |                0
-raw                |   228 |             0.964 |       0.0456 |   338.0 |   434 |                0
-undriven           |   228 |             0.775 |       0.1551 |   781.4 |   899 |                0
+clock              |   228 |             0.870 |       0.0818 |  1135.4 |  1563 |                0
+raw                |   228 |             0.971 |       0.0468 |   313.6 |   314 |                0
+undriven           |   228 |             0.775 |       0.1550 |   781.4 |   899 |                0
 driven-controller  |   228 |             0.768 |       0.1919 |   314.0 |   316 |                0
-driven-playfield   |   228 |             0.971 |       0.0408 |   313.6 |   314 |                3
+driven-playfield   |   228 |             0.971 |       0.0406 |   313.6 |   314 |                3
 ```
 
 Tetris adds nothing. The playfield-driven reservoir ties the raw baseline
-on held-out error (one bit in 138) and does worse in closed loop, dying at
-the first Goomba in every episode. The controller drive is worse than raw
-on every column.
+on held-out error, and both die at the first Goomba in every closed-loop
+episode. The controller drive is worse than raw on every column.
 
 The clock row explains the undriven row. A readout on a one-hot step index
 cannot generalise to unseen steps, so its held-out numbers are the bias
