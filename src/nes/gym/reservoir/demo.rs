@@ -345,9 +345,14 @@ mod tests {
     assert!(doomed_next_round(&mut emu, &near, lives), "two frames from the Goomba nothing saves him");
   }
 
+  /// Takes about six minutes; runs only with `GREENSTONE_SLOW_TESTS` set.
   #[test]
   #[ignore]
   fn beam_search_clears_1_1_within_a_hundred_rounds() {
+    if std::env::var_os("GREENSTONE_SLOW_TESTS").is_none() {
+      eprintln!("skipping: set GREENSTONE_SLOW_TESTS to run the full clear");
+      return;
+    }
     let rom = match rom_or_skip("roms2/super_mario_bros.nes") {
       Some(r) => r,
       None => return,
