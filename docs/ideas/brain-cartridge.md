@@ -253,6 +253,49 @@ the clock by a clear margin, the state was the problem all along, and the
 reservoir question can be asked again on a readout that has something to
 work with.
 
+Result (2026-10-14, terrain in the window): two runs, raw label. First
+the block buffers appended as they sit in RAM, 416 fixed bytes: raw fell
+from 0.859 to 0.854 with training up, and the search never picked a
+terrain byte. A fixed byte there is "row r of column c of the current
+page", which means nothing without Mario's position. Then the terrain
+re-indexed relative to Mario: his own column and the seven ahead, 13 rows
+each, 104 bytes, read from whichever block buffer holds that page.
+
+```
+condition          |  rows | train acc | held-out acc | held-out mse |  mean x | max x | resets
+-------------------+-------+-----------+--------------+--------------+---------+-------+-------
+clock              |  2012 |     0.861 |        0.808 |       0.1376 |   999.4 |  1442 |      0
+raw                |  2012 |     0.871 |        0.854 |       0.1229 |   313.6 |   314 |      0
+random-a           |  2012 |     0.779 |        0.779 |       0.2207 |   472.6 |   722 |      0
+placement-onehot   |  2012 |     0.865 |        0.860 |       0.1134 |   313.6 |   315 |      0
+placement-tetris   |  2012 |     0.854 |        0.794 |       0.1591 |   866.6 |  1512 |    889
+searched-onehot    |  2012 |     0.869 |        0.867 |       0.1097 |   337.8 |   435 |      0
+searched-tetris    |  2012 |     0.861 |        0.805 |       0.1534 |   423.2 |   898 |    774
+placement-hash     |  2012 |     0.846 |        0.782 |       0.1617 |   937.8 |  1131 |    826
+```
+
+Raw with the terrain ahead of Mario holds out at 0.854, the same as
+without it, and the search still picks the same four zero-page bytes.
+Giving a linear readout the pits, pipes and stairs in front of Mario did
+not move it. So the "missing state" explanation from the smoothed-label
+run is not supported, at least not for a linear readout: whatever is
+missing is not fixed by more bytes.
+
+Taken together, the raw-label runs say this. Floors at 0.779 (random A)
+and 0.808 (clock). Every linear readout of state, 256 bytes or 360, as
+scalars, as bins, hand-picked or searched, lands between 0.854 and 0.867,
+and Tetris in front of any of them costs six points. The ceiling belongs
+to the policy class: a weighted sum cannot express "jump when the thing
+ahead is close", however the thing ahead is written down.
+
+That makes the next experiment the one the reservoir idea has been
+begging for: a proper reservoir in software. A fixed random projection of
+the window to 2,048 units through tanh, the echo state network's
+expansion with no game in it, read out by the same ridge. If it clears
+0.87 by a margin, nonlinearity was the missing piece and Tetris is a bad
+nonlinearity. If it does not, the demonstrations' jump phase is the
+ceiling after all, and the only way up is a different teacher.
+
 A captioned explainer video of the experiment, six chapters ending with
 the whole level in real time, is built by `examples/reservoir_dump.rs`
 followed by `tools/reservoir_video.py`; see
