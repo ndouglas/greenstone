@@ -7,6 +7,8 @@
 //! `--no-tetris` drops every condition that runs a Tetris emulator, for a table in minutes.
 //! `--lambda=X` sets the ridge penalty (default 1).
 //! `--logistic` fits the readouts by logistic regression instead of ridge.
+//! `--noop-max=N` spreads the demonstration offsets over N idle frames (default 120).
+//! A cache whose demonstrations start at other offsets is searched again.
 //! `--rule` takes the demonstrations from the rule teacher (a jump rule over the
 //! window, searched over a grid) instead of the beam search; its default cache is
 //! `target/tetris-reservoir-demos-rule` and the rule is saved beside the demonstrations.
@@ -16,11 +18,13 @@
 use greenstone::nes::gym::reservoir::demo::{load_cached, save_cached};
 use greenstone::nes::gym::reservoir::drive::{FAST_LEVEL, PIECE_FRAME_LIMIT};
 use greenstone::nes::gym::reservoir::encode::Encoder;
-use greenstone::nes::gym::reservoir::encode::{ENEMY_BIN_PX, PIECES_PER_STEP};
+use greenstone::nes::gym::reservoir::encode::{BANK_BOARDS, ENEMY_BIN_PX, PIECES_PER_STEP};
 use greenstone::nes::gym::reservoir::features::{Condition, SMB_WINDOW_LEN};
 use greenstone::nes::gym::reservoir::search::search_encoder;
 use greenstone::nes::gym::reservoir::teacher::Rule;
-use greenstone::nes::gym::reservoir::{active_bits, find_demonstrations, find_rule_demonstrations, run, ExperimentConfig};
+use greenstone::nes::gym::reservoir::{
+  active_bits, demos_at_configured_offsets, find_demonstrations, find_rule_demonstrations, run, ExperimentConfig,
+};
 use std::path::{Path, PathBuf};
 
 fn main() {
@@ -30,6 +34,7 @@ fn main() {
   let logistic = std::env::args().any(|a| a == "--logistic");
   let lambda = std::env::args().find_map(|a| a.strip_prefix("--lambda=").map(|v| v.parse::<f64>().expect("--lambda=X")));
   let horizon = std::env::args().find_map(|a| a.strip_prefix("--horizon=").map(|v| v.parse::<usize>().expect("--horizon=N")));
+  let noop_max = std::env::args().find_map(|a| a.strip_prefix("--noop-max=").map(|v| v.parse::<usize>().expect("--noop-max=N")));
   let args: Vec<String> = std::env::args().filter(|a| !a.starts_with("--")).collect();
   let smb_path = args.get(1).map(String::as_str).unwrap_or("roms2/super_mario_bros.nes");
   let tetris_path = args.get(2).map(String::as_str).unwrap_or("roms2/tetris.nes");
@@ -56,9 +61,24 @@ fn main() {
     config.lambda = l;
   }
   config.logistic = logistic;
+  if let Some(n) = noop_max {
+    config.noop_max = n;
+  }
   let mut log = |line: &str| eprintln!("{}", line);
   let mut rule: Option<Rule> = None;
-  let demos = match load_cached(&demo_dir, config.demonstrations) {
+  let cached = load_cached(&demo_dir, config.demonstrations).filter(|demos| {
+    let matches = demos_at_configured_offsets(demos, &config);
+    if !matches {
+      log(&format!(
+        "cached demonstrations in {} start at other offsets than {} over {} frames; searching again",
+        demo_dir.display(),
+        config.demonstrations,
+        config.noop_max
+      ));
+    }
+    matches
+  });
+  let demos = match cached {
     Some(demos) => {
       log(&format!("loaded {} demonstrations from {}", demos.len(), demo_dir.display()));
       rule = std::fs::read(&rule_path).ok().and_then(|b| Rule::from_bytes(&b).ok());
@@ -129,8 +149,16 @@ fn main() {
     );
   }
   println!(
+    "demonstration offsets: {} spread over {} idle frames; episodes start between them",
+    config.demonstrations, config.noop_max
+  );
+  println!(
     "placements: {} per step, enemy bins {} px, Tetris level {} via the menu, {} frames per piece at most",
     PIECES_PER_STEP, ENEMY_BIN_PX, FAST_LEVEL, PIECE_FRAME_LIMIT
+  );
+  println!(
+    "bank: {} boards of {} placements each, searched by onsets plus A specificity: Mario, enemies, the floor ahead, the wall ahead; readout sees the playfields",
+    BANK_BOARDS, PIECES_PER_STEP
   );
   if let Encoder::Searched(features) = searched {
     let picks: Vec<String> = features.iter().map(|f| f.describe()).collect();

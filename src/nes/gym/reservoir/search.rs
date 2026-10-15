@@ -4,20 +4,42 @@
 use super::demo::{smb_in_cutscene, smb_start_state, smb_window, Demonstration, MACRO_FRAMES};
 use super::encode::{onehot_row, Encoder, Feature, Placement, ENEMY_DISTANCE, PIECES_PER_STEP};
 use super::features::SMB_WINDOW_LEN;
-use super::{buttons_to_targets, evaluate_folds, row_is_informative, smooth_a, Dataset};
+use super::{buttons_to_targets, evaluate_folds, row_is_informative, smooth_a, Dataset, FoldMetrics};
 use crate::nes::gym::NesEmulator;
 
 /// Bin widths tried, as bits dropped: 4, 8, 16 and 32 values per column.
 pub const SHIFTS: [u8; 4] = [2, 3, 4, 5];
 
-/// Every window byte, absolute and relative to Mario's x, at every width,
-/// plus the nearest-enemy distance at every width.
+/// SMB zero page: Mario's x page and x pixel. Not candidates, because on one
+/// level his position predicts where the teacher jumped.
+pub const POSITION_BYTES: [u16; 2] = [0x006D, 0x0086];
+/// SMB zero page: the five enemy slots' x pixels, the only bytes worth
+/// reading relative to Mario's x. Any other byte minus his x is his position
+/// in disguise, and the search picked exactly that.
+pub const ENEMY_X_BYTES: std::ops::Range<u16> = 0x0087..0x008C;
+
+/// Every window byte but Mario's position, absolute, at every width; the
+/// enemy x bytes also relative to Mario; and the nearest-enemy distance.
 pub fn candidates() -> Vec<Feature> {
-  let mut out = Vec::with_capacity((SMB_WINDOW_LEN * 2 + 1) * SHIFTS.len());
+  let mut out = Vec::with_capacity((SMB_WINDOW_LEN + ENEMY_X_BYTES.len() + 1) * SHIFTS.len());
   for address in 0..SMB_WINDOW_LEN as u16 {
-    for relative in [false, true] {
+    if POSITION_BYTES.contains(&address) {
+      continue;
+    }
+    for shift in SHIFTS {
+      out.push(Feature {
+        address,
+        relative: false,
+        shift,
+      });
+    }
+    if ENEMY_X_BYTES.contains(&address) {
       for shift in SHIFTS {
-        out.push(Feature { address, relative, shift });
+        out.push(Feature {
+          address,
+          relative: true,
+          shift,
+        });
       }
     }
   }
@@ -68,13 +90,20 @@ fn datasets(features: &[Feature], windows: &[Vec<Vec<u8>>], buttons: &[Vec<u8>])
     .collect()
 }
 
-/// Leave-one-demonstration-out bit accuracy of a one-hot readout on these features.
-pub fn score(features: &[Feature], windows: &[Vec<Vec<u8>>], buttons: &[Vec<u8>], lambda: f64, logistic: bool, mask: u8) -> Result<f64, String> {
-  evaluate_folds(&datasets(features, windows, buttons), lambda, logistic, mask).map(|m| m.accuracy)
+/// Leave-one-demonstration-out metrics of a one-hot readout on these features.
+pub fn score(
+  features: &[Feature],
+  windows: &[Vec<Vec<u8>>],
+  buttons: &[Vec<u8>],
+  lambda: f64,
+  logistic: bool,
+  mask: u8,
+) -> Result<FoldMetrics, String> {
+  evaluate_folds(&datasets(features, windows, buttons), lambda, logistic, mask)
 }
 
-/// Greedy forward selection of `PIECES_PER_STEP` features by held-out accuracy.
-/// `log` receives one line per pick.
+/// Greedy forward selection of `PIECES_PER_STEP` features by held-out onset
+/// score (`FoldMetrics::onset_score`). `log` receives one line per pick.
 pub fn search_features(
   windows: &[Vec<Vec<u8>>],
   buttons: &[Vec<u8>],
@@ -88,22 +117,24 @@ pub fn search_features(
   let mut chosen: Vec<Feature> = Vec::new();
   for _ in 0..PIECES_PER_STEP {
     let chunk = pool.len().div_ceil(threads);
-    let best: (f64, Feature) = std::thread::scope(|s| {
+    let best: (f64, Feature, f64) = std::thread::scope(|s| {
       let handles: Vec<_> = pool
         .chunks(chunk)
         .map(|chunk| {
           let chosen = &chosen;
           s.spawn(move || {
-            let mut best: Option<(f64, Feature)> = None;
+            let mut best: Option<(f64, Feature, f64)> = None;
             for &f in chunk {
               if chosen.iter().any(|c| c.address == f.address && c.relative == f.relative) {
                 continue;
               }
               let mut trial = chosen.clone();
               trial.push(f);
-              let acc = score(&trial, windows, buttons, lambda, logistic, mask).unwrap_or(0.0);
-              if best.map_or(true, |(b, _)| acc > b) {
-                best = Some((acc, f));
+              let (onset, a_acc) = score(&trial, windows, buttons, lambda, logistic, mask)
+                .map(|m| (m.onset_score(), m.a_specificity))
+                .unwrap_or((0.0, 0.0));
+              if best.map_or(true, |(b, _, _)| onset > b) {
+                best = Some((onset, f, a_acc));
               }
             }
             best
@@ -113,17 +144,18 @@ pub fn search_features(
       handles
         .into_iter()
         .filter_map(|h| h.join().expect("search worker panicked"))
-        .fold(None, |acc: Option<(f64, Feature)>, b| match acc {
+        .fold(None, |acc: Option<(f64, Feature, f64)>, b| match acc {
           Some(a) if a.0 >= b.0 => Some(a),
           _ => Some(b),
         })
         .expect("at least one candidate")
     });
     log(&format!(
-      "pick {}: {}: held-out accuracy {:.3}",
+      "pick {}: {}: held-out onsets {:.3}, A specificity {:.3}",
       chosen.len() + 1,
       best.1.describe(),
-      best.0
+      best.0 - best.2,
+      best.2
     ));
     chosen.push(best.1);
   }
@@ -178,10 +210,66 @@ mod tests {
     (windows, buttons)
   }
 
+  /// Three demonstrations where a four-step press starts whenever byte 0x40
+  /// is high, and byte 0x41 lags the press by one step. The lagging byte wins
+  /// on accuracy (two errors per press to the trigger's three) and never sees
+  /// an onset; the trigger byte sees every onset.
+  fn trigger_and_lag() -> (Vec<Vec<Vec<u8>>>, Vec<Vec<u8>>) {
+    let mut windows = Vec::new();
+    let mut buttons = Vec::new();
+    for demo in 0..3u32 {
+      let mut ws = Vec::new();
+      let mut bs = Vec::new();
+      let mut hold = 0usize;
+      let mut prev_a = false;
+      for i in 0..120u32 {
+        let mut w = vec![0u8; SMB_WINDOW_LEN];
+        for (a, b) in w.iter_mut().enumerate() {
+          *b = ((a as u32 * 31 + i * 17 + demo * 101) % 256) as u8;
+        }
+        let trigger = hold == 0 && (i + demo * 5) % 12 == 0;
+        if trigger {
+          hold = 4;
+        }
+        let a = hold > 0;
+        w[0x40] = if trigger { 0xFF } else { 0 };
+        w[0x41] = if prev_a { 0xFF } else { 0 };
+        ws.push(w);
+        bs.push(BUTTON_RIGHT | BUTTON_B | if a { BUTTON_A } else { 0 });
+        prev_a = a;
+        hold = hold.saturating_sub(1);
+      }
+      windows.push(ws);
+      buttons.push(bs);
+    }
+    (windows, buttons)
+  }
+
   #[test]
-  fn candidates_cover_every_address_both_ways_at_four_widths_plus_the_enemy_distance() {
+  fn the_search_is_scored_by_onsets_so_it_picks_the_trigger_over_the_lagging_byte() {
+    let (windows, buttons) = trigger_and_lag();
+    let mask = BUTTON_A | BUTTON_B | BUTTON_RIGHT;
+    let feature = |address: u16| Feature {
+      address,
+      relative: false,
+      shift: 4,
+    };
+    let trigger = score(&[feature(0x40)], &windows, &buttons, 1.0, false, mask).unwrap();
+    let lag = score(&[feature(0x41)], &windows, &buttons, 1.0, false, mask).unwrap();
+    assert!(lag.accuracy > trigger.accuracy, "lag {} trigger {}", lag.accuracy, trigger.accuracy);
+    assert!(trigger.onset_recall > 0.9, "trigger onsets {}", trigger.onset_recall);
+    assert!(lag.onset_recall < 0.1, "lag onsets {}", lag.onset_recall);
+    assert!(lag.a_specificity < 0.95, "the lag byte presses A at every release: {}", lag.a_specificity);
+    assert!(trigger.a_specificity > 0.95, "trigger specificity {}", trigger.a_specificity);
+    assert!(trigger.onset_score() > lag.onset_score());
+    let features = search_features(&windows, &buttons, 1.0, false, mask, &mut |_| {});
+    assert_eq!(features[0].address, 0x40, "first pick {:?}", features[0]);
+  }
+
+  #[test]
+  fn candidates_skip_marios_position_and_read_only_enemy_x_relative_to_him() {
     let c = candidates();
-    assert_eq!(c.len(), (SMB_WINDOW_LEN * 2 + 1) * 4);
+    assert_eq!(c.len(), (SMB_WINDOW_LEN - 2 + 5 + 1) * 4);
     assert_eq!(c.iter().filter(|f| f.address == ENEMY_DISTANCE).count(), 4);
     assert!(c.iter().any(|f| f.address == 256 + 100), "terrain bytes are candidates");
     assert!(c.contains(&Feature {
@@ -189,6 +277,11 @@ mod tests {
       relative: true,
       shift: 5
     }));
+    assert!(!c.iter().any(|f| f.address == 0x86 || f.address == 0x6D), "Mario's x is not a candidate");
+    assert!(
+      !c.iter().any(|f| f.relative && !(0x87..0x8C).contains(&f.address)),
+      "a terrain byte minus Mario's x is his position in disguise"
+    );
   }
 
   #[test]
@@ -232,6 +325,6 @@ mod tests {
       mask,
     )
     .unwrap();
-    assert!(good > noise + 0.1, "good {} noise {}", good, noise);
+    assert!(good.accuracy > noise.accuracy + 0.1, "good {} noise {}", good.accuracy, noise.accuracy);
   }
 }

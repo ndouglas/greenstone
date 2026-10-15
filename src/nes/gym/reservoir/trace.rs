@@ -5,7 +5,7 @@ use super::drive::{TETRIS_PLAYFIELD, TETRIS_PLAYFIELD_LEN};
 use super::encode::{encode, Encoder};
 use super::features::Condition;
 use super::ridge::Readout;
-use super::{collect, fit_readout, hidden_for, observe, outputs_to_buttons, Dataset, Hidden};
+use super::{collect, fit_readout, hidden_for, level_step, observe, outputs_to_buttons, Dataset, Hidden};
 use crate::nes::gym::NesEmulator;
 use std::io::Write;
 
@@ -79,7 +79,7 @@ pub fn replay(
     let outputs: Vec<Vec<f64>> = readouts
       .iter()
       .zip(hiddens.iter_mut())
-      .map(|((c, readout), hidden)| readout.predict(&observe(*c, &window, hidden, step)))
+      .map(|((c, readout), hidden)| readout.predict(&observe(*c, &window, hidden, level_step(demo.noops, step))))
       .collect();
     let (board, tetris_ram) = match screen.and_then(|i| hiddens[i].tetris_mut()) {
       Some(r) => {
@@ -138,7 +138,7 @@ pub fn trace_episode(
   let mut steps = Vec::new();
   for step in 0..max_steps {
     let window = smb_window(&mut smb);
-    let buttons = outputs_to_buttons(&readout.predict(&observe(condition, &window, &mut hidden, step)));
+    let buttons = outputs_to_buttons(&readout.predict(&observe(condition, &window, &mut hidden, level_step(noops, step))));
     for _ in 0..MACRO_FRAMES {
       smb.step_frame(buttons);
       smb_sink.write_all(smb.framebuffer()).map_err(|e| e.to_string())?;

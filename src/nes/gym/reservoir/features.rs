@@ -1,9 +1,9 @@
 //! Feature rows for each experimental condition.
 
-use super::drive::Drive;
+use super::drive::{Drive, TETRIS_PLAYFIELD_LEN};
 #[cfg(test)]
 use super::encode::Feature;
-use super::encode::{Encoder, ONEHOT_ROW_LEN};
+use super::encode::{Encoder, BANK_BOARDS, BANK_ONEHOT_ROW_LEN, ONEHOT_ROW_LEN};
 use super::soft::SOFT_UNITS;
 
 /// Start of the SMB state window handed to the reservoir: zero page.
@@ -32,8 +32,9 @@ pub const CLOCK_CAPACITY: usize = 1024;
 /// Which features the readout sees.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Condition {
-  /// A one-hot of the step index and nothing else. The upper bound on what a
-  /// readout can get from a clock, which is what undriven Tetris RAM amounts to.
+  /// A one-hot of the macro steps since the level started and nothing else.
+  /// The upper bound on what a readout can get from a clock, which is what
+  /// undriven Tetris RAM amounts to.
   Clock,
   /// The SMB window itself. The real baseline.
   Raw,
@@ -55,6 +56,11 @@ pub enum Condition {
   PlacementOnehot(Encoder),
   /// Tetris RAM after steering the encoder's four placements.
   PlacementTetris(Encoder),
+  /// The bank's sixteen placements as one-hot features, no Tetris. The control for the next.
+  BankOnehot,
+  /// Four Tetris boards, each steered by four placements from its own part
+  /// of the window; the readout sees the four playfields.
+  BankTetris,
 }
 
 impl Condition {
@@ -77,6 +83,8 @@ impl Condition {
       table.push(Condition::PlacementOnehot(e));
       table.push(Condition::PlacementTetris(e));
     }
+    table.push(Condition::BankOnehot);
+    table.push(Condition::BankTetris);
     table.push(Condition::PlacementTetris(Encoder::Hash));
     table
   }
@@ -99,6 +107,8 @@ impl Condition {
       Condition::PlacementOnehot(e) => format!("{}-onehot", encoder(e)),
       Condition::PlacementTetris(Encoder::Hash) => "placement-hash".to_string(),
       Condition::PlacementTetris(e) => format!("{}-tetris", encoder(e)),
+      Condition::BankOnehot => "bank-onehot".to_string(),
+      Condition::BankTetris => "bank-tetris".to_string(),
     }
   }
 
@@ -113,20 +123,22 @@ impl Condition {
       | Condition::RandomTanh
       | Condition::EchoState
       | Condition::Undriven
-      | Condition::PlacementOnehot(_) => None,
+      | Condition::PlacementOnehot(_)
+      | Condition::BankOnehot
+      | Condition::BankTetris => None,
     }
   }
 
   pub fn uses_reservoir(self) -> bool {
     matches!(
       self,
-      Condition::Undriven | Condition::DrivenController | Condition::DrivenPlayfield | Condition::PlacementTetris(_)
+      Condition::Undriven | Condition::DrivenController | Condition::DrivenPlayfield | Condition::PlacementTetris(_) | Condition::BankTetris
     )
   }
 
   /// Placement drives play at level 19 so a piece drops in a few dozen frames.
   pub fn fast_tetris(self) -> bool {
-    matches!(self.drive(), Some(Drive::Placements(_)))
+    matches!(self.drive(), Some(Drive::Placements(_))) || self == Condition::BankTetris
   }
 
   /// Conditions whose hidden layer is a software expansion: Some(recurrent).
@@ -158,6 +170,8 @@ impl Condition {
       Condition::RandomTanh | Condition::EchoState => 1 + SOFT_UNITS,
       Condition::DrivenController => 1 + TETRIS_RAM_LEN as usize + DRIVE_BITS,
       Condition::Undriven | Condition::DrivenPlayfield | Condition::PlacementTetris(_) => 1 + TETRIS_RAM_LEN as usize,
+      Condition::BankOnehot => BANK_ONEHOT_ROW_LEN,
+      Condition::BankTetris => 1 + BANK_BOARDS * TETRIS_PLAYFIELD_LEN as usize,
     }
   }
 }
@@ -235,6 +249,8 @@ mod tests {
     assert_eq!(Condition::PlacementTetris(Encoder::Hash).row_len(), 1 + 2048);
     assert_eq!(Condition::RandomTanh.row_len(), 1 + 2048);
     assert_eq!(Condition::EchoState.row_len(), 1 + 2048);
+    assert_eq!(Condition::BankOnehot.row_len(), BANK_ONEHOT_ROW_LEN);
+    assert_eq!(Condition::BankTetris.row_len(), 1 + BANK_BOARDS * 200);
     assert!(!Condition::RandomTanh.uses_reservoir());
     assert_eq!(Condition::RandomTanh.soft_reservoir(), Some(false));
     assert_eq!(Condition::EchoState.soft_reservoir(), Some(true));
@@ -252,7 +268,12 @@ mod tests {
       assert!(!c.uses_reservoir(), "{}", c.name());
       assert!(c.drive().is_none());
     }
-    for c in [Condition::PlacementTetris(Encoder::Salient), Condition::PlacementTetris(Encoder::Hash)] {
+    assert!(!Condition::BankOnehot.uses_reservoir());
+    for c in [
+      Condition::PlacementTetris(Encoder::Salient),
+      Condition::PlacementTetris(Encoder::Hash),
+      Condition::BankTetris,
+    ] {
       assert!(c.uses_reservoir(), "{}", c.name());
       assert!(c.fast_tetris(), "{}", c.name());
     }
@@ -284,5 +305,9 @@ mod tests {
     assert_eq!(Condition::PlacementTetris(Encoder::Hash).name(), "placement-hash");
     assert_eq!(Condition::PlacementOnehot(searched).name(), "searched-onehot");
     assert!(without.contains(&Condition::RandomA));
+    assert_eq!(Condition::BankTetris.name(), "bank-tetris");
+    assert_eq!(Condition::BankOnehot.name(), "bank-onehot");
+    assert!(without.contains(&Condition::BankTetris));
+    assert!(without.contains(&Condition::BankOnehot));
   }
 }

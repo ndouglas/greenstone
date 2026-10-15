@@ -283,6 +283,11 @@ impl Reservoir {
   pub fn ram(&mut self) -> Vec<u8> {
     self.emu.ram_read_range(0, TETRIS_RAM_LEN)
   }
+
+  /// The 10x20 playfield, row-major from the top.
+  pub fn playfield(&mut self) -> Vec<u8> {
+    self.emu.ram_read_range(TETRIS_PLAYFIELD, TETRIS_PLAYFIELD_LEN)
+  }
 }
 
 /// Tap Start every 30 frames until `mode` is reached.
@@ -341,7 +346,8 @@ mod tests {
     assert!(out.frames < PIECE_FRAME_LIMIT);
     assert!(!out.reset);
     // The locked cells sit in the low columns of the board.
-    let board = r.emu.ram_read_range(TETRIS_PLAYFIELD, TETRIS_PLAYFIELD_LEN);
+    let board = r.playfield();
+    assert_eq!(board.len(), TETRIS_PLAYFIELD_LEN as usize);
     let filled: Vec<usize> = board
       .iter()
       .enumerate()

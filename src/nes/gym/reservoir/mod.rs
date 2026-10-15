@@ -16,10 +16,12 @@ pub mod trace;
 use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_RIGHT, BUTTON_SELECT, BUTTON_START};
 use crate::nes::gym::NesEmulator;
 use demo::{beam_search, smb_cleared, smb_dead, smb_in_cutscene, smb_start_state, smb_window, smb_x, Demonstration, MACRO_FRAMES};
-use drive::{fold_to_controller, Reservoir};
+use drive::{fold_to_controller, Drive, Reservoir, TETRIS_PLAYFIELD_LEN};
+use encode::{bank, bank_onehot_row, encode, onehot_row, Encoder, BANK_BOARDS};
 #[cfg(test)]
-use encode::Encoder;
-use encode::{encode, onehot_row};
+use encode::{PIECES_PER_STEP, PLACEMENT_ONEHOT};
+#[cfg(test)]
+use features::SMB_WINDOW_LEN;
 use features::{clock_row, feature_row, Condition};
 use logistic::fit_logistic;
 use ridge::{fit, Readout};
@@ -54,7 +56,7 @@ impl Default for ExperimentConfig {
       demonstrations: 6,
       episodes: 5,
       max_steps: 750,
-      noop_max: 30,
+      noop_max: 120,
       jump_horizon: 0,
       logistic: false,
     }
@@ -196,6 +198,24 @@ pub fn row_is_informative(in_cutscene: bool) -> bool {
   !in_cutscene
 }
 
+/// The clock's step: macro steps since the level started, idle frames
+/// included. Counted from the first button instead, every offset has the
+/// same step at every x, because Mario starts in one place and nothing
+/// moves until he does, and a clock readout memorises the whole level.
+pub fn level_step(noops: usize, step: usize) -> usize {
+  noops / MACRO_FRAMES + step
+}
+
+/// Whether cached demonstrations are the configured number at the offsets the
+/// configuration would search from, so a cache from another spread is not reused.
+pub fn demos_at_configured_offsets(demos: &[Demonstration], config: &ExperimentConfig) -> bool {
+  demos.len() == config.demonstrations
+    && demos
+      .iter()
+      .enumerate()
+      .all(|(i, d)| d.noops == demonstration_noops(i, config.demonstrations, config.noop_max))
+}
+
 /// Idle frames before demonstration `index` starts: evenly spaced over `[0, noop_max)`.
 pub fn demonstration_noops(index: usize, demonstrations: usize, noop_max: usize) -> usize {
   index * noop_max / demonstrations.max(1)
@@ -294,7 +314,28 @@ pub struct FoldMetrics {
   /// Fraction of the held-out demonstrations' press onsets at which the
   /// readout pressed A: whether it starts jumps, not just recognises them.
   pub onset_recall: f64,
+  /// Fraction of the held-out steps without A at which the readout did not
+  /// press A: whether it leaves the ground alone.
+  pub a_specificity: f64,
   pub mse: f64,
+}
+
+impl FoldMetrics {
+  /// What the encoder search maximises: onsets started plus A specificity.
+  /// Always-A and never-A both score one, so the search cannot buy onsets
+  /// with presses. Accuracy alone is dominated by the hold steps and picks
+  /// bytes that recognise a jump already under way; onsets plus A accuracy
+  /// still paid for presses, since never-A already scores 0.7 on accuracy.
+  pub fn onset_score(&self) -> f64 {
+    self.onset_recall + self.a_specificity
+  }
+}
+
+/// Fraction of rows without A in `truth` where `pred` has no A either.
+pub fn a_specificity(pred: &[u8], truth: &[u8]) -> f64 {
+  let quiet: Vec<usize> = (0..truth.len()).filter(|&i| truth[i] & BUTTON_A == 0).collect();
+  let kept = quiet.iter().filter(|&&i| pred[i] & BUTTON_A == 0).count();
+  kept as f64 / quiet.len().max(1) as f64
 }
 
 /// Hold each dataset out in turn, fit on the rest, and pool the predictions.
@@ -351,6 +392,7 @@ pub(crate) fn evaluate_folds(datasets: &[Dataset], lambda: f64, logistic: bool, 
     accuracy: bit_accuracy(&test_preds, &test_truth, mask),
     a_accuracy: bit_accuracy(&test_preds, &test_truth, BUTTON_A),
     onset_recall: hits as f64 / onsets.max(1) as f64,
+    a_specificity: a_specificity(&test_preds, &test_truth),
     mse: output_mse(&test_outputs, &test_targets, mask),
   })
 }
@@ -359,6 +401,7 @@ pub(crate) fn evaluate_folds(datasets: &[Dataset], lambda: f64, logistic: bool, 
 pub(crate) enum Hidden {
   None,
   Tetris(Reservoir),
+  Bank(Vec<Reservoir>),
   Soft(Expansion),
 }
 
@@ -378,7 +421,11 @@ impl Hidden {
   }
 
   pub(crate) fn resets(&self) -> u32 {
-    self.tetris().map(|r| r.resets).unwrap_or(0)
+    match self {
+      Hidden::Tetris(r) => r.resets,
+      Hidden::Bank(boards) => boards.iter().map(|r| r.resets).sum(),
+      Hidden::None | Hidden::Soft(_) => 0,
+    }
   }
 }
 
@@ -389,6 +436,12 @@ pub(crate) fn hidden_for(condition: Condition, tetris_rom: &[u8]) -> Result<Hidd
   }
   if !condition.uses_reservoir() {
     return Ok(Hidden::None);
+  }
+  if condition == Condition::BankTetris {
+    return (0..BANK_BOARDS)
+      .map(|_| Reservoir::new_fast(tetris_rom))
+      .collect::<Result<Vec<_>, _>>()
+      .map(Hidden::Bank);
   }
   if condition.fast_tetris() {
     Reservoir::new_fast(tetris_rom).map(Hidden::Tetris)
@@ -435,6 +488,7 @@ fn random_a_folds(datasets: &[Dataset], mask: u8) -> Result<FoldMetrics, String>
     accuracy,
     a_accuracy: bit_accuracy(&preds, &truth, BUTTON_A),
     onset_recall: hits as f64 / onsets.max(1) as f64,
+    a_specificity: a_specificity(&preds, &truth),
     mse: output_mse(&outputs, &targets, mask),
   })
 }
@@ -464,6 +518,15 @@ pub(crate) fn observe(condition: Condition, window: &[u8], hidden: &mut Hidden, 
     (Condition::Clock | Condition::RandomA, _) => clock_row(step),
     (Condition::Raw, _) => feature_row(window, None),
     (Condition::PlacementOnehot(e), _) => onehot_row(&encode(e, window)),
+    (Condition::BankOnehot, _) => bank_onehot_row(window),
+    (Condition::BankTetris, Hidden::Bank(boards)) => {
+      let mut body = Vec::with_capacity(BANK_BOARDS * TETRIS_PLAYFIELD_LEN as usize);
+      for (board, features) in boards.iter_mut().zip(bank()) {
+        board.step(Some(Drive::Placements(Encoder::Searched(features))), window, MACRO_FRAMES);
+        body.extend(board.playfield());
+      }
+      feature_row(&body, None)
+    }
     (_, Hidden::Soft(e)) => e.step(window),
     (c, Hidden::Tetris(r)) => {
       r.step(c.drive(), window, MACRO_FRAMES);
@@ -474,7 +537,7 @@ pub(crate) fn observe(condition: Condition, window: &[u8], hidden: &mut Hidden, 
       };
       feature_row(&r.ram(), bits)
     }
-    (c, Hidden::None) => panic!("condition {} needs a hidden layer", c.name()),
+    (c, Hidden::None | Hidden::Bank(_)) => panic!("condition {} has the wrong hidden layer", c.name()),
   }
 }
 
@@ -498,7 +561,7 @@ pub(crate) fn collect(
   };
   for (step, &action) in demo.buttons.iter().enumerate() {
     let window = smb_window(&mut smb);
-    let row = observe(condition, &window, &mut hidden, step);
+    let row = observe(condition, &window, &mut hidden, level_step(demo.noops, step));
     if row_is_informative(smb_in_cutscene(&mut smb)) {
       data.rows.push(row);
       data.targets.push(buttons_to_targets(action));
@@ -529,7 +592,7 @@ fn episode(
   let mut max_x = 0;
   for step in 0..max_steps {
     let window = smb_window(&mut smb);
-    let row = observe(condition, &window, &mut hidden, step);
+    let row = observe(condition, &window, &mut hidden, level_step(noops, step));
     let buttons = driver.buttons(&row);
     smb.step_frames(buttons, MACRO_FRAMES);
     max_x = max_x.max(smb_x(&mut smb));
@@ -729,6 +792,15 @@ mod tests {
   }
 
   #[test]
+  fn observe_bank_onehot_needs_no_reservoir_and_has_sixteen_placements() {
+    let window = vec![0u8; SMB_WINDOW_LEN];
+    let row = observe(Condition::BankOnehot, &window, &mut Hidden::None, 0);
+    assert_eq!(row.len(), Condition::BankOnehot.row_len());
+    assert_eq!(row.len(), 1 + BANK_BOARDS * PIECES_PER_STEP * PLACEMENT_ONEHOT);
+    assert_eq!(row.iter().filter(|&&v| v == 1.0).count(), 1 + 2 * BANK_BOARDS * PIECES_PER_STEP);
+  }
+
+  #[test]
   fn observe_onehot_needs_no_reservoir() {
     let window = vec![0u8; 256];
     let row = observe(Condition::PlacementOnehot(Encoder::Salient), &window, &mut Hidden::None, 0);
@@ -863,7 +935,30 @@ mod tests {
     assert!(m.mse < 0.1, "mse {}", m.mse);
     assert!(m.a_accuracy > 0.9, "A accuracy {}", m.a_accuracy);
     assert!(m.onset_recall > 0.9, "onset recall {}", m.onset_recall);
+    assert!(m.a_specificity > 0.9, "A specificity {}", m.a_specificity);
     assert_eq!(m.rows, 120);
+  }
+
+  #[test]
+  fn a_readout_that_never_presses_a_scores_one_on_onsets_plus_specificity() {
+    // A constant feature and A on a quarter of the steps: the readout outputs
+    // the A rate, under one half, so it never presses A. Specificity 1,
+    // onsets 0: the same score as always-A.
+    let datasets: Vec<Dataset> = (0..3)
+      .map(|_| {
+        let buttons: Vec<u8> = (0..40).map(|i| if i % 4 == 0 { BUTTON_A } else { 0 }).collect();
+        Dataset {
+          rows: vec![vec![1.0, 0.0]; 40],
+          targets: buttons.iter().map(|&b| buttons_to_targets(b)).collect(),
+          buttons,
+          resets: 0,
+        }
+      })
+      .collect();
+    let m = evaluate_folds(&datasets, 1.0, false, BUTTON_A).unwrap();
+    assert_eq!(m.onset_recall, 0.0);
+    assert_eq!(m.a_specificity, 1.0);
+    assert!((m.onset_score() - 1.0).abs() < 1e-9);
   }
 
   #[test]
@@ -871,6 +966,38 @@ mod tests {
     let datasets = vec![synthetic_dataset(0, 40)];
     assert!(evaluate_folds(&datasets, 1.0, false, BUTTON_A).is_err());
     assert!(evaluate_folds(&[], 1.0, false, BUTTON_A).is_err());
+  }
+
+  #[test]
+  fn the_clock_counts_macro_steps_from_the_level_start() {
+    assert_eq!(level_step(0, 3), 3);
+    assert_eq!(level_step(20, 3), 8, "twenty idle frames are five steps");
+    assert_eq!(level_step(23, 0), 5);
+  }
+
+  #[test]
+  fn demonstration_offsets_spread_over_at_least_a_hundred_frames() {
+    // Six offsets inside 30 frames differ by at most six steps, so a clock
+    // readout can memorise where the deterministic teacher jumps.
+    assert!(ExperimentConfig::default().noop_max >= 100);
+  }
+
+  #[test]
+  fn cached_demonstrations_count_only_at_the_configured_offsets() {
+    let config = ExperimentConfig {
+      demonstrations: 3,
+      noop_max: 90,
+      ..ExperimentConfig::default()
+    };
+    let demo = |noops: usize| Demonstration {
+      buttons: vec![],
+      x_reached: 0,
+      cleared: false,
+      noops,
+    };
+    assert!(demos_at_configured_offsets(&[demo(0), demo(30), demo(60)], &config));
+    assert!(!demos_at_configured_offsets(&[demo(0), demo(5), demo(10)], &config), "the old spread");
+    assert!(!demos_at_configured_offsets(&[demo(0), demo(30)], &config), "too few");
   }
 
   #[test]
@@ -884,6 +1011,34 @@ mod tests {
     }
     assert_eq!(demonstration_noops(0, 0, 30), 0);
     assert_eq!(episode_noops(3, 0, 30), 15);
+  }
+}
+
+#[cfg(test)]
+mod rom_tests {
+  use super::*;
+
+  const PLAYFIELD_EMPTY_UNIT: f32 = drive::PLAYFIELD_EMPTY as f32 / 255.0;
+
+  #[test]
+  #[ignore]
+  fn the_bank_steps_four_boards_and_reads_their_playfields() {
+    let tetris = match rom_or_skip("roms2/tetris.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let mut hidden = hidden_for(Condition::BankTetris, &tetris).unwrap();
+    assert!(matches!(&hidden, Hidden::Bank(boards) if boards.len() == BANK_BOARDS));
+    let window = vec![0u8; SMB_WINDOW_LEN];
+    let row = observe(Condition::BankTetris, &window, &mut hidden, 0);
+    assert_eq!(row.len(), Condition::BankTetris.row_len());
+    assert_eq!(row[0], 1.0);
+    // Four pieces locked on every board: at least a dozen cells each, after any clears.
+    for b in 0..BANK_BOARDS {
+      let cells = row[1 + b * 200..1 + (b + 1) * 200].iter().filter(|&&v| v != PLAYFIELD_EMPTY_UNIT).count();
+      assert!(cells >= 12, "board {} has {} cells", b, cells);
+    }
+    assert_eq!(hidden.resets(), 0);
   }
 }
 

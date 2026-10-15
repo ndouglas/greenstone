@@ -1,5 +1,6 @@
 //! Mario's window as tetromino placements.
 
+use super::features::BLOCK_ROWS;
 use super::trace::enemies;
 
 /// Placements sent to Tetris per SMB step.
@@ -143,6 +144,75 @@ fn hash(window: &[u8]) -> [Placement; PIECES_PER_STEP] {
   out
 }
 
+/// Boards in the bank: one per thing the rule teacher watches.
+pub const BANK_BOARDS: usize = 4;
+/// Intercept plus one-hot of every placement on every board of the bank.
+pub const BANK_ONEHOT_ROW_LEN: usize = 1 + BANK_BOARDS * PIECES_PER_STEP * PLACEMENT_ONEHOT;
+
+/// Window index of the terrain byte `columns` ahead of Mario at `row`.
+const fn terrain(columns: usize, row: usize) -> u16 {
+  256 + (columns * BLOCK_ROWS + row) as u16
+}
+
+const fn absolute(address: u16, shift: u8) -> Feature {
+  Feature {
+    address,
+    relative: false,
+    shift,
+  }
+}
+
+const fn relative(address: u16, shift: u8) -> Feature {
+  Feature {
+    address,
+    relative: true,
+    shift,
+  }
+}
+
+/// The bank's four boards and what each watches. A single board takes four
+/// features per step; the rule teacher reads about sixteen numbers. Board 0
+/// is Mario himself: airborne byte, vertical speed, y, x speed. Board 1 is
+/// the enemies: the nearest distance ahead and three slots' x relative to
+/// Mario. Board 2 is the floor one to four columns ahead, where a pit is a
+/// zero. Board 3 is the row above the floor over the same columns, which
+/// every pipe, stair and wall fills. Terrain bins are four values wide so
+/// empty, pipe and ground tiles land in different columns.
+pub const fn bank() -> [[Feature; PIECES_PER_STEP]; BANK_BOARDS] {
+  [
+    [
+      absolute(MARIO_AIRBORNE as u16, 0),
+      absolute(MARIO_Y_SPEED as u16, 3),
+      absolute(MARIO_Y as u16, 5),
+      absolute(MARIO_X_SPEED as u16, 3),
+    ],
+    [absolute(ENEMY_DISTANCE, 3), relative(0x0087, 3), relative(0x0088, 3), relative(0x0089, 3)],
+    [
+      absolute(terrain(1, 11), 2),
+      absolute(terrain(2, 11), 2),
+      absolute(terrain(3, 11), 2),
+      absolute(terrain(4, 11), 2),
+    ],
+    [
+      absolute(terrain(1, 10), 2),
+      absolute(terrain(2, 10), 2),
+      absolute(terrain(3, 10), 2),
+      absolute(terrain(4, 10), 2),
+    ],
+  ]
+}
+
+/// Each board's four placements for one SMB window.
+pub fn bank_placements(window: &[u8]) -> [[Placement; PIECES_PER_STEP]; BANK_BOARDS] {
+  bank().map(|features| features.map(|f| f.placement(window)))
+}
+
+/// The bank's sixteen placements as one one-hot row: the control for the bank.
+pub fn bank_onehot_row(window: &[u8]) -> Vec<f32> {
+  let placements: Vec<Placement> = bank_placements(window).into_iter().flatten().collect();
+  onehot_row(&placements)
+}
+
 /// Four placements for one SMB window.
 pub fn encode(encoder: Encoder, window: &[u8]) -> [Placement; PIECES_PER_STEP] {
   match encoder {
@@ -166,6 +236,7 @@ pub fn onehot_row(placements: &[Placement]) -> Vec<f32> {
 
 #[cfg(test)]
 mod tests {
+  use super::super::features::SMB_WINDOW_LEN;
   use super::*;
 
   fn window_with_mario(x: i32, y: u8) -> Vec<u8> {
@@ -284,6 +355,41 @@ mod tests {
     add_enemy(&mut w, 4, 400 + 37, 184);
     add_enemy(&mut w, 1, 400 - 20, 184);
     assert_eq!(f.placement(&w).column, 37 / 8);
+  }
+
+  #[test]
+  fn the_bank_watches_mario_the_enemies_the_floor_and_the_wall_ahead() {
+    let boards = bank();
+    assert_eq!(boards.len(), BANK_BOARDS);
+    assert!(boards[0].iter().any(|f| f.address == 0x1D), "Mario's airborne byte");
+    assert!(boards[1].iter().any(|f| f.address == ENEMY_DISTANCE));
+    let terrain = |col: usize, row: usize| 256 + (col * 13 + row) as u16;
+    for (i, f) in boards[2].iter().enumerate() {
+      assert_eq!(f.address, terrain(i + 1, 11), "the floor one to four columns ahead");
+    }
+    for (i, f) in boards[3].iter().enumerate() {
+      assert_eq!(f.address, terrain(i + 1, 10), "the row above the floor, which every wall fills");
+    }
+    let mut w = window_with_mario(400, 176);
+    w.resize(SMB_WINDOW_LEN, 0);
+    for col in 0..8 {
+      w[terrain(col, 11) as usize] = 0x54;
+      w[terrain(col, 12) as usize] = 0x54;
+    }
+    w[terrain(2, 11) as usize] = 0; // a pit two columns ahead
+    w[terrain(3, 10) as usize] = 0x12; // a pipe three columns ahead
+    w[terrain(3, 9) as usize] = 0x12;
+    let p = bank_placements(&w);
+    assert_eq!(p[2].map(|p| p.column), [9, 0, 9, 9], "ground bins high, the pit low");
+    assert_eq!(p[3].map(|p| p.column), [0, 0, 4, 0], "the pipe tile sits between empty and ground");
+    let row = bank_onehot_row(&w);
+    assert_eq!(row.len(), BANK_ONEHOT_ROW_LEN);
+    assert_eq!(row.iter().filter(|&&v| v == 1.0).count(), 1 + 2 * BANK_BOARDS * PIECES_PER_STEP);
+    assert_eq!(
+      row[1 + (2 * PIECES_PER_STEP + 1) * PLACEMENT_ONEHOT],
+      1.0,
+      "the pit is column 0 of board 2, piece 1"
+    );
   }
 
   #[test]
