@@ -336,6 +336,58 @@ little as it can. Then the jump phase becomes a function of what is in
 front of Mario, and a state readout has something to learn. That is one
 line in `prune_and_rank` and a re-search of the six demonstrations.
 
+Result (2026-10-14, the teacher, and where the errors are): the beam now
+ranks by progress in 8-pixel buckets and then by the fewest A presses, so
+each demonstration jumps as late and as little as it can. Six new
+demonstrations, all clearing 1-1. It did not help: on the fast table at
+penalty 100 every row came in a point or two under the old
+demonstrations. So a diagnostic was written instead of another change
+(`where_the_a_errors_are`, an ignored test): classify the raw readout's
+held-out A errors by where they fall relative to the demonstrations'
+presses.
+
+Two things came out. The B and Right bits are 0.856 accurate for every
+condition including the clock: they are the search's walk and wait
+macros, chosen by nothing, and they are two thirds of the headline
+number. And every press onset is missed, 120 of 120, by raw, by the
+one-hot encoder and by the clock alike. The readouts never predict the
+first step of a jump; they predict A once Mario is already rising. They
+learned to recognise a jump, not to start one, which is why every one of
+them dies at the first Goomba closed-loop. The table now reports the A
+bit on its own, and the hand-picked encoder's enemy bins narrowed from
+32 pixels to 8, a step's worth, in case resolution was the problem.
+
+```
+fewest-jumps demonstrations, raw label, penalty 100, A bit held out
+condition          | train acc | held-out acc | A acc
+clock              |     0.820 |        0.820 | 0.746
+raw                |     0.854 |        0.846 | 0.827
+random-a           |     0.783 |        0.783 | 0.634
+random-tanh        |     0.865 |        0.846 | 0.837
+echo-state         |     0.870 |        0.843 | 0.829
+placement-onehot   |     0.846 |        0.843 | 0.816
+searched-onehot    |     0.861 |        0.860 | 0.856
+  ($9F vertical speed /8, $70 enemy page /8, $118 = terrain one column ahead, row 11: a pit detector /8, $F1 /4)
+```
+
+On the A bit the floor is 0.746, the majority class. Raw and the two
+software reservoirs sit at 0.83, the searched encoder at 0.856, eleven
+points over the floor. The search, now allowed terrain, picked a pit
+detector on its third try. Narrowing the hand-picked enemy bins did
+nothing, so resolution was not what the onsets were waiting for.
+
+Where this leaves the idea. Twenty runs, and the reservoir question has
+an answer: a game in the loop costs six points on the raw label whatever
+is fed to it, and the echo state network, the thing Tetris was standing
+in for, matches raw and no more. The imitation question has a sharper
+one: a readout of the current state predicts that a jump is happening,
+not that one should start, and the onset is the whole policy. Anything
+that moves the onset number is a different experiment: a label that
+marks onsets rather than presses, scored on the onset bit, or a
+demonstrator that is itself a readable function of state. The video's
+struggle chapter has its arc either way: six demonstrations, every
+readout agreeing with them only once Mario has left the ground.
+
 A captioned explainer video of the experiment, six chapters ending with
 the whole level in real time, is built by `examples/reservoir_dump.rs`
 followed by `tools/reservoir_video.py`; see
