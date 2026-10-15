@@ -296,6 +296,46 @@ expansion with no game in it, read out by the same ridge. If it clears
 nonlinearity. If it does not, the demonstrations' jump phase is the
 ceiling after all, and the only way up is a different teacher.
 
+Result (2026-10-14, software reservoirs and the ridge penalty): two new
+conditions with no game in them. `random-tanh` is a fixed random
+projection of the 360-byte window to 2,048 tanh units; `echo-state` is
+the same with a random recurrent matrix at spectral radius 0.9 and leak
+0.5, so the state carries history the way Tetris's board does. Both are
+read out by the same ridge. Tetris rows are left out (`--no-tetris`), so
+each table takes four minutes, and the ridge penalty is swept because
+2,048 features against 2,012 rows at the byte-tuned penalty of 1 overfit
+badly (echo-state trained at 0.936 and held out at 0.805).
+
+```
+held-out accuracy      lambda 1     10    100   1000
+clock                     0.808  0.808  0.786  0.782
+raw                       0.854  0.860  0.863  0.863
+random-a                  0.779  0.779  0.779  0.779
+random-tanh               0.829  0.853  0.861  0.863
+echo-state                0.805  0.844  0.856  0.855
+placement-onehot          0.860  0.861  0.863  0.863
+searched-onehot           0.867  0.866  0.866  0.867
+```
+
+Regularised properly, the nonlinear expansions converge on exactly raw's
+number, 0.863, and nothing in the sweep clears 0.867. The expansion can
+fit the training rows much better than bytes can, 0.936 against 0.871,
+which proves it has the capacity, and that capacity buys nothing on a
+held-out demonstration. So the ceiling is not the policy class either.
+Bytes, bins, terrain, a 2,048-unit tanh expansion, an echo state network
+with memory: all stop at 0.86 to 0.87 on the raw label, with floors at
+0.78 and 0.81.
+
+That leaves the teacher. The demonstrations come from a search that
+jumps whenever a jump survives, and among equally surviving jumps it
+picks by a seeded coin, so the phase of each jump relative to its
+obstacle is a random variable that no function of the state can predict.
+The fix is in the search, not the readout: break ties toward the path
+with the fewest A presses, so every demonstration jumps as late and as
+little as it can. Then the jump phase becomes a function of what is in
+front of Mario, and a state readout has something to learn. That is one
+line in `prune_and_rank` and a re-search of the six demonstrations.
+
 A captioned explainer video of the experiment, six chapters ending with
 the whole level in real time, is built by `examples/reservoir_dump.rs`
 followed by `tools/reservoir_video.py`; see
