@@ -5,6 +5,7 @@
 //! `--legacy` adds the undriven, controller-driven and playfield conditions to the table.
 //! `--horizon=N` sets the jump-label horizon in steps (default 0, the raw label).
 //! `--no-tetris` drops every condition that runs a Tetris emulator, for a table in minutes.
+//! `--lambda=X` sets the ridge penalty (default 1).
 //! Demonstrations are cached in `demo-dir` (default `target/tetris-reservoir-demos`)
 //! as `demo-N.bin`; delete the directory to search again.
 
@@ -20,6 +21,7 @@ use std::path::{Path, PathBuf};
 fn main() {
   let legacy = std::env::args().any(|a| a == "--legacy");
   let no_tetris = std::env::args().any(|a| a == "--no-tetris");
+  let lambda = std::env::args().find_map(|a| a.strip_prefix("--lambda=").map(|v| v.parse::<f64>().expect("--lambda=X")));
   let horizon = std::env::args().find_map(|a| a.strip_prefix("--horizon=").map(|v| v.parse::<usize>().expect("--horizon=N")));
   let args: Vec<String> = std::env::args().filter(|a| !a.starts_with("--")).collect();
   let smb_path = args.get(1).map(String::as_str).unwrap_or("roms2/super_mario_bros.nes");
@@ -36,6 +38,9 @@ fn main() {
   let mut config = ExperimentConfig::default();
   if let Some(h) = horizon {
     config.jump_horizon = h;
+  }
+  if let Some(l) = lambda {
+    config.lambda = l;
   }
   let mut log = |line: &str| eprintln!("{}", line);
   let demos = match load_cached(&demo_dir, config.demonstrations) {
@@ -76,7 +81,10 @@ fn main() {
     );
   }
   println!("accuracy is over the buttons the demonstrations use: {:08b}", report.active_bits);
-  println!("held-out columns are leave-one-demonstration-out, pooled over folds");
+  println!(
+    "held-out columns are leave-one-demonstration-out, pooled over folds; ridge lambda {}",
+    config.lambda
+  );
   if config.jump_horizon == 0 {
     println!(
       "A label: raw; window: zero page (controller bytes hidden) plus the terrain buffer, {} bytes",
