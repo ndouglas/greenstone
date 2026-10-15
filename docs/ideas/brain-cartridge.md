@@ -489,6 +489,94 @@ much more. The video's struggle chapter has its resolution: six
 demonstrations from a rule, the readouts that only recognised a jump,
 and the echo state and Tetris starting them.
 
+Result (2026-10-15, a bank of four boards, runs 28 to 31): the
+follow-ups above were done, and two of them found memorisers before
+they found anything else. The demonstration offsets were spread over
+120 idle frames (`noop_max`, a cache at other offsets is searched
+again). The rule search on the new offsets kept the same trigger and
+took a nine-step hold on obstacles over the five-step one, on a tie of
+x sums; all six clear 1-1 in 551 to 568 steps. The encoder search was
+rescored, twice. Scored by onset recall plus A accuracy it picked a byte
+that pressed A nearly everywhere (0.696 onsets at 0.656 A accuracy),
+because never pressing A already scores 0.7 on accuracy, so presses
+were cheap. Scored by onset recall plus A specificity (always-A and
+never-A both score one) over the old pool, it picked a terrain tile
+minus Mario's x pixel, which is Mario's position within the page in
+16-px bins, and on one fixed level that predicts where the jumps are:
+0.717 onsets by memorising the layout. The pool now leaves out Mario's
+x bytes and reads only the five enemy x bytes relative to him. With
+that, the search picked the rule's own inputs in order: the wall row
+three columns ahead (`$131`), the nearest-enemy distance at 8 px, the
+wall row one column ahead, and the floor three columns ahead (the pit
+test), reaching 0.935 held-out onsets on the one-hot control.
+
+The bank (`bank-tetris`) is four Tetris boards, each steered by four
+placements from its own part of the window: Mario himself (airborne
+byte, vertical speed, y, x speed), the enemies (nearest distance and
+three slots' x relative to him), the floor one to four columns ahead,
+and the row above the floor over the same columns, which every pipe,
+stair and wall fills. The readout sees the four playfields, 800 cells.
+Its control (`bank-onehot`) is the same sixteen placements as one-hots,
+so the bank's gain over its control is the boards and nothing else.
+
+The clock had to be fixed too. Counted from the first button, with the
+idle frames before it, every offset had the same step at every x,
+because Mario starts in one place and nothing moves until he does; on
+the new offsets the clock readout started 0.971 of onsets and cleared
+the level (mean x 2902, max 3267). It now counts macro steps since the
+level started, idle frames included, and is a floor again. Every other
+row is deterministic and identical between runs 30 and 31.
+
+```
+rule teacher (hold 9 on obstacles), offsets over 120 frames, ridge penalty 1 (run 30; clock from run 31)
+condition          | held-out acc | A acc | onset | mean x | max x | resets
+clock              |        0.857 | 0.572 | 0.449 |  429.6 |   898 |      0
+raw                |        0.973 | 0.920 | 0.007 |  312.4 |   314 |      0
+random-a           |        0.841 | 0.524 | 0.420 |  387.2 |   685 |      0
+random-tanh        |        0.987 | 0.960 | 0.384 |  837.4 |   898 |      0
+echo-state         |        0.995 | 0.984 | 0.841 | 1399.6 |  1525 |      0
+placement-onehot   |        0.978 | 0.934 | 0.348 |  434.0 |   434 |      0
+placement-tetris   |        0.951 | 0.854 | 0.449 | 1126.0 |  1130 |   1102
+searched-onehot    |        0.912 | 0.737 | 0.935 |  722.0 |   722 |      0
+searched-tetris    |        0.943 | 0.829 | 0.746 |  432.4 |   898 |    864
+bank-onehot        |        0.985 | 0.954 | 0.594 |  898.0 |   898 |      0
+bank-tetris        |        0.981 | 0.943 | 0.855 | 1494.8 |  1790 |   4701
+placement-hash     |        0.844 | 0.532 | 0.355 |  792.6 |  1524 |    959
+  searched encoder: $131 /8, enemy /8, $115 /8, $132 /4
+```
+
+The bank starts 0.855 of the held-out onsets and its episodes reach a
+mean x of 1495 and a best of 1790, which is level with the 2,048-unit
+echo state (0.841, 1400, 1525). It does that from sixteen binned
+features that carry no position; the echo state reads the whole window,
+Mario's x included, and could be memorising the level the way the clock
+did, so the bank's number is the cleaner of the two. The same sixteen
+placements read as one-hots, with no game behind them, start 0.594 and
+reach 898; the single hand-picked board starts 0.449 and reaches 1126.
+So of the bank's gain over the old single board, going from four
+features to sixteen is worth 0.348 to 0.594 and the boards are worth
+0.594 to 0.855, and the boards added more over their encoding (0.26)
+than the single board added over its (0.10). The boards reset 4,701
+times, about once every five steps per board, so what Tetris remembers
+is the last twenty pieces; a jump decision needs about that much.
+
+The searched one-hot shows what a memoryless readout of the right four
+features cannot do: it starts 0.935 of onsets and dies at x 722 in every
+episode, with A accuracy 0.737 and specificity 0.815, because four
+one-hots have no record of having pressed, so A stays down for as long
+as the trigger is in view. The same features through one board start
+0.746 and reach 898 at best. The hash control stays at the floor on
+onsets. Raw bytes start 0.007 of jumps on this teacher.
+
+What this says about the idea, 31 runs in: a bank of four Tetris games,
+each watching its own part of Mario's world, is a reservoir that
+matches a software echo state on this task, on an encoding whose
+memoryless readout sits at 0.594. The next things to try are inside the
+bank: fewer resets (a housekeeping piece per step placed to keep the
+stack low, or reading column heights alongside the playfield), more
+boards or a search for each board's four features within its region,
+and a second level so no condition can memorise a layout.
+
 A captioned explainer video of the experiment, six chapters ending with
 the whole level in real time, is built by `examples/reservoir_dump.rs`
 followed by `tools/reservoir_video.py`; see
