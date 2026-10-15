@@ -8,6 +8,7 @@ pub mod encode;
 pub mod features;
 pub mod ridge;
 pub mod search;
+pub mod soft;
 pub mod trace;
 
 use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_RIGHT, BUTTON_SELECT, BUTTON_START};
@@ -17,6 +18,7 @@ use drive::{fold_to_controller, Reservoir};
 use encode::{encode, onehot_row, Encoder};
 use features::{clock_row, feature_row, Condition};
 use ridge::{fit, Readout};
+use soft::{Expansion, SOFT_SEED};
 
 pub struct ExperimentConfig {
   pub lambda: f64,
@@ -298,15 +300,45 @@ pub(crate) fn evaluate_folds(datasets: &[Dataset], lambda: f64, mask: u8) -> Res
   })
 }
 
-/// The reservoir a condition needs, booted the way its drive needs it, or None.
-pub(crate) fn reservoir_for(condition: Condition, tetris_rom: &[u8]) -> Result<Option<Reservoir>, String> {
+/// A condition's hidden layer: a game, a software expansion, or nothing.
+pub(crate) enum Hidden {
+  None,
+  Tetris(Reservoir),
+  Soft(Expansion),
+}
+
+impl Hidden {
+  pub(crate) fn tetris(&self) -> Option<&Reservoir> {
+    match self {
+      Hidden::Tetris(r) => Some(r),
+      _ => None,
+    }
+  }
+
+  pub(crate) fn tetris_mut(&mut self) -> Option<&mut Reservoir> {
+    match self {
+      Hidden::Tetris(r) => Some(r),
+      _ => None,
+    }
+  }
+
+  pub(crate) fn resets(&self) -> u32 {
+    self.tetris().map(|r| r.resets).unwrap_or(0)
+  }
+}
+
+/// The hidden layer a condition needs, booted the way its drive needs it.
+pub(crate) fn hidden_for(condition: Condition, tetris_rom: &[u8]) -> Result<Hidden, String> {
+  if let Some(recurrent) = condition.soft_reservoir() {
+    return Ok(Hidden::Soft(Expansion::new(SOFT_SEED, recurrent)));
+  }
   if !condition.uses_reservoir() {
-    return Ok(None);
+    return Ok(Hidden::None);
   }
   if condition.fast_tetris() {
-    Reservoir::new_fast(tetris_rom).map(Some)
+    Reservoir::new_fast(tetris_rom).map(Hidden::Tetris)
   } else {
-    Reservoir::new(tetris_rom).map(Some)
+    Reservoir::new(tetris_rom).map(Hidden::Tetris)
   }
 }
 
@@ -365,13 +397,14 @@ impl Driver<'_> {
   }
 }
 
-/// Step the reservoir with the current window (if the condition has one) and build the row.
-pub(crate) fn observe(condition: Condition, window: &[u8], reservoir: Option<&mut Reservoir>, step: usize) -> Vec<f32> {
-  match (condition, reservoir) {
+/// Step the hidden layer with the current window (if the condition has one) and build the row.
+pub(crate) fn observe(condition: Condition, window: &[u8], hidden: &mut Hidden, step: usize) -> Vec<f32> {
+  match (condition, hidden) {
     (Condition::Clock | Condition::RandomA, _) => clock_row(step),
     (Condition::Raw, _) => feature_row(window, None),
     (Condition::PlacementOnehot(e), _) => onehot_row(&encode(e, window)),
-    (c, Some(r)) => {
+    (_, Hidden::Soft(e)) => e.step(window),
+    (c, Hidden::Tetris(r)) => {
       r.step(c.drive(), window, MACRO_FRAMES);
       let bits = if c.appends_drive_bits() {
         Some(fold_to_controller(window))
@@ -380,7 +413,7 @@ pub(crate) fn observe(condition: Condition, window: &[u8], reservoir: Option<&mu
       };
       feature_row(&r.ram(), bits)
     }
-    (c, None) => panic!("condition {} needs a reservoir", c.name()),
+    (c, Hidden::None) => panic!("condition {} needs a hidden layer", c.name()),
   }
 }
 
@@ -395,7 +428,7 @@ pub(crate) fn collect(
   let mut smb = NesEmulator::new(smb_rom);
   smb.load_state(start);
   smb.step_frames(0, demo.noops);
-  let mut reservoir = reservoir_for(condition, tetris_rom)?;
+  let mut hidden = hidden_for(condition, tetris_rom)?;
   let mut data = Dataset {
     rows: Vec::new(),
     targets: Vec::new(),
@@ -404,7 +437,7 @@ pub(crate) fn collect(
   };
   for (step, &action) in demo.buttons.iter().enumerate() {
     let window = smb_window(&mut smb);
-    let row = observe(condition, &window, reservoir.as_mut(), step);
+    let row = observe(condition, &window, &mut hidden, step);
     if row_is_informative(smb_in_cutscene(&mut smb)) {
       data.rows.push(row);
       data.targets.push(buttons_to_targets(action));
@@ -414,7 +447,7 @@ pub(crate) fn collect(
   }
   data.buttons = smooth_a(&data.buttons, horizon);
   data.targets = data.buttons.iter().map(|&b| buttons_to_targets(b)).collect();
-  data.resets = reservoir.map(|r| r.resets).unwrap_or(0);
+  data.resets = hidden.resets();
   Ok(data)
 }
 
@@ -431,11 +464,11 @@ fn episode(
   let mut smb = NesEmulator::new(smb_rom);
   smb.load_state(start);
   smb.step_frames(0, noops);
-  let mut reservoir = reservoir_for(condition, tetris_rom)?;
+  let mut hidden = hidden_for(condition, tetris_rom)?;
   let mut max_x = 0;
   for step in 0..max_steps {
     let window = smb_window(&mut smb);
-    let row = observe(condition, &window, reservoir.as_mut(), step);
+    let row = observe(condition, &window, &mut hidden, step);
     let buttons = driver.buttons(&row);
     smb.step_frames(buttons, MACRO_FRAMES);
     max_x = max_x.max(smb_x(&mut smb));
@@ -443,7 +476,7 @@ fn episode(
       break;
     }
   }
-  Ok((max_x, reservoir.map(|r| r.resets).unwrap_or(0)))
+  Ok((max_x, hidden.resets()))
 }
 
 /// Search for `config.demonstrations` demonstrations, each from its own no-op
@@ -615,7 +648,7 @@ mod tests {
   #[test]
   fn observe_onehot_needs_no_reservoir() {
     let window = vec![0u8; 256];
-    let row = observe(Condition::PlacementOnehot(Encoder::Salient), &window, None, 0);
+    let row = observe(Condition::PlacementOnehot(Encoder::Salient), &window, &mut Hidden::None, 0);
     assert_eq!(row.len(), Condition::PlacementOnehot(Encoder::Salient).row_len());
     assert_eq!(row[0], 1.0);
   }
@@ -663,10 +696,10 @@ mod tests {
 
   #[test]
   fn observe_clock_needs_no_reservoir_and_encodes_the_step() {
-    let row = observe(Condition::Clock, &[1, 2, 3], None, 7);
+    let row = observe(Condition::Clock, &[1, 2, 3], &mut Hidden::None, 7);
     assert_eq!(row.len(), Condition::Clock.row_len());
     assert_eq!(row[1 + 7], 1.0);
-    let raw = observe(Condition::Raw, &[1, 2, 3], None, 7);
+    let raw = observe(Condition::Raw, &[1, 2, 3], &mut Hidden::None, 7);
     assert_eq!(raw.len(), 4);
   }
 

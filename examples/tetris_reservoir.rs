@@ -4,6 +4,7 @@
 //!
 //! `--legacy` adds the undriven, controller-driven and playfield conditions to the table.
 //! `--horizon=N` sets the jump-label horizon in steps (default 0, the raw label).
+//! `--no-tetris` drops every condition that runs a Tetris emulator, for a table in minutes.
 //! Demonstrations are cached in `demo-dir` (default `target/tetris-reservoir-demos`)
 //! as `demo-N.bin`; delete the directory to search again.
 
@@ -18,6 +19,7 @@ use std::path::{Path, PathBuf};
 
 fn main() {
   let legacy = std::env::args().any(|a| a == "--legacy");
+  let no_tetris = std::env::args().any(|a| a == "--no-tetris");
   let horizon = std::env::args().find_map(|a| a.strip_prefix("--horizon=").map(|v| v.parse::<usize>().expect("--horizon=N")));
   let args: Vec<String> = std::env::args().filter(|a| !a.starts_with("--")).collect();
   let smb_path = args.get(1).map(String::as_str).unwrap_or("roms2/super_mario_bros.nes");
@@ -54,6 +56,9 @@ fn main() {
   let mut conditions = Condition::default_table(Some(searched));
   if legacy {
     conditions.extend(Condition::LEGACY);
+  }
+  if no_tetris {
+    conditions.retain(|c| !c.uses_reservoir());
   }
   let report = match run(&smb_rom, &tetris_rom, &demos, &conditions, &config, &mut log) {
     Ok(r) => r,

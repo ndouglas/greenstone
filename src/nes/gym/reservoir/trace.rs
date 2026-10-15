@@ -1,11 +1,11 @@
 //! Recording a demonstration and closed-loop episodes with frames, for the video.
 
 use super::demo::{smb_cleared, smb_dead, smb_in_cutscene, smb_start_state, smb_window, smb_x, smb_y, Demonstration, MACRO_FRAMES};
-use super::drive::{Reservoir, TETRIS_PLAYFIELD, TETRIS_PLAYFIELD_LEN};
+use super::drive::{TETRIS_PLAYFIELD, TETRIS_PLAYFIELD_LEN};
 use super::encode::{encode, Encoder};
 use super::features::Condition;
 use super::ridge::{fit, Readout};
-use super::{collect, observe, outputs_to_buttons, reservoir_for, Dataset};
+use super::{collect, hidden_for, observe, outputs_to_buttons, Dataset, Hidden};
 use crate::nes::gym::NesEmulator;
 use std::io::Write;
 
@@ -70,17 +70,17 @@ pub fn replay(
   let mut smb = NesEmulator::new(smb_rom);
   smb.load_state(&smb_start_state(smb_rom));
   smb.step_frames(0, demo.noops);
-  let mut reservoirs: Vec<Option<Reservoir>> = readouts.iter().map(|(c, _)| reservoir_for(*c, tetris_rom)).collect::<Result<_, _>>()?;
-  let screen = reservoirs.iter().position(|r| r.is_some());
+  let mut hiddens: Vec<Hidden> = readouts.iter().map(|(c, _)| hidden_for(*c, tetris_rom)).collect::<Result<_, _>>()?;
+  let screen = hiddens.iter().position(|h| h.tetris().is_some());
   let mut steps = Vec::with_capacity(demo.buttons.len());
   for (step, &action) in demo.buttons.iter().enumerate() {
     let window = smb_window(&mut smb);
     let outputs: Vec<Vec<f64>> = readouts
       .iter()
-      .zip(reservoirs.iter_mut())
-      .map(|((c, readout), reservoir)| readout.predict(&observe(*c, &window, reservoir.as_mut(), step)))
+      .zip(hiddens.iter_mut())
+      .map(|((c, readout), hidden)| readout.predict(&observe(*c, &window, hidden, step)))
       .collect();
-    let (board, tetris_ram) = match screen.and_then(|i| reservoirs[i].as_mut()) {
+    let (board, tetris_ram) = match screen.and_then(|i| hiddens[i].tetris_mut()) {
       Some(r) => {
         tetris_sink.write_all(r.framebuffer()).map_err(|e| e.to_string())?;
         let ram = r.ram();
@@ -133,11 +133,11 @@ pub fn trace_episode(
   let mut smb = NesEmulator::new(smb_rom);
   smb.load_state(&smb_start_state(smb_rom));
   smb.step_frames(0, noops);
-  let mut reservoir = reservoir_for(condition, tetris_rom)?;
+  let mut hidden = hidden_for(condition, tetris_rom)?;
   let mut steps = Vec::new();
   for step in 0..max_steps {
     let window = smb_window(&mut smb);
-    let buttons = outputs_to_buttons(&readout.predict(&observe(condition, &window, reservoir.as_mut(), step)));
+    let buttons = outputs_to_buttons(&readout.predict(&observe(condition, &window, &mut hidden, step)));
     for _ in 0..MACRO_FRAMES {
       smb.step_frame(buttons);
       smb_sink.write_all(smb.framebuffer()).map_err(|e| e.to_string())?;

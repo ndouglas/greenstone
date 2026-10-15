@@ -4,6 +4,7 @@ use super::drive::Drive;
 #[cfg(test)]
 use super::encode::Feature;
 use super::encode::{Encoder, ONEHOT_ROW_LEN};
+use super::soft::SOFT_UNITS;
 
 /// Start of the SMB state window handed to the reservoir: zero page.
 pub const SMB_WINDOW_START: u16 = 0x0000;
@@ -39,6 +40,11 @@ pub enum Condition {
   /// No readout: run right and press A by a two-state chain fitted to the
   /// demonstrations' jump statistics. The closed-loop floor.
   RandomA,
+  /// A fixed random tanh expansion of the window to 2,048 units. The echo
+  /// state network's nonlinearity with no game and no memory.
+  RandomTanh,
+  /// The same expansion with a random recurrent matrix: an echo state network.
+  EchoState,
   /// Tetris RAM with no input. The control.
   Undriven,
   /// Tetris RAM, Tetris driven through its controller by a fold of the window.
@@ -62,6 +68,8 @@ impl Condition {
       Condition::Clock,
       Condition::Raw,
       Condition::RandomA,
+      Condition::RandomTanh,
+      Condition::EchoState,
       Condition::PlacementOnehot(Encoder::Salient),
       Condition::PlacementTetris(Encoder::Salient),
     ];
@@ -83,6 +91,8 @@ impl Condition {
       Condition::Clock => "clock".to_string(),
       Condition::Raw => "raw".to_string(),
       Condition::RandomA => "random-a".to_string(),
+      Condition::RandomTanh => "random-tanh".to_string(),
+      Condition::EchoState => "echo-state".to_string(),
       Condition::Undriven => "undriven".to_string(),
       Condition::DrivenController => "driven-controller".to_string(),
       Condition::DrivenPlayfield => "driven-playfield".to_string(),
@@ -97,7 +107,13 @@ impl Condition {
       Condition::DrivenController => Some(Drive::Controller),
       Condition::DrivenPlayfield => Some(Drive::Playfield),
       Condition::PlacementTetris(e) => Some(Drive::Placements(e)),
-      Condition::Clock | Condition::Raw | Condition::RandomA | Condition::Undriven | Condition::PlacementOnehot(_) => None,
+      Condition::Clock
+      | Condition::Raw
+      | Condition::RandomA
+      | Condition::RandomTanh
+      | Condition::EchoState
+      | Condition::Undriven
+      | Condition::PlacementOnehot(_) => None,
     }
   }
 
@@ -111,6 +127,15 @@ impl Condition {
   /// Placement drives play at level 19 so a piece drops in a few dozen frames.
   pub fn fast_tetris(self) -> bool {
     matches!(self.drive(), Some(Drive::Placements(_)))
+  }
+
+  /// Conditions whose hidden layer is a software expansion: Some(recurrent).
+  pub fn soft_reservoir(self) -> Option<bool> {
+    match self {
+      Condition::RandomTanh => Some(false),
+      Condition::EchoState => Some(true),
+      _ => None,
+    }
   }
 
   pub fn appends_drive_bits(self) -> bool {
@@ -130,6 +155,7 @@ impl Condition {
       Condition::Clock | Condition::RandomA => 1 + CLOCK_CAPACITY,
       Condition::Raw => 1 + SMB_WINDOW_LEN,
       Condition::PlacementOnehot(_) => ONEHOT_ROW_LEN,
+      Condition::RandomTanh | Condition::EchoState => 1 + SOFT_UNITS,
       Condition::DrivenController => 1 + TETRIS_RAM_LEN as usize + DRIVE_BITS,
       Condition::Undriven | Condition::DrivenPlayfield | Condition::PlacementTetris(_) => 1 + TETRIS_RAM_LEN as usize,
     }
@@ -207,6 +233,12 @@ mod tests {
     assert_eq!(Condition::PlacementOnehot(Encoder::Salient).row_len(), ONEHOT_ROW_LEN);
     assert_eq!(Condition::PlacementTetris(Encoder::Salient).row_len(), 1 + 2048);
     assert_eq!(Condition::PlacementTetris(Encoder::Hash).row_len(), 1 + 2048);
+    assert_eq!(Condition::RandomTanh.row_len(), 1 + 2048);
+    assert_eq!(Condition::EchoState.row_len(), 1 + 2048);
+    assert!(!Condition::RandomTanh.uses_reservoir());
+    assert_eq!(Condition::RandomTanh.soft_reservoir(), Some(false));
+    assert_eq!(Condition::EchoState.soft_reservoir(), Some(true));
+    assert_eq!(Condition::Raw.soft_reservoir(), None);
   }
 
   #[test]
