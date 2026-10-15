@@ -4,8 +4,8 @@ use super::demo::{smb_cleared, smb_dead, smb_in_cutscene, smb_start_state, smb_w
 use super::drive::{TETRIS_PLAYFIELD, TETRIS_PLAYFIELD_LEN};
 use super::encode::{encode, Encoder};
 use super::features::Condition;
-use super::ridge::{fit, Readout};
-use super::{collect, hidden_for, observe, outputs_to_buttons, Dataset, Hidden};
+use super::ridge::Readout;
+use super::{collect, fit_readout, hidden_for, observe, outputs_to_buttons, Dataset, Hidden};
 use crate::nes::gym::NesEmulator;
 use std::io::Write;
 
@@ -16,6 +16,7 @@ pub fn fit_condition(
   tetris_rom: &[u8],
   demos: &[Demonstration],
   lambda: f64,
+  logistic: bool,
   horizon: usize,
 ) -> Result<Readout, String> {
   let start = smb_start_state(smb_rom);
@@ -34,7 +35,7 @@ pub fn fit_condition(
   })?;
   let rows: Vec<Vec<f32>> = datasets.iter().flat_map(|d| d.rows.iter().cloned()).collect();
   let targets: Vec<Vec<f32>> = datasets.iter().flat_map(|d| d.targets.iter().cloned()).collect();
-  fit(&rows, &targets, lambda)
+  fit_readout(&rows, &targets, lambda, logistic)
 }
 
 /// One demonstration step as the video sees it.

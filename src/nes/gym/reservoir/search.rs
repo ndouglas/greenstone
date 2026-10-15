@@ -2,7 +2,7 @@
 //! when sent as one-hot placements, which needs no Tetris to score.
 
 use super::demo::{smb_in_cutscene, smb_start_state, smb_window, Demonstration, MACRO_FRAMES};
-use super::encode::{onehot_row, Encoder, Feature, Placement, PIECES_PER_STEP};
+use super::encode::{onehot_row, Encoder, Feature, Placement, ENEMY_DISTANCE, PIECES_PER_STEP};
 use super::features::SMB_WINDOW_LEN;
 use super::{buttons_to_targets, evaluate_folds, row_is_informative, smooth_a, Dataset};
 use crate::nes::gym::NesEmulator;
@@ -10,15 +10,23 @@ use crate::nes::gym::NesEmulator;
 /// Bin widths tried, as bits dropped: 4, 8, 16 and 32 values per column.
 pub const SHIFTS: [u8; 4] = [2, 3, 4, 5];
 
-/// Every window byte, absolute and relative to Mario's x, at every width.
+/// Every window byte, absolute and relative to Mario's x, at every width,
+/// plus the nearest-enemy distance at every width.
 pub fn candidates() -> Vec<Feature> {
-  let mut out = Vec::with_capacity(SMB_WINDOW_LEN * 2 * SHIFTS.len());
+  let mut out = Vec::with_capacity((SMB_WINDOW_LEN * 2 + 1) * SHIFTS.len());
   for address in 0..SMB_WINDOW_LEN as u16 {
     for relative in [false, true] {
       for shift in SHIFTS {
         out.push(Feature { address, relative, shift });
       }
     }
+  }
+  for shift in SHIFTS {
+    out.push(Feature {
+      address: ENEMY_DISTANCE,
+      relative: false,
+      shift,
+    });
   }
   out
 }
@@ -61,8 +69,8 @@ fn datasets(features: &[Feature], windows: &[Vec<Vec<u8>>], buttons: &[Vec<u8>])
 }
 
 /// Leave-one-demonstration-out bit accuracy of a one-hot readout on these features.
-pub fn score(features: &[Feature], windows: &[Vec<Vec<u8>>], buttons: &[Vec<u8>], lambda: f64, mask: u8) -> Result<f64, String> {
-  evaluate_folds(&datasets(features, windows, buttons), lambda, mask).map(|m| m.accuracy)
+pub fn score(features: &[Feature], windows: &[Vec<Vec<u8>>], buttons: &[Vec<u8>], lambda: f64, logistic: bool, mask: u8) -> Result<f64, String> {
+  evaluate_folds(&datasets(features, windows, buttons), lambda, logistic, mask).map(|m| m.accuracy)
 }
 
 /// Greedy forward selection of `PIECES_PER_STEP` features by held-out accuracy.
@@ -71,6 +79,7 @@ pub fn search_features(
   windows: &[Vec<Vec<u8>>],
   buttons: &[Vec<u8>],
   lambda: f64,
+  logistic: bool,
   mask: u8,
   log: &mut dyn FnMut(&str),
 ) -> [Feature; PIECES_PER_STEP] {
@@ -92,7 +101,7 @@ pub fn search_features(
               }
               let mut trial = chosen.clone();
               trial.push(f);
-              let acc = score(&trial, windows, buttons, lambda, mask).unwrap_or(0.0);
+              let acc = score(&trial, windows, buttons, lambda, logistic, mask).unwrap_or(0.0);
               if best.map_or(true, |(b, _)| acc > b) {
                 best = Some((acc, f));
               }
@@ -111,11 +120,9 @@ pub fn search_features(
         .expect("at least one candidate")
     });
     log(&format!(
-      "pick {}: ${:02X}{} width {}: held-out accuracy {:.3}",
+      "pick {}: {}: held-out accuracy {:.3}",
       chosen.len() + 1,
-      best.1.address,
-      if best.1.relative { " - mario x" } else { "" },
-      1 << best.1.shift,
+      best.1.describe(),
       best.0
     ));
     chosen.push(best.1);
@@ -124,7 +131,15 @@ pub fn search_features(
 }
 
 /// Search the encoder on the given demonstrations, against the smoothed A label.
-pub fn search_encoder(smb_rom: &[u8], demos: &[Demonstration], lambda: f64, mask: u8, horizon: usize, log: &mut dyn FnMut(&str)) -> Encoder {
+pub fn search_encoder(
+  smb_rom: &[u8],
+  demos: &[Demonstration],
+  lambda: f64,
+  logistic: bool,
+  mask: u8,
+  horizon: usize,
+  log: &mut dyn FnMut(&str),
+) -> Encoder {
   let (windows, buttons): (Vec<_>, Vec<_>) = demos
     .iter()
     .map(|d| {
@@ -132,7 +147,7 @@ pub fn search_encoder(smb_rom: &[u8], demos: &[Demonstration], lambda: f64, mask
       (w, smooth_a(&b, horizon))
     })
     .unzip();
-  Encoder::Searched(search_features(&windows, &buttons, lambda, mask, log))
+  Encoder::Searched(search_features(&windows, &buttons, lambda, logistic, mask, log))
 }
 
 #[cfg(test)]
@@ -164,9 +179,10 @@ mod tests {
   }
 
   #[test]
-  fn candidates_cover_every_address_both_ways_at_four_widths() {
+  fn candidates_cover_every_address_both_ways_at_four_widths_plus_the_enemy_distance() {
     let c = candidates();
-    assert_eq!(c.len(), SMB_WINDOW_LEN * 2 * 4);
+    assert_eq!(c.len(), (SMB_WINDOW_LEN * 2 + 1) * 4);
+    assert_eq!(c.iter().filter(|f| f.address == ENEMY_DISTANCE).count(), 4);
     assert!(c.iter().any(|f| f.address == 256 + 100), "terrain bytes are candidates");
     assert!(c.contains(&Feature {
       address: 0x87,
@@ -178,7 +194,7 @@ mod tests {
   #[test]
   fn greedy_search_finds_the_byte_that_decides_the_jump() {
     let (windows, buttons) = synthetic();
-    let features = search_features(&windows, &buttons, 1.0, BUTTON_A | BUTTON_B | BUTTON_RIGHT, &mut |_| {});
+    let features = search_features(&windows, &buttons, 1.0, false, BUTTON_A | BUTTON_B | BUTTON_RIGHT, &mut |_| {});
     assert_eq!(features.len(), PIECES_PER_STEP);
     assert_eq!(features[0].address, 0x33, "first pick {:?}", features[0]);
     assert!(!features[0].relative);
@@ -199,6 +215,7 @@ mod tests {
       &windows,
       &buttons,
       1.0,
+      false,
       mask,
     )
     .unwrap();
@@ -211,6 +228,7 @@ mod tests {
       &windows,
       &buttons,
       1.0,
+      false,
       mask,
     )
     .unwrap();

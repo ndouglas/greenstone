@@ -6,19 +6,25 @@ pub mod demo;
 pub mod drive;
 pub mod encode;
 pub mod features;
+pub mod logistic;
 pub mod ridge;
 pub mod search;
 pub mod soft;
+pub mod teacher;
 pub mod trace;
 
 use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_RIGHT, BUTTON_SELECT, BUTTON_START};
 use crate::nes::gym::NesEmulator;
 use demo::{beam_search, smb_cleared, smb_dead, smb_in_cutscene, smb_start_state, smb_window, smb_x, Demonstration, MACRO_FRAMES};
 use drive::{fold_to_controller, Reservoir};
-use encode::{encode, onehot_row, Encoder};
+#[cfg(test)]
+use encode::Encoder;
+use encode::{encode, onehot_row};
 use features::{clock_row, feature_row, Condition};
+use logistic::fit_logistic;
 use ridge::{fit, Readout};
 use soft::{Expansion, SOFT_SEED};
+use teacher::{search_rule, Rule};
 
 pub struct ExperimentConfig {
   pub lambda: f64,
@@ -33,6 +39,10 @@ pub struct ExperimentConfig {
   /// absorbs the demonstrations' arbitrary jump phase. 0 is the raw label; the
   /// smoothed label raised the floors more than the readouts, so 0 is the default.
   pub jump_horizon: usize,
+  /// Fit the readouts by logistic regression instead of ridge. Ridge puts a
+  /// rare conjunction like a press onset under the 0.5 threshold; logistic
+  /// finds the separating plane if the features hold one.
+  pub logistic: bool,
 }
 
 impl Default for ExperimentConfig {
@@ -46,7 +56,17 @@ impl Default for ExperimentConfig {
       max_steps: 750,
       noop_max: 30,
       jump_horizon: 0,
+      logistic: false,
     }
+  }
+}
+
+/// Fit a readout of the kind the experiment is configured for.
+pub fn fit_readout(rows: &[Vec<f32>], targets: &[Vec<f32>], lambda: f64, logistic: bool) -> Result<Readout, String> {
+  if logistic {
+    fit_logistic(rows, targets, lambda)
+  } else {
+    fit(rows, targets, lambda)
   }
 }
 
@@ -76,6 +96,8 @@ pub struct ConditionResult {
   pub accuracy: f64,
   /// Held-out accuracy of the A bit alone.
   pub a_accuracy: f64,
+  /// Fraction of held-out press onsets the readout pressed A on.
+  pub onset_recall: f64,
   /// Mean squared error of the raw outputs on the held-out rows, over the active bits.
   pub mse: f64,
   pub mean_x: f64,
@@ -125,6 +147,21 @@ pub fn bit_accuracy(pred: &[u8], truth: &[u8], mask: u8) -> f64 {
   }
   let correct: usize = pred.iter().zip(truth).map(|(&p, &t)| (!(p ^ t) & mask).count_ones() as usize).sum();
   correct as f64 / (per_row * pred.len()) as f64
+}
+
+/// Press onsets in `truth` (the first step of each A press, in step order)
+/// and how many of them `pred` presses A on: (hits, onsets).
+pub fn onset_hits(pred: &[u8], truth: &[u8]) -> (usize, usize) {
+  let mut hits = 0;
+  let mut onsets = 0;
+  for i in 0..truth.len() {
+    let onset = truth[i] & BUTTON_A != 0 && (i == 0 || truth[i - 1] & BUTTON_A == 0);
+    if onset {
+      onsets += 1;
+      hits += (pred[i] & BUTTON_A != 0) as usize;
+    }
+  }
+  (hits, onsets)
 }
 
 /// Mean squared error of raw outputs against 0/1 targets, over the masked bits.
@@ -254,11 +291,14 @@ pub struct FoldMetrics {
   /// Held-out accuracy of the A bit alone: the jump decision, without the
   /// walk and wait macros' noise on B and Right.
   pub a_accuracy: f64,
+  /// Fraction of the held-out demonstrations' press onsets at which the
+  /// readout pressed A: whether it starts jumps, not just recognises them.
+  pub onset_recall: f64,
   pub mse: f64,
 }
 
 /// Hold each dataset out in turn, fit on the rest, and pool the predictions.
-pub(crate) fn evaluate_folds(datasets: &[Dataset], lambda: f64, mask: u8) -> Result<FoldMetrics, String> {
+pub(crate) fn evaluate_folds(datasets: &[Dataset], lambda: f64, logistic: bool, mask: u8) -> Result<FoldMetrics, String> {
   if datasets.len() < 2 {
     return Err(format!("leave-one-out needs at least two demonstrations, got {}", datasets.len()));
   }
@@ -268,6 +308,7 @@ pub(crate) fn evaluate_folds(datasets: &[Dataset], lambda: f64, mask: u8) -> Res
   let mut test_targets = Vec::new();
   let mut test_preds = Vec::new();
   let mut test_truth = Vec::new();
+  let (mut hits, mut onsets) = (0, 0);
   for held_out in 0..datasets.len() {
     let rows: Vec<Vec<f32>> = datasets
       .iter()
@@ -281,12 +322,13 @@ pub(crate) fn evaluate_folds(datasets: &[Dataset], lambda: f64, mask: u8) -> Res
       .filter(|(i, _)| *i != held_out)
       .flat_map(|(_, d)| d.targets.iter().cloned())
       .collect();
-    let readout = fit(&rows, &targets, lambda)?;
+    let readout = fit_readout(&rows, &targets, lambda, logistic)?;
     for (i, d) in datasets.iter().enumerate() {
+      let mut fold_preds = Vec::new();
       for (row, &buttons) in d.rows.iter().zip(&d.buttons) {
         let out = readout.predict(row);
         if i == held_out {
-          test_preds.push(outputs_to_buttons(&out));
+          fold_preds.push(outputs_to_buttons(&out));
           test_truth.push(buttons);
           test_targets.push(buttons_to_targets(buttons));
           test_outputs.push(out);
@@ -295,6 +337,12 @@ pub(crate) fn evaluate_folds(datasets: &[Dataset], lambda: f64, mask: u8) -> Res
           train_truth.push(buttons);
         }
       }
+      if i == held_out {
+        let (h, o) = onset_hits(&fold_preds, &d.buttons);
+        hits += h;
+        onsets += o;
+        test_preds.extend(fold_preds);
+      }
     }
   }
   Ok(FoldMetrics {
@@ -302,6 +350,7 @@ pub(crate) fn evaluate_folds(datasets: &[Dataset], lambda: f64, mask: u8) -> Res
     train_accuracy: bit_accuracy(&train_preds, &train_truth, mask),
     accuracy: bit_accuracy(&test_preds, &test_truth, mask),
     a_accuracy: bit_accuracy(&test_preds, &test_truth, BUTTON_A),
+    onset_recall: hits as f64 / onsets.max(1) as f64,
     mse: output_mse(&test_outputs, &test_targets, mask),
   })
 }
@@ -358,6 +407,7 @@ fn random_a_folds(datasets: &[Dataset], mask: u8) -> Result<FoldMetrics, String>
   let mut truth = Vec::new();
   let mut outputs = Vec::new();
   let mut targets = Vec::new();
+  let (mut hits, mut onsets) = (0, 0);
   for held_out in 0..datasets.len() {
     let others: Vec<&[u8]> = datasets
       .iter()
@@ -367,8 +417,11 @@ fn random_a_folds(datasets: &[Dataset], mask: u8) -> Result<FoldMetrics, String>
       .collect();
     let chain = JumpChain::fit(&others);
     let d = &datasets[held_out];
-    for (a, &b) in chain.sample(held_out as u64, d.buttons.len()).into_iter().zip(&d.buttons) {
-      let p = random_a_buttons(a);
+    let fold_preds: Vec<u8> = chain.sample(held_out as u64, d.buttons.len()).into_iter().map(random_a_buttons).collect();
+    let (h, o) = onset_hits(&fold_preds, &d.buttons);
+    hits += h;
+    onsets += o;
+    for (p, &b) in fold_preds.into_iter().zip(&d.buttons) {
       preds.push(p);
       truth.push(b);
       outputs.push(buttons_to_targets(p).into_iter().map(|v| v as f64).collect());
@@ -381,6 +434,7 @@ fn random_a_folds(datasets: &[Dataset], mask: u8) -> Result<FoldMetrics, String>
     train_accuracy: accuracy,
     accuracy,
     a_accuracy: bit_accuracy(&preds, &truth, BUTTON_A),
+    onset_recall: hits as f64 / onsets.max(1) as f64,
     mse: output_mse(&outputs, &targets, mask),
   })
 }
@@ -507,6 +561,26 @@ pub fn find_demonstrations(smb_rom: &[u8], config: &ExperimentConfig, log: &mut 
     .collect()
 }
 
+/// Search the rule grid and play the best rule from each demonstration offset.
+pub fn find_rule_demonstrations(smb_rom: &[u8], config: &ExperimentConfig, log: &mut dyn FnMut(&str)) -> (Rule, Vec<Demonstration>) {
+  let start = smb_start_state(smb_rom);
+  let noops: Vec<usize> = (0..config.demonstrations)
+    .map(|i| demonstration_noops(i, config.demonstrations, config.noop_max))
+    .collect();
+  log(&format!("searching {} rules from {} offsets", Rule::grid().len(), noops.len()));
+  let (rule, demos) = search_rule(smb_rom, &start, &noops, config.max_steps, log);
+  for (i, demo) in demos.iter().enumerate() {
+    log(&format!(
+      "demonstration {}: {} steps, x={}, cleared={}",
+      i,
+      demo.buttons.len(),
+      demo.x_reached,
+      demo.cleared
+    ));
+  }
+  (rule, demos)
+}
+
 /// Run the given conditions on the given demonstrations and return the report.
 /// `log` receives progress lines.
 pub fn run(
@@ -552,14 +626,14 @@ pub fn run(
     let folds = if random {
       random_a_folds(&datasets, mask)?
     } else {
-      evaluate_folds(&datasets, config.lambda, mask)?
+      evaluate_folds(&datasets, config.lambda, config.logistic, mask)?
     };
     let all_rows: Vec<Vec<f32>> = datasets.iter().flat_map(|d| d.rows.iter().cloned()).collect();
     let all_targets: Vec<Vec<f32>> = datasets.iter().flat_map(|d| d.targets.iter().cloned()).collect();
     let readout = if random {
       None
     } else {
-      Some(fit(&all_rows, &all_targets, config.lambda)?)
+      Some(fit_readout(&all_rows, &all_targets, config.lambda, config.logistic)?)
     };
     let chain = JumpChain::fit(&datasets.iter().map(|d| d.buttons.as_slice()).collect::<Vec<_>>());
     log(&format!("{}: running {} episodes", condition.name(), config.episodes));
@@ -602,6 +676,7 @@ pub fn run(
       train_accuracy: folds.train_accuracy,
       accuracy: folds.accuracy,
       a_accuracy: folds.a_accuracy,
+      onset_recall: folds.onset_recall,
       mse: folds.mse,
       mean_x,
       max_x,
@@ -771,21 +846,31 @@ mod tests {
   }
 
   #[test]
+  fn onset_hits_count_predicted_a_at_each_first_step_of_a_press() {
+    let truth = [0, BUTTON_A, BUTTON_A, 0, BUTTON_A, BUTTON_A];
+    let pred = [BUTTON_A, BUTTON_A, 0, 0, 0, BUTTON_A];
+    assert_eq!(onset_hits(&pred, &truth), (1, 2));
+    assert_eq!(onset_hits(&[BUTTON_A, 0], &[BUTTON_A, 0]), (1, 1));
+    assert_eq!(onset_hits(&[0, 0], &[0, 0]), (0, 0));
+  }
+
+  #[test]
   fn folds_hold_out_each_dataset_in_turn() {
     let datasets: Vec<Dataset> = (0..3).map(|s| synthetic_dataset(s, 40)).collect();
-    let m = evaluate_folds(&datasets, 1e-6, BUTTON_A).unwrap();
+    let m = evaluate_folds(&datasets, 1e-6, false, BUTTON_A).unwrap();
     assert!(m.accuracy > 0.9, "held-out accuracy {}", m.accuracy);
     assert!(m.train_accuracy > 0.9, "train accuracy {}", m.train_accuracy);
     assert!(m.mse < 0.1, "mse {}", m.mse);
     assert!(m.a_accuracy > 0.9, "A accuracy {}", m.a_accuracy);
+    assert!(m.onset_recall > 0.9, "onset recall {}", m.onset_recall);
     assert_eq!(m.rows, 120);
   }
 
   #[test]
   fn folds_need_at_least_two_datasets() {
     let datasets = vec![synthetic_dataset(0, 40)];
-    assert!(evaluate_folds(&datasets, 1.0, BUTTON_A).is_err());
-    assert!(evaluate_folds(&[], 1.0, BUTTON_A).is_err());
+    assert!(evaluate_folds(&datasets, 1.0, false, BUTTON_A).is_err());
+    assert!(evaluate_folds(&[], 1.0, false, BUTTON_A).is_err());
   }
 
   #[test]
@@ -809,6 +894,92 @@ mod diagnostics {
   use demo::load_cached;
   use std::path::Path;
 
+  /// What a readout outputs on the A bit at press onsets, the step before them,
+  /// the rest of each press, and everywhere else, with onset recall and
+  /// false-positive rate at several thresholds.
+  #[test]
+  #[ignore]
+  fn what_the_readout_says_at_onsets() {
+    let smb = match rom_or_skip("roms2/super_mario_bros.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let tetris = std::fs::read("roms2/tetris.nes").unwrap_or_default();
+    let dir = std::env::var("DEMO_DIR").unwrap_or_else(|_| "target/tetris-reservoir-demos".to_string());
+    let demos = load_cached(Path::new(&dir), 6).expect("cached demonstrations");
+    let start = smb_start_state(&smb);
+    let lambda: f64 = std::env::var("LAMBDA").ok().and_then(|v| v.parse().ok()).unwrap_or(100.0);
+    let logistic = std::env::var("LOGISTIC").is_ok();
+    let a_index = BUTTON_A.trailing_zeros() as usize;
+    let mut conditions = vec![Condition::Raw, Condition::PlacementOnehot(Encoder::Salient)];
+    if std::env::var("SKIP_SOFT").is_err() {
+      conditions.extend([Condition::RandomTanh, Condition::EchoState]);
+    }
+    for condition in conditions {
+      let datasets: Vec<Dataset> = demos.iter().map(|d| collect(condition, &smb, &tetris, &start, d, 0).unwrap()).collect();
+      // (sum, count) of the A output in each class.
+      let mut classes = [(0.0f64, 0usize); 4];
+      let mut onset_outputs = Vec::new();
+      let mut quiet_outputs = Vec::new();
+      for held_out in 0..datasets.len() {
+        let rows: Vec<Vec<f32>> = datasets
+          .iter()
+          .enumerate()
+          .filter(|(i, _)| *i != held_out)
+          .flat_map(|(_, d)| d.rows.iter().cloned())
+          .collect();
+        let targets: Vec<Vec<f32>> = datasets
+          .iter()
+          .enumerate()
+          .filter(|(i, _)| *i != held_out)
+          .flat_map(|(_, d)| d.targets.iter().cloned())
+          .collect();
+        let readout = fit_readout(&rows, &targets, lambda, logistic).unwrap();
+        let d = &datasets[held_out];
+        let a: Vec<bool> = d.buttons.iter().map(|&b| b & BUTTON_A != 0).collect();
+        for (i, row) in d.rows.iter().enumerate() {
+          let out = readout.predict(row)[a_index];
+          let prev = i > 0 && a[i - 1];
+          let next = i + 1 < a.len() && a[i + 1];
+          let class = match (prev, a[i], next) {
+            (false, true, _) => 0,
+            (_, false, true) => 1,
+            (true, true, _) => 2,
+            _ => 3,
+          };
+          classes[class].0 += out;
+          classes[class].1 += 1;
+          if class == 0 {
+            onset_outputs.push(out);
+          }
+          if class == 3 {
+            quiet_outputs.push(out);
+          }
+        }
+      }
+      let mean = |c: (f64, usize)| c.0 / c.1.max(1) as f64;
+      println!(
+        "{}: {} lambda {}: mean A output at onsets {:.3} ({}), the step before {:.3} ({}), mid-press {:.3} ({}), elsewhere {:.3} ({})",
+        condition.name(),
+        if logistic { "logistic" } else { "ridge" },
+        lambda,
+        mean(classes[0]),
+        classes[0].1,
+        mean(classes[1]),
+        classes[1].1,
+        mean(classes[2]),
+        classes[2].1,
+        mean(classes[3]),
+        classes[3].1
+      );
+      for t in [0.5, 0.4, 0.3, 0.2, 0.1] {
+        let recall = onset_outputs.iter().filter(|&&o| o > t).count() as f64 / onset_outputs.len().max(1) as f64;
+        let fpr = quiet_outputs.iter().filter(|&&o| o > t).count() as f64 / quiet_outputs.len().max(1) as f64;
+        println!("   threshold {:.1}: onset recall {:.3}, false A elsewhere {:.3}", t, recall, fpr);
+      }
+    }
+  }
+
   /// Where the held-out A errors of a readout fall, relative to the demonstrations' presses.
   #[test]
   #[ignore]
@@ -818,7 +989,8 @@ mod diagnostics {
       None => return,
     };
     let tetris = std::fs::read("roms2/tetris.nes").unwrap_or_default();
-    let demos = load_cached(Path::new("target/tetris-reservoir-demos"), 6).expect("cached demonstrations");
+    let dir = std::env::var("DEMO_DIR").unwrap_or_else(|_| "target/tetris-reservoir-demos".to_string());
+    let demos = load_cached(Path::new(&dir), 6).expect("cached demonstrations");
     let start = smb_start_state(&smb);
     let lambda: f64 = std::env::var("LAMBDA").ok().and_then(|v| v.parse().ok()).unwrap_or(100.0);
     for condition in [Condition::Raw, Condition::PlacementOnehot(Encoder::Salient), Condition::Clock] {

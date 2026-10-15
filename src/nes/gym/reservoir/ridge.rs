@@ -7,6 +7,8 @@ pub struct Readout {
   pub d: usize,
   pub k: usize,
   pub weights: Vec<f64>,
+  /// Outputs pass through a sigmoid: the readout was fitted by `logistic::fit_logistic`.
+  pub logistic: bool,
 }
 
 impl Readout {
@@ -22,6 +24,11 @@ impl Readout {
       let w = &self.weights[i * self.k..(i + 1) * self.k];
       for j in 0..self.k {
         out[j] += x * w[j];
+      }
+    }
+    if self.logistic {
+      for o in &mut out {
+        *o = super::logistic::sigmoid(*o);
       }
     }
     out
@@ -122,7 +129,12 @@ pub fn fit_with(rows: &[Vec<f32>], targets: &[Vec<f32>], lambda: f64, solver: So
       weights[(1 + i) * k + j] = w[i * k + j];
     }
   }
-  Ok(Readout { d, k, weights })
+  Ok(Readout {
+    d,
+    k,
+    weights,
+    logistic: false,
+  })
 }
 
 /// `W = (Xc^T Xc + lambda I)^-1 Xc^T Yc`.
@@ -211,7 +223,7 @@ fn solve_dual(xc: &[f64], yc: &[f64], n: usize, p: usize, k: usize, lambda: f64)
 }
 
 /// Lower-triangular `L` with `a = L L^T`. `a` is `d x d` row-major and symmetric.
-fn cholesky(a: &[f64], d: usize) -> Result<Vec<f64>, String> {
+pub(super) fn cholesky(a: &[f64], d: usize) -> Result<Vec<f64>, String> {
   let mut l = vec![0.0; d * d];
   for i in 0..d {
     for j in 0..=i {
@@ -233,7 +245,7 @@ fn cholesky(a: &[f64], d: usize) -> Result<Vec<f64>, String> {
 }
 
 /// Solve `L L^T x = b` by forward then back substitution.
-fn cholesky_solve(l: &[f64], d: usize, b: &[f64]) -> Vec<f64> {
+pub(super) fn cholesky_solve(l: &[f64], d: usize, b: &[f64]) -> Vec<f64> {
   let mut y = vec![0.0; d];
   for i in 0..d {
     let mut sum = b[i];

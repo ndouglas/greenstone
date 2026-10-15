@@ -6,6 +6,10 @@
 //! `--horizon=N` sets the jump-label horizon in steps (default 0, the raw label).
 //! `--no-tetris` drops every condition that runs a Tetris emulator, for a table in minutes.
 //! `--lambda=X` sets the ridge penalty (default 1).
+//! `--logistic` fits the readouts by logistic regression instead of ridge.
+//! `--rule` takes the demonstrations from the rule teacher (a jump rule over the
+//! window, searched over a grid) instead of the beam search; its default cache is
+//! `target/tetris-reservoir-demos-rule` and the rule is saved beside the demonstrations.
 //! Demonstrations are cached in `demo-dir` (default `target/tetris-reservoir-demos`)
 //! as `demo-N.bin`; delete the directory to search again.
 
@@ -15,18 +19,27 @@ use greenstone::nes::gym::reservoir::encode::Encoder;
 use greenstone::nes::gym::reservoir::encode::{ENEMY_BIN_PX, PIECES_PER_STEP};
 use greenstone::nes::gym::reservoir::features::{Condition, SMB_WINDOW_LEN};
 use greenstone::nes::gym::reservoir::search::search_encoder;
-use greenstone::nes::gym::reservoir::{active_bits, find_demonstrations, run, ExperimentConfig};
+use greenstone::nes::gym::reservoir::teacher::Rule;
+use greenstone::nes::gym::reservoir::{active_bits, find_demonstrations, find_rule_demonstrations, run, ExperimentConfig};
 use std::path::{Path, PathBuf};
 
 fn main() {
   let legacy = std::env::args().any(|a| a == "--legacy");
   let no_tetris = std::env::args().any(|a| a == "--no-tetris");
+  let rule_teacher = std::env::args().any(|a| a == "--rule");
+  let logistic = std::env::args().any(|a| a == "--logistic");
   let lambda = std::env::args().find_map(|a| a.strip_prefix("--lambda=").map(|v| v.parse::<f64>().expect("--lambda=X")));
   let horizon = std::env::args().find_map(|a| a.strip_prefix("--horizon=").map(|v| v.parse::<usize>().expect("--horizon=N")));
   let args: Vec<String> = std::env::args().filter(|a| !a.starts_with("--")).collect();
   let smb_path = args.get(1).map(String::as_str).unwrap_or("roms2/super_mario_bros.nes");
   let tetris_path = args.get(2).map(String::as_str).unwrap_or("roms2/tetris.nes");
-  let demo_dir = PathBuf::from(args.get(3).map(String::as_str).unwrap_or("target/tetris-reservoir-demos"));
+  let default_dir = if rule_teacher {
+    "target/tetris-reservoir-demos-rule"
+  } else {
+    "target/tetris-reservoir-demos"
+  };
+  let demo_dir = PathBuf::from(args.get(3).map(String::as_str).unwrap_or(default_dir));
+  let rule_path = demo_dir.join("rule.bin");
   for path in [smb_path, tetris_path] {
     if !Path::new(path).exists() {
       println!("missing ROM: {}", path);
@@ -42,22 +55,34 @@ fn main() {
   if let Some(l) = lambda {
     config.lambda = l;
   }
+  config.logistic = logistic;
   let mut log = |line: &str| eprintln!("{}", line);
+  let mut rule: Option<Rule> = None;
   let demos = match load_cached(&demo_dir, config.demonstrations) {
     Some(demos) => {
       log(&format!("loaded {} demonstrations from {}", demos.len(), demo_dir.display()));
+      rule = std::fs::read(&rule_path).ok().and_then(|b| Rule::from_bytes(&b).ok());
       demos
     }
     None => {
-      let demos = find_demonstrations(&smb_rom, &config, &mut log);
+      let demos = if rule_teacher {
+        let (found, demos) = find_rule_demonstrations(&smb_rom, &config, &mut log);
+        rule = Some(found);
+        demos
+      } else {
+        find_demonstrations(&smb_rom, &config, &mut log)
+      };
       save_cached(&demo_dir, &demos).expect("write demos");
+      if let Some(r) = rule {
+        std::fs::write(&rule_path, r.to_bytes()).expect("write rule");
+      }
       log(&format!("saved {} demonstrations to {}", demos.len(), demo_dir.display()));
       demos
     }
   };
   let mask = demos.iter().fold(0u8, |acc, d| acc | active_bits(&d.buttons));
   log("searching the encoder on the one-hot control");
-  let searched = search_encoder(&smb_rom, &demos, config.lambda, mask, config.jump_horizon, &mut log);
+  let searched = search_encoder(&smb_rom, &demos, config.lambda, config.logistic, mask, config.jump_horizon, &mut log);
   let mut conditions = Condition::default_table(Some(searched));
   if legacy {
     conditions.extend(Condition::LEGACY);
@@ -80,9 +105,14 @@ fn main() {
       i, d.noops, d.steps, d.x_reached, d.cleared
     );
   }
+  match rule {
+    Some(r) => println!("teacher: rule, {}", r.describe()),
+    None => println!("teacher: beam search over save states, fewest A presses first"),
+  }
   println!("accuracy is over the buttons the demonstrations use: {:08b}", report.active_bits);
   println!(
-    "held-out columns are leave-one-demonstration-out, pooled over folds; ridge lambda {}",
+    "held-out columns are leave-one-demonstration-out, pooled over folds; {} readout, penalty {}",
+    if config.logistic { "logistic" } else { "ridge" },
     config.lambda
   );
   if config.jump_horizon == 0 {
@@ -103,26 +133,24 @@ fn main() {
     PIECES_PER_STEP, ENEMY_BIN_PX, FAST_LEVEL, PIECE_FRAME_LIMIT
   );
   if let Encoder::Searched(features) = searched {
-    let picks: Vec<String> = features
-      .iter()
-      .map(|f| format!("${:02X}{} /{}", f.address, if f.relative { "-x" } else { "" }, 1 << f.shift))
-      .collect();
+    let picks: Vec<String> = features.iter().map(|f| f.describe()).collect();
     println!("searched encoder: {}", picks.join(", "));
   }
   println!();
   println!(
-    "{:<18} | {:>5} | {:>9} | {:>12} | {:>7} | {:>12} | {:>7} | {:>5} | {:>6}",
-    "condition", "rows", "train acc", "held-out acc", "A acc", "held-out mse", "mean x", "max x", "resets"
+    "{:<18} | {:>5} | {:>9} | {:>12} | {:>7} | {:>6} | {:>12} | {:>7} | {:>5} | {:>6}",
+    "condition", "rows", "train acc", "held-out acc", "A acc", "onset", "held-out mse", "mean x", "max x", "resets"
   );
-  println!("{}", "-".repeat(105));
+  println!("{}", "-".repeat(114));
   for r in &report.results {
     println!(
-      "{:<18} | {:>5} | {:>9.3} | {:>12.3} | {:>7.3} | {:>12.4} | {:>7.1} | {:>5} | {:>6}",
+      "{:<18} | {:>5} | {:>9.3} | {:>12.3} | {:>7.3} | {:>6.3} | {:>12.4} | {:>7.1} | {:>5} | {:>6}",
       r.condition.name(),
       r.rows,
       r.train_accuracy,
       r.accuracy,
       r.a_accuracy,
+      r.onset_recall,
       r.mse,
       r.mean_x,
       r.max_x,

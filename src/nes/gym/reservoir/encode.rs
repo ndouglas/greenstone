@@ -40,15 +40,34 @@ pub struct Feature {
   pub shift: u8,
 }
 
+/// A feature address that is not a window byte: the distance in pixels to
+/// the nearest enemy ahead of Mario, 255 if none. The one derived feature in
+/// the search pool, because "any enemy close" is a minimum over five slots
+/// that no single byte holds.
+pub const ENEMY_DISTANCE: u16 = 0xFFFF;
+
 impl Feature {
   pub fn placement(self, window: &[u8]) -> Placement {
-    let mut v = window[self.address as usize];
-    if self.relative {
+    let mut v = if self.address == ENEMY_DISTANCE {
+      enemies_ahead(window).first().map_or(255, |&(d, _)| d.min(255) as u8)
+    } else {
+      window[self.address as usize]
+    };
+    if self.relative && self.address != ENEMY_DISTANCE {
       v = v.wrapping_sub(window[MARIO_X_PIXEL]);
     }
     let column = (v >> self.shift).min(9);
     let rotation = (v >> self.shift.saturating_sub(2)) & 3;
     Placement { column, rotation }
+  }
+
+  /// `$9F /8`, `$6F-x /4`, `enemy /8`.
+  pub fn describe(self) -> String {
+    if self.address == ENEMY_DISTANCE {
+      format!("enemy /{}", 1 << self.shift)
+    } else {
+      format!("${:02X}{} /{}", self.address, if self.relative { "-x" } else { "" }, 1 << self.shift)
+    }
   }
 }
 
@@ -249,6 +268,22 @@ mod tests {
       shift: 1,
     };
     assert_eq!(wide.placement(&w).column, 9, "0x2C >> 1 = 22 clamps to 9");
+  }
+
+  #[test]
+  fn the_enemy_distance_feature_bins_the_nearest_enemy_ahead_or_nine() {
+    let f = Feature {
+      address: ENEMY_DISTANCE,
+      relative: false,
+      shift: 3,
+    };
+    let mut w = window_with_mario(400, 176);
+    assert_eq!(f.placement(&w).column, 9);
+    assert_eq!(f.describe(), "enemy /8");
+    add_enemy(&mut w, 2, 400 + 100, 184);
+    add_enemy(&mut w, 4, 400 + 37, 184);
+    add_enemy(&mut w, 1, 400 - 20, 184);
+    assert_eq!(f.placement(&w).column, 37 / 8);
   }
 
   #[test]
