@@ -237,18 +237,37 @@ fn tie_break(path: &[u8], seed: u64) -> u64 {
   h
 }
 
-/// Drop dead and stuck candidates, order by x descending then height, keep
-/// one candidate per game state, and keep `beam` of them.
+/// Progress is compared in buckets this wide, so that among candidates within
+/// a few pixels of each other the one that jumped least wins.
+pub const X_BUCKET: usize = 8;
+
+/// Steps on a path with A held.
+pub fn a_presses(path: &[u8]) -> usize {
+  path.iter().filter(|&&b| b & BUTTON_A != 0).count()
+}
+
+/// Drop dead and stuck candidates, order by progress in `X_BUCKET` buckets,
+/// then fewest A presses, then height, keep one candidate per game state,
+/// and keep `beam` of them.
 ///
-/// The height tie-break keeps lineages that started a jump a few steps ago
-/// alive at a wall, where ranking by x alone would let ground-huggers crowd
-/// them out of the beam. Exact ties break by a seeded hash of the path, so
-/// searches with different seeds find different demonstrations. Without the
-/// dedupe, the beam fills with copies of the single best state and dies
-/// together at the first obstacle that state cannot pass.
+/// Fewest A presses makes every demonstration jump as late and as little
+/// as it can, so when it jumps is a function of what is in front of Mario
+/// rather than of a coin, and a state readout can learn it. The height
+/// tie-break keeps lineages that started a jump a few steps ago alive at a
+/// wall. Exact ties break by a seeded hash of the path, so searches with
+/// different seeds find different demonstrations. Without the dedupe, the
+/// beam fills with copies of the single best state and dies together at
+/// the first obstacle that state cannot pass.
 pub fn prune_and_rank(mut cands: Vec<Candidate>, beam: usize, seed: u64) -> Vec<Candidate> {
   cands.retain(|c| !c.dead && c.stuck < STUCK_LIMIT);
-  cands.sort_by_key(|c| (std::cmp::Reverse(c.x), c.y, tie_break(&c.path, seed)));
+  cands.sort_by_key(|c| {
+    (
+      std::cmp::Reverse(c.x.max(0) as usize / X_BUCKET),
+      a_presses(&c.path),
+      c.y,
+      tie_break(&c.path, seed),
+    )
+  });
   let mut seen = std::collections::HashSet::new();
   cands.retain(|c| seen.insert(c.key));
   cands.truncate(beam);
@@ -380,6 +399,21 @@ mod tests {
   }
 
   #[test]
+  fn prune_prefers_fewer_jumps_at_similar_progress() {
+    let mut jumpy = cand(103, false);
+    jumpy.path = vec![RUN_JUMP, RUN_JUMP, RUN_JUMP];
+    let mut calm = cand(100, false);
+    calm.path = vec![RUN, RUN, RUN];
+    let kept = prune_and_rank(vec![jumpy.clone(), calm.clone()], 1, 0);
+    assert_eq!(kept[0].path, calm.path, "within one bucket the path with fewer A presses wins");
+    let mut far = cand(100 + X_BUCKET as i32, false);
+    far.path = vec![RUN_JUMP; 3];
+    let kept = prune_and_rank(vec![far.clone(), calm], 1, 0);
+    assert_eq!(kept[0].path, far.path, "a full bucket of progress still beats fewer jumps");
+    assert_eq!(a_presses(&[RUN, RUN_JUMP, 0, RUN_JUMP]), 2);
+  }
+
+  #[test]
   fn prune_keeps_one_candidate_per_state() {
     let mut a = cand(100, false);
     a.key = 7;
@@ -397,9 +431,9 @@ mod tests {
   #[test]
   fn prune_breaks_exact_ties_by_seed() {
     let mut a = cand(100, false);
-    a.path = vec![1, 2, 3];
+    a.path = vec![2, 4, 6];
     let mut b = cand(100, false);
-    b.path = vec![4, 5, 6];
+    b.path = vec![8, 10, 12];
     let firsts: std::collections::HashSet<Vec<u8>> = (0..32)
       .map(|seed| prune_and_rank(vec![a.clone(), b.clone()], 1, seed)[0].path.clone())
       .collect();
