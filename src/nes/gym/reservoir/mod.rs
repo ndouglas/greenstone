@@ -74,6 +74,8 @@ pub struct ConditionResult {
   pub train_accuracy: f64,
   /// Bit accuracy on the held-out demonstration, pooled over folds.
   pub accuracy: f64,
+  /// Held-out accuracy of the A bit alone.
+  pub a_accuracy: f64,
   /// Mean squared error of the raw outputs on the held-out rows, over the active bits.
   pub mse: f64,
   pub mean_x: f64,
@@ -249,6 +251,9 @@ pub struct FoldMetrics {
   pub rows: usize,
   pub train_accuracy: f64,
   pub accuracy: f64,
+  /// Held-out accuracy of the A bit alone: the jump decision, without the
+  /// walk and wait macros' noise on B and Right.
+  pub a_accuracy: f64,
   pub mse: f64,
 }
 
@@ -296,6 +301,7 @@ pub(crate) fn evaluate_folds(datasets: &[Dataset], lambda: f64, mask: u8) -> Res
     rows: test_preds.len(),
     train_accuracy: bit_accuracy(&train_preds, &train_truth, mask),
     accuracy: bit_accuracy(&test_preds, &test_truth, mask),
+    a_accuracy: bit_accuracy(&test_preds, &test_truth, BUTTON_A),
     mse: output_mse(&test_outputs, &test_targets, mask),
   })
 }
@@ -374,6 +380,7 @@ fn random_a_folds(datasets: &[Dataset], mask: u8) -> Result<FoldMetrics, String>
     rows: preds.len(),
     train_accuracy: accuracy,
     accuracy,
+    a_accuracy: bit_accuracy(&preds, &truth, BUTTON_A),
     mse: output_mse(&outputs, &targets, mask),
   })
 }
@@ -594,6 +601,7 @@ pub fn run(
       rows,
       train_accuracy: folds.train_accuracy,
       accuracy: folds.accuracy,
+      a_accuracy: folds.a_accuracy,
       mse: folds.mse,
       mean_x,
       max_x,
@@ -769,6 +777,7 @@ mod tests {
     assert!(m.accuracy > 0.9, "held-out accuracy {}", m.accuracy);
     assert!(m.train_accuracy > 0.9, "train accuracy {}", m.train_accuracy);
     assert!(m.mse < 0.1, "mse {}", m.mse);
+    assert!(m.a_accuracy > 0.9, "A accuracy {}", m.a_accuracy);
     assert_eq!(m.rows, 120);
   }
 
@@ -790,5 +799,83 @@ mod tests {
     }
     assert_eq!(demonstration_noops(0, 0, 30), 0);
     assert_eq!(episode_noops(3, 0, 30), 15);
+  }
+}
+
+#[cfg(test)]
+mod diagnostics {
+  use super::*;
+  use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_RIGHT};
+  use demo::load_cached;
+  use std::path::Path;
+
+  /// Where the held-out A errors of a readout fall, relative to the demonstrations' presses.
+  #[test]
+  #[ignore]
+  fn where_the_a_errors_are() {
+    let smb = match rom_or_skip("roms2/super_mario_bros.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let tetris = std::fs::read("roms2/tetris.nes").unwrap_or_default();
+    let demos = load_cached(Path::new("target/tetris-reservoir-demos"), 6).expect("cached demonstrations");
+    let start = smb_start_state(&smb);
+    let lambda: f64 = std::env::var("LAMBDA").ok().and_then(|v| v.parse().ok()).unwrap_or(100.0);
+    for condition in [Condition::Raw, Condition::PlacementOnehot(Encoder::Salient), Condition::Clock] {
+      let datasets: Vec<Dataset> = demos.iter().map(|d| collect(condition, &smb, &tetris, &start, d, 0).unwrap()).collect();
+      let (mut onset, mut release, mut mid, mut ground, mut a_rows, mut a_err, mut other_err, mut other_bits) = (0, 0, 0, 0, 0, 0, 0, 0);
+      let mut truth_a = 0;
+      for held_out in 0..datasets.len() {
+        let rows: Vec<Vec<f32>> = datasets
+          .iter()
+          .enumerate()
+          .filter(|(i, _)| *i != held_out)
+          .flat_map(|(_, d)| d.rows.iter().cloned())
+          .collect();
+        let targets: Vec<Vec<f32>> = datasets
+          .iter()
+          .enumerate()
+          .filter(|(i, _)| *i != held_out)
+          .flat_map(|(_, d)| d.targets.iter().cloned())
+          .collect();
+        let readout = fit(&rows, &targets, lambda).unwrap();
+        let d = &datasets[held_out];
+        let a: Vec<bool> = d.buttons.iter().map(|&b| b & BUTTON_A != 0).collect();
+        for (i, row) in d.rows.iter().enumerate() {
+          let pred = outputs_to_buttons(&readout.predict(row));
+          a_rows += 1;
+          truth_a += a[i] as usize;
+          for bit in [BUTTON_B, BUTTON_RIGHT] {
+            other_bits += 1;
+            other_err += ((pred ^ d.buttons[i]) & bit != 0) as usize;
+          }
+          if (pred & BUTTON_A != 0) != a[i] {
+            a_err += 1;
+            let prev = i > 0 && a[i - 1];
+            let next = i + 1 < a.len() && a[i + 1];
+            match (prev, a[i], next) {
+              (false, true, _) => onset += 1,
+              (true, false, _) => release += 1,
+              (true, true, true) | (_, true, true) => mid += 1,
+              _ => ground += 1,
+            }
+          }
+        }
+      }
+      println!(
+        "{}: lambda {}: A bit {:.3} accurate ({} errors in {} rows, A held {:.1}% of steps); B/Right bits {:.3}",
+        condition.name(),
+        lambda,
+        1.0 - a_err as f64 / a_rows as f64,
+        a_err,
+        a_rows,
+        100.0 * truth_a as f64 / a_rows as f64,
+        1.0 - other_err as f64 / other_bits as f64
+      );
+      println!(
+        "   A errors: {} at press onsets, {} at releases, {} mid-press, {} on the ground with no press nearby",
+        onset, release, mid, ground
+      );
+    }
   }
 }

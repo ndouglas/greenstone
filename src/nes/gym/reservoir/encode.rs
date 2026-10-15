@@ -4,8 +4,10 @@ use super::trace::enemies;
 
 /// Placements sent to Tetris per SMB step.
 pub const PIECES_PER_STEP: usize = 4;
-/// Enemy distance bin width in pixels. Nine bins cover 288 pixels; the tenth column means "none".
-pub const ENEMY_BIN_PX: i32 = 32;
+/// Enemy distance bin width in pixels. Nine bins cover 72 pixels, about the
+/// distance a jump decision is made over at running speed; the tenth column
+/// means "farther, or none". Was 32, which blurred every jump onset.
+pub const ENEMY_BIN_PX: i32 = 8;
 /// Features per placement in the one-hot row: ten columns and four rotations.
 pub const PLACEMENT_ONEHOT: usize = 14;
 /// Intercept plus one-hot of every placement.
@@ -164,15 +166,15 @@ mod tests {
   }
 
   #[test]
-  fn nearest_enemy_ahead_sets_the_first_column_in_32_pixel_bins() {
+  fn nearest_enemy_ahead_sets_the_first_column_in_8_pixel_bins() {
     let mut w = window_with_mario(1000, 176);
-    add_enemy(&mut w, 0, 1000 + 70, 0x80);
-    add_enemy(&mut w, 1, 1000 + 200, 0x40);
+    add_enemy(&mut w, 0, 1000 + 20, 0x80);
+    add_enemy(&mut w, 1, 1000 + 50, 0x40);
     add_enemy(&mut w, 2, 900, 0x80); // behind Mario: ignored
     let p = encode(Encoder::Salient, &w);
-    assert_eq!(p[0].column, 2, "70 px ahead is bin 2");
+    assert_eq!(p[0].column, 2, "20 px ahead is bin 2");
     assert_eq!(p[0].rotation, 2, "y 0x80 is band 2 of four");
-    assert_eq!(p[1].column, 6, "200 px ahead is bin 6");
+    assert_eq!(p[1].column, 6, "50 px ahead is bin 6");
     assert_eq!(p[1].rotation, 1);
   }
 
@@ -190,6 +192,9 @@ mod tests {
   fn far_enemies_clamp_to_the_last_distance_bin() {
     let mut w = window_with_mario(0, 176);
     add_enemy(&mut w, 0, 5000, 0);
+    assert_eq!(encode(Encoder::Salient, &w)[0].column, 8);
+    w[0x87] = 100; // 100 px ahead on page 0: also the last bin
+    w[0x6E] = 0;
     assert_eq!(encode(Encoder::Salient, &w)[0].column, 8);
   }
 

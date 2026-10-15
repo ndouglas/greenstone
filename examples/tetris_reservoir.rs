@@ -111,17 +111,18 @@ fn main() {
   }
   println!();
   println!(
-    "{:<18} | {:>5} | {:>9} | {:>12} | {:>12} | {:>7} | {:>5} | {:>6}",
-    "condition", "rows", "train acc", "held-out acc", "held-out mse", "mean x", "max x", "resets"
+    "{:<18} | {:>5} | {:>9} | {:>12} | {:>7} | {:>12} | {:>7} | {:>5} | {:>6}",
+    "condition", "rows", "train acc", "held-out acc", "A acc", "held-out mse", "mean x", "max x", "resets"
   );
-  println!("{}", "-".repeat(95));
+  println!("{}", "-".repeat(105));
   for r in &report.results {
     println!(
-      "{:<18} | {:>5} | {:>9.3} | {:>12.3} | {:>12.4} | {:>7.1} | {:>5} | {:>6}",
+      "{:<18} | {:>5} | {:>9.3} | {:>12.3} | {:>7.3} | {:>12.4} | {:>7.1} | {:>5} | {:>6}",
       r.condition.name(),
       r.rows,
       r.train_accuracy,
       r.accuracy,
+      r.a_accuracy,
       r.mse,
       r.mean_x,
       r.max_x,
