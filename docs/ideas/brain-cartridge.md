@@ -388,6 +388,107 @@ demonstrator that is itself a readable function of state. The video's
 struggle chapter has its arc either way: six demonstrations, every
 readout agreeing with them only once Mario has left the ground.
 
+Result (2026-10-15, a teacher the readouts can read, runs 21 to 27):
+the arbitrary jump phase was the ceiling, so the teacher was replaced.
+`teacher.rs` jumps by a rule over the same window the readouts see: an
+enemy within some pixels ahead on Mario's floor, or a pit or wall within
+some columns, while Mario is on the ground; A is held a few steps and
+the rule cannot fire again until he lands. The four numbers are searched
+over a small grid by closed-loop progress from the six offsets. The
+winner, an enemy within 40 px (hold 3) or an obstacle within 3 columns
+(hold 5), clears 1-1 from all six, so every press onset is now a
+function of the state by construction. The table gained an `onset`
+column: the fraction of the held-out demonstration's press onsets at
+which the readout pressed A. Starting a jump, not recognising one.
+
+The first run on the rule teacher (ridge, penalty 100) raised every
+held-out accuracy by eight to ten points and left the onset column at
+zero for raw, one-hot and clock alike, with every episode still dying at
+x 314. A diagnostic of the raw outputs at onsets explained it: the raw
+readout's A output at a press onset was 0.200 and at the step before it
+0.187, which is no signal at all; the one-hot encoder's was 0.277
+against 0.121; the echo state's 0.326 against 0.264. Two things were
+wrong. Bytes cannot express "any of five enemy slots within 40 px",
+which is a minimum and a threshold, so the information is in the window
+and not in the linear span of it. And least squares on 0/1 targets puts
+a rare conjunction (157 onset rows in 2,419) under the 0.5 threshold
+even when it is separable, because the easy rows outweigh it. The
+second was fixed two ways: a logistic readout (`logistic.rs`, Newton
+steps on the ridge solver, `--logistic`), and the ridge penalty dropped
+to 1. The first was helped by adding the nearest-enemy distance, a
+derived feature, to the encoder search pool.
+
+```
+rule teacher, raw label, penalty 1, with Tetris (run 25); logistic columns from run 23
+condition          | held-out acc | A acc | onset | mean x | max x | resets || logistic: A acc | onset | mean x
+clock              |        0.914 | 0.743 | 0.465 |  778.4 |   899 |      0 ||           0.703 | 0.159 |  743.2
+raw                |        0.956 | 0.869 | 0.197 |  313.6 |   314 |      0 ||           0.858 | 0.127 |  313.6
+random-a           |        0.866 | 0.598 | 0.274 |  390.0 |   691 |      0 ||           0.598 | 0.274 |  390.0
+random-tanh        |        0.961 | 0.883 | 0.471 |  594.2 |   595 |      0 ||           0.878 | 0.389 |  562.2
+echo-state         |        0.976 | 0.928 | 0.701 | 1572.4 |  1796 |      0 ||           0.924 | 0.554 |  781.6
+placement-onehot   |        0.951 | 0.853 | 0.293 |  434.0 |   434 |      0 ||           0.861 | 0.420 |  434.0
+placement-tetris   |        0.939 | 0.816 | 0.325 |  689.0 |   709 |   1083 ||
+searched-onehot    |        0.976 | 0.928 | 0.108 |  313.6 |   314 |      0 ||           0.964 | 0.637 |  313.6
+searched-tetris    |        0.936 | 0.809 | 0.172 |  313.6 |   314 |    772 ||
+placement-hash     |        0.882 | 0.645 | 0.070 |  473.8 |   723 |    846 ||
+  searched encoder, ridge: $9F /8, $CE /4, $12F /8, $9B /8; logistic: $9F /8, $CE /4, $116 /4, $130 /8
+```
+
+Read the onset and mean-x columns; the B and Right bits are constant
+under this teacher, so the headline accuracy is inflated and the A
+column is the honest one. Three things happened.
+
+The echo state network starts seven in ten held-out jumps and runs to a
+mean x of 1572, five times the Goomba wall at 314 and more than half the
+level, dying at the Goomba pair near x 1800. The memoryless tanh
+expansion gets 0.471 and 594; raw bytes 0.197 and 314. So on a teacher
+that can be read, the policy class matters after all, and memory
+matters: the echo state's recurrence is the only thing in the table
+that carries the previous step, and a jump is a decision about the
+previous few steps as much as this one.
+
+Tetris beat its own control for the first time. Through the game, the
+readout starts 0.325 of onsets against 0.293 for the same four
+placements read as one-hots, and its episodes reach 689 against 434,
+past the first Goomba. Its held-out accuracy is lower (0.939 against
+0.951) and it reset the board 1,083 times doing it, but the thing a
+reservoir is for, turning an encoding into something a linear readout
+can threshold, happened. The searched encoder shows the same ordering
+on onsets (0.172 through Tetris against 0.108 one-hot) without reaching
+the Goomba. The hash encoder, which destroys locality, is at the
+random-A floor on both. Tetris is still a factor of two short of the
+software echo state on onsets and more than that on distance.
+
+The logistic readout helps the small encodings and hurts the large
+ones. On the one-hot features it lifts onsets from 0.293 to 0.420 and
+on the searched features from 0.108 to 0.637, the latter by picking two
+wall tiles (one and three columns ahead, row 9) that are the rule's own
+obstacle test; yet that readout still dies at 314 because none of its
+four features is an enemy. On the 2,048-unit expansions the logistic fit
+at penalty 1 is worse than ridge (echo state 0.554 against 0.701), so
+the penalty is not matched to the likelihood scale there; at penalty
+100 it was worse everywhere.
+
+Two caveats. The clock readout now reaches 0.465 onsets and x 778,
+because the rule teacher is deterministic and the six offsets differ by
+at most six steps, so a one-hot of the step index memorises when the
+level's jumps happen; it is a floor that only the echo state clears,
+and the next protocol change is to spread the demonstration offsets
+over a hundred frames or more so the clock has nothing to memorise. And
+the greedy encoder search optimises held-out accuracy, which the hold
+steps dominate, so it picks jump-recognition bytes first and the enemy
+distance last and at the wrong width (4 px bins top out at 36 px, under
+the rule's 40); scoring the search by onset recall, or by closed-loop
+x, is the obvious follow-up.
+
+What this says about the idea, 27 runs in: the reservoir question had
+been answered on a teacher nobody could learn from. With a teacher that
+is a function of the state, a game in the loop does add to its encoding
+on the one measure that is the policy, and a software echo state adds
+much more. The video's struggle chapter has its resolution: six
+demonstrations from a rule, the readouts that only recognised a jump,
+and the echo state and Tetris starting them.
+
 A captioned explainer video of the experiment, six chapters ending with
 the whole level in real time, is built by `examples/reservoir_dump.rs`
 followed by `tools/reservoir_video.py`; see
