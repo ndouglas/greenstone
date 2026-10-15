@@ -7,6 +7,9 @@
 //! `--no-tetris` drops every condition that runs a Tetris emulator, for a table in minutes.
 //! `--lambda=X` sets the ridge penalty (default 1).
 //! `--logistic` fits the readouts by logistic regression instead of ridge.
+//! `--only=PREFIX` keeps only the conditions whose names start with PREFIX.
+//! `--stages=1-1,6-1` takes the demonstrations from those levels in turn (default 1-1);
+//! the default cache directory then carries the stage names.
 //! `--noop-max=N` spreads the demonstration offsets over N idle frames (default 120).
 //! A cache whose demonstrations start at other offsets is searched again.
 //! `--rule` takes the demonstrations from the rule teacher (a jump rule over the
@@ -15,12 +18,12 @@
 //! Demonstrations are cached in `demo-dir` (default `target/tetris-reservoir-demos`)
 //! as `demo-N.bin`; delete the directory to search again.
 
-use greenstone::nes::gym::reservoir::demo::{load_cached, save_cached};
+use greenstone::nes::gym::reservoir::demo::{load_cached, save_cached, Stage};
 use greenstone::nes::gym::reservoir::drive::{FAST_LEVEL, PIECE_FRAME_LIMIT};
-use greenstone::nes::gym::reservoir::encode::Encoder;
+use greenstone::nes::gym::reservoir::encode::{BankEncoder, Encoder};
 use greenstone::nes::gym::reservoir::encode::{BANK_BOARDS, ENEMY_BIN_PX, PIECES_PER_STEP};
 use greenstone::nes::gym::reservoir::features::{Condition, SMB_WINDOW_LEN};
-use greenstone::nes::gym::reservoir::search::search_encoder;
+use greenstone::nes::gym::reservoir::search::{search_bank_encoder, search_encoder, Region};
 use greenstone::nes::gym::reservoir::teacher::Rule;
 use greenstone::nes::gym::reservoir::{
   active_bits, demos_at_configured_offsets, find_demonstrations, find_rule_demonstrations, run, ExperimentConfig,
@@ -35,15 +38,21 @@ fn main() {
   let lambda = std::env::args().find_map(|a| a.strip_prefix("--lambda=").map(|v| v.parse::<f64>().expect("--lambda=X")));
   let horizon = std::env::args().find_map(|a| a.strip_prefix("--horizon=").map(|v| v.parse::<usize>().expect("--horizon=N")));
   let noop_max = std::env::args().find_map(|a| a.strip_prefix("--noop-max=").map(|v| v.parse::<usize>().expect("--noop-max=N")));
+  let only = std::env::args().find_map(|a| a.strip_prefix("--only=").map(str::to_string));
+  let stages: Vec<Stage> = std::env::args()
+    .find_map(|a| a.strip_prefix("--stages=").map(str::to_string))
+    .map(|v| v.split(',').map(|s| Stage::parse(s).expect("--stages=W-L,W-L")).collect())
+    .unwrap_or_else(|| vec![Stage::ONE_ONE]);
+  let stage_suffix = if stages == [Stage::ONE_ONE] {
+    String::new()
+  } else {
+    format!("-{}", stages.iter().map(|s| s.name()).collect::<Vec<_>>().join("+"))
+  };
   let args: Vec<String> = std::env::args().filter(|a| !a.starts_with("--")).collect();
   let smb_path = args.get(1).map(String::as_str).unwrap_or("roms2/super_mario_bros.nes");
   let tetris_path = args.get(2).map(String::as_str).unwrap_or("roms2/tetris.nes");
-  let default_dir = if rule_teacher {
-    "target/tetris-reservoir-demos-rule"
-  } else {
-    "target/tetris-reservoir-demos"
-  };
-  let demo_dir = PathBuf::from(args.get(3).map(String::as_str).unwrap_or(default_dir));
+  let default_dir = format!("target/tetris-reservoir-demos{}{}", if rule_teacher { "-rule" } else { "" }, stage_suffix);
+  let demo_dir = PathBuf::from(args.get(3).map(String::as_str).unwrap_or(&default_dir));
   let rule_path = demo_dir.join("rule.bin");
   for path in [smb_path, tetris_path] {
     if !Path::new(path).exists() {
@@ -64,6 +73,7 @@ fn main() {
   if let Some(n) = noop_max {
     config.noop_max = n;
   }
+  config.stages = stages;
   let mut log = |line: &str| eprintln!("{}", line);
   let mut rule: Option<Rule> = None;
   let cached = load_cached(&demo_dir, config.demonstrations).filter(|demos| {
@@ -103,12 +113,17 @@ fn main() {
   let mask = demos.iter().fold(0u8, |acc, d| acc | active_bits(&d.buttons));
   log("searching the encoder on the one-hot control");
   let searched = search_encoder(&smb_rom, &demos, config.lambda, config.logistic, mask, config.jump_horizon, &mut log);
-  let mut conditions = Condition::default_table(Some(searched));
+  log("searching four features per region for the bank");
+  let bank = search_bank_encoder(&smb_rom, &demos, config.lambda, config.logistic, mask, config.jump_horizon, &mut log);
+  let mut conditions = Condition::default_table(Some(searched), Some(bank));
   if legacy {
     conditions.extend(Condition::LEGACY);
   }
   if no_tetris {
     conditions.retain(|c| !c.uses_reservoir());
+  }
+  if let Some(prefix) = &only {
+    conditions.retain(|c| c.name().starts_with(prefix.as_str()));
   }
   let report = match run(&smb_rom, &tetris_rom, &demos, &conditions, &config, &mut log) {
     Ok(r) => r,
@@ -121,8 +136,13 @@ fn main() {
   println!();
   for (i, d) in report.demos.iter().enumerate() {
     println!(
-      "demonstration {}: {} idle frames, {} steps, x reached {}, cleared {}",
-      i, d.noops, d.steps, d.x_reached, d.cleared
+      "demonstration {}: {} from {} idle frames, {} steps, x reached {}, cleared {}",
+      i,
+      d.stage.name(),
+      d.noops,
+      d.steps,
+      d.x_reached,
+      d.cleared
     );
   }
   match rule {
@@ -157,12 +177,18 @@ fn main() {
     PIECES_PER_STEP, ENEMY_BIN_PX, FAST_LEVEL, PIECE_FRAME_LIMIT
   );
   println!(
-    "bank: {} boards of {} placements each, searched by onsets plus A specificity: Mario, enemies, the floor ahead, the wall ahead; readout sees the playfields",
+    "bank: {} boards of {} placements each, hand: Mario, enemies, the floor ahead, the wall ahead; searched: four per region by onsets plus A specificity; readout sees the playfields; tidy adds a fifth piece on the lowest column",
     BANK_BOARDS, PIECES_PER_STEP
   );
   if let Encoder::Searched(features) = searched {
     let picks: Vec<String> = features.iter().map(|f| f.describe()).collect();
     println!("searched encoder: {}", picks.join(", "));
+  }
+  if let BankEncoder::Searched(boards) = bank {
+    for (region, board) in Region::ALL.iter().zip(boards.iter()) {
+      let picks: Vec<String> = board.iter().map(|f| f.describe()).collect();
+      println!("searched bank, {}: {}", region.name(), picks.join(", "));
+    }
   }
   println!();
   println!(

@@ -88,7 +88,17 @@ fn main() {
     let noops = episode_noops(0, demos.len(), config.noop_max);
     let mut sink = BufWriter::new(File::create(out.join(format!("episode-{}.smb.rgb", name))).expect("create"));
     let (condition, readout) = &readouts[index];
-    let steps = trace_episode(*condition, readout, &smb_rom, &tetris_rom, noops, config.max_steps, &mut sink).expect("episode");
+    let steps = trace_episode(
+      *condition,
+      readout,
+      &smb_rom,
+      &tetris_rom,
+      demos[0].stage,
+      noops,
+      config.max_steps,
+      &mut sink,
+    )
+    .expect("episode");
     let v = json!({
       "noops": noops,
       "steps": steps.iter().map(|s| json!({"x": s.x, "buttons": s.buttons, "dead": s.dead})).collect::<Vec<_>>(),

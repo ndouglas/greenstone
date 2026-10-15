@@ -53,7 +53,12 @@ pub fn smb_in_cutscene(emu: &mut NesEmulator) -> bool {
 
 /// True once the level counter has advanced past 1-1.
 pub fn smb_cleared(emu: &mut NesEmulator) -> bool {
-  emu.ram_read(smb1_ram::LEVEL) != 0 || emu.ram_read(smb1_ram::WORLD) != 0
+  smb_cleared_at(emu, Stage::ONE_ONE)
+}
+
+/// True once the game has moved on from `stage`.
+pub fn smb_cleared_at(emu: &mut NesEmulator, stage: Stage) -> bool {
+  smb_stage(emu) != stage
 }
 
 /// Player Y on screen. Smaller is higher.
@@ -96,14 +101,68 @@ pub fn smb_window(emu: &mut NesEmulator) -> Vec<u8> {
   window
 }
 
+/// A level of SMB, zero-based as the game stores it: 1-1 is world 0, level 0.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Stage {
+  pub world: u8,
+  pub level: u8,
+}
+
+/// SMB RAM: the level within the world that the loader reads. `smb1_ram::LEVEL`
+/// is the copy the status bar shows; both are set so they agree.
+const LOADER_LEVEL: u16 = 0x075C;
+
+impl Stage {
+  pub const ONE_ONE: Stage = Stage { world: 0, level: 0 };
+
+  /// `1-1`, as the game prints it.
+  pub fn name(self) -> String {
+    format!("{}-{}", self.world + 1, self.level + 1)
+  }
+
+  /// The inverse of `name`: `6-1` is world 5, level 0.
+  pub fn parse(text: &str) -> Result<Stage, String> {
+    let (w, l) = text.split_once('-').ok_or_else(|| format!("a stage is W-L, got {:?}", text))?;
+    let parse = |s: &str| {
+      s.trim()
+        .parse::<u8>()
+        .ok()
+        .filter(|n| (1..=8).contains(n))
+        .ok_or_else(|| format!("a stage is W-L with 1..=8, got {:?}", text))
+    };
+    Ok(Stage {
+      world: parse(w)? - 1,
+      level: parse(l)? - 1,
+    })
+  }
+}
+
 /// Boot SMB, tap Start through the title, wait for 1-1 to begin, and snapshot.
 pub fn smb_start_state(rom: &[u8]) -> Vec<u8> {
+  smb_start_state_at(rom, Stage::ONE_ONE)
+}
+
+/// Boot SMB, write the stage into the world and level bytes while tapping
+/// Start through the title so the loader starts there, wait for the level
+/// to begin, and snapshot.
+pub fn smb_start_state_at(rom: &[u8], stage: Stage) -> Vec<u8> {
   let mut emu = NesEmulator::new(rom);
   for frame in 0..120 {
+    emu.ram_write(smb1_ram::WORLD, stage.world);
+    emu.ram_write(LOADER_LEVEL, stage.level);
+    emu.ram_write(smb1_ram::LEVEL, stage.level);
     emu.step_frame(if frame % 20 < 10 { BUTTON_START } else { 0 });
   }
   emu.step_frames(0, 80);
   emu.save_state()
+}
+
+/// The stage the emulator is in now.
+pub fn smb_stage(emu: &mut NesEmulator) -> Stage {
+  Stage {
+    world: emu.ram_read(smb1_ram::WORLD),
+    level: emu.ram_read(smb1_ram::LEVEL),
+  }
 }
 
 /// The best path the search found.
@@ -116,9 +175,11 @@ pub struct Demonstration {
   pub cleared: bool,
   /// Idle frames after the level starts before the first button.
   pub noops: usize,
+  /// The level it was played on.
+  pub stage: Stage,
 }
 
-const DEMO_HEADER: usize = 7;
+const DEMO_HEADER: usize = 9;
 
 /// Path of cached demonstration `index` under `dir`.
 pub fn cached_demo_path(dir: &std::path::Path, index: usize) -> std::path::PathBuf {
@@ -146,12 +207,14 @@ pub fn save_cached(dir: &std::path::Path, demos: &[Demonstration]) -> std::io::R
 }
 
 impl Demonstration {
-  /// `[noops u16 LE][x_reached i32 LE][cleared u8][buttons...]`.
+  /// `[noops u16 LE][x_reached i32 LE][cleared u8][world u8][level u8][buttons...]`.
   pub fn to_bytes(&self) -> Vec<u8> {
     let mut out = Vec::with_capacity(DEMO_HEADER + self.buttons.len());
     out.extend_from_slice(&(self.noops as u16).to_le_bytes());
     out.extend_from_slice(&self.x_reached.to_le_bytes());
     out.push(self.cleared as u8);
+    out.push(self.stage.world);
+    out.push(self.stage.level);
     out.extend_from_slice(&self.buttons);
     out
   }
@@ -164,6 +227,10 @@ impl Demonstration {
       noops: u16::from_le_bytes([bytes[0], bytes[1]]) as usize,
       x_reached: i32::from_le_bytes([bytes[2], bytes[3], bytes[4], bytes[5]]),
       cleared: bytes[6] != 0,
+      stage: Stage {
+        world: bytes[7],
+        level: bytes[8],
+      },
       buttons: bytes[DEMO_HEADER..].to_vec(),
     })
   }
@@ -277,7 +344,7 @@ pub fn prune_and_rank(mut cands: Vec<Candidate>, beam: usize, seed: u64) -> Vec<
 /// Beam search over save states from `noops` idle frames after `start`. Each
 /// round expands every frontier candidate by every macro across threads, one
 /// emulator per thread. `seed` only breaks exact ranking ties.
-pub fn beam_search(rom: &[u8], start: &[u8], noops: usize, beam: usize, max_rounds: usize, seed: u64) -> Demonstration {
+pub fn beam_search(rom: &[u8], start: &[u8], noops: usize, beam: usize, max_rounds: usize, seed: u64, stage: Stage) -> Demonstration {
   let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
   let (first, lives_at_start, key) = {
     let mut emu = NesEmulator::new(rom);
@@ -323,7 +390,7 @@ pub fn beam_search(rom: &[u8], start: &[u8], noops: usize, beam: usize, max_roun
                 }
                 let x = smb_x(&mut emu);
                 let stuck = next_stuck(frontier[parent].stuck, x > frontier[parent].x, smb_in_cutscene(&mut emu));
-                let cleared = smb_cleared(&mut emu);
+                let cleared = smb_cleared_at(&mut emu, stage);
                 let y = smb_y(&mut emu);
                 let key = state_key(&mut emu);
                 let state = emu.save_state();
@@ -363,6 +430,7 @@ pub fn beam_search(rom: &[u8], start: &[u8], noops: usize, beam: usize, max_roun
     x_reached: max_x,
     cleared: best.cleared,
     noops,
+    stage,
   }
 }
 
@@ -489,7 +557,7 @@ mod tests {
       None => return,
     };
     let start = smb_start_state(&rom);
-    let demo = beam_search(&rom, &start, 0, 16, 100, 0);
+    let demo = beam_search(&rom, &start, 0, 16, 100, 0, Stage::ONE_ONE);
     assert!(demo.cleared, "did not clear: x={} in {} steps", demo.x_reached, demo.buttons.len());
     assert!(demo.x_reached > 3000, "x_reached should be the highest x seen, got {}", demo.x_reached);
   }
@@ -502,7 +570,7 @@ mod tests {
       None => return,
     };
     let start = smb_start_state(&rom);
-    let demo = beam_search(&rom, &start, 0, 16, 60, 0);
+    let demo = beam_search(&rom, &start, 0, 16, 60, 0, Stage::ONE_ONE);
     assert!(demo.x_reached > 2200, "reached only x={} in {} steps", demo.x_reached, demo.buttons.len());
   }
 
@@ -514,7 +582,7 @@ mod tests {
       None => return,
     };
     let start = smb_start_state(&rom);
-    let demo = beam_search(&rom, &start, 0, 16, 60, 0);
+    let demo = beam_search(&rom, &start, 0, 16, 60, 0, Stage::ONE_ONE);
     assert!(demo.x_reached > 1000, "reached only x={} in {} steps", demo.x_reached, demo.buttons.len());
   }
 
@@ -525,12 +593,14 @@ mod tests {
       x_reached: 70000,
       cleared: true,
       noops: 17,
+      stage: Stage { world: 5, level: 0 },
     };
     let back = Demonstration::from_bytes(&demo.to_bytes()).unwrap();
     assert_eq!(back.buttons, demo.buttons);
     assert_eq!(back.x_reached, 70000);
     assert!(back.cleared);
     assert_eq!(back.noops, 17);
+    assert_eq!(back.stage, Stage { world: 5, level: 0 });
     assert!(Demonstration::from_bytes(&[1, 2, 3]).is_err());
   }
 
@@ -619,6 +689,43 @@ mod tests {
   }
 
   #[test]
+  fn stages_are_named_as_the_game_prints_them() {
+    assert_eq!(Stage::ONE_ONE.name(), "1-1");
+    assert_eq!(Stage { world: 3, level: 1 }.name(), "4-2");
+    assert_eq!(Stage::parse("6-1").unwrap(), Stage { world: 5, level: 0 });
+    assert_eq!(Stage::parse(" 1-1 ").unwrap(), Stage::ONE_ONE);
+    assert!(Stage::parse("0-1").is_err());
+    assert!(Stage::parse("9-1").is_err());
+    assert!(Stage::parse("61").is_err());
+  }
+
+  #[test]
+  #[ignore]
+  fn a_start_state_at_another_stage_loads_that_stage_and_its_own_terrain() {
+    let rom = match rom_or_skip("roms2/super_mario_bros.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let two_one = Stage { world: 1, level: 0 };
+    let mut emu = NesEmulator::new(&rom);
+    emu.load_state(&smb_start_state_at(&rom, two_one));
+    assert_eq!(smb_stage(&mut emu), two_one);
+    assert!(!smb_cleared_at(&mut emu, two_one));
+    assert!(smb_cleared_at(&mut emu, Stage::ONE_ONE), "from 1-1's point of view the game has moved on");
+    assert!(!smb_dead(&mut emu));
+    // Both levels open on flat ground; a few seconds in, the terrain differs.
+    let mut home = NesEmulator::new(&rom);
+    home.load_state(&smb_start_state(&rom));
+    emu.step_frames(crate::nes::bus::BUTTON_RIGHT, 300);
+    home.step_frames(crate::nes::bus::BUTTON_RIGHT, 300);
+    assert!(smb_x(&mut emu) > 200, "Mario should move right from the start state");
+    assert_eq!(smb_stage(&mut emu), two_one, "still 2-1 after running");
+    let there = smb_window(&mut emu);
+    let here = smb_window(&mut home);
+    assert_ne!(there[256..], here[256..], "2-1 and 1-1 have different terrain ahead");
+  }
+
+  #[test]
   #[ignore]
   fn start_state_is_at_the_beginning_of_1_1() {
     let rom = match rom_or_skip("roms2/super_mario_bros.nes") {
@@ -643,7 +750,7 @@ mod tests {
       None => return,
     };
     let start = smb_start_state(&rom);
-    let demo = beam_search(&rom, &start, 0, 8, 30, 0);
+    let demo = beam_search(&rom, &start, 0, 8, 30, 0, Stage::ONE_ONE);
     assert!(demo.buttons.len() <= 30 * ROUND_STEPS);
     assert!(demo.x_reached > 500, "reached only x={}", demo.x_reached);
   }

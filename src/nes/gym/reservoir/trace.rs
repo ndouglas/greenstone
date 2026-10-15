@@ -1,6 +1,6 @@
 //! Recording a demonstration and closed-loop episodes with frames, for the video.
 
-use super::demo::{smb_cleared, smb_dead, smb_in_cutscene, smb_start_state, smb_window, smb_x, smb_y, Demonstration, MACRO_FRAMES};
+use super::demo::{smb_cleared_at, smb_dead, smb_in_cutscene, smb_start_state_at, smb_window, smb_x, smb_y, Demonstration, Stage, MACRO_FRAMES};
 use super::drive::{TETRIS_PLAYFIELD, TETRIS_PLAYFIELD_LEN};
 use super::encode::{encode, Encoder};
 use super::features::Condition;
@@ -19,14 +19,10 @@ pub fn fit_condition(
   logistic: bool,
   horizon: usize,
 ) -> Result<Readout, String> {
-  let start = smb_start_state(smb_rom);
   let datasets: Vec<Dataset> = std::thread::scope(|s| {
     let handles: Vec<_> = demos
       .iter()
-      .map(|demo| {
-        let start = &start;
-        s.spawn(move || collect(condition, smb_rom, tetris_rom, start, demo, horizon))
-      })
+      .map(|demo| s.spawn(move || collect(condition, smb_rom, tetris_rom, demo, horizon)))
       .collect();
     handles
       .into_iter()
@@ -69,7 +65,7 @@ pub fn replay(
   tetris_sink: &mut dyn Write,
 ) -> Result<Vec<StepRecord>, String> {
   let mut smb = NesEmulator::new(smb_rom);
-  smb.load_state(&smb_start_state(smb_rom));
+  smb.load_state(&smb_start_state_at(smb_rom, demo.stage));
   smb.step_frames(0, demo.noops);
   let mut hiddens: Vec<Hidden> = readouts.iter().map(|(c, _)| hidden_for(*c, tetris_rom)).collect::<Result<_, _>>()?;
   let screen = hiddens.iter().position(|h| h.tetris().is_some());
@@ -127,12 +123,13 @@ pub fn trace_episode(
   readout: &Readout,
   smb_rom: &[u8],
   tetris_rom: &[u8],
+  stage: Stage,
   noops: usize,
   max_steps: usize,
   smb_sink: &mut dyn Write,
 ) -> Result<Vec<EpisodeStep>, String> {
   let mut smb = NesEmulator::new(smb_rom);
-  smb.load_state(&smb_start_state(smb_rom));
+  smb.load_state(&smb_start_state_at(smb_rom, stage));
   smb.step_frames(0, noops);
   let mut hidden = hidden_for(condition, tetris_rom)?;
   let mut steps = Vec::new();
@@ -149,7 +146,7 @@ pub fn trace_episode(
       buttons,
       dead,
     });
-    if dead || smb_cleared(&mut smb) {
+    if dead || smb_cleared_at(&mut smb, stage) {
       break;
     }
   }

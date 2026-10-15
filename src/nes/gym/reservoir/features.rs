@@ -1,6 +1,7 @@
 //! Feature rows for each experimental condition.
 
 use super::drive::{Drive, TETRIS_PLAYFIELD_LEN};
+use super::encode::BankEncoder;
 #[cfg(test)]
 use super::encode::Feature;
 use super::encode::{Encoder, BANK_BOARDS, BANK_ONEHOT_ROW_LEN, ONEHOT_ROW_LEN};
@@ -57,10 +58,12 @@ pub enum Condition {
   /// Tetris RAM after steering the encoder's four placements.
   PlacementTetris(Encoder),
   /// The bank's sixteen placements as one-hot features, no Tetris. The control for the next.
-  BankOnehot,
+  BankOnehot(BankEncoder),
   /// Four Tetris boards, each steered by four placements from its own part
-  /// of the window; the readout sees the four playfields.
-  BankTetris,
+  /// of the window; the readout sees the four playfields. With the flag, a
+  /// fifth piece per step is placed on each board's lowest column, to keep
+  /// the stack low and the board alive longer.
+  BankTetris(BankEncoder, bool),
 }
 
 impl Condition {
@@ -68,8 +71,10 @@ impl Condition {
   pub const LEGACY: [Condition; 3] = [Condition::Undriven, Condition::DrivenController, Condition::DrivenPlayfield];
 
   /// The default table: floors, raw, the hand-picked encoder straight and
-  /// through Tetris, the searched encoder likewise when given, and the hash control.
-  pub fn default_table(searched: Option<Encoder>) -> Vec<Condition> {
+  /// through Tetris, the searched encoder likewise when given, the hand
+  /// bank straight, through Tetris and tidied, the searched bank likewise
+  /// when given, and the hash control.
+  pub fn default_table(searched: Option<Encoder>, bank: Option<BankEncoder>) -> Vec<Condition> {
     let mut table = vec![
       Condition::Clock,
       Condition::Raw,
@@ -83,8 +88,14 @@ impl Condition {
       table.push(Condition::PlacementOnehot(e));
       table.push(Condition::PlacementTetris(e));
     }
-    table.push(Condition::BankOnehot);
-    table.push(Condition::BankTetris);
+    table.push(Condition::BankOnehot(BankEncoder::Hand));
+    table.push(Condition::BankTetris(BankEncoder::Hand, false));
+    table.push(Condition::BankTetris(BankEncoder::Hand, true));
+    if let Some(b) = bank {
+      table.push(Condition::BankOnehot(b));
+      table.push(Condition::BankTetris(b, false));
+      table.push(Condition::BankTetris(b, true));
+    }
     table.push(Condition::PlacementTetris(Encoder::Hash));
     table
   }
@@ -94,6 +105,10 @@ impl Condition {
       Encoder::Salient => "placement",
       Encoder::Hash => "hashed",
       Encoder::Searched(_) => "searched",
+    };
+    let bank = |b: BankEncoder| match b {
+      BankEncoder::Hand => "bank-",
+      BankEncoder::Searched(_) => "bank-searched-",
     };
     match self {
       Condition::Clock => "clock".to_string(),
@@ -107,8 +122,9 @@ impl Condition {
       Condition::PlacementOnehot(e) => format!("{}-onehot", encoder(e)),
       Condition::PlacementTetris(Encoder::Hash) => "placement-hash".to_string(),
       Condition::PlacementTetris(e) => format!("{}-tetris", encoder(e)),
-      Condition::BankOnehot => "bank-onehot".to_string(),
-      Condition::BankTetris => "bank-tetris".to_string(),
+      Condition::BankOnehot(b) => format!("{}onehot", bank(b)),
+      Condition::BankTetris(b, false) => format!("{}tetris", bank(b)),
+      Condition::BankTetris(b, true) => format!("{}tidy", bank(b)),
     }
   }
 
@@ -124,21 +140,21 @@ impl Condition {
       | Condition::EchoState
       | Condition::Undriven
       | Condition::PlacementOnehot(_)
-      | Condition::BankOnehot
-      | Condition::BankTetris => None,
+      | Condition::BankOnehot(_)
+      | Condition::BankTetris(..) => None,
     }
   }
 
   pub fn uses_reservoir(self) -> bool {
     matches!(
       self,
-      Condition::Undriven | Condition::DrivenController | Condition::DrivenPlayfield | Condition::PlacementTetris(_) | Condition::BankTetris
+      Condition::Undriven | Condition::DrivenController | Condition::DrivenPlayfield | Condition::PlacementTetris(_) | Condition::BankTetris(..)
     )
   }
 
   /// Placement drives play at level 19 so a piece drops in a few dozen frames.
   pub fn fast_tetris(self) -> bool {
-    matches!(self.drive(), Some(Drive::Placements(_))) || self == Condition::BankTetris
+    matches!(self.drive(), Some(Drive::Placements(_))) || matches!(self, Condition::BankTetris(..))
   }
 
   /// Conditions whose hidden layer is a software expansion: Some(recurrent).
@@ -170,8 +186,8 @@ impl Condition {
       Condition::RandomTanh | Condition::EchoState => 1 + SOFT_UNITS,
       Condition::DrivenController => 1 + TETRIS_RAM_LEN as usize + DRIVE_BITS,
       Condition::Undriven | Condition::DrivenPlayfield | Condition::PlacementTetris(_) => 1 + TETRIS_RAM_LEN as usize,
-      Condition::BankOnehot => BANK_ONEHOT_ROW_LEN,
-      Condition::BankTetris => 1 + BANK_BOARDS * TETRIS_PLAYFIELD_LEN as usize,
+      Condition::BankOnehot(_) => BANK_ONEHOT_ROW_LEN,
+      Condition::BankTetris(..) => 1 + BANK_BOARDS * TETRIS_PLAYFIELD_LEN as usize,
     }
   }
 }
@@ -249,8 +265,9 @@ mod tests {
     assert_eq!(Condition::PlacementTetris(Encoder::Hash).row_len(), 1 + 2048);
     assert_eq!(Condition::RandomTanh.row_len(), 1 + 2048);
     assert_eq!(Condition::EchoState.row_len(), 1 + 2048);
-    assert_eq!(Condition::BankOnehot.row_len(), BANK_ONEHOT_ROW_LEN);
-    assert_eq!(Condition::BankTetris.row_len(), 1 + BANK_BOARDS * 200);
+    assert_eq!(Condition::BankOnehot(BankEncoder::Hand).row_len(), BANK_ONEHOT_ROW_LEN);
+    assert_eq!(Condition::BankTetris(BankEncoder::Hand, false).row_len(), 1 + BANK_BOARDS * 200);
+    assert_eq!(Condition::BankTetris(BankEncoder::Hand, true).row_len(), 1 + BANK_BOARDS * 200);
     assert!(!Condition::RandomTanh.uses_reservoir());
     assert_eq!(Condition::RandomTanh.soft_reservoir(), Some(false));
     assert_eq!(Condition::EchoState.soft_reservoir(), Some(true));
@@ -268,11 +285,12 @@ mod tests {
       assert!(!c.uses_reservoir(), "{}", c.name());
       assert!(c.drive().is_none());
     }
-    assert!(!Condition::BankOnehot.uses_reservoir());
+    assert!(!Condition::BankOnehot(BankEncoder::Hand).uses_reservoir());
     for c in [
       Condition::PlacementTetris(Encoder::Salient),
       Condition::PlacementTetris(Encoder::Hash),
-      Condition::BankTetris,
+      Condition::BankTetris(BankEncoder::Hand, false),
+      Condition::BankTetris(BankEncoder::Hand, true),
     ] {
       assert!(c.uses_reservoir(), "{}", c.name());
       assert!(c.fast_tetris(), "{}", c.name());
@@ -295,9 +313,17 @@ mod tests {
       shift: 4,
     };
     let searched = Encoder::Searched([f; 4]);
-    let with = Condition::default_table(Some(searched));
-    let without = Condition::default_table(None);
-    assert_eq!(with.len(), without.len() + 2);
+    let bank = BankEncoder::Searched([[f; 4]; BANK_BOARDS]);
+    let with = Condition::default_table(Some(searched), Some(bank));
+    let without = Condition::default_table(None, None);
+    assert_eq!(with.len(), without.len() + 5, "two searched rows and three searched-bank rows");
+    assert!(with.contains(&Condition::BankOnehot(bank)));
+    assert!(with.contains(&Condition::BankTetris(bank, false)));
+    assert_eq!(Condition::BankOnehot(bank).name(), "bank-searched-onehot");
+    assert_eq!(Condition::BankTetris(bank, false).name(), "bank-searched-tetris");
+    assert_eq!(Condition::BankTetris(bank, true).name(), "bank-searched-tidy");
+    assert_eq!(Condition::BankTetris(BankEncoder::Hand, true).name(), "bank-tidy");
+    assert!(without.contains(&Condition::BankTetris(BankEncoder::Hand, true)));
     let mut names: Vec<String> = with.iter().chain(Condition::LEGACY.iter()).map(|c| c.name()).collect();
     names.sort();
     names.dedup();
@@ -305,9 +331,9 @@ mod tests {
     assert_eq!(Condition::PlacementTetris(Encoder::Hash).name(), "placement-hash");
     assert_eq!(Condition::PlacementOnehot(searched).name(), "searched-onehot");
     assert!(without.contains(&Condition::RandomA));
-    assert_eq!(Condition::BankTetris.name(), "bank-tetris");
-    assert_eq!(Condition::BankOnehot.name(), "bank-onehot");
-    assert!(without.contains(&Condition::BankTetris));
-    assert!(without.contains(&Condition::BankOnehot));
+    assert_eq!(Condition::BankTetris(BankEncoder::Hand, false).name(), "bank-tetris");
+    assert_eq!(Condition::BankOnehot(BankEncoder::Hand).name(), "bank-onehot");
+    assert!(without.contains(&Condition::BankTetris(BankEncoder::Hand, false)));
+    assert!(without.contains(&Condition::BankOnehot(BankEncoder::Hand)));
   }
 }

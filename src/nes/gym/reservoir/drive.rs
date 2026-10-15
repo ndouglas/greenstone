@@ -290,6 +290,19 @@ impl Reservoir {
   }
 }
 
+/// The housekeeping placement for a playfield: the lowest column, leftmost
+/// on a tie, at the spawn rotation. One of these per step keeps a board's
+/// stack low so what the other pieces wrote survives longer.
+pub fn tidy_placement(playfield: &[u8]) -> Placement {
+  let height = |col: usize| {
+    (0..PLAYFIELD_ROWS)
+      .find(|&row| playfield.get(row * PLAYFIELD_COLS + col).map_or(false, |&c| c != PLAYFIELD_EMPTY))
+      .map_or(0, |row| PLAYFIELD_ROWS - row)
+  };
+  let column = (0..PLAYFIELD_COLS).min_by_key(|&col| height(col)).unwrap_or(0) as u8;
+  Placement { column, rotation: 0 }
+}
+
 /// Tap Start every 30 frames until `mode` is reached.
 fn boot_until(emu: &mut NesEmulator, mode: u8) -> Result<(), String> {
   for frame in 0..BOOT_FRAME_LIMIT {
@@ -428,6 +441,29 @@ mod tests {
     r.reset();
     assert_eq!(r.emu.ram_read(TETRIS_LEVEL), FAST_LEVEL);
     assert!(r.in_play());
+  }
+
+  #[test]
+  fn the_tidy_placement_targets_the_lowest_column_leftmost_on_a_tie() {
+    let mut field = vec![PLAYFIELD_EMPTY; PLAYFIELD_ROWS * PLAYFIELD_COLS];
+    let fill = |field: &mut Vec<u8>, col: usize, height: usize| {
+      for row in PLAYFIELD_ROWS - height..PLAYFIELD_ROWS {
+        field[row * PLAYFIELD_COLS + col] = PLAYFIELD_BLOCK;
+      }
+    };
+    assert_eq!(tidy_placement(&field), Placement { column: 0, rotation: 0 }, "an empty field: column 0");
+    for col in 0..PLAYFIELD_COLS {
+      fill(&mut field, col, 3);
+    }
+    fill(&mut field, 0, 5);
+    fill(&mut field, 1, 4);
+    fill(&mut field, 7, 2); // no effect: already 3 high
+    assert_eq!(tidy_placement(&field).column, 2, "columns 2.. are the lowest at 3");
+    for col in 2..PLAYFIELD_COLS {
+      fill(&mut field, col, 6);
+    }
+    fill(&mut field, 1, 4);
+    assert_eq!(tidy_placement(&field).column, 1, "column 1 at 4 is now the lowest");
   }
 
   #[test]

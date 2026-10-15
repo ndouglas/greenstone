@@ -202,14 +202,32 @@ pub const fn bank() -> [[Feature; PIECES_PER_STEP]; BANK_BOARDS] {
   ]
 }
 
+/// Which four features each board of the bank watches.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BankEncoder {
+  /// `bank()`: hand-chosen from what the rule teacher reads.
+  Hand,
+  /// Four features per region chosen by `search::search_bank`.
+  Searched([[Feature; PIECES_PER_STEP]; BANK_BOARDS]),
+}
+
+impl BankEncoder {
+  pub fn features(self) -> [[Feature; PIECES_PER_STEP]; BANK_BOARDS] {
+    match self {
+      BankEncoder::Hand => bank(),
+      BankEncoder::Searched(features) => features,
+    }
+  }
+}
+
 /// Each board's four placements for one SMB window.
-pub fn bank_placements(window: &[u8]) -> [[Placement; PIECES_PER_STEP]; BANK_BOARDS] {
-  bank().map(|features| features.map(|f| f.placement(window)))
+pub fn bank_placements(encoder: BankEncoder, window: &[u8]) -> [[Placement; PIECES_PER_STEP]; BANK_BOARDS] {
+  encoder.features().map(|features| features.map(|f| f.placement(window)))
 }
 
 /// The bank's sixteen placements as one one-hot row: the control for the bank.
-pub fn bank_onehot_row(window: &[u8]) -> Vec<f32> {
-  let placements: Vec<Placement> = bank_placements(window).into_iter().flatten().collect();
+pub fn bank_onehot_row(encoder: BankEncoder, window: &[u8]) -> Vec<f32> {
+  let placements: Vec<Placement> = bank_placements(encoder, window).into_iter().flatten().collect();
   onehot_row(&placements)
 }
 
@@ -379,10 +397,19 @@ mod tests {
     w[terrain(2, 11) as usize] = 0; // a pit two columns ahead
     w[terrain(3, 10) as usize] = 0x12; // a pipe three columns ahead
     w[terrain(3, 9) as usize] = 0x12;
-    let p = bank_placements(&w);
+    let p = bank_placements(BankEncoder::Hand, &w);
     assert_eq!(p[2].map(|p| p.column), [9, 0, 9, 9], "ground bins high, the pit low");
     assert_eq!(p[3].map(|p| p.column), [0, 0, 4, 0], "the pipe tile sits between empty and ground");
-    let row = bank_onehot_row(&w);
+    assert_eq!(BankEncoder::Hand.features(), boards);
+    let one = Feature {
+      address: 0x10,
+      relative: false,
+      shift: 4,
+    };
+    w[0x10] = 0x30;
+    let searched = BankEncoder::Searched([[one; PIECES_PER_STEP]; BANK_BOARDS]);
+    assert!(bank_placements(searched, &w).iter().flatten().all(|p| p.column == 3));
+    let row = bank_onehot_row(BankEncoder::Hand, &w);
     assert_eq!(row.len(), BANK_ONEHOT_ROW_LEN);
     assert_eq!(row.iter().filter(|&&v| v == 1.0).count(), 1 + 2 * BANK_BOARDS * PIECES_PER_STEP);
     assert_eq!(

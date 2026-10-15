@@ -9,7 +9,7 @@
 //! construction, so a readout that misses them is failing to represent
 //! the rule, not guessing a coin.
 
-use super::demo::{smb_cleared, smb_dead, smb_window, smb_x, Demonstration, MACRO_FRAMES};
+use super::demo::{smb_cleared_at, smb_dead, smb_start_state_at, smb_window, smb_x, Demonstration, Stage, MACRO_FRAMES};
 use super::features::{BLOCK_ROWS, SMB_ZERO_PAGE_LEN, TERRAIN_COLUMNS};
 use super::trace::enemies;
 use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_RIGHT};
@@ -162,9 +162,18 @@ impl Player {
   }
 }
 
+/// A start state for every distinct stage given.
+pub fn stage_starts(rom: &[u8], stages: impl IntoIterator<Item = Stage>) -> std::collections::HashMap<Stage, Vec<u8>> {
+  let mut starts = std::collections::HashMap::new();
+  for stage in stages {
+    starts.entry(stage).or_insert_with(|| smb_start_state_at(rom, stage));
+  }
+  starts
+}
+
 /// Play the rule from `noops` idle frames after `start` until the level is
 /// cleared, Mario dies, or `max_steps` steps pass.
-pub fn rollout(rom: &[u8], start: &[u8], noops: usize, rule: Rule, max_steps: usize) -> Demonstration {
+pub fn rollout(rom: &[u8], start: &[u8], noops: usize, rule: Rule, max_steps: usize, stage: Stage) -> Demonstration {
   let mut emu = NesEmulator::new(rom);
   emu.load_state(start);
   emu.step_frames(0, noops);
@@ -178,7 +187,7 @@ pub fn rollout(rom: &[u8], start: &[u8], noops: usize, rule: Rule, max_steps: us
     emu.step_frames(b, MACRO_FRAMES);
     buttons.push(b);
     x_reached = x_reached.max(smb_x(&mut emu));
-    cleared = smb_cleared(&mut emu);
+    cleared = smb_cleared_at(&mut emu, stage);
     if cleared || smb_dead(&mut emu) {
       break;
     }
@@ -188,6 +197,7 @@ pub fn rollout(rom: &[u8], start: &[u8], noops: usize, rule: Rule, max_steps: us
     x_reached,
     cleared,
     noops,
+    stage,
   }
 }
 
@@ -198,8 +208,10 @@ pub fn score(demos: &[Demonstration]) -> (usize, i32) {
 
 /// Play every rule on the grid from every offset, across threads, and return
 /// the best rule with its demonstrations.
-pub fn search_rule(rom: &[u8], start: &[u8], noops: &[usize], max_steps: usize, log: &mut dyn FnMut(&str)) -> (Rule, Vec<Demonstration>) {
+pub fn search_rule(rom: &[u8], offsets: &[(Stage, usize)], max_steps: usize, log: &mut dyn FnMut(&str)) -> (Rule, Vec<Demonstration>) {
   let rules = Rule::grid();
+  let starts = stage_starts(rom, offsets.iter().map(|&(s, _)| s));
+  let starts = &starts;
   let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
   let chunk = rules.len().div_ceil(threads);
   let mut played: Vec<(Rule, Vec<Demonstration>)> = std::thread::scope(|s| {
@@ -209,7 +221,13 @@ pub fn search_rule(rom: &[u8], start: &[u8], noops: &[usize], max_steps: usize, 
         s.spawn(move || {
           rules
             .iter()
-            .map(|&rule| (rule, noops.iter().map(|&n| rollout(rom, start, n, rule, max_steps)).collect::<Vec<_>>()))
+            .map(|&rule| {
+              let demos = offsets
+                .iter()
+                .map(|&(stage, n)| rollout(rom, &starts[&stage], n, rule, max_steps, stage))
+                .collect::<Vec<_>>();
+              (rule, demos)
+            })
             .collect::<Vec<_>>()
         })
       })
@@ -342,6 +360,7 @@ mod tests {
       x_reached: x,
       cleared,
       noops: 0,
+      stage: Stage::ONE_ONE,
     };
     assert!(score(&[d(100, true), d(50, false)]) > score(&[d(3000, false), d(3000, false)]));
     assert!(score(&[d(200, false)]) > score(&[d(100, false)]));
@@ -354,6 +373,65 @@ mod rom_tests {
   use crate::nes::gym::reservoir::demo::smb_start_state;
   use crate::nes::gym::reservoir::rom_or_skip;
 
+  /// How far the 1-1 rule gets on the other overworld levels, from offset 0.
+  /// Set `RULE` to four comma-separated numbers to try another rule.
+  #[test]
+  #[ignore]
+  fn how_far_the_rule_gets_on_other_stages() {
+    let rom = match rom_or_skip("roms2/super_mario_bros.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let rule = match std::env::var("RULE") {
+      Ok(v) => {
+        let n: Vec<usize> = v
+          .split(',')
+          .map(|s| s.trim().parse().expect("RULE=px,look,hold_enemy,hold_obstacle"))
+          .collect();
+        Rule {
+          enemy_px: n[0] as i32,
+          look: n[1],
+          hold_enemy: n[2],
+          hold_obstacle: n[3],
+        }
+      }
+      Err(_) => Rule {
+        enemy_px: 40,
+        look: 3,
+        hold_enemy: 3,
+        hold_obstacle: 9,
+      },
+    };
+    println!("{}", rule.describe());
+    for (world, level) in [
+      (0, 0),
+      (0, 1),
+      (0, 2),
+      (1, 0),
+      (1, 2),
+      (2, 0),
+      (2, 2),
+      (3, 0),
+      (3, 2),
+      (4, 0),
+      (4, 2),
+      (5, 0),
+      (6, 0),
+      (7, 0),
+    ] {
+      let stage = Stage { world, level };
+      let start = smb_start_state_at(&rom, stage);
+      let demo = rollout(&rom, &start, 0, rule, 1000, stage);
+      println!(
+        "{}: {} steps, x {}, cleared {}",
+        stage.name(),
+        demo.buttons.len(),
+        demo.x_reached,
+        demo.cleared
+      );
+    }
+  }
+
   /// The searched rule clears 1-1 from the first offset.
   #[test]
   #[ignore]
@@ -364,7 +442,7 @@ mod rom_tests {
     };
     let start = smb_start_state(&rom);
     let mut log = |line: &str| println!("{}", line);
-    let (rule, demos) = search_rule(&rom, &start, &[0, 15], 750, &mut log);
+    let (rule, demos) = search_rule(&rom, &[(Stage::ONE_ONE, 0), (Stage::ONE_ONE, 15)], 750, &mut log);
     println!("best: {}", rule.describe());
     for d in &demos {
       println!("offset {}: {} steps, x {}, cleared {}", d.noops, d.buttons.len(), d.x_reached, d.cleared);

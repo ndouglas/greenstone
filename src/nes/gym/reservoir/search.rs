@@ -1,9 +1,9 @@
 //! Greedy search for the four window features that best predict the buttons
 //! when sent as one-hot placements, which needs no Tetris to score.
 
-use super::demo::{smb_in_cutscene, smb_start_state, smb_window, Demonstration, MACRO_FRAMES};
-use super::encode::{onehot_row, Encoder, Feature, Placement, ENEMY_DISTANCE, PIECES_PER_STEP};
-use super::features::SMB_WINDOW_LEN;
+use super::demo::{smb_in_cutscene, smb_start_state_at, smb_window, Demonstration, MACRO_FRAMES};
+use super::encode::{onehot_row, BankEncoder, Encoder, Feature, Placement, BANK_BOARDS, ENEMY_DISTANCE, PIECES_PER_STEP};
+use super::features::{BLOCK_ROWS, SMB_WINDOW_LEN, SMB_ZERO_PAGE_LEN};
 use super::{buttons_to_targets, evaluate_folds, row_is_informative, smooth_a, Dataset, FoldMetrics};
 use crate::nes::gym::NesEmulator;
 
@@ -53,10 +53,61 @@ pub fn candidates() -> Vec<Feature> {
   out
 }
 
+/// SMB zero page: the enemy slot arrays, five bytes each.
+const ENEMY_ARRAYS: [u16; 5] = [0x000F, 0x0016, 0x006E, 0x0087, 0x00CF];
+/// Terrain columns ahead of Mario in the near region; the rest are far.
+const NEAR_COLUMNS: usize = 4;
+
+/// A part of the window, for a board of the bank to watch.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Region {
+  /// The zero page less the enemy arrays and Mario's position.
+  Mario,
+  /// The enemy slot arrays, the enemy x bytes relative to Mario, and the nearest-enemy distance.
+  Enemies,
+  /// Terrain columns 0 to 3 ahead of Mario.
+  Near,
+  /// Terrain columns 4 to 7.
+  Far,
+}
+
+impl Region {
+  pub const ALL: [Region; 4] = [Region::Mario, Region::Enemies, Region::Near, Region::Far];
+
+  pub fn name(self) -> &'static str {
+    match self {
+      Region::Mario => "mario",
+      Region::Enemies => "enemies",
+      Region::Near => "near",
+      Region::Far => "far",
+    }
+  }
+
+  /// Whether a feature of the pool belongs to this region.
+  pub fn holds(self, f: Feature) -> bool {
+    let enemy = f.address == ENEMY_DISTANCE || ENEMY_ARRAYS.iter().any(|&a| (a..a + 5).contains(&f.address));
+    let terrain = if f.address == ENEMY_DISTANCE {
+      None
+    } else {
+      (f.address as usize).checked_sub(SMB_ZERO_PAGE_LEN as usize)
+    };
+    match self {
+      Region::Enemies => enemy,
+      Region::Mario => !enemy && terrain.is_none(),
+      Region::Near => terrain.map_or(false, |t| t / BLOCK_ROWS < NEAR_COLUMNS),
+      Region::Far => terrain.map_or(false, |t| t / BLOCK_ROWS >= NEAR_COLUMNS),
+    }
+  }
+
+  pub fn candidates(self) -> Vec<Feature> {
+    candidates().into_iter().filter(|&f| self.holds(f)).collect()
+  }
+}
+
 /// The informative windows and buttons of a demonstration, replayed on SMB alone.
 pub fn collect_windows(smb_rom: &[u8], demo: &Demonstration) -> (Vec<Vec<u8>>, Vec<u8>) {
   let mut smb = NesEmulator::new(smb_rom);
-  smb.load_state(&smb_start_state(smb_rom));
+  smb.load_state(&smb_start_state_at(smb_rom, demo.stage));
   smb.step_frames(0, demo.noops);
   let mut windows = Vec::new();
   let mut buttons = Vec::new();
@@ -102,6 +153,53 @@ pub fn score(
   evaluate_folds(&datasets(features, windows, buttons), lambda, logistic, mask)
 }
 
+/// The best next pick from `pool` given `chosen`, by onset score across
+/// threads: (score, feature, A specificity). Bytes already chosen are skipped.
+fn best_pick(
+  chosen: &[Feature],
+  pool: &[Feature],
+  windows: &[Vec<Vec<u8>>],
+  buttons: &[Vec<u8>],
+  lambda: f64,
+  logistic: bool,
+  mask: u8,
+) -> (f64, Feature, f64) {
+  let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+  let chunk = pool.len().div_ceil(threads).max(1);
+  std::thread::scope(|s| {
+    let handles: Vec<_> = pool
+      .chunks(chunk)
+      .map(|chunk| {
+        s.spawn(move || {
+          let mut best: Option<(f64, Feature, f64)> = None;
+          for &f in chunk {
+            if chosen.iter().any(|c| c.address == f.address && c.relative == f.relative) {
+              continue;
+            }
+            let mut trial = chosen.to_vec();
+            trial.push(f);
+            let (onset, spec) = score(&trial, windows, buttons, lambda, logistic, mask)
+              .map(|m| (m.onset_score(), m.a_specificity))
+              .unwrap_or((0.0, 0.0));
+            if best.map_or(true, |(b, _, _)| onset > b) {
+              best = Some((onset, f, spec));
+            }
+          }
+          best
+        })
+      })
+      .collect();
+    handles
+      .into_iter()
+      .filter_map(|h| h.join().expect("search worker panicked"))
+      .fold(None, |acc: Option<(f64, Feature, f64)>, b| match acc {
+        Some(a) if a.0 >= b.0 => Some(a),
+        _ => Some(b),
+      })
+      .expect("at least one candidate")
+  })
+}
+
 /// Greedy forward selection of `PIECES_PER_STEP` features by held-out onset
 /// score (`FoldMetrics::onset_score`). `log` receives one line per pick.
 pub fn search_features(
@@ -113,43 +211,9 @@ pub fn search_features(
   log: &mut dyn FnMut(&str),
 ) -> [Feature; PIECES_PER_STEP] {
   let pool = candidates();
-  let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
   let mut chosen: Vec<Feature> = Vec::new();
   for _ in 0..PIECES_PER_STEP {
-    let chunk = pool.len().div_ceil(threads);
-    let best: (f64, Feature, f64) = std::thread::scope(|s| {
-      let handles: Vec<_> = pool
-        .chunks(chunk)
-        .map(|chunk| {
-          let chosen = &chosen;
-          s.spawn(move || {
-            let mut best: Option<(f64, Feature, f64)> = None;
-            for &f in chunk {
-              if chosen.iter().any(|c| c.address == f.address && c.relative == f.relative) {
-                continue;
-              }
-              let mut trial = chosen.clone();
-              trial.push(f);
-              let (onset, a_acc) = score(&trial, windows, buttons, lambda, logistic, mask)
-                .map(|m| (m.onset_score(), m.a_specificity))
-                .unwrap_or((0.0, 0.0));
-              if best.map_or(true, |(b, _, _)| onset > b) {
-                best = Some((onset, f, a_acc));
-              }
-            }
-            best
-          })
-        })
-        .collect();
-      handles
-        .into_iter()
-        .filter_map(|h| h.join().expect("search worker panicked"))
-        .fold(None, |acc: Option<(f64, Feature, f64)>, b| match acc {
-          Some(a) if a.0 >= b.0 => Some(a),
-          _ => Some(b),
-        })
-        .expect("at least one candidate")
-    });
+    let best = best_pick(&chosen, &pool, windows, buttons, lambda, logistic, mask);
     log(&format!(
       "pick {}: {}: held-out onsets {:.3}, A specificity {:.3}",
       chosen.len() + 1,
@@ -162,6 +226,56 @@ pub fn search_features(
   chosen.try_into().expect("PIECES_PER_STEP features")
 }
 
+/// Greedy forward selection of four features per region, jointly: each
+/// round takes the best next feature from any region that still has room,
+/// scored with everything picked so far as one one-hot row. Returns each
+/// region's features in pick order, in `Region::ALL` order.
+pub fn search_bank(
+  windows: &[Vec<Vec<u8>>],
+  buttons: &[Vec<u8>],
+  lambda: f64,
+  logistic: bool,
+  mask: u8,
+  log: &mut dyn FnMut(&str),
+) -> [[Feature; PIECES_PER_STEP]; BANK_BOARDS] {
+  let pools: Vec<Vec<Feature>> = Region::ALL.iter().map(|r| r.candidates()).collect();
+  let mut boards: Vec<Vec<Feature>> = vec![Vec::new(); BANK_BOARDS];
+  let mut chosen: Vec<Feature> = Vec::new();
+  for round in 0..PIECES_PER_STEP * BANK_BOARDS {
+    let pool: Vec<Feature> = pools
+      .iter()
+      .zip(&boards)
+      .filter(|(_, board)| board.len() < PIECES_PER_STEP)
+      .flat_map(|(pool, _)| pool.iter().copied())
+      .collect();
+    let best = best_pick(&chosen, &pool, windows, buttons, lambda, logistic, mask);
+    let region = Region::ALL.iter().position(|r| r.holds(best.1)).expect("a pool feature has a region");
+    log(&format!(
+      "bank pick {}: {} ({}): held-out onsets {:.3}, A specificity {:.3}",
+      round + 1,
+      best.1.describe(),
+      Region::ALL[region].name(),
+      best.0 - best.2,
+      best.2
+    ));
+    boards[region].push(best.1);
+    chosen.push(best.1);
+  }
+  let boards: Vec<[Feature; PIECES_PER_STEP]> = boards.into_iter().map(|b| b.try_into().expect("four features per region")).collect();
+  boards.try_into().expect("BANK_BOARDS boards")
+}
+
+/// The windows and smoothed buttons of every demonstration, for the searches.
+pub fn demo_windows(smb_rom: &[u8], demos: &[Demonstration], horizon: usize) -> (Vec<Vec<Vec<u8>>>, Vec<Vec<u8>>) {
+  demos
+    .iter()
+    .map(|d| {
+      let (w, b) = collect_windows(smb_rom, d);
+      (w, smooth_a(&b, horizon))
+    })
+    .unzip()
+}
+
 /// Search the encoder on the given demonstrations, against the smoothed A label.
 pub fn search_encoder(
   smb_rom: &[u8],
@@ -172,14 +286,22 @@ pub fn search_encoder(
   horizon: usize,
   log: &mut dyn FnMut(&str),
 ) -> Encoder {
-  let (windows, buttons): (Vec<_>, Vec<_>) = demos
-    .iter()
-    .map(|d| {
-      let (w, b) = collect_windows(smb_rom, d);
-      (w, smooth_a(&b, horizon))
-    })
-    .unzip();
+  let (windows, buttons) = demo_windows(smb_rom, demos, horizon);
   Encoder::Searched(search_features(&windows, &buttons, lambda, logistic, mask, log))
+}
+
+/// Search four features per region on the given demonstrations.
+pub fn search_bank_encoder(
+  smb_rom: &[u8],
+  demos: &[Demonstration],
+  lambda: f64,
+  logistic: bool,
+  mask: u8,
+  horizon: usize,
+  log: &mut dyn FnMut(&str),
+) -> BankEncoder {
+  let (windows, buttons) = demo_windows(smb_rom, demos, horizon);
+  BankEncoder::Searched(search_bank(&windows, &buttons, lambda, logistic, mask, log))
 }
 
 #[cfg(test)]
@@ -264,6 +386,58 @@ mod tests {
     assert!(trigger.onset_score() > lag.onset_score());
     let features = search_features(&windows, &buttons, 1.0, false, mask, &mut |_| {});
     assert_eq!(features[0].address, 0x40, "first pick {:?}", features[0]);
+  }
+
+  #[test]
+  fn the_regions_partition_the_pool() {
+    let all = candidates();
+    let mut seen = 0;
+    for region in Region::ALL {
+      let c = region.candidates();
+      assert!(!c.is_empty());
+      assert!(c.iter().all(|f| all.contains(f)), "{:?} has a feature outside the pool", region);
+      assert!(c.iter().all(|f| region.holds(*f)), "{:?} lists a feature it does not hold", region);
+      seen += c.len();
+    }
+    assert_eq!(seen, all.len(), "every candidate is in exactly one region");
+    assert!(Region::Enemies.holds(Feature {
+      address: ENEMY_DISTANCE,
+      relative: false,
+      shift: 3
+    }));
+    assert!(Region::Enemies.holds(Feature {
+      address: 0x87,
+      relative: true,
+      shift: 3
+    }));
+    assert!(Region::Mario.holds(Feature {
+      address: 0x1D,
+      relative: false,
+      shift: 0
+    }));
+    assert!(Region::Near.holds(Feature {
+      address: 256 + 3 * 13 + 10,
+      relative: false,
+      shift: 2
+    }));
+    assert!(Region::Far.holds(Feature {
+      address: 256 + 4 * 13,
+      relative: false,
+      shift: 2
+    }));
+  }
+
+  #[test]
+  fn the_bank_search_fills_every_region_and_finds_the_trigger_in_its_region() {
+    let (windows, buttons) = trigger_and_lag();
+    let mask = BUTTON_A | BUTTON_B | BUTTON_RIGHT;
+    let boards = search_bank(&windows, &buttons, 1.0, false, mask, &mut |_| {});
+    for (region, board) in Region::ALL.iter().zip(boards.iter()) {
+      assert!(board.iter().all(|f| region.holds(*f)), "{:?} got {:?}", region, board);
+      let distinct: std::collections::HashSet<_> = board.iter().map(|f| (f.address, f.relative)).collect();
+      assert_eq!(distinct.len(), PIECES_PER_STEP, "{:?} picked a byte twice", region);
+    }
+    assert_eq!(boards[0][0].address, 0x40, "the trigger byte is the Mario region's first pick");
   }
 
   #[test]

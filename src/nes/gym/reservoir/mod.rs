@@ -15,9 +15,9 @@ pub mod trace;
 
 use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_RIGHT, BUTTON_SELECT, BUTTON_START};
 use crate::nes::gym::NesEmulator;
-use demo::{beam_search, smb_cleared, smb_dead, smb_in_cutscene, smb_start_state, smb_window, smb_x, Demonstration, MACRO_FRAMES};
-use drive::{fold_to_controller, Drive, Reservoir, TETRIS_PLAYFIELD_LEN};
-use encode::{bank, bank_onehot_row, encode, onehot_row, Encoder, BANK_BOARDS};
+use demo::{beam_search, smb_cleared_at, smb_dead, smb_in_cutscene, smb_start_state_at, smb_window, smb_x, Demonstration, Stage, MACRO_FRAMES};
+use drive::{fold_to_controller, tidy_placement, Drive, Reservoir, TETRIS_PLAYFIELD_LEN};
+use encode::{bank_onehot_row, encode, onehot_row, BankEncoder, Encoder, BANK_BOARDS};
 #[cfg(test)]
 use encode::{PIECES_PER_STEP, PLACEMENT_ONEHOT};
 #[cfg(test)]
@@ -26,7 +26,7 @@ use features::{clock_row, feature_row, Condition};
 use logistic::fit_logistic;
 use ridge::{fit, Readout};
 use soft::{Expansion, SOFT_SEED};
-use teacher::{search_rule, Rule};
+use teacher::{search_rule, stage_starts, Rule};
 
 pub struct ExperimentConfig {
   pub lambda: f64,
@@ -37,6 +37,9 @@ pub struct ExperimentConfig {
   pub episodes: usize,
   pub max_steps: usize,
   pub noop_max: usize,
+  /// The levels demonstrations come from, round robin by index; episodes
+  /// follow the demonstrations' stages the same way.
+  pub stages: Vec<Stage>,
   /// The A label at a step is "A within the next `jump_horizon` steps", which
   /// absorbs the demonstrations' arbitrary jump phase. 0 is the raw label; the
   /// smoothed label raised the floors more than the readouts, so 0 is the default.
@@ -57,6 +60,7 @@ impl Default for ExperimentConfig {
       episodes: 5,
       max_steps: 750,
       noop_max: 120,
+      stages: vec![Stage::ONE_ONE],
       jump_horizon: 0,
       logistic: false,
     }
@@ -113,6 +117,7 @@ pub struct DemoSummary {
   pub x_reached: i32,
   pub cleared: bool,
   pub noops: usize,
+  pub stage: Stage,
 }
 
 #[derive(Debug, Clone)]
@@ -213,7 +218,12 @@ pub fn demos_at_configured_offsets(demos: &[Demonstration], config: &ExperimentC
     && demos
       .iter()
       .enumerate()
-      .all(|(i, d)| d.noops == demonstration_noops(i, config.demonstrations, config.noop_max))
+      .all(|(i, d)| d.noops == demonstration_noops(i, config.demonstrations, config.noop_max) && d.stage == demonstration_stage(i, &config.stages))
+}
+
+/// The stage demonstration `index` is played on: the stages in turn.
+pub fn demonstration_stage(index: usize, stages: &[Stage]) -> Stage {
+  stages.get(index % stages.len().max(1)).copied().unwrap_or(Stage::ONE_ONE)
 }
 
 /// Idle frames before demonstration `index` starts: evenly spaced over `[0, noop_max)`.
@@ -437,7 +447,7 @@ pub(crate) fn hidden_for(condition: Condition, tetris_rom: &[u8]) -> Result<Hidd
   if !condition.uses_reservoir() {
     return Ok(Hidden::None);
   }
-  if condition == Condition::BankTetris {
+  if let Condition::BankTetris(..) = condition {
     return (0..BANK_BOARDS)
       .map(|_| Reservoir::new_fast(tetris_rom))
       .collect::<Result<Vec<_>, _>>()
@@ -518,11 +528,15 @@ pub(crate) fn observe(condition: Condition, window: &[u8], hidden: &mut Hidden, 
     (Condition::Clock | Condition::RandomA, _) => clock_row(step),
     (Condition::Raw, _) => feature_row(window, None),
     (Condition::PlacementOnehot(e), _) => onehot_row(&encode(e, window)),
-    (Condition::BankOnehot, _) => bank_onehot_row(window),
-    (Condition::BankTetris, Hidden::Bank(boards)) => {
+    (Condition::BankOnehot(e), _) => bank_onehot_row(e, window),
+    (Condition::BankTetris(e, tidy), Hidden::Bank(boards)) => {
       let mut body = Vec::with_capacity(BANK_BOARDS * TETRIS_PLAYFIELD_LEN as usize);
-      for (board, features) in boards.iter_mut().zip(bank()) {
+      for (board, features) in boards.iter_mut().zip(e.features()) {
         board.step(Some(Drive::Placements(Encoder::Searched(features))), window, MACRO_FRAMES);
+        if tidy {
+          let target = tidy_placement(&board.playfield());
+          board.place(target);
+        }
         body.extend(board.playfield());
       }
       feature_row(&body, None)
@@ -541,16 +555,9 @@ pub(crate) fn observe(condition: Condition, window: &[u8], hidden: &mut Hidden, 
   }
 }
 
-pub(crate) fn collect(
-  condition: Condition,
-  smb_rom: &[u8],
-  tetris_rom: &[u8],
-  start: &[u8],
-  demo: &Demonstration,
-  horizon: usize,
-) -> Result<Dataset, String> {
+pub(crate) fn collect(condition: Condition, smb_rom: &[u8], tetris_rom: &[u8], demo: &Demonstration, horizon: usize) -> Result<Dataset, String> {
   let mut smb = NesEmulator::new(smb_rom);
-  smb.load_state(start);
+  smb.load_state(&smb_start_state_at(smb_rom, demo.stage));
   smb.step_frames(0, demo.noops);
   let mut hidden = hidden_for(condition, tetris_rom)?;
   let mut data = Dataset {
@@ -581,12 +588,12 @@ fn episode(
   mut driver: Driver,
   smb_rom: &[u8],
   tetris_rom: &[u8],
-  start: &[u8],
+  stage: Stage,
   noops: usize,
   max_steps: usize,
 ) -> Result<(i32, u32), String> {
   let mut smb = NesEmulator::new(smb_rom);
-  smb.load_state(start);
+  smb.load_state(&smb_start_state_at(smb_rom, stage));
   smb.step_frames(0, noops);
   let mut hidden = hidden_for(condition, tetris_rom)?;
   let mut max_x = 0;
@@ -596,7 +603,7 @@ fn episode(
     let buttons = driver.buttons(&row);
     smb.step_frames(buttons, MACRO_FRAMES);
     max_x = max_x.max(smb_x(&mut smb));
-    if smb_dead(&mut smb) || smb_cleared(&mut smb) {
+    if smb_dead(&mut smb) || smb_cleared_at(&mut smb, stage) {
       break;
     }
   }
@@ -606,12 +613,18 @@ fn episode(
 /// Search for `config.demonstrations` demonstrations, each from its own no-op
 /// offset and tie-break seed. `log` receives progress lines.
 pub fn find_demonstrations(smb_rom: &[u8], config: &ExperimentConfig, log: &mut dyn FnMut(&str)) -> Vec<Demonstration> {
-  let start = smb_start_state(smb_rom);
+  let starts = stage_starts(smb_rom, config.stages.iter().copied());
   (0..config.demonstrations)
     .map(|i| {
       let noops = demonstration_noops(i, config.demonstrations, config.noop_max);
-      log(&format!("searching for demonstration {} from {} idle frames", i, noops));
-      let demo = beam_search(smb_rom, &start, noops, config.beam, config.demo_max_rounds, i as u64);
+      let stage = demonstration_stage(i, &config.stages);
+      log(&format!(
+        "searching for demonstration {} on {} from {} idle frames",
+        i,
+        stage.name(),
+        noops
+      ));
+      let demo = beam_search(smb_rom, &starts[&stage], noops, config.beam, config.demo_max_rounds, i as u64, stage);
       log(&format!(
         "demonstration {}: {} steps, x={}, cleared={}",
         i,
@@ -626,12 +639,22 @@ pub fn find_demonstrations(smb_rom: &[u8], config: &ExperimentConfig, log: &mut 
 
 /// Search the rule grid and play the best rule from each demonstration offset.
 pub fn find_rule_demonstrations(smb_rom: &[u8], config: &ExperimentConfig, log: &mut dyn FnMut(&str)) -> (Rule, Vec<Demonstration>) {
-  let start = smb_start_state(smb_rom);
-  let noops: Vec<usize> = (0..config.demonstrations)
-    .map(|i| demonstration_noops(i, config.demonstrations, config.noop_max))
+  let offsets: Vec<(Stage, usize)> = (0..config.demonstrations)
+    .map(|i| {
+      (
+        demonstration_stage(i, &config.stages),
+        demonstration_noops(i, config.demonstrations, config.noop_max),
+      )
+    })
     .collect();
-  log(&format!("searching {} rules from {} offsets", Rule::grid().len(), noops.len()));
-  let (rule, demos) = search_rule(smb_rom, &start, &noops, config.max_steps, log);
+  let names: Vec<String> = config.stages.iter().map(|s| s.name()).collect();
+  log(&format!(
+    "searching {} rules from {} offsets on {}",
+    Rule::grid().len(),
+    offsets.len(),
+    names.join(", ")
+  ));
+  let (rule, demos) = search_rule(smb_rom, &offsets, config.max_steps, log);
   for (i, demo) in demos.iter().enumerate() {
     log(&format!(
       "demonstration {}: {} steps, x={}, cleared={}",
@@ -657,7 +680,6 @@ pub fn run(
   if demos.len() < 2 {
     return Err(format!("leave-one-out needs at least two demonstrations, got {}", demos.len()));
   }
-  let start = smb_start_state(smb_rom);
   let mask = demos.iter().fold(0, |acc, d| acc | active_bits(&d.buttons));
   let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
   let mut results = Vec::new();
@@ -667,9 +689,8 @@ pub fn run(
       let handles: Vec<_> = demos
         .iter()
         .map(|demo| {
-          let start = &start;
           let horizon = config.jump_horizon;
-          s.spawn(move || collect(condition, smb_rom, tetris_rom, start, demo, horizon))
+          s.spawn(move || collect(condition, smb_rom, tetris_rom, demo, horizon))
         })
         .collect();
       handles
@@ -705,7 +726,6 @@ pub fn run(
         .into_iter()
         .map(|episodes| {
           let readout = &readout;
-          let start = &start;
           let demonstrations = demos.len();
           let noop_max = config.noop_max;
           let max_steps = config.max_steps;
@@ -714,11 +734,12 @@ pub fn run(
               .into_iter()
               .map(|e| {
                 let noops = episode_noops(e, demonstrations, noop_max);
+                let stage = demos[e % demonstrations].stage;
                 let driver = match readout {
                   Some(r) => Driver::Readout(r),
                   None => Driver::Random(chain, Lcg::new(1000 + e as u64), false),
                 };
-                episode(condition, driver, smb_rom, tetris_rom, start, noops, max_steps)
+                episode(condition, driver, smb_rom, tetris_rom, stage, noops, max_steps)
               })
               .collect::<Result<Vec<_>, _>>()
           })
@@ -754,6 +775,7 @@ pub fn run(
         x_reached: d.x_reached,
         cleared: d.cleared,
         noops: d.noops,
+        stage: d.stage,
       })
       .collect(),
     active_bits: mask,
@@ -794,8 +816,8 @@ mod tests {
   #[test]
   fn observe_bank_onehot_needs_no_reservoir_and_has_sixteen_placements() {
     let window = vec![0u8; SMB_WINDOW_LEN];
-    let row = observe(Condition::BankOnehot, &window, &mut Hidden::None, 0);
-    assert_eq!(row.len(), Condition::BankOnehot.row_len());
+    let row = observe(Condition::BankOnehot(BankEncoder::Hand), &window, &mut Hidden::None, 0);
+    assert_eq!(row.len(), Condition::BankOnehot(BankEncoder::Hand).row_len());
     assert_eq!(row.len(), 1 + BANK_BOARDS * PIECES_PER_STEP * PLACEMENT_ONEHOT);
     assert_eq!(row.iter().filter(|&&v| v == 1.0).count(), 1 + 2 * BANK_BOARDS * PIECES_PER_STEP);
   }
@@ -989,15 +1011,39 @@ mod tests {
       noop_max: 90,
       ..ExperimentConfig::default()
     };
-    let demo = |noops: usize| Demonstration {
+    let demo = |noops: usize, stage: Stage| Demonstration {
       buttons: vec![],
       x_reached: 0,
       cleared: false,
       noops,
+      stage,
     };
-    assert!(demos_at_configured_offsets(&[demo(0), demo(30), demo(60)], &config));
-    assert!(!demos_at_configured_offsets(&[demo(0), demo(5), demo(10)], &config), "the old spread");
-    assert!(!demos_at_configured_offsets(&[demo(0), demo(30)], &config), "too few");
+    let one = Stage::ONE_ONE;
+    assert!(demos_at_configured_offsets(&[demo(0, one), demo(30, one), demo(60, one)], &config));
+    assert!(
+      !demos_at_configured_offsets(&[demo(0, one), demo(5, one), demo(10, one)], &config),
+      "the old spread"
+    );
+    assert!(!demos_at_configured_offsets(&[demo(0, one), demo(30, one)], &config), "too few");
+    let six = Stage { world: 5, level: 0 };
+    assert!(
+      !demos_at_configured_offsets(&[demo(0, one), demo(30, six), demo(60, one)], &config),
+      "wrong stage"
+    );
+    let two = ExperimentConfig {
+      stages: vec![one, six],
+      ..config
+    };
+    assert!(demos_at_configured_offsets(&[demo(0, one), demo(30, six), demo(60, one)], &two));
+  }
+
+  #[test]
+  fn demonstrations_take_the_stages_in_turn() {
+    let one = Stage::ONE_ONE;
+    let six = Stage { world: 5, level: 0 };
+    let stages: Vec<Stage> = (0..6).map(|i| demonstration_stage(i, &[one, six])).collect();
+    assert_eq!(stages, vec![one, six, one, six, one, six]);
+    assert_eq!(demonstration_stage(4, &[]), one, "no stages means 1-1");
   }
 
   #[test]
@@ -1027,18 +1073,26 @@ mod rom_tests {
       Some(r) => r,
       None => return,
     };
-    let mut hidden = hidden_for(Condition::BankTetris, &tetris).unwrap();
+    let plain = Condition::BankTetris(BankEncoder::Hand, false);
+    let mut hidden = hidden_for(plain, &tetris).unwrap();
     assert!(matches!(&hidden, Hidden::Bank(boards) if boards.len() == BANK_BOARDS));
     let window = vec![0u8; SMB_WINDOW_LEN];
-    let row = observe(Condition::BankTetris, &window, &mut hidden, 0);
-    assert_eq!(row.len(), Condition::BankTetris.row_len());
+    let row = observe(plain, &window, &mut hidden, 0);
+    assert_eq!(row.len(), plain.row_len());
     assert_eq!(row[0], 1.0);
+    let cells = |row: &[f32], b: usize| row[1 + b * 200..1 + (b + 1) * 200].iter().filter(|&&v| v != PLAYFIELD_EMPTY_UNIT).count();
     // Four pieces locked on every board: at least a dozen cells each, after any clears.
     for b in 0..BANK_BOARDS {
-      let cells = row[1 + b * 200..1 + (b + 1) * 200].iter().filter(|&&v| v != PLAYFIELD_EMPTY_UNIT).count();
-      assert!(cells >= 12, "board {} has {} cells", b, cells);
+      assert!(cells(&row, b) >= 12, "board {} has {} cells", b, cells(&row, b));
     }
     assert_eq!(hidden.resets(), 0);
+    // The tidy variant adds a fifth piece per board per step.
+    let tidy = Condition::BankTetris(BankEncoder::Hand, true);
+    let mut tidied = hidden_for(tidy, &tetris).unwrap();
+    let tidy_row = observe(tidy, &window, &mut tidied, 0);
+    for b in 0..BANK_BOARDS {
+      assert!(cells(&tidy_row, b) >= 16, "tidied board {} has {} cells", b, cells(&tidy_row, b));
+    }
   }
 }
 
@@ -1062,7 +1116,6 @@ mod diagnostics {
     let tetris = std::fs::read("roms2/tetris.nes").unwrap_or_default();
     let dir = std::env::var("DEMO_DIR").unwrap_or_else(|_| "target/tetris-reservoir-demos".to_string());
     let demos = load_cached(Path::new(&dir), 6).expect("cached demonstrations");
-    let start = smb_start_state(&smb);
     let lambda: f64 = std::env::var("LAMBDA").ok().and_then(|v| v.parse().ok()).unwrap_or(100.0);
     let logistic = std::env::var("LOGISTIC").is_ok();
     let a_index = BUTTON_A.trailing_zeros() as usize;
@@ -1071,7 +1124,7 @@ mod diagnostics {
       conditions.extend([Condition::RandomTanh, Condition::EchoState]);
     }
     for condition in conditions {
-      let datasets: Vec<Dataset> = demos.iter().map(|d| collect(condition, &smb, &tetris, &start, d, 0).unwrap()).collect();
+      let datasets: Vec<Dataset> = demos.iter().map(|d| collect(condition, &smb, &tetris, d, 0).unwrap()).collect();
       // (sum, count) of the A output in each class.
       let mut classes = [(0.0f64, 0usize); 4];
       let mut onset_outputs = Vec::new();
@@ -1146,10 +1199,9 @@ mod diagnostics {
     let tetris = std::fs::read("roms2/tetris.nes").unwrap_or_default();
     let dir = std::env::var("DEMO_DIR").unwrap_or_else(|_| "target/tetris-reservoir-demos".to_string());
     let demos = load_cached(Path::new(&dir), 6).expect("cached demonstrations");
-    let start = smb_start_state(&smb);
     let lambda: f64 = std::env::var("LAMBDA").ok().and_then(|v| v.parse().ok()).unwrap_or(100.0);
     for condition in [Condition::Raw, Condition::PlacementOnehot(Encoder::Salient), Condition::Clock] {
-      let datasets: Vec<Dataset> = demos.iter().map(|d| collect(condition, &smb, &tetris, &start, d, 0).unwrap()).collect();
+      let datasets: Vec<Dataset> = demos.iter().map(|d| collect(condition, &smb, &tetris, d, 0).unwrap()).collect();
       let (mut onset, mut release, mut mid, mut ground, mut a_rows, mut a_err, mut other_err, mut other_bits) = (0, 0, 0, 0, 0, 0, 0, 0);
       let mut truth_a = 0;
       for held_out in 0..datasets.len() {
