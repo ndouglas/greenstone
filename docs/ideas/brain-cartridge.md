@@ -577,6 +577,129 @@ stack low, or reading column heights alongside the playfield), more
 boards or a search for each board's four features within its region,
 and a second level so no condition can memorise a layout.
 
+Result (2026-10-15, inside the bank and onto a second level, runs 32
+to 36): the three follow-ups named above were built and run. A tidy
+variant of the bank (`bank-tidy`) places a fifth piece per step on each
+board's lowest column, so what the other four pieces wrote survives
+longer. A searched bank (`bank-searched-*`) picks four features per
+region, Mario, enemies, near terrain and far terrain, by the same
+greedy onset score, jointly across regions. And a `Stage` names a
+level: a start state for any level is made by writing the world and
+level bytes while tapping through the title, demonstrations carry their
+stage, and `--stages=1-1,6-1` takes demonstrations and episodes from
+the levels in turn. A probe of the 1-1 rule on fourteen other levels
+found it clears 6-1 outright from offset 0 and gets past x 1500 on 2-1,
+3-1 and 4-1, so 6-1 is the second level.
+
+```
+1-1 only, the bank family (run 32; the first two rows are run 30's)
+condition            | A acc | onset | mean x | max x | resets
+bank-onehot          | 0.954 | 0.594 |  898.0 |   898 |      0
+bank-tetris          | 0.943 | 0.855 | 1494.8 |  1790 |   4701
+bank-tidy            | 0.946 | 0.899 | 2038.8 |  2470 |   5327
+bank-searched-onehot | 0.884 | 1.000 |  736.6 |   812 |      0
+bank-searched-tetris | 0.900 | 0.841 |  315.6 |   316 |   3616
+bank-searched-tidy   | 0.909 | 0.862 |  614.8 |   690 |   3995
+  searched bank: mario $CE /16, $32 /8, $01 /4, $03 /4; enemies enemy /8, $87 /8, $D0 /16, $13 /4;
+  near $131 /8, $115 /8, $132 /4, $109 /8; far $158 /8, $15E /16, $157 /4, $15B /4
+```
+
+On 1-1 the housekeeping piece is a clear win: the tidied bank starts
+0.899 of held-out onsets and runs to a mean x of 2039 and a best of
+2470, past the Goomba pair near 1800 that stops the echo state, and it
+does so with more resets, not fewer, because five pieces a step top a
+board out sooner than four. What the extra piece buys is a lower stack
+on average between resets, so a board's memory of the last few steps
+is less often wiped mid-decision. The searched bank is the cautionary
+row: sixteen searched features as one-hots reach 1.000 held-out onsets,
+and the same features through Tetris die at the first Goomba in every
+episode. Features picked to start the demonstrations' onsets on this
+one level, among them an absolute enemy x pixel and far terrain cells
+that read as a position, do not survive the first deviation from the
+demonstrations' path.
+
+```
+1-1 and 6-1, three demonstrations each (run 34, identical to run 33 plus two columns)
+rule from the grid: enemy within 40 px (hold 2), obstacle within 3 columns (hold 7); one 1-1 demonstration dies at x 2019
+condition            | A acc | onset | cross | mean x | max x | 1-1 mean/max | 6-1 mean/max | resets
+clock                | 0.592 | 0.233 | 0.308 |  487.8 |  1129 |  585 / 1129  |   342 /  342 |      0
+raw                  | 0.881 | 0.135 | 0.150 |  324.4 |   342 |  313 /  314  |   342 /  342 |      0
+random-a             | 0.555 | 0.353 |     - |  644.0 |  1526 |  842 / 1526  |   347 /  347 |      0
+random-tanh          | 0.927 | 0.466 | 0.609 |  532.4 |   724 |  587 /  724  |   451 /  451 |      0
+echo-state           | 0.967 | 0.684 | 0.391 | 1202.8 |  2226 | 1355 / 2226  |   974 / 1446 |      0
+placement-onehot     | 0.895 | 0.474 | 0.293 |  324.2 |   342 |  312 /  313  |   342 /  342 |      0
+placement-tetris     | 0.816 | 0.361 | 0.353 |  731.8 |  1132 |  990 / 1132  |   345 /  345 |    977
+searched-onehot      | 0.819 | 0.797 | 0.669 |  367.4 |   450 |  312 /  313  |   450 /  450 |      0
+searched-tetris      | 0.832 | 0.571 | 0.406 |  378.4 |   478 |  312 /  312  |   478 /  478 |    624
+bank-onehot          | 0.930 | 0.489 | 0.504 |  324.2 |   342 |  312 /  313  |   342 /  342 |      0
+bank-tetris          | 0.941 | 0.707 | 0.308 |  548.6 |   825 |  483 /  825  |   647 /  647 |   3778
+bank-tidy            | 0.940 | 0.805 | 0.406 |  430.4 |   607 |  313 /  314  |   607 /  607 |   3901
+bank-searched-onehot | 0.895 | 0.917 | 0.684 |  602.8 |   898 |  703 /  898  |   452 /  452 |      0
+bank-searched-tetris | 0.859 | 0.729 | 0.451 | 1125.0 |  1433 |  938 / 1433  |  1405 / 1405 |   3439
+bank-searched-tidy   | 0.863 | 0.744 | 0.459 |  800.2 |  1523 |  989 / 1523  |   517 /  517 |   3618
+placement-hash       | 0.552 | 0.241 | 0.301 |  350.6 |   463 |  314 /  316  |   405 /  463 |    636
+  searched encoder: $13D /4, $CE /16, $132 /4, $117 /16
+  searched bank: mario $CE /16, $D4 /16, $02 /8, $32 /4; enemies enemy /4, $D2 /32, $87-x /16, $0F /8;
+  near $132 /4, $117 /16, $11E /8, $106 /4; far $13D /4, $162 /8, $13B /4, $160 /16
+```
+
+The `cross` column is new and is the point of the second level: onset
+recall with one stage's demonstrations held out and the readout fitted
+on the other stage's, which asks whether what was learned is the rule
+or the layout. Three things follow from it.
+
+Held-out onsets on the same level overstate transfer for anything with
+memory. The echo state falls from 0.684 within a level to 0.391 across
+levels; the hand bank from 0.805 to 0.406 and its untidied form to
+0.308, the clock's number. A Tetris board's state is a fingerprint of
+the last few steps of what was fed in, and a readout over 800 cells can
+key the demonstrations' onsets to those fingerprints; the fingerprints
+repeat across demonstrations of one level and not across levels. The
+memoryless one-hots of the searched features transfer best, 0.669 for
+four and 0.684 for sixteen, because the features the search picked
+with position excluded are the rule's own inputs and the rule is the
+same on both levels. The hand bank's one-hot transfers at 0.504 and
+the raw bytes at 0.150.
+
+The game in the loop still roughly doubles closed-loop distance over
+its encoding on both levels at once: the searched bank through Tetris
+reaches a mean x of 1125 against 603 for its one-hot, and the single
+hand board 732 against 324, even though both transfer onsets worse
+than their one-hots. Starting the right jumps and surviving are
+different things: the one-hot readouts start them and die within a
+screen, because four or sixteen one-hots have no record of having
+pressed and hold A for as long as the trigger is in view. The echo
+state is the best single row on both levels (1355 on 1-1, 974 on 6-1).
+
+The hand bank's closed loop collapsed on two levels, from 2039 on 1-1
+alone to 313 on 1-1 within the pair. Two things changed at once: the
+1-1 data halved, and the grid chose a less forgiving teacher, a
+two-step hold at an enemy instead of three, with one 1-1 demonstration
+dying at x 2019 as a result. Pinning the old rule on both levels did
+not separate them, because on 6-1, the Lakitu level, the old rule dies
+at x 1634 from every offset but the first, Spinies being invisible to
+a rule that only reads Mario's floor. Run 36 pinned the new rule on 1-1
+alone instead, with six 1-1 demonstrations and the hand bank rows only:
+the plain bank started 0.887 of onsets and ran to a mean x of 1571 and
+a best of 2756, the tidied one 0.925 and 1164. The teacher is not what
+collapsed it. Three demonstrations of a level, with the other half of
+the rows from another level, are too few for a readout that keys
+onsets to board fingerprints; six are enough. The echo state, which
+reads position outright, held 1355 on 1-1 from the same three.
+
+What this says about the idea, 36 runs in: on one level, a bank of
+four Tetris boards with a housekeeping piece is the best thing in the
+table, ahead of the software echo state on onsets and on distance. On
+two levels at once the ordering by distance is echo state, then the
+searched bank, then the single board, each about double its own
+memoryless control, and the honest measure of what transfers, onsets
+across levels, puts every memory-bearing readout below the memoryless
+one-hots of the rule's own inputs. A game in the loop turns an encoding
+into a policy that survives; it does not, on this evidence, turn it
+into one that generalises. The next things to try are more
+demonstrations per level, so the bank's appetite for coverage is fed
+on both, and a readout fitted on both levels but scored on a third.
+
 A captioned explainer video of the experiment, six chapters ending with
 the whole level in real time, is built by `examples/reservoir_dump.rs`
 followed by `tools/reservoir_video.py`; see
