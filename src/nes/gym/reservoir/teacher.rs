@@ -64,6 +64,32 @@ impl Rule {
     })
   }
 
+  /// `40,3,3,9`: enemy px, look, hold enemy, hold obstacle.
+  pub fn parse(text: &str) -> Result<Rule, String> {
+    let n: Vec<usize> = text
+      .split(',')
+      .map(|s| {
+        s.trim()
+          .parse::<usize>()
+          .map_err(|_| format!("a rule is px,look,hold_enemy,hold_obstacle, got {:?}", text))
+      })
+      .collect::<Result<_, _>>()?;
+    if n.len() != 4 {
+      return Err(format!("a rule is four numbers, got {:?}", text));
+    }
+    Ok(Rule {
+      enemy_px: n[0] as i32,
+      look: n[1],
+      hold_enemy: n[2],
+      hold_obstacle: n[3],
+    })
+  }
+
+  /// `40,3,3,9`, the inverse of `parse`.
+  pub fn key(self) -> String {
+    format!("{},{},{},{}", self.enemy_px, self.look, self.hold_enemy, self.hold_obstacle)
+  }
+
   /// Every rule on the grid.
   pub fn grid() -> Vec<Rule> {
     let (px, look, he, ho) = GRID;
@@ -354,6 +380,21 @@ mod tests {
   }
 
   #[test]
+  fn a_rule_round_trips_through_its_key() {
+    let rule = Rule {
+      enemy_px: 40,
+      look: 3,
+      hold_enemy: 3,
+      hold_obstacle: 9,
+    };
+    assert_eq!(rule.key(), "40,3,3,9");
+    assert_eq!(Rule::parse("40,3,3,9").unwrap(), rule);
+    assert_eq!(Rule::parse(" 40, 3,3 ,9").unwrap(), rule);
+    assert!(Rule::parse("40,3,3").is_err());
+    assert!(Rule::parse("40,3,3,x").is_err());
+  }
+
+  #[test]
   fn score_prefers_clears_then_distance() {
     let d = |x, cleared| Demonstration {
       buttons: vec![],
@@ -383,18 +424,7 @@ mod rom_tests {
       None => return,
     };
     let rule = match std::env::var("RULE") {
-      Ok(v) => {
-        let n: Vec<usize> = v
-          .split(',')
-          .map(|s| s.trim().parse().expect("RULE=px,look,hold_enemy,hold_obstacle"))
-          .collect();
-        Rule {
-          enemy_px: n[0] as i32,
-          look: n[1],
-          hold_enemy: n[2],
-          hold_obstacle: n[3],
-        }
-      }
+      Ok(v) => Rule::parse(&v).expect("RULE=px,look,hold_enemy,hold_obstacle"),
       Err(_) => Rule {
         enemy_px: 40,
         look: 3,

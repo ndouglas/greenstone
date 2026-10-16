@@ -26,7 +26,7 @@ use features::{clock_row, feature_row, Condition};
 use logistic::fit_logistic;
 use ridge::{fit, Readout};
 use soft::{Expansion, SOFT_SEED};
-use teacher::{search_rule, stage_starts, Rule};
+use teacher::{rollout, search_rule, stage_starts, Rule};
 
 pub struct ExperimentConfig {
   pub lambda: f64,
@@ -40,6 +40,8 @@ pub struct ExperimentConfig {
   /// The levels demonstrations come from, round robin by index; episodes
   /// follow the demonstrations' stages the same way.
   pub stages: Vec<Stage>,
+  /// Play this rule instead of searching the grid, so two runs can share a teacher.
+  pub pinned_rule: Option<Rule>,
   /// The A label at a step is "A within the next `jump_horizon` steps", which
   /// absorbs the demonstrations' arbitrary jump phase. 0 is the raw label; the
   /// smoothed label raised the floors more than the readouts, so 0 is the default.
@@ -61,6 +63,7 @@ impl Default for ExperimentConfig {
       max_steps: 750,
       noop_max: 120,
       stages: vec![Stage::ONE_ONE],
+      pinned_rule: None,
       jump_horizon: 0,
       logistic: false,
     }
@@ -104,10 +107,15 @@ pub struct ConditionResult {
   pub a_accuracy: f64,
   /// Fraction of held-out press onsets the readout pressed A on.
   pub onset_recall: f64,
+  /// The same with one stage held out at a time: fitted on the other
+  /// levels' demonstrations. None with a single stage.
+  pub cross_onset_recall: Option<f64>,
   /// Mean squared error of the raw outputs on the held-out rows, over the active bits.
   pub mse: f64,
   pub mean_x: f64,
   pub max_x: i32,
+  /// Closed-loop (mean x, max x) per stage, in the demonstrations' stage order.
+  pub by_stage: Vec<(Stage, f64, i32)>,
   pub resets: u32,
 }
 
@@ -238,6 +246,7 @@ pub fn episode_noops(index: usize, demonstrations: usize, noop_max: usize) -> us
   (2 * (index % demonstrations) + 1) * noop_max / (2 * demonstrations)
 }
 
+#[derive(Clone)]
 pub(crate) struct Dataset {
   pub(crate) rows: Vec<Vec<f32>>,
   pub(crate) targets: Vec<Vec<f32>>,
@@ -350,8 +359,29 @@ pub fn a_specificity(pred: &[u8], truth: &[u8]) -> f64 {
 
 /// Hold each dataset out in turn, fit on the rest, and pool the predictions.
 pub(crate) fn evaluate_folds(datasets: &[Dataset], lambda: f64, logistic: bool, mask: u8) -> Result<FoldMetrics, String> {
-  if datasets.len() < 2 {
-    return Err(format!("leave-one-out needs at least two demonstrations, got {}", datasets.len()));
+  let singletons: Vec<Vec<usize>> = (0..datasets.len()).map(|i| vec![i]).collect();
+  evaluate_groups(datasets, &singletons, lambda, logistic, mask)
+    .map_err(|_| format!("leave-one-out needs at least two demonstrations, got {}", datasets.len()))
+}
+
+/// The demonstration indices of each stage, in first-seen stage order.
+pub fn stage_groups(stages: &[Stage]) -> Vec<Vec<usize>> {
+  let mut groups: Vec<(Stage, Vec<usize>)> = Vec::new();
+  for (i, &stage) in stages.iter().enumerate() {
+    match groups.iter_mut().find(|(s, _)| *s == stage) {
+      Some((_, g)) => g.push(i),
+      None => groups.push((stage, vec![i])),
+    }
+  }
+  groups.into_iter().map(|(_, g)| g).collect()
+}
+
+/// Hold each group of datasets out in turn, fit on the rest, and pool the
+/// predictions. Groups of one dataset are leave-one-out; one group per
+/// stage asks whether what was learned on one level starts jumps on another.
+pub(crate) fn evaluate_groups(datasets: &[Dataset], groups: &[Vec<usize>], lambda: f64, logistic: bool, mask: u8) -> Result<FoldMetrics, String> {
+  if groups.len() < 2 {
+    return Err(format!("holding groups out needs at least two groups, got {}", groups.len()));
   }
   let mut train_preds = Vec::new();
   let mut train_truth = Vec::new();
@@ -360,25 +390,26 @@ pub(crate) fn evaluate_folds(datasets: &[Dataset], lambda: f64, logistic: bool, 
   let mut test_preds = Vec::new();
   let mut test_truth = Vec::new();
   let (mut hits, mut onsets) = (0, 0);
-  for held_out in 0..datasets.len() {
+  for held_out in groups {
     let rows: Vec<Vec<f32>> = datasets
       .iter()
       .enumerate()
-      .filter(|(i, _)| *i != held_out)
+      .filter(|(i, _)| !held_out.contains(i))
       .flat_map(|(_, d)| d.rows.iter().cloned())
       .collect();
     let targets: Vec<Vec<f32>> = datasets
       .iter()
       .enumerate()
-      .filter(|(i, _)| *i != held_out)
+      .filter(|(i, _)| !held_out.contains(i))
       .flat_map(|(_, d)| d.targets.iter().cloned())
       .collect();
     let readout = fit_readout(&rows, &targets, lambda, logistic)?;
     for (i, d) in datasets.iter().enumerate() {
+      let testing = held_out.contains(&i);
       let mut fold_preds = Vec::new();
       for (row, &buttons) in d.rows.iter().zip(&d.buttons) {
         let out = readout.predict(row);
-        if i == held_out {
+        if testing {
           fold_preds.push(outputs_to_buttons(&out));
           test_truth.push(buttons);
           test_targets.push(buttons_to_targets(buttons));
@@ -388,7 +419,7 @@ pub(crate) fn evaluate_folds(datasets: &[Dataset], lambda: f64, logistic: bool, 
           train_truth.push(buttons);
         }
       }
-      if i == held_out {
+      if testing {
         let (h, o) = onset_hits(&fold_preds, &d.buttons);
         hits += h;
         onsets += o;
@@ -648,13 +679,31 @@ pub fn find_rule_demonstrations(smb_rom: &[u8], config: &ExperimentConfig, log: 
     })
     .collect();
   let names: Vec<String> = config.stages.iter().map(|s| s.name()).collect();
-  log(&format!(
-    "searching {} rules from {} offsets on {}",
-    Rule::grid().len(),
-    offsets.len(),
-    names.join(", ")
-  ));
-  let (rule, demos) = search_rule(smb_rom, &offsets, config.max_steps, log);
+  let (rule, demos) = match config.pinned_rule {
+    Some(rule) => {
+      log(&format!(
+        "playing the pinned rule {} from {} offsets on {}",
+        rule.key(),
+        offsets.len(),
+        names.join(", ")
+      ));
+      let starts = stage_starts(smb_rom, offsets.iter().map(|&(s, _)| s));
+      let demos = offsets
+        .iter()
+        .map(|&(stage, noops)| rollout(smb_rom, &starts[&stage], noops, rule, config.max_steps, stage))
+        .collect();
+      (rule, demos)
+    }
+    None => {
+      log(&format!(
+        "searching {} rules from {} offsets on {}",
+        Rule::grid().len(),
+        offsets.len(),
+        names.join(", ")
+      ));
+      search_rule(smb_rom, &offsets, config.max_steps, log)
+    }
+  };
   for (i, demo) in demos.iter().enumerate() {
     log(&format!(
       "demonstration {}: {} steps, x={}, cleared={}",
@@ -712,6 +761,13 @@ pub fn run(
     } else {
       evaluate_folds(&datasets, config.lambda, config.logistic, mask)?
     };
+    let stages: Vec<Stage> = demos.iter().map(|d| d.stage).collect();
+    let groups = stage_groups(&stages);
+    let cross_onset_recall = if random || groups.len() < 2 {
+      None
+    } else {
+      Some(evaluate_groups(&datasets, &groups, config.lambda, config.logistic, mask)?.onset_recall)
+    };
     let all_rows: Vec<Vec<f32>> = datasets.iter().flat_map(|d| d.rows.iter().cloned()).collect();
     let all_targets: Vec<Vec<f32>> = datasets.iter().flat_map(|d| d.targets.iter().cloned()).collect();
     let readout = if random {
@@ -753,6 +809,20 @@ pub fn run(
     })?;
     let mean_x = outcomes.iter().map(|o| o.0 as f64).sum::<f64>() / outcomes.len().max(1) as f64;
     let max_x = outcomes.iter().map(|o| o.0).max().unwrap_or(0);
+    let by_stage: Vec<(Stage, f64, i32)> = groups
+      .iter()
+      .map(|g| {
+        let stage = stages[g[0]];
+        let xs: Vec<i32> = outcomes
+          .iter()
+          .enumerate()
+          .filter(|(e, _)| stages[e % stages.len()] == stage)
+          .map(|(_, o)| o.0)
+          .collect();
+        let mean = xs.iter().map(|&x| x as f64).sum::<f64>() / xs.len().max(1) as f64;
+        (stage, mean, xs.iter().copied().max().unwrap_or(0))
+      })
+      .collect();
     let resets = datasets.iter().map(|d| d.resets).sum::<u32>() + outcomes.iter().map(|o| o.1).sum::<u32>();
     results.push(ConditionResult {
       condition,
@@ -761,9 +831,11 @@ pub fn run(
       accuracy: folds.accuracy,
       a_accuracy: folds.a_accuracy,
       onset_recall: folds.onset_recall,
+      cross_onset_recall,
       mse: folds.mse,
       mean_x,
       max_x,
+      by_stage,
       resets,
     });
   }
@@ -981,6 +1053,37 @@ mod tests {
     assert_eq!(m.onset_recall, 0.0);
     assert_eq!(m.a_specificity, 1.0);
     assert!((m.onset_score() - 1.0).abs() < 1e-9);
+  }
+
+  #[test]
+  fn holding_out_a_group_scores_transfer_between_groups() {
+    // Two groups of two datasets. With the same rule in both, a readout fitted
+    // on one group starts the other's onsets; with the rule inverted in the
+    // second group, it starts none of them, though leave-one-out still would.
+    let same: Vec<Dataset> = (0..4).map(|s| synthetic_dataset(s, 40)).collect();
+    let groups = vec![vec![0, 1], vec![2, 3]];
+    let m = evaluate_groups(&same, &groups, 1e-6, false, BUTTON_A).unwrap();
+    assert_eq!(m.rows, 160);
+    assert!(m.onset_recall > 0.9, "same rule: {}", m.onset_recall);
+    let mut inverted = same.clone();
+    for d in &mut inverted[2..] {
+      d.buttons = d.buttons.iter().map(|&b| b ^ BUTTON_A).collect();
+      d.targets = d.buttons.iter().map(|&b| buttons_to_targets(b)).collect();
+    }
+    let m = evaluate_groups(&inverted, &groups, 1e-6, false, BUTTON_A).unwrap();
+    assert!(m.onset_recall < 0.1, "inverted rule: {}", m.onset_recall);
+    assert!(
+      evaluate_groups(&same, &[vec![0, 1, 2, 3]], 1.0, false, BUTTON_A).is_err(),
+      "one group is no test"
+    );
+  }
+
+  #[test]
+  fn stage_groups_collect_the_demonstrations_of_each_stage_in_order() {
+    let one = Stage::ONE_ONE;
+    let six = Stage { world: 5, level: 0 };
+    assert_eq!(stage_groups(&[one, six, one, six, one]), vec![vec![0, 2, 4], vec![1, 3]]);
+    assert_eq!(stage_groups(&[one, one]), vec![vec![0, 1]]);
   }
 
   #[test]

@@ -10,6 +10,8 @@
 //! `--only=PREFIX` keeps only the conditions whose names start with PREFIX.
 //! `--stages=1-1,6-1` takes the demonstrations from those levels in turn (default 1-1);
 //! the default cache directory then carries the stage names.
+//! `--pin-rule=40,3,3,9` plays that rule instead of searching the grid (with `--rule`);
+//! the default cache directory then carries the rule.
 //! `--noop-max=N` spreads the demonstration offsets over N idle frames (default 120).
 //! A cache whose demonstrations start at other offsets is searched again.
 //! `--rule` takes the demonstrations from the rule teacher (a jump rule over the
@@ -43,11 +45,19 @@ fn main() {
     .find_map(|a| a.strip_prefix("--stages=").map(str::to_string))
     .map(|v| v.split(',').map(|s| Stage::parse(s).expect("--stages=W-L,W-L")).collect())
     .unwrap_or_else(|| vec![Stage::ONE_ONE]);
-  let stage_suffix = if stages == [Stage::ONE_ONE] {
-    String::new()
-  } else {
-    format!("-{}", stages.iter().map(|s| s.name()).collect::<Vec<_>>().join("+"))
-  };
+  let pinned = std::env::args().find_map(|a| {
+    a.strip_prefix("--pin-rule=")
+      .map(|v| Rule::parse(v).expect("--pin-rule=px,look,hold_enemy,hold_obstacle"))
+  });
+  let stage_suffix = format!(
+    "{}{}",
+    pinned.map_or(String::new(), |r| format!("-{}", r.key().replace(',', "-"))),
+    if stages == [Stage::ONE_ONE] {
+      String::new()
+    } else {
+      format!("-{}", stages.iter().map(|s| s.name()).collect::<Vec<_>>().join("+"))
+    }
+  );
   let args: Vec<String> = std::env::args().filter(|a| !a.starts_with("--")).collect();
   let smb_path = args.get(1).map(String::as_str).unwrap_or("roms2/super_mario_bros.nes");
   let tetris_path = args.get(2).map(String::as_str).unwrap_or("roms2/tetris.nes");
@@ -74,6 +84,7 @@ fn main() {
     config.noop_max = n;
   }
   config.stages = stages;
+  config.pinned_rule = pinned;
   let mut log = |line: &str| eprintln!("{}", line);
   let mut rule: Option<Rule> = None;
   let cached = load_cached(&demo_dir, config.demonstrations).filter(|demos| {
@@ -191,24 +202,42 @@ fn main() {
     }
   }
   println!();
+  let several = config.stages.len() > 1;
+  if several {
+    println!("cross: onsets with one stage held out, fitted on the other stages' demonstrations");
+  }
   println!(
-    "{:<18} | {:>5} | {:>9} | {:>12} | {:>7} | {:>6} | {:>12} | {:>7} | {:>5} | {:>6}",
-    "condition", "rows", "train acc", "held-out acc", "A acc", "onset", "held-out mse", "mean x", "max x", "resets"
+    "{:<20} | {:>5} | {:>9} | {:>12} | {:>7} | {:>6} | {:>6} | {:>12} | {:>7} | {:>5} | {:>6}",
+    "condition", "rows", "train acc", "held-out acc", "A acc", "onset", "cross", "held-out mse", "mean x", "max x", "resets"
   );
-  println!("{}", "-".repeat(114));
+  println!("{}", "-".repeat(125));
   for r in &report.results {
+    let cross = r.cross_onset_recall.map_or("-".to_string(), |c| format!("{:.3}", c));
     println!(
-      "{:<18} | {:>5} | {:>9.3} | {:>12.3} | {:>7.3} | {:>6.3} | {:>12.4} | {:>7.1} | {:>5} | {:>6}",
+      "{:<20} | {:>5} | {:>9.3} | {:>12.3} | {:>7.3} | {:>6.3} | {:>6} | {:>12.4} | {:>7.1} | {:>5} | {:>6}",
       r.condition.name(),
       r.rows,
       r.train_accuracy,
       r.accuracy,
       r.a_accuracy,
       r.onset_recall,
+      cross,
       r.mse,
       r.mean_x,
       r.max_x,
       r.resets
     );
+  }
+  if several {
+    println!();
+    println!("closed loop by stage (mean x / max x):");
+    for r in &report.results {
+      let parts: Vec<String> = r
+        .by_stage
+        .iter()
+        .map(|(s, mean, max)| format!("{} {:.1} / {}", s.name(), mean, max))
+        .collect();
+      println!("{:<20} | {}", r.condition.name(), parts.join(" | "));
+    }
   }
 }
