@@ -294,13 +294,23 @@ impl Reservoir {
 /// on a tie, at the spawn rotation. One of these per step keeps a board's
 /// stack low so what the other pieces wrote survives longer.
 pub fn tidy_placement(playfield: &[u8]) -> Placement {
-  let height = |col: usize| {
-    (0..PLAYFIELD_ROWS)
-      .find(|&row| playfield.get(row * PLAYFIELD_COLS + col).map_or(false, |&c| c != PLAYFIELD_EMPTY))
-      .map_or(0, |row| PLAYFIELD_ROWS - row)
-  };
-  let column = (0..PLAYFIELD_COLS).min_by_key(|&col| height(col)).unwrap_or(0) as u8;
+  let heights = column_heights(playfield);
+  let column = (0..PLAYFIELD_COLS).min_by_key(|&col| heights[col]).unwrap_or(0) as u8;
   Placement { column, rotation: 0 }
+}
+
+/// Each column's height: rows from the floor up to its highest solid cell,
+/// 0 for an empty column. A placement raises the columns it lands on, and a
+/// line clear or a reset lowers them, so a board's heights are ten leaky
+/// counters of where recent pieces went.
+pub fn column_heights(playfield: &[u8]) -> [u8; PLAYFIELD_COLS] {
+  let mut out = [0u8; PLAYFIELD_COLS];
+  for (col, h) in out.iter_mut().enumerate() {
+    *h = (0..PLAYFIELD_ROWS)
+      .find(|&row| playfield.get(row * PLAYFIELD_COLS + col).map_or(false, |&c| c != PLAYFIELD_EMPTY))
+      .map_or(0, |row| (PLAYFIELD_ROWS - row) as u8);
+  }
+  out
 }
 
 /// Tap Start every 30 frames until `mode` is reached.
@@ -441,6 +451,20 @@ mod tests {
     r.reset();
     assert_eq!(r.emu.ram_read(TETRIS_LEVEL), FAST_LEVEL);
     assert!(r.in_play());
+  }
+
+  #[test]
+  fn column_heights_count_from_the_floor_to_the_highest_cell() {
+    let mut field = vec![PLAYFIELD_EMPTY; PLAYFIELD_ROWS * PLAYFIELD_COLS];
+    assert_eq!(column_heights(&field), [0; PLAYFIELD_COLS]);
+    field[(PLAYFIELD_ROWS - 1) * PLAYFIELD_COLS + 2] = PLAYFIELD_BLOCK;
+    field[(PLAYFIELD_ROWS - 5) * PLAYFIELD_COLS + 7] = PLAYFIELD_BLOCK; // an overhang counts to its top
+    field[0 * PLAYFIELD_COLS + 9] = PLAYFIELD_BLOCK;
+    let h = column_heights(&field);
+    assert_eq!(h[2], 1);
+    assert_eq!(h[7], 5);
+    assert_eq!(h[9], 20);
+    assert_eq!(h[0], 0);
   }
 
   #[test]

@@ -16,7 +16,7 @@ pub mod trace;
 use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_RIGHT, BUTTON_SELECT, BUTTON_START};
 use crate::nes::gym::NesEmulator;
 use demo::{beam_search, smb_cleared_at, smb_dead, smb_in_cutscene, smb_start_state_at, smb_window, smb_x, Demonstration, Stage, MACRO_FRAMES};
-use drive::{fold_to_controller, tidy_placement, Drive, Reservoir, TETRIS_PLAYFIELD_LEN};
+use drive::{column_heights, fold_to_controller, tidy_placement, Drive, Reservoir, PLAYFIELD_ROWS};
 use encode::{bank_onehot_row, encode, onehot_row, BankEncoder, Encoder, BANK_BOARDS};
 #[cfg(test)]
 use encode::{PIECES_PER_STEP, PLACEMENT_ONEHOT};
@@ -42,6 +42,9 @@ pub struct ExperimentConfig {
   pub stages: Vec<Stage>,
   /// Play this rule instead of searching the grid, so two runs can share a teacher.
   pub pinned_rule: Option<Rule>,
+  /// Levels kept out of every search and fit: the rule is played there for
+  /// demonstrations that are only scored, and episodes run there too.
+  pub test_stages: Vec<Stage>,
   /// The A label at a step is "A within the next `jump_horizon` steps", which
   /// absorbs the demonstrations' arbitrary jump phase. 0 is the raw label; the
   /// smoothed label raised the floors more than the readouts, so 0 is the default.
@@ -64,6 +67,7 @@ impl Default for ExperimentConfig {
       noop_max: 120,
       stages: vec![Stage::ONE_ONE],
       pinned_rule: None,
+      test_stages: Vec::new(),
       jump_horizon: 0,
       logistic: false,
     }
@@ -110,12 +114,18 @@ pub struct ConditionResult {
   /// The same with one stage held out at a time: fitted on the other
   /// levels' demonstrations. None with a single stage.
   pub cross_onset_recall: Option<f64>,
+  /// Onset recall on the test levels' demonstrations, fitted on every
+  /// training demonstration. None without test levels.
+  pub test_onset_recall: Option<f64>,
+  /// Mean closed-loop x on the test levels. None without test levels.
+  pub test_mean_x: Option<f64>,
   /// Mean squared error of the raw outputs on the held-out rows, over the active bits.
   pub mse: f64,
   pub mean_x: f64,
   pub max_x: i32,
-  /// Closed-loop (mean x, max x) per stage, in the demonstrations' stage order.
-  pub by_stage: Vec<(Stage, f64, i32)>,
+  /// Closed-loop (stage, mean x, max x, is a test level) per stage, training
+  /// stages first in the demonstrations' order.
+  pub by_stage: Vec<(Stage, f64, i32, bool)>,
   pub resets: u32,
 }
 
@@ -444,6 +454,8 @@ pub(crate) enum Hidden {
   Tetris(Reservoir),
   Bank(Vec<Reservoir>),
   Soft(Expansion),
+  /// Whether A was held on the last step, for the hold control.
+  Hold(bool),
 }
 
 impl Hidden {
@@ -465,20 +477,31 @@ impl Hidden {
     match self {
       Hidden::Tetris(r) => r.resets,
       Hidden::Bank(boards) => boards.iter().map(|r| r.resets).sum(),
-      Hidden::None | Hidden::Soft(_) => 0,
+      Hidden::None | Hidden::Soft(_) | Hidden::Hold(_) => 0,
+    }
+  }
+
+  /// Tell the hidden layer which buttons were pressed this step. Only the
+  /// hold control remembers them.
+  pub(crate) fn record(&mut self, buttons: u8) {
+    if let Hidden::Hold(held) = self {
+      *held = buttons & BUTTON_A != 0;
     }
   }
 }
 
 /// The hidden layer a condition needs, booted the way its drive needs it.
 pub(crate) fn hidden_for(condition: Condition, tetris_rom: &[u8]) -> Result<Hidden, String> {
+  if let Condition::BankHold(_) = condition {
+    return Ok(Hidden::Hold(false));
+  }
   if let Some(recurrent) = condition.soft_reservoir() {
     return Ok(Hidden::Soft(Expansion::new(SOFT_SEED, recurrent)));
   }
   if !condition.uses_reservoir() {
     return Ok(Hidden::None);
   }
-  if let Condition::BankTetris(..) = condition {
+  if let Condition::BankTetris(..) | Condition::BankHeights(..) = condition {
     return (0..BANK_BOARDS)
       .map(|_| Reservoir::new_fast(tetris_rom))
       .collect::<Result<Vec<_>, _>>()
@@ -560,17 +583,21 @@ pub(crate) fn observe(condition: Condition, window: &[u8], hidden: &mut Hidden, 
     (Condition::Raw, _) => feature_row(window, None),
     (Condition::PlacementOnehot(e), _) => onehot_row(&encode(e, window)),
     (Condition::BankOnehot(e), _) => bank_onehot_row(e, window),
+    (Condition::BankHold(e), Hidden::Hold(held)) => {
+      let mut row = bank_onehot_row(e, window);
+      row.push(*held as u8 as f32);
+      row
+    }
     (Condition::BankTetris(e, tidy), Hidden::Bank(boards)) => {
-      let mut body = Vec::with_capacity(BANK_BOARDS * TETRIS_PLAYFIELD_LEN as usize);
-      for (board, features) in boards.iter_mut().zip(e.features()) {
-        board.step(Some(Drive::Placements(Encoder::Searched(features))), window, MACRO_FRAMES);
-        if tidy {
-          let target = tidy_placement(&board.playfield());
-          board.place(target);
-        }
-        body.extend(board.playfield());
-      }
+      let body: Vec<u8> = step_bank(boards, e, tidy, window).concat();
       feature_row(&body, None)
+    }
+    (Condition::BankHeights(e, tidy), Hidden::Bank(boards)) => {
+      let mut row = vec![1.0];
+      for field in step_bank(boards, e, tidy, window) {
+        row.extend(column_heights(&field).iter().map(|&h| h as f32 / PLAYFIELD_ROWS as f32));
+      }
+      row
     }
     (_, Hidden::Soft(e)) => e.step(window),
     (c, Hidden::Tetris(r)) => {
@@ -582,8 +609,25 @@ pub(crate) fn observe(condition: Condition, window: &[u8], hidden: &mut Hidden, 
       };
       feature_row(&r.ram(), bits)
     }
-    (c, Hidden::None | Hidden::Bank(_)) => panic!("condition {} has the wrong hidden layer", c.name()),
+    (c, Hidden::None | Hidden::Bank(_) | Hidden::Hold(_)) => panic!("condition {} has the wrong hidden layer", c.name()),
   }
+}
+
+/// Steer each board of the bank by its four placements (and a tidy piece if
+/// asked) and return the four playfields.
+fn step_bank(boards: &mut [Reservoir], encoder: BankEncoder, tidy: bool, window: &[u8]) -> Vec<Vec<u8>> {
+  boards
+    .iter_mut()
+    .zip(encoder.features())
+    .map(|(board, features)| {
+      board.step(Some(Drive::Placements(Encoder::Searched(features))), window, MACRO_FRAMES);
+      if tidy {
+        let target = tidy_placement(&board.playfield());
+        board.place(target);
+      }
+      board.playfield()
+    })
+    .collect()
 }
 
 pub(crate) fn collect(condition: Condition, smb_rom: &[u8], tetris_rom: &[u8], demo: &Demonstration, horizon: usize) -> Result<Dataset, String> {
@@ -605,6 +649,7 @@ pub(crate) fn collect(condition: Condition, smb_rom: &[u8], tetris_rom: &[u8], d
       data.targets.push(buttons_to_targets(action));
       data.buttons.push(action);
     }
+    hidden.record(action);
     smb.step_frames(action, MACRO_FRAMES);
   }
   data.buttons = smooth_a(&data.buttons, horizon);
@@ -632,6 +677,7 @@ fn episode(
     let window = smb_window(&mut smb);
     let row = observe(condition, &window, &mut hidden, level_step(noops, step));
     let buttons = driver.buttons(&row);
+    hidden.record(buttons);
     smb.step_frames(buttons, MACRO_FRAMES);
     max_x = max_x.max(smb_x(&mut smb));
     if smb_dead(&mut smb) || smb_cleared_at(&mut smb, stage) {
@@ -639,6 +685,86 @@ fn episode(
     }
   }
   Ok((max_x, hidden.resets()))
+}
+
+/// (stage, idle frames) for `per_stage` demonstrations on each test stage,
+/// spread over `noop_max` like the training demonstrations.
+pub fn test_offsets(stages: &[Stage], per_stage: usize, noop_max: usize) -> Vec<(Stage, usize)> {
+  stages
+    .iter()
+    .flat_map(|&s| (0..per_stage).map(move |i| (s, demonstration_noops(i, per_stage, noop_max))))
+    .collect()
+}
+
+/// Closed-loop episodes as (stage, idle frames, is a test level): `episodes`
+/// on the training stages, following the demonstrations' stages in turn,
+/// then `per_test_stage` on each test stage.
+pub fn episode_plan(
+  demo_stages: &[Stage],
+  episodes: usize,
+  noop_max: usize,
+  test_stages: &[Stage],
+  per_test_stage: usize,
+) -> Vec<(Stage, usize, bool)> {
+  let n = demo_stages.len().max(1);
+  let mut plan: Vec<(Stage, usize, bool)> = (0..episodes)
+    .map(|e| {
+      (
+        demo_stages.get(e % n).copied().unwrap_or(Stage::ONE_ONE),
+        episode_noops(e, n, noop_max),
+        false,
+      )
+    })
+    .collect();
+  for &stage in test_stages {
+    plan.extend((0..per_test_stage).map(|e| (stage, episode_noops(e, per_test_stage, noop_max), true)));
+  }
+  plan
+}
+
+/// Demonstrations per test stage: as many as each training stage has.
+pub fn per_test_stage(config: &ExperimentConfig) -> usize {
+  (config.demonstrations / config.stages.len().max(1)).max(2)
+}
+
+/// Play `rule` on the test stages for demonstrations that are scored and never fitted.
+pub fn find_test_demonstrations(smb_rom: &[u8], rule: Rule, config: &ExperimentConfig) -> Vec<Demonstration> {
+  let offsets = test_offsets(&config.test_stages, per_test_stage(config), config.noop_max);
+  let starts = stage_starts(smb_rom, offsets.iter().map(|&(s, _)| s));
+  offsets
+    .iter()
+    .map(|&(stage, noops)| rollout(smb_rom, &starts[&stage], noops, rule, config.max_steps, stage))
+    .collect()
+}
+
+/// A fitted readout's metrics on demonstrations it never saw.
+pub(crate) fn score_unseen(readout: &Readout, datasets: &[Dataset], mask: u8) -> FoldMetrics {
+  let (mut preds, mut truth, mut outputs, mut targets) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+  let (mut hits, mut onsets) = (0, 0);
+  for d in datasets {
+    let mut fold = Vec::with_capacity(d.rows.len());
+    for row in &d.rows {
+      let out = readout.predict(row);
+      fold.push(outputs_to_buttons(&out));
+      outputs.push(out);
+    }
+    let (h, o) = onset_hits(&fold, &d.buttons);
+    hits += h;
+    onsets += o;
+    preds.extend(fold);
+    truth.extend(d.buttons.iter().copied());
+    targets.extend(d.buttons.iter().map(|&b| buttons_to_targets(b)));
+  }
+  let accuracy = bit_accuracy(&preds, &truth, mask);
+  FoldMetrics {
+    rows: preds.len(),
+    train_accuracy: accuracy,
+    accuracy,
+    a_accuracy: bit_accuracy(&preds, &truth, BUTTON_A),
+    onset_recall: hits as f64 / onsets.max(1) as f64,
+    a_specificity: a_specificity(&preds, &truth),
+    mse: output_mse(&outputs, &targets, mask),
+  }
 }
 
 /// Search for `config.demonstrations` demonstrations, each from its own no-op
@@ -722,6 +848,7 @@ pub fn run(
   smb_rom: &[u8],
   tetris_rom: &[u8],
   demos: &[Demonstration],
+  test_demos: &[Demonstration],
   conditions: &[Condition],
   config: &ExperimentConfig,
   log: &mut dyn FnMut(&str),
@@ -734,9 +861,10 @@ pub fn run(
   let mut results = Vec::new();
   for &condition in conditions {
     log(&format!("{}: collecting features from {} demonstrations", condition.name(), demos.len()));
-    let datasets: Vec<Dataset> = std::thread::scope(|s| {
+    let mut datasets: Vec<Dataset> = std::thread::scope(|s| {
       let handles: Vec<_> = demos
         .iter()
+        .chain(test_demos)
         .map(|demo| {
           let horizon = config.jump_horizon;
           s.spawn(move || collect(condition, smb_rom, tetris_rom, demo, horizon))
@@ -747,6 +875,7 @@ pub fn run(
         .map(|h| h.join().expect("collect worker panicked"))
         .collect::<Result<Vec<_>, _>>()
     })?;
+    let test_datasets = datasets.split_off(demos.len());
     let rows: usize = datasets.iter().map(|d| d.rows.len()).sum();
     log(&format!(
       "{}: {} informative rows of {}; leave-one-out over {} folds",
@@ -775,22 +904,25 @@ pub fn run(
     } else {
       Some(fit_readout(&all_rows, &all_targets, config.lambda, config.logistic)?)
     };
+    let test_onset_recall = match (&readout, test_datasets.is_empty()) {
+      (Some(r), false) => Some(score_unseen(r, &test_datasets, mask).onset_recall),
+      _ => None,
+    };
     let chain = JumpChain::fit(&datasets.iter().map(|d| d.buttons.as_slice()).collect::<Vec<_>>());
-    log(&format!("{}: running {} episodes", condition.name(), config.episodes));
+    let plan = episode_plan(&stages, config.episodes, config.noop_max, &config.test_stages, per_test_stage(config));
+    log(&format!("{}: running {} episodes", condition.name(), plan.len()));
     let outcomes: Vec<(i32, u32)> = std::thread::scope(|s| {
-      let handles: Vec<_> = assign_round_robin(config.episodes, threads)
+      let handles: Vec<_> = assign_round_robin(plan.len(), threads)
         .into_iter()
         .map(|episodes| {
           let readout = &readout;
-          let demonstrations = demos.len();
-          let noop_max = config.noop_max;
+          let plan = &plan;
           let max_steps = config.max_steps;
           s.spawn(move || {
             episodes
               .into_iter()
               .map(|e| {
-                let noops = episode_noops(e, demonstrations, noop_max);
-                let stage = demos[e % demonstrations].stage;
+                let (stage, noops, _) = plan[e];
                 let driver = match readout {
                   Some(r) => Driver::Readout(r),
                   None => Driver::Random(chain, Lcg::new(1000 + e as u64), false),
@@ -807,20 +939,21 @@ pub fn run(
         .collect::<Result<Vec<Vec<_>>, _>>()
         .map(|v| v.into_iter().flatten().collect())
     })?;
-    let mean_x = outcomes.iter().map(|o| o.0 as f64).sum::<f64>() / outcomes.len().max(1) as f64;
-    let max_x = outcomes.iter().map(|o| o.0).max().unwrap_or(0);
-    let by_stage: Vec<(Stage, f64, i32)> = groups
-      .iter()
-      .map(|g| {
-        let stage = stages[g[0]];
-        let xs: Vec<i32> = outcomes
-          .iter()
-          .enumerate()
-          .filter(|(e, _)| stages[e % stages.len()] == stage)
-          .map(|(_, o)| o.0)
-          .collect();
-        let mean = xs.iter().map(|&x| x as f64).sum::<f64>() / xs.len().max(1) as f64;
-        (stage, mean, xs.iter().copied().max().unwrap_or(0))
+    let xs_where =
+      |keep: &dyn Fn(&(Stage, usize, bool)) -> bool| -> Vec<i32> { plan.iter().zip(&outcomes).filter(|(p, _)| keep(p)).map(|(_, o)| o.0).collect() };
+    let mean = |xs: &[i32]| xs.iter().map(|&x| x as f64).sum::<f64>() / xs.len().max(1) as f64;
+    let training = xs_where(&|p| !p.2);
+    let mean_x = mean(&training);
+    let max_x = training.iter().copied().max().unwrap_or(0);
+    let test_xs = xs_where(&|p| p.2);
+    let test_mean_x = if test_xs.is_empty() { None } else { Some(mean(&test_xs)) };
+    let mut stage_order: Vec<(Stage, bool)> = groups.iter().map(|g| (stages[g[0]], false)).collect();
+    stage_order.extend(config.test_stages.iter().map(|&s| (s, true)));
+    let by_stage: Vec<(Stage, f64, i32, bool)> = stage_order
+      .into_iter()
+      .map(|(stage, test)| {
+        let xs = xs_where(&|p| p.0 == stage && p.2 == test);
+        (stage, mean(&xs), xs.iter().copied().max().unwrap_or(0), test)
       })
       .collect();
     let resets = datasets.iter().map(|d| d.resets).sum::<u32>() + outcomes.iter().map(|o| o.1).sum::<u32>();
@@ -832,6 +965,8 @@ pub fn run(
       a_accuracy: folds.a_accuracy,
       onset_recall: folds.onset_recall,
       cross_onset_recall,
+      test_onset_recall,
+      test_mean_x,
       mse: folds.mse,
       mean_x,
       max_x,
@@ -892,6 +1027,67 @@ mod tests {
     assert_eq!(row.len(), Condition::BankOnehot(BankEncoder::Hand).row_len());
     assert_eq!(row.len(), 1 + BANK_BOARDS * PIECES_PER_STEP * PLACEMENT_ONEHOT);
     assert_eq!(row.iter().filter(|&&v| v == 1.0).count(), 1 + 2 * BANK_BOARDS * PIECES_PER_STEP);
+  }
+
+  #[test]
+  fn the_hold_control_reads_whether_a_was_down_last_step() {
+    let window = vec![0u8; SMB_WINDOW_LEN];
+    let c = Condition::BankHold(BankEncoder::Hand);
+    let mut hidden = hidden_for(c, &[]).unwrap();
+    let row = observe(c, &window, &mut hidden, 0);
+    assert_eq!(row.len(), c.row_len());
+    assert_eq!(row[row.len() - 1], 0.0, "nothing pressed before the first step");
+    assert_eq!(row[..row.len() - 1], bank_onehot_row(BankEncoder::Hand, &window)[..]);
+    hidden.record(BUTTON_A | BUTTON_RIGHT);
+    assert_eq!(*observe(c, &window, &mut hidden, 1).last().unwrap(), 1.0);
+    hidden.record(BUTTON_RIGHT);
+    assert_eq!(*observe(c, &window, &mut hidden, 2).last().unwrap(), 0.0);
+    let mut none = Hidden::None;
+    none.record(BUTTON_A); // other hidden layers ignore it
+  }
+
+  #[test]
+  fn the_episode_plan_runs_training_stages_then_each_test_stage() {
+    let one = Stage::ONE_ONE;
+    let six = Stage { world: 5, level: 0 };
+    let two = Stage { world: 1, level: 0 };
+    let plan = episode_plan(&[one, six, one, six, one, six], 5, 120, &[two], 3);
+    assert_eq!(plan.len(), 8);
+    assert_eq!(plan[..5].iter().map(|p| p.0).collect::<Vec<_>>(), vec![one, six, one, six, one]);
+    assert!(plan[..5].iter().all(|p| !p.2), "training episodes are not test episodes");
+    assert_eq!(plan[1].1, episode_noops(1, 6, 120));
+    assert!(plan[5..].iter().all(|p| p.0 == two && p.2));
+    assert_eq!(
+      plan[5..].iter().map(|p| p.1).collect::<Vec<_>>(),
+      (0..3).map(|e| episode_noops(e, 3, 120)).collect::<Vec<_>>()
+    );
+    assert_eq!(episode_plan(&[one, one], 4, 120, &[], 3).len(), 4);
+  }
+
+  #[test]
+  fn test_offsets_spread_each_test_stage_like_the_demonstrations() {
+    let two = Stage { world: 1, level: 0 };
+    let three = Stage { world: 2, level: 0 };
+    let offsets = test_offsets(&[two, three], 3, 120);
+    assert_eq!(offsets, vec![(two, 0), (two, 40), (two, 80), (three, 0), (three, 40), (three, 80)]);
+  }
+
+  #[test]
+  fn a_fitted_readout_is_scored_on_unseen_demonstrations() {
+    let train: Vec<Dataset> = (0..3).map(|s| synthetic_dataset(s, 40)).collect();
+    let rows: Vec<Vec<f32>> = train.iter().flat_map(|d| d.rows.iter().cloned()).collect();
+    let targets: Vec<Vec<f32>> = train.iter().flat_map(|d| d.targets.iter().cloned()).collect();
+    let readout = fit_readout(&rows, &targets, 1e-6, false).unwrap();
+    let test: Vec<Dataset> = (7..9).map(|s| synthetic_dataset(s, 40)).collect();
+    let m = score_unseen(&readout, &test, BUTTON_A);
+    assert_eq!(m.rows, 80);
+    assert!(m.onset_recall > 0.9, "{}", m.onset_recall);
+    assert!(m.a_accuracy > 0.9);
+    let mut inverted = test.clone();
+    for d in &mut inverted {
+      d.buttons = d.buttons.iter().map(|&b| b ^ BUTTON_A).collect();
+    }
+    assert!(score_unseen(&readout, &inverted, BUTTON_A).onset_recall < 0.1);
   }
 
   #[test]
@@ -1189,6 +1385,17 @@ mod rom_tests {
       assert!(cells(&row, b) >= 12, "board {} has {} cells", b, cells(&row, b));
     }
     assert_eq!(hidden.resets(), 0);
+    // The heights readout: forty column heights over twenty, nonzero where pieces locked.
+    let heights = Condition::BankHeights(BankEncoder::Hand, false);
+    let mut h = hidden_for(heights, &tetris).unwrap();
+    let hrow = observe(heights, &window, &mut h, 0);
+    assert_eq!(hrow.len(), heights.row_len());
+    assert_eq!(hrow[0], 1.0);
+    for b in 0..BANK_BOARDS {
+      let board = &hrow[1 + b * 10..1 + (b + 1) * 10];
+      assert!(board.iter().all(|&v| (0.0..=1.0).contains(&v)));
+      assert!(board.iter().any(|&v| v > 0.0), "board {} has no height", b);
+    }
     // The tidy variant adds a fifth piece per board per step.
     let tidy = Condition::BankTetris(BankEncoder::Hand, true);
     let mut tidied = hidden_for(tidy, &tetris).unwrap();

@@ -101,6 +101,9 @@ pub fn replay(
       tetris_ram,
       outputs,
     });
+    for hidden in hiddens.iter_mut() {
+      hidden.record(action);
+    }
     for _ in 0..MACRO_FRAMES {
       smb.step_frame(action);
       smb_sink.write_all(smb.framebuffer()).map_err(|e| e.to_string())?;
@@ -136,6 +139,7 @@ pub fn trace_episode(
   for step in 0..max_steps {
     let window = smb_window(&mut smb);
     let buttons = outputs_to_buttons(&readout.predict(&observe(condition, &window, &mut hidden, level_step(noops, step))));
+    hidden.record(buttons);
     for _ in 0..MACRO_FRAMES {
       smb.step_frame(buttons);
       smb_sink.write_all(smb.framebuffer()).map_err(|e| e.to_string())?;
