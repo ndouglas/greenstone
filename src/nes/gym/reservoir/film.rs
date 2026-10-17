@@ -3,7 +3,7 @@
 //! `tools/reservoir_film/` reads them. See
 //! `docs/superpowers/specs/2026-10-17-reservoir-film-design.md`.
 
-use super::demo::{cached_demo_path, smb_dead, smb_start_state_at, smb_window, smb_x, smb_y, Demonstration, Stage, MACRO_FRAMES};
+use super::demo::{cached_demo_path, smb_cleared_at, smb_dead, smb_start_state_at, smb_window, smb_x, smb_y, Demonstration, Stage, MACRO_FRAMES};
 use super::drive::{Drive, Reservoir, PLAYFIELD_THRESHOLD};
 use super::encode::{encode, Encoder, Placement};
 use super::features::Condition;
@@ -164,6 +164,8 @@ pub fn takes() -> Vec<(&'static str, TakeFn)> {
     ("paste_board", paste_board),
     ("placements", placements),
     ("echo_twins", echo_twins),
+    ("coin_flip_teachers", coin_flip_teachers),
+    ("rule_tripwires", rule_tripwires),
   ]
 }
 
@@ -201,6 +203,22 @@ fn smb_at(ctx: &FilmContext, stage: Stage, noops: usize) -> NesEmulator {
   smb.load_state(&smb_start_state_at(&ctx.smb_rom, stage));
   smb.step_frames(0, noops);
   smb
+}
+
+/// Idle frames before the rule's run on 1-1 that clears it: those of the
+/// first cached demonstration that cleared. Run 36's rule dies from 0.
+fn clearing_noops(ctx: &FilmContext) -> Result<usize, String> {
+  let demos = ctx.demos(RULE_CACHE, ExperimentConfig::default().demonstrations)?;
+  demos
+    .iter()
+    .find(|d| d.cleared && d.stage == Stage::ONE_ONE)
+    .map(|d| d.noops)
+    .ok_or_else(|| format!("no demonstration in {} clears 1-1", RULE_CACHE))
+}
+
+/// A fresh SMB on 1-1 at the start of the rule's clearing run.
+fn smb_for_rule(ctx: &FilmContext) -> Result<NesEmulator, String> {
+  Ok(smb_at(ctx, Stage::ONE_ONE, clearing_noops(ctx)?))
 }
 
 /// Play the rule until `until` holds, recording nothing. Errors after `limit` steps.
@@ -260,7 +278,7 @@ fn lives_glyphs(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String> 
 /// The rule plays 1-1 for 300 steps; every frame, and every step's window.
 fn matrix_walk(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String> {
   let rule = ctx.rule(RULE_CACHE)?;
-  let mut smb = smb_at(ctx, Stage::ONE_ONE, 0);
+  let mut smb = smb_for_rule(ctx)?;
   let mut player = Player::new(rule);
   let mut steps = Vec::new();
   for _ in 0..300 {
@@ -297,7 +315,7 @@ const POKE_PX: i32 = 40;
 
 /// An enemy ahead is pushed `POKE_PX` right four times while Mario stands still.
 fn poke_enemy(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String> {
-  let mut smb = smb_at(ctx, Stage::ONE_ONE, 0);
+  let mut smb = smb_for_rule(ctx)?;
   let mut player = Player::new(ctx.rule(RULE_CACHE)?);
   play_until(&mut smb, &mut player, 300, &mut |s| {
     let x = smb_x(s);
@@ -333,7 +351,7 @@ fn poke_terrain(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String> 
   let rule = ctx.rule(RULE_CACHE)?;
   let mut scenes = serde_json::Map::new();
   for scene in ["wall", "floor"] {
-    let mut smb = smb_at(ctx, Stage::ONE_ONE, 0);
+    let mut smb = smb_for_rule(ctx)?;
     let mut player = Player::new(rule);
     play_until(&mut smb, &mut player, 400, &mut |s| smb_x(s) >= 400 && on_ground(s))?;
     let column = smb_x(&mut smb) as usize / 16;
@@ -367,7 +385,7 @@ fn noise_bytes(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String> {
   let mut seeds = serde_json::Map::new();
   for seed in 1..=4u64 {
     let stream = format!("seed{}", seed);
-    let mut smb = smb_at(ctx, Stage::ONE_ONE, 0);
+    let mut smb = smb_for_rule(ctx)?;
     let mut player = Player::new(rule);
     play_until(&mut smb, &mut player, 400, &mut |s| smb_x(s) >= 300)?;
     let mut rng = Lcg::new(seed);
@@ -482,7 +500,7 @@ fn simple_brain_drives(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, S
 /// The rule's windows on 1-1 from the start, one per step; with a writer,
 /// the SMB frame at each step's start goes to its `smb` stream.
 fn rule_windows(ctx: &FilmContext, steps: usize, mut w: Option<&mut TakeWriter>) -> Result<Vec<Vec<u8>>, String> {
-  let mut smb = smb_at(ctx, Stage::ONE_ONE, 0);
+  let mut smb = smb_for_rule(ctx)?;
   let mut player = Player::new(ctx.rule(RULE_CACHE)?);
   let mut out = Vec::with_capacity(steps);
   for _ in 0..steps {
@@ -577,6 +595,87 @@ fn echo_twins(ctx: &FilmContext, _w: &mut TakeWriter) -> Result<Value, String> {
     "steps": steps, "perturbed_step": PERTURBED_STEP, "peak": peak, "half_life": half_life,
     "agree_again": agree_again, "resets_a": resets_a, "resets_b": resets_b,
   }))
+}
+
+/// Over every pair of demonstrations and every 16 px bucket both cross on
+/// the ground, the fraction of buckets where exactly one presses A. Each
+/// demonstration is (x, A held, on the ground) per step.
+fn disagreement(demos: &[Vec<(i32, bool, bool)>]) -> f64 {
+  let buckets: Vec<std::collections::HashMap<i32, bool>> = demos
+    .iter()
+    .map(|steps| {
+      let mut m = std::collections::HashMap::new();
+      for &(x, a, ground) in steps {
+        if ground {
+          *m.entry(x / 16).or_insert(false) |= a;
+        }
+      }
+      m
+    })
+    .collect();
+  let (mut differ, mut total) = (0usize, 0usize);
+  for i in 0..buckets.len() {
+    for j in i + 1..buckets.len() {
+      for (b, &a) in &buckets[i] {
+        if let Some(&c) = buckets[j].get(b) {
+          total += 1;
+          differ += (a != c) as usize;
+        }
+      }
+    }
+  }
+  differ as f64 / total.max(1) as f64
+}
+
+/// The six beam-search demonstrations: where each pressed A, and how often
+/// two of them disagree at the same spot.
+fn coin_flip_teachers(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String> {
+  let demos = ctx.demos("tetris-reservoir-demos", 6)?;
+  let mut runs = Vec::new();
+  let mut meta = Vec::new();
+  for (k, demo) in demos.iter().enumerate() {
+    let mut smb = smb_at(ctx, demo.stage, demo.noops);
+    let mut steps = Vec::new();
+    for &action in &demo.buttons {
+      steps.push((smb_x(&mut smb), action & BUTTON_A != 0, on_ground(&mut smb)));
+      for _ in 0..MACRO_FRAMES {
+        smb.step_frame(action);
+        if k == 0 {
+          w.frame("demo0", smb.framebuffer())?;
+        }
+      }
+    }
+    meta.push(json!({"noops": demo.noops, "steps": steps.iter().map(|&(x, a, _)| json!({"x": x, "a": a})).collect::<Vec<_>>()}));
+    runs.push(steps);
+  }
+  Ok(json!({"demos": meta, "disagree": disagreement(&runs)}))
+}
+
+/// The rule plays 1-1 to the flag, with its three tripwires per step.
+fn rule_tripwires(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String> {
+  let rule = ctx.rule(RULE_CACHE)?;
+  let mut smb = smb_for_rule(ctx)?;
+  let mut player = Player::new(rule);
+  let mut steps = Vec::new();
+  let mut cleared = false;
+  for _ in 0..ExperimentConfig::default().max_steps {
+    let window = smb_window(&mut smb);
+    let buttons = player.buttons(&window);
+    steps.push(json!({"x": smb_x(&mut smb), "buttons": buttons, "tripwires": tripwire_json(tripwires(rule, &window))}));
+    for _ in 0..MACRO_FRAMES {
+      smb.step_frame(buttons);
+      w.frame("smb", smb.framebuffer())?;
+    }
+    if smb_cleared_at(&mut smb, Stage::ONE_ONE) {
+      cleared = true;
+      break;
+    }
+    if smb_dead(&mut smb) {
+      break;
+    }
+  }
+  let r = rule.to_bytes();
+  Ok(json!({"rule": r, "describe": rule.describe(), "noops": clearing_noops(ctx)?, "steps": steps, "cleared": cleared}))
 }
 
 /// A random address in the zero page or $0200-$07FF, never the stack page
@@ -709,6 +808,39 @@ mod tests {
     let steps = echo["steps"].as_array().unwrap();
     assert_eq!(steps[19]["diff"], 0, "identical before the nudge");
     assert!(steps[20]["diff"].as_u64().unwrap() > 0, "different after it");
+    let _ = std::fs::remove_dir_all(&out);
+  }
+
+  #[test]
+  fn disagreement_counts_buckets_where_exactly_one_presses() {
+    // Same bucket (x 0-15), both press: agree.
+    let same = vec![vec![(5, true, true)], vec![(9, true, true)]];
+    assert_eq!(disagreement(&same), 0.0);
+    // Two shared buckets, they differ in one.
+    let half = vec![vec![(5, true, true), (20, false, true)], vec![(6, true, true), (21, true, true)]];
+    assert_eq!(disagreement(&half), 0.5);
+    // Steps in the air do not count.
+    let air = vec![vec![(5, true, false)], vec![(6, false, true)]];
+    assert_eq!(disagreement(&air), 0.0);
+  }
+
+  #[test]
+  #[ignore = "needs the ROMs and target/tetris-reservoir-demos"]
+  fn the_teacher_takes_record() {
+    let ctx = FilmContext::load(
+      Path::new("roms2/super_mario_bros.nes"),
+      Path::new("roms2/tetris.nes"),
+      Path::new("target"),
+    )
+    .unwrap();
+    let out = std::env::temp_dir().join(format!("film-teach-{}", std::process::id()));
+    record(&ctx, "coin_flip_teachers", &out).unwrap();
+    record(&ctx, "rule_tripwires", &out).unwrap();
+    let coin = read_meta(&out, "coin_flip_teachers");
+    assert_eq!(coin["demos"].as_array().unwrap().len(), 6);
+    let d = coin["disagree"].as_f64().unwrap();
+    assert!((0.0..=1.0).contains(&d));
+    assert_eq!(read_meta(&out, "rule_tripwires")["cleared"], true, "the rule clears 1-1");
     let _ = std::fs::remove_dir_all(&out);
   }
 }
