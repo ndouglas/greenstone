@@ -48,3 +48,13 @@ class Chapters(unittest.TestCase):
 
     def test_chapter_7(self):
         self.check(7)
+
+    def test_chapter_8(self):
+        self.check(8)
+
+    def test_chapter_9(self):
+        self.check(9)
+
+    def test_all_ten_chapters_in_order(self):
+        from reservoir_film.chapters import CHAPTERS
+        self.assertEqual([c.number for c in CHAPTERS], list(range(10)))
