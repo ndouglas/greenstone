@@ -1,0 +1,23 @@
+{
+  "source": "run 38, docs/ideas/brain-cartridge.md, commit 8b1198d: trained on 1-1 and 6-1 (three demonstrations each), 4-1 held out; 15 press onsets on 4-1, standard error about 0.12",
+  "test_onsets": 15,
+  "test_se": 0.12,
+  "rows": [
+    {"key": "searched-onehot", "label": "four searched features, no Tetris", "onset": 0.797, "cross": 0.669, "test": 0.800},
+    {"key": "bank-searched-onehot", "label": "sixteen searched features, no Tetris", "onset": 0.917, "cross": 0.684, "test": 0.733},
+    {"key": "echo-state", "label": "echo state network", "onset": 0.684, "cross": 0.391, "test": 0.667},
+    {"key": "bank-searched-tidy", "label": "four Tetris games (searched, tidy)", "onset": 0.744, "cross": 0.459, "test": 0.667},
+    {"key": "bank-tetris", "label": "four Tetris games (hand)", "onset": 0.707, "cross": 0.308, "test": 0.533},
+    {"key": "random-tanh", "label": "random scrambler", "onset": 0.466, "cross": 0.609, "test": 0.467},
+    {"key": "bank-tidy", "label": "four Tetris games (hand, tidy)", "onset": 0.805, "cross": 0.406, "test": 0.333},
+    {"key": "clock", "label": "a clock", "onset": 0.233, "cross": 0.308, "test": 0.133},
+    {"key": "bank-tidy-heights", "label": "stack heights only", "onset": 0.301, "cross": 0.323, "test": 0.133},
+    {"key": "bank-heights", "label": "stack heights only (no tidy)", "onset": 0.165, "cross": 0.195, "test": 0.000},
+    {"key": "raw", "label": "raw bytes", "onset": 0.135, "cross": 0.150, "test": 0.000}
+  ],
+  "hold": {"bank-hold": {"onset": 0.504, "mean_x": 324.6}, "bank-onehot": {"onset": 0.489, "mean_x": 324.2},
+           "bank-searched-hold": {"onset": 0.301, "mean_x": 488.4}, "bank-searched-onehot": {"onset": 0.917, "mean_x": 602.8},
+           "bank-searched-tetris": {"onset": 0.729, "mean_x": 1125.0}},
+  "clock_test_x": 1016.3,
+  "bank_tidy_1_1": {"source": "run 32, 1-1 only", "onset": 0.899, "mean_x": 2039, "max_x": 2470}
+}

@@ -7,8 +7,8 @@ use super::demo::{
   cached_demo_path, smb_cleared_at, smb_dead, smb_in_cutscene, smb_start_state_at, smb_window, smb_window_leaky, smb_x, smb_y, Demonstration, Stage,
   MACRO_FRAMES,
 };
-use super::drive::{Drive, Reservoir, PLAYFIELD_THRESHOLD};
-use super::encode::{encode, onehot_row, Encoder, Feature, Placement};
+use super::drive::{column_heights, Drive, Reservoir, PLAYFIELD_THRESHOLD};
+use super::encode::{bank_placements, encode, onehot_row, BankEncoder, Encoder, Feature, Placement};
 use super::features::{feature_row, Condition};
 use super::ridge::Readout;
 use super::search::{candidates_with_position, demo_windows, search_features_in};
@@ -17,6 +17,7 @@ use super::trace::enemies;
 use super::trace::{fit_condition, replay, trace_episode};
 use super::Lcg;
 use super::{active_bits, bit_accuracy, buttons_to_targets, episode_noops, fit_readout, onset_hits, outputs_to_buttons, ExperimentConfig};
+use super::{hidden_for, level_step, observe, Hidden};
 use crate::nes::bus::{BUTTON_A, BUTTON_RIGHT, BUTTON_START};
 use crate::nes::gym::reward::smb1_ram;
 use crate::nes::gym::NesEmulator;
@@ -173,6 +174,11 @@ pub fn takes() -> Vec<(&'static str, TakeFn)> {
     ("controller_leak", controller_leak),
     ("clock_late_start", clock_late_start),
     ("memoriser", memoriser),
+    ("bank_drive", bank_drive),
+    ("bank_noise", bank_noise),
+    ("unseen_4_1", unseen_4_1),
+    ("heights", heights),
+    ("hold_bit", hold_bit),
   ]
 }
 
@@ -918,6 +924,269 @@ fn memoriser(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String> {
   search_and_drive(ctx, &demos, smb_window, &candidates_with_position(), "memoriser", w, "drive")
 }
 
+/// World 4-1, which no search or fit ever saw.
+const FOUR_ONE: Stage = Stage { world: 3, level: 0 };
+
+/// The two banks the film can show: four hand-fed boards, without and with
+/// the tidy piece.
+const BANKS: [Condition; 2] = [
+  Condition::BankTetris(BankEncoder::Hand, false),
+  Condition::BankTetris(BankEncoder::Hand, true),
+];
+
+/// One bank episode; with `detail`, each step's four boards and placements.
+/// Window bytes are jittered by up to `jitter` either way before the bank sees them.
+fn bank_episode(
+  ctx: &FilmContext,
+  condition: Condition,
+  readout: &Readout,
+  stage: Stage,
+  noops: usize,
+  jitter: u8,
+  seed: u64,
+  detail: bool,
+  mut sink: Option<(&mut TakeWriter, &str)>,
+) -> Result<(i32, Vec<Value>), String> {
+  let mut smb = smb_at(ctx, stage, noops);
+  let mut hidden = hidden_for(condition, &ctx.tetris_rom)?;
+  let mut rng = Lcg::new(seed);
+  let (mut best, mut steps) = (0, Vec::new());
+  for step in 0..ExperimentConfig::default().max_steps {
+    let mut window = smb_window(&mut smb);
+    if jitter > 0 {
+      for b in window.iter_mut() {
+        let d = (rng.next_f64() * (2 * jitter as u32 + 1) as f64) as i32 - jitter as i32;
+        *b = (*b as i32 + d).clamp(0, 255) as u8;
+      }
+    }
+    let buttons = outputs_to_buttons(&readout.predict(&observe(condition, &window, &mut hidden, level_step(noops, step))));
+    hidden.record(buttons);
+    for _ in 0..MACRO_FRAMES {
+      smb.step_frame(buttons);
+      if let Some((w, stream)) = sink.as_mut() {
+        w.frame(stream, smb.framebuffer())?;
+      }
+    }
+    let x = smb_x(&mut smb);
+    best = best.max(x);
+    if detail {
+      let boards: Vec<String> = match &mut hidden {
+        Hidden::Bank(b) => b.iter_mut().map(|r| hex(&r.playfield())).collect(),
+        _ => Vec::new(),
+      };
+      let placed: Vec<Vec<[u8; 2]>> = bank_placements(BankEncoder::Hand, &window)
+        .iter()
+        .map(|board| board.iter().map(|p| [p.column, p.rotation]).collect())
+        .collect();
+      steps.push(json!({"x": x, "buttons": buttons, "boards": boards, "placements": placed}));
+    }
+    if smb_dead(&mut smb) || smb_cleared_at(&mut smb, stage) {
+      break;
+    }
+  }
+  Ok((best, steps))
+}
+
+/// Fit each bank on all six 1-1 rule examples, in parallel.
+fn fit_banks(ctx: &FilmContext, demos: &[Demonstration]) -> Result<Vec<Readout>, String> {
+  let config = ExperimentConfig::default();
+  std::thread::scope(|s| {
+    let handles: Vec<_> = BANKS
+      .iter()
+      .map(|&c| {
+        s.spawn(move || {
+          fit_condition(
+            c,
+            &ctx.smb_rom,
+            &ctx.tetris_rom,
+            demos,
+            config.lambda,
+            config.logistic,
+            config.jump_horizon,
+          )
+        })
+      })
+      .collect();
+    handles.into_iter().map(|h| h.join().expect("fit worker panicked")).collect()
+  })
+}
+
+/// Episodes in parallel, one per (condition index, noops, jitter, seed); their best x each.
+fn bank_trials(ctx: &FilmContext, readouts: &[Readout], trials: &[(usize, usize, u8, u64)]) -> Result<Vec<i32>, String> {
+  std::thread::scope(|s| {
+    let handles: Vec<_> = trials
+      .iter()
+      .map(|&(c, noops, jitter, seed)| {
+        s.spawn(move || bank_episode(ctx, BANKS[c], &readouts[c], Stage::ONE_ONE, noops, jitter, seed, false, None).map(|r| r.0))
+      })
+      .collect();
+    handles.into_iter().map(|h| h.join().expect("episode worker panicked")).collect()
+  })
+}
+
+/// The bank drives 1-1: both banks, five episodes each, the best filmed.
+fn bank_drive(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String> {
+  let config = ExperimentConfig::default();
+  let demos = ctx.demos(RULE_CACHE, config.demonstrations)?;
+  let readouts = fit_banks(ctx, &demos)?;
+  let count = demos.len();
+  let trials: Vec<(usize, usize, u8, u64)> = (0..BANKS.len())
+    .flat_map(|c| (0..config.episodes).map(move |e| (c, episode_noops(e, count, config.noop_max), 0, 0)))
+    .collect();
+  let xs = bank_trials(ctx, &readouts, &trials)?;
+  let mut conditions = Vec::new();
+  for (c, condition) in BANKS.iter().enumerate() {
+    let mine: Vec<(usize, i32)> = trials.iter().zip(&xs).filter(|(t, _)| t.0 == c).map(|(t, &x)| (t.1, x)).collect();
+    let mean = mine.iter().map(|m| m.1 as f64).sum::<f64>() / mine.len() as f64;
+    conditions.push(
+      json!({"name": condition.name(), "episodes": mine.iter().map(|m| json!({"noops": m.0, "max_x": m.1})).collect::<Vec<_>>(), "mean_x": mean}),
+    );
+  }
+  let (k, _) = xs.iter().enumerate().max_by_key(|(_, &x)| x).unwrap();
+  let (c, noops, _, _) = trials[k];
+  let (best_x, steps) = bank_episode(ctx, BANKS[c], &readouts[c], Stage::ONE_ONE, noops, 0, 0, true, Some((&mut *w, "smb")))?;
+  Ok(json!({
+    "conditions": conditions,
+    "best": {"condition": BANKS[c].name(), "tidy": BANKS[c] == BANKS[1], "noops": noops, "steps": steps},
+    "best_x": best_x,
+    "passed_goomba_pair": best_x > 1850,
+  }))
+}
+
+/// The bank with its inputs jittered: how much shaking it takes.
+fn bank_noise(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String> {
+  let config = ExperimentConfig::default();
+  let demos = ctx.demos(RULE_CACHE, config.demonstrations)?;
+  let readouts = fit_banks(ctx, &demos)?;
+  let count = demos.len();
+  // The bank that drives further on average, as bank_drive measures it.
+  let clean: Vec<(usize, usize, u8, u64)> = (0..BANKS.len())
+    .flat_map(|c| (0..3).map(move |e| (c, episode_noops(e, count, config.noop_max), 0, 0)))
+    .collect();
+  let xs = bank_trials(ctx, &readouts, &clean)?;
+  let c = if xs[3..].iter().sum::<i32>() > xs[..3].iter().sum::<i32>() {
+    1
+  } else {
+    0
+  };
+  let jitters = [0u8, 8, 32, 96];
+  let trials: Vec<(usize, usize, u8, u64)> = jitters
+    .iter()
+    .flat_map(|&j| (0..3).map(move |e| (c, episode_noops(e, count, config.noop_max), j, 1 + e as u64)))
+    .collect();
+  let xs = bank_trials(ctx, &readouts, &trials)?;
+  let levels: Vec<Value> = jitters
+    .iter()
+    .enumerate()
+    .map(|(i, &j)| {
+      let mine = &xs[i * 3..i * 3 + 3];
+      json!({"jitter": j, "xs": mine, "mean_x": mine.iter().map(|&x| x as f64).sum::<f64>() / 3.0})
+    })
+    .collect();
+  let noops = episode_noops(0, demos.len(), config.noop_max);
+  bank_episode(
+    ctx,
+    BANKS[c],
+    &readouts[c],
+    Stage::ONE_ONE,
+    noops,
+    32,
+    1,
+    false,
+    Some((&mut *w, "jitter32")),
+  )?;
+  Ok(json!({"condition": BANKS[c].name(), "levels": levels}))
+}
+
+/// World 4-1: the two-level teacher playing it, and the clock trying.
+fn unseen_4_1(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String> {
+  let config = ExperimentConfig::default();
+  let cache = "tetris-reservoir-demos-rule-1-1+6-1";
+  let rule = ctx.rule(cache)?;
+  let mut smb = smb_at(ctx, FOUR_ONE, 0);
+  let mut player = Player::new(rule);
+  let mut teacher_x = 0;
+  for _ in 0..400 {
+    let buttons = player.buttons(&smb_window(&mut smb));
+    for _ in 0..MACRO_FRAMES {
+      smb.step_frame(buttons);
+      w.frame("teacher", smb.framebuffer())?;
+    }
+    teacher_x = teacher_x.max(smb_x(&mut smb));
+    if smb_dead(&mut smb) {
+      break;
+    }
+  }
+  let demos = ctx.demos(cache, config.demonstrations)?;
+  let readout = fit_condition(
+    Condition::Clock,
+    &ctx.smb_rom,
+    &ctx.tetris_rom,
+    &demos,
+    config.lambda,
+    config.logistic,
+    config.jump_horizon,
+  )?;
+  let noops = episode_noops(0, demos.len(), config.noop_max);
+  let steps = {
+    let mut sink = FrameSink {
+      w: &mut *w,
+      stream: "clock",
+      buf: Vec::new(),
+    };
+    trace_episode(
+      Condition::Clock,
+      &readout,
+      &ctx.smb_rom,
+      &ctx.tetris_rom,
+      FOUR_ONE,
+      noops,
+      config.max_steps,
+      &mut sink,
+    )?
+  };
+  let clock_x = steps.iter().map(|s| s.x).max().unwrap_or(0);
+  Ok(json!({"rule": rule.describe(), "teacher_max_x": teacher_x, "clock_max_x": clock_x, "clock_noops": noops}))
+}
+
+/// The bank's boards replayed along a 1-1 example, with their column heights.
+fn heights(ctx: &FilmContext, _w: &mut TakeWriter) -> Result<Value, String> {
+  let demos = ctx.demos(RULE_CACHE, 1)?;
+  let demo = &demos[0];
+  let condition = Condition::BankHeights(BankEncoder::Hand, true);
+  let mut hidden = hidden_for(condition, &ctx.tetris_rom)?;
+  let mut smb = smb_at(ctx, demo.stage, demo.noops);
+  let mut steps = Vec::new();
+  for (step, &action) in demo.buttons.iter().take(200).enumerate() {
+    let window = smb_window(&mut smb);
+    observe(condition, &window, &mut hidden, level_step(demo.noops, step));
+    let boards: Vec<Vec<u8>> = match &mut hidden {
+      Hidden::Bank(b) => b.iter_mut().map(|r| r.playfield()).collect(),
+      _ => return Err("the heights condition has no bank".into()),
+    };
+    steps.push(json!({
+      "boards": boards.iter().map(|b| hex(b)).collect::<Vec<_>>(),
+      "heights": boards.iter().map(|b| column_heights(b).to_vec()).collect::<Vec<_>>(),
+      "a": action & BUTTON_A != 0,
+    }));
+    smb.step_frames(action, MACRO_FRAMES);
+  }
+  Ok(json!({"steps": steps}))
+}
+
+/// A 1-1 example's A presses beside the one bit "A was held last step".
+fn hold_bit(ctx: &FilmContext, _w: &mut TakeWriter) -> Result<Value, String> {
+  let demos = ctx.demos(RULE_CACHE, 1)?;
+  let a: Vec<bool> = demos[0].buttons.iter().map(|&b| b & BUTTON_A != 0).collect();
+  let steps: Vec<Value> = a
+    .iter()
+    .enumerate()
+    .map(|(i, &now)| json!({"a": now, "held": i > 0 && a[i - 1]}))
+    .collect();
+  let onsets: Vec<usize> = (0..a.len()).filter(|&i| a[i] && (i == 0 || !a[i - 1])).collect();
+  Ok(json!({"steps": steps, "onsets": onsets}))
+}
+
 /// A random address in the zero page or $0200-$07FF, never the stack page
 /// and never $0770-$077F, which switch the game's modes.
 fn noise_address(rng: &mut Lcg) -> u16 {
@@ -1103,6 +1372,31 @@ mod tests {
     let clock = read_meta(&out, "clock_late_start");
     assert!(clock["buggy"]["max_x"].as_i64().is_some() && clock["fixed"]["max_x"].as_i64().is_some());
     assert_eq!(read_meta(&out, "memoriser")["features"].as_array().unwrap().len(), 4);
+    let _ = std::fs::remove_dir_all(&out);
+  }
+
+  #[test]
+  #[ignore = "needs the ROMs and both rule caches; tens of minutes"]
+  fn the_bank_takes_record() {
+    let ctx = FilmContext::load(
+      Path::new("roms2/super_mario_bros.nes"),
+      Path::new("roms2/tetris.nes"),
+      Path::new("target"),
+    )
+    .unwrap();
+    let out = std::env::temp_dir().join(format!("film-bank-{}", std::process::id()));
+    for name in ["bank_drive", "bank_noise", "unseen_4_1", "heights", "hold_bit"] {
+      record(&ctx, name, &out).unwrap();
+    }
+    let bank = read_meta(&out, "bank_drive");
+    assert_eq!(bank["conditions"].as_array().unwrap().len(), 2);
+    assert_eq!(bank["best"]["steps"][0]["boards"].as_array().unwrap().len(), 4);
+    assert_eq!(read_meta(&out, "bank_noise")["levels"].as_array().unwrap().len(), 4);
+    let hold = read_meta(&out, "hold_bit");
+    let steps = hold["steps"].as_array().unwrap();
+    for i in 1..steps.len() {
+      assert_eq!(steps[i]["held"], steps[i - 1]["a"]);
+    }
     let _ = std::fs::remove_dir_all(&out);
   }
 }
