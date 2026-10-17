@@ -828,14 +828,14 @@ are the best single row on the unseen level. A test set of 15 onsets
 cannot separate the leaders; more test levels, or more offsets on 4-1,
 are what would.
 
-A captioned explainer video of the experiment, six chapters ending with
-the whole level in real time, is built by `examples/reservoir_dump.rs`
-followed by `tools/reservoir_video.py`; see
-`docs/superpowers/specs/2026-10-14-reservoir-video-design.md`. Two facts
-the video surfaced: only the first 160 window bytes fit the 16 playable
-board rows, so the last 96 never reach Tetris, and the Tetris screen never
-shows the pasted window, because the game redraws rows only when a piece
-lands; the board the readout sees is RAM.
+A ten-chapter film of the experiment, scored on Greenstone's own APU, is
+recorded by `examples/reservoir_film.rs` and composed by
+`tools/reservoir_film/`; see
+`docs/superpowers/specs/2026-10-17-reservoir-film-design.md`. Two facts
+an earlier explainer surfaced still hold: only the first 160 window bytes
+fit the 16 playable board rows, so the last 96 never reach Tetris, and the
+Tetris screen never shows the pasted window, because the game redraws
+rows only when a piece lands; the board the readout sees is RAM.
 
 Earlier tables from this day, including the single-demonstration run
 where the playfield drive led raw on a time split, are in the git history

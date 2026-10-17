@@ -1,5 +1,7 @@
 # Reservoir video design
 
+> Superseded by `docs/superpowers/specs/2026-10-17-reservoir-film-design.md`.
+
 A captioned MP4 that explains the Tetris reservoir experiment piece by
 piece, then composes the pieces and runs the whole of SMB 1-1 in real time.
 No narration audio; captions carry the words.
