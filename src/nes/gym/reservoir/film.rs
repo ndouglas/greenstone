@@ -3,16 +3,20 @@
 //! `tools/reservoir_film/` reads them. See
 //! `docs/superpowers/specs/2026-10-17-reservoir-film-design.md`.
 
-use super::demo::{cached_demo_path, smb_cleared_at, smb_dead, smb_start_state_at, smb_window, smb_x, smb_y, Demonstration, Stage, MACRO_FRAMES};
+use super::demo::{
+  cached_demo_path, smb_cleared_at, smb_dead, smb_in_cutscene, smb_start_state_at, smb_window, smb_window_leaky, smb_x, smb_y, Demonstration, Stage,
+  MACRO_FRAMES,
+};
 use super::drive::{Drive, Reservoir, PLAYFIELD_THRESHOLD};
-use super::encode::{encode, Encoder, Placement};
-use super::features::Condition;
+use super::encode::{encode, onehot_row, Encoder, Feature, Placement};
+use super::features::{feature_row, Condition};
 use super::ridge::Readout;
+use super::search::{candidates_with_position, demo_windows, search_features_in};
 use super::teacher::{tripwires, Player, Rule, Tripwires};
 use super::trace::enemies;
 use super::trace::{fit_condition, replay, trace_episode};
 use super::Lcg;
-use super::{episode_noops, ExperimentConfig};
+use super::{active_bits, bit_accuracy, buttons_to_targets, episode_noops, fit_readout, onset_hits, outputs_to_buttons, ExperimentConfig};
 use crate::nes::bus::{BUTTON_A, BUTTON_RIGHT, BUTTON_START};
 use crate::nes::gym::reward::smb1_ram;
 use crate::nes::gym::NesEmulator;
@@ -166,6 +170,9 @@ pub fn takes() -> Vec<(&'static str, TakeFn)> {
     ("echo_twins", echo_twins),
     ("coin_flip_teachers", coin_flip_teachers),
     ("rule_tripwires", rule_tripwires),
+    ("controller_leak", controller_leak),
+    ("clock_late_start", clock_late_start),
+    ("memoriser", memoriser),
   ]
 }
 
@@ -678,6 +685,239 @@ fn rule_tripwires(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String
   Ok(json!({"rule": r, "describe": rule.describe(), "noops": clearing_noops(ctx)?, "steps": steps, "cleared": cleared}))
 }
 
+/// Rows, A-targets and buttons from replaying demonstrations, the window
+/// read by `window`, skipping steps where the game has control.
+fn raw_dataset(ctx: &FilmContext, demos: &[Demonstration], window: fn(&mut NesEmulator) -> Vec<u8>) -> (Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<u8>) {
+  let (mut rows, mut targets, mut buttons) = (Vec::new(), Vec::new(), Vec::new());
+  for demo in demos {
+    let mut smb = smb_at(ctx, demo.stage, demo.noops);
+    for &action in &demo.buttons {
+      if !smb_in_cutscene(&mut smb) {
+        rows.push(feature_row(&window(&mut smb), None));
+        targets.push(buttons_to_targets(action));
+        buttons.push(action);
+      }
+      smb.step_frames(action, MACRO_FRAMES);
+    }
+  }
+  (rows, targets, buttons)
+}
+
+/// Drive 1-1 closed loop, `row` turning the emulator's state into features;
+/// frames go to `stream` when given.
+fn drive(
+  ctx: &FilmContext,
+  readout: &Readout,
+  noops: usize,
+  row: &dyn Fn(&mut NesEmulator) -> Vec<f32>,
+  mut sink: Option<(&mut TakeWriter, &str)>,
+) -> Result<Vec<Value>, String> {
+  let mut smb = smb_at(ctx, Stage::ONE_ONE, noops);
+  let mut steps = Vec::new();
+  for _ in 0..ExperimentConfig::default().max_steps {
+    let buttons = outputs_to_buttons(&readout.predict(&row(&mut smb)));
+    for _ in 0..MACRO_FRAMES {
+      smb.step_frame(buttons);
+      if let Some((w, stream)) = sink.as_mut() {
+        w.frame(stream, smb.framebuffer())?;
+      }
+    }
+    let dead = smb_dead(&mut smb);
+    steps.push(json!({"x": smb_x(&mut smb), "buttons": buttons, "dead": dead}));
+    if dead || smb_cleared_at(&mut smb, Stage::ONE_ONE) {
+      break;
+    }
+  }
+  Ok(steps)
+}
+
+fn max_x(steps: &[Value]) -> i64 {
+  steps.iter().filter_map(|s| s["x"].as_i64()).max().unwrap_or(0)
+}
+
+fn death_x(steps: &[Value]) -> Value {
+  steps.iter().find(|s| s["dead"] == true).map_or(Value::Null, |s| s["x"].clone())
+}
+
+/// The informative windows and buttons of each demonstration, read by `window`.
+fn windows_with(ctx: &FilmContext, demos: &[Demonstration], window: fn(&mut NesEmulator) -> Vec<u8>) -> (Vec<Vec<Vec<u8>>>, Vec<Vec<u8>>) {
+  demos
+    .iter()
+    .map(|demo| {
+      let mut smb = smb_at(ctx, demo.stage, demo.noops);
+      let (mut ws, mut bs) = (Vec::new(), Vec::new());
+      for &action in &demo.buttons {
+        let w = window(&mut smb);
+        if !smb_in_cutscene(&mut smb) {
+          ws.push(w);
+          bs.push(action);
+        }
+        smb.step_frames(action, MACRO_FRAMES);
+      }
+      (ws, bs)
+    })
+    .unzip()
+}
+
+/// Search four features over `pool`, score them held out, fit their one-hot
+/// readout on everything and drive 1-1 with it, frames to `stream`.
+fn search_and_drive(
+  ctx: &FilmContext,
+  demos: &[Demonstration],
+  window: fn(&mut NesEmulator) -> Vec<u8>,
+  pool: &[Feature],
+  label: &str,
+  w: &mut TakeWriter,
+  stream: &str,
+) -> Result<Value, String> {
+  let config = ExperimentConfig::default();
+  let (windows, buttons) = windows_with(ctx, demos, window);
+  let mask = active_bits(&buttons.concat());
+  let features = search_features_in(pool, &windows, &buttons, config.lambda, config.logistic, mask, &mut |l| {
+    eprintln!("{} {}", label, l)
+  });
+  let metrics = super::search::score(&features, &windows, &buttons, config.lambda, config.logistic, mask)?;
+  let encoder = Encoder::Searched(features);
+  let rows: Vec<Vec<f32>> = windows.iter().flatten().map(|win| onehot_row(&encode(encoder, win))).collect();
+  let targets: Vec<Vec<f32>> = buttons.iter().flatten().map(|&b| buttons_to_targets(b)).collect();
+  let readout = fit_readout(&rows, &targets, config.lambda, config.logistic)?;
+  let noops = episode_noops(0, demos.len(), config.noop_max);
+  let row = move |smb: &mut NesEmulator| onehot_row(&encode(encoder, &window(smb)));
+  let steps = drive(ctx, &readout, noops, &row, Some((w, stream)))?;
+  let position = |f: &Feature| f.relative || f.address == 0x6D || f.address == 0x86;
+  let controller = |f: &Feature| (0x0A..=0x0D).contains(&f.address);
+  Ok(json!({
+    "features": features.iter().map(|f| json!({
+      "describe": f.describe(), "address": f.address, "relative": f.relative,
+      "position": position(f), "controller": controller(f),
+    })).collect::<Vec<_>>(),
+    "held_out_onsets": metrics.onset_recall,
+    "held_out_a_accuracy": metrics.a_accuracy,
+    "a_specificity": metrics.a_specificity,
+    "noops": noops, "max_x": max_x(&steps), "death_x": death_x(&steps), "steps": steps,
+  }))
+}
+
+/// Mistake 1, as it happened: windows that still held the game's own reading
+/// of the controller. On the beam-search examples, scored the way the
+/// experiment then scored (accuracy over every button the examples use), a
+/// raw readout fitted with and without those four bytes; then the leaky one
+/// drives.
+fn controller_leak(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String> {
+  let config = ExperimentConfig::default();
+  let demos = ctx.demos("tetris-reservoir-demos", 6)?;
+  let mut report = serde_json::Map::new();
+  let noops = episode_noops(0, demos.len(), config.noop_max);
+  for (name, window) in [("leaky", smb_window_leaky as fn(&mut NesEmulator) -> Vec<u8>), ("honest", smb_window)] {
+    let (rows, targets, truth) = raw_dataset(ctx, &demos[1..], window);
+    let readout = fit_readout(&rows, &targets, config.lambda, config.logistic)?;
+    let (rows0, _, truth0) = raw_dataset(ctx, &demos[..1], window);
+    let mask = active_bits(&truth);
+    let pred: Vec<u8> = rows0.iter().map(|r| outputs_to_buttons(&readout.predict(r))).collect();
+    let accuracy = bit_accuracy(&pred, &truth0, mask);
+    let row = move |smb: &mut NesEmulator| feature_row(&window(smb), None);
+    let sink = if name == "leaky" { Some((&mut *w, "drive")) } else { None };
+    let steps = drive(ctx, &readout, noops, &row, sink)?;
+    report.insert(
+      name.into(),
+      json!({"held_out_accuracy": accuracy, "max_x": max_x(&steps), "death_x": death_x(&steps), "steps": steps}),
+    );
+  }
+  report.insert("noops".into(), json!(noops));
+  // The search as it then was: the single feature whose one-hot readout has
+  // the best held-out accuracy, over the leaky windows.
+  let (windows, buttons) = windows_with(ctx, &demos, smb_window_leaky);
+  let mask = active_bits(&buttons.concat());
+  let (accuracy, pick) = first_pick_by_accuracy(&super::search::candidates(), &windows, &buttons, mask, config.lambda)?;
+  report.insert(
+    "first_pick".into(),
+    json!({"describe": pick.describe(), "address": pick.address, "controller": (0x0A..=0x0D).contains(&pick.address), "held_out_accuracy": accuracy}),
+  );
+  Ok(Value::Object(report))
+}
+
+/// The one feature from `pool` whose one-hot readout scores the best
+/// leave-one-out accuracy, across threads: (accuracy, feature).
+fn first_pick_by_accuracy(pool: &[Feature], windows: &[Vec<Vec<u8>>], buttons: &[Vec<u8>], mask: u8, lambda: f64) -> Result<(f64, Feature), String> {
+  let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+  let chunk = pool.len().div_ceil(threads).max(1);
+  std::thread::scope(|s| {
+    let handles: Vec<_> = pool
+      .chunks(chunk)
+      .map(|chunk| {
+        s.spawn(move || {
+          chunk
+            .iter()
+            .filter_map(|&f| {
+              super::search::score(&[f], windows, buttons, lambda, false, mask)
+                .ok()
+                .map(|m| (m.accuracy, f))
+            })
+            .fold(
+              None,
+              |best: Option<(f64, Feature)>, c| if best.map_or(true, |b| c.0 > b.0) { Some(c) } else { best },
+            )
+        })
+      })
+      .collect();
+    handles
+      .into_iter()
+      .filter_map(|h| h.join().expect("pick worker panicked"))
+      .fold(
+        None,
+        |best: Option<(f64, Feature)>, c| if best.map_or(true, |b| c.0 > b.0) { Some(c) } else { best },
+      )
+      .ok_or_else(|| "no candidate scored".to_string())
+  })
+}
+
+/// Mistake 2, as it happened: a clock counted from Mario's first move. Every
+/// example starts moving at step 0, so the clock lines them all up and can
+/// replay the teacher by heart. Beside it, the clock counted from the level's
+/// start, as it is now.
+fn clock_late_start(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String> {
+  let config = ExperimentConfig::default();
+  let demos = ctx.demos(RULE_CACHE, config.demonstrations)?;
+  let mut report = serde_json::Map::new();
+  for (name, from_level_start) in [("buggy", false), ("fixed", true)] {
+    let clock = move |noops: usize, step: usize| super::features::clock_row(if from_level_start { super::level_step(noops, step) } else { step });
+    let (mut rows, mut targets) = (Vec::new(), Vec::new());
+    for demo in &demos {
+      let mut smb = smb_at(ctx, demo.stage, demo.noops);
+      for (step, &action) in demo.buttons.iter().enumerate() {
+        if !smb_in_cutscene(&mut smb) {
+          rows.push(clock(demo.noops, step));
+          targets.push(buttons_to_targets(action));
+        }
+        smb.step_frames(action, MACRO_FRAMES);
+      }
+    }
+    let readout = fit_readout(&rows, &targets, config.lambda, config.logistic)?;
+    // An idle offset between the examples', as the experiment's episodes use.
+    let noops = episode_noops(0, demos.len(), config.noop_max);
+    let step = std::cell::Cell::new(0usize);
+    let row = |_: &mut NesEmulator| {
+      let r = clock(noops, step.get());
+      step.set(step.get() + 1);
+      r
+    };
+    let steps = drive(ctx, &readout, noops, &row, Some((&mut *w, name)))?;
+    report.insert(
+      name.into(),
+      json!({"noops": noops, "max_x": max_x(&steps), "death_x": death_x(&steps), "steps": steps}),
+    );
+  }
+  Ok(Value::Object(report))
+}
+
+/// Mistake 3, as it happened: the search over a pool where any byte could be
+/// read relative to Mario's x (his position in disguise), on the 1-1 rule
+/// examples it was run on (run 30's teacher, 40,3,3,9).
+fn memoriser(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String> {
+  let demos = ctx.demos("tetris-reservoir-demos-rule", ExperimentConfig::default().demonstrations)?;
+  search_and_drive(ctx, &demos, smb_window, &candidates_with_position(), "memoriser", w, "drive")
+}
+
 /// A random address in the zero page or $0200-$07FF, never the stack page
 /// and never $0770-$077F, which switch the game's modes.
 fn noise_address(rng: &mut Lcg) -> u16 {
@@ -841,6 +1081,28 @@ mod tests {
     let d = coin["disagree"].as_f64().unwrap();
     assert!((0.0..=1.0).contains(&d));
     assert_eq!(read_meta(&out, "rule_tripwires")["cleared"], true, "the rule clears 1-1");
+    let _ = std::fs::remove_dir_all(&out);
+  }
+
+  #[test]
+  #[ignore = "needs the ROMs and the 1-1 rule cache; minutes"]
+  fn the_fooled_takes_record() {
+    let ctx = FilmContext::load(
+      Path::new("roms2/super_mario_bros.nes"),
+      Path::new("roms2/tetris.nes"),
+      Path::new("target"),
+    )
+    .unwrap();
+    let out = std::env::temp_dir().join(format!("film-fooled-{}", std::process::id()));
+    for name in ["controller_leak", "clock_late_start", "memoriser"] {
+      record(&ctx, name, &out).unwrap();
+    }
+    let leak = read_meta(&out, "controller_leak");
+    assert!(leak["leaky"]["held_out_accuracy"].as_f64().unwrap() > 0.0);
+    assert!(leak["first_pick"]["describe"].is_string());
+    let clock = read_meta(&out, "clock_late_start");
+    assert!(clock["buggy"]["max_x"].as_i64().is_some() && clock["fixed"]["max_x"].as_i64().is_some());
+    assert_eq!(read_meta(&out, "memoriser")["features"].as_array().unwrap().len(), 4);
     let _ = std::fs::remove_dir_all(&out);
   }
 }
