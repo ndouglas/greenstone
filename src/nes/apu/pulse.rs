@@ -132,19 +132,16 @@ impl Pulse {
 
     let negate = (self.sweep & 0x08) != 0;
     if negate {
-      // Pulse 1 uses one's complement (subtract change + 1)
-      // Pulse 2 uses two's complement (subtract change)
-      if self.channel == 1 {
-        self.sweep_target_period = self.timer_period.wrapping_sub(change).wrapping_sub(1);
-      } else {
-        self.sweep_target_period = self.timer_period.wrapping_sub(change);
-      }
+      // Pulse 1 subtracts one more than pulse 2 (ones' complement). A
+      // negated target cannot overflow on hardware, so it saturates at 0.
+      let extra = if self.channel == 1 { 1 } else { 0 };
+      self.sweep_target_period = self.timer_period.saturating_sub(change + extra);
     } else {
       self.sweep_target_period = self.timer_period.wrapping_add(change);
     }
 
-    // Muting occurs if period < 8 or target period > 0x7FF
-    self.sweep_muting = self.timer_period < 8 || self.sweep_target_period > 0x7FF;
+    // Muting occurs if period < 8, or if an upward target passes 0x7FF.
+    self.sweep_muting = self.timer_period < 8 || (!negate && self.sweep_target_period > 0x7FF);
   }
 
   /// Tick the timer (called every APU cycle, which is every 2 CPU cycles)
@@ -273,5 +270,48 @@ impl Pulse {
     if !enabled {
       self.length_counter = 0;
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::nes::apu::LENGTH_TABLE;
+
+  /// A channel set to constant volume 15, 50% duty, halted length, at `period`.
+  fn playing(channel: u8, sweep: u8, period: u16) -> Pulse {
+    let mut p = Pulse::new(channel);
+    p.set_enabled(true);
+    p.write_duty_envelope(0b1011_1111);
+    p.write_sweep(sweep);
+    p.write_timer_low((period & 0xFF) as u8);
+    p.write_length_timer_high(0x08 | (period >> 8) as u8, &LENGTH_TABLE);
+    p
+  }
+
+  fn audible(p: &mut Pulse) -> bool {
+    let mut heard = false;
+    for _ in 0..8192 {
+      p.tick_timer();
+      heard |= p.output() > 0;
+    }
+    heard
+  }
+
+  #[test]
+  fn a_negated_sweep_with_shift_zero_does_not_mute_either_channel() {
+    assert!(audible(&mut playing(1, 0x08, 253)));
+    assert!(audible(&mut playing(2, 0x08, 253)));
+  }
+
+  #[test]
+  fn a_period_under_eight_mutes_even_when_negating() {
+    assert!(!audible(&mut playing(1, 0x08, 5)));
+  }
+
+  #[test]
+  fn an_upward_target_past_7ff_still_mutes() {
+    // Shift 0, no negate: the target is twice the period, 0x800.
+    assert!(!audible(&mut playing(1, 0x00, 0x400)));
   }
 }
