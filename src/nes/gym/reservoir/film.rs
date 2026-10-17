@@ -360,16 +360,34 @@ fn poke_enemy(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String> {
 
 /// Two scenes: bricks written into the map but not the screen, and ground
 /// erased from the map but not the screen.
+/// How many columns ahead of Mario the invisible wall goes.
+const WALL_AHEAD: usize = 4;
+
+/// Whether rows 8-10 (head to feet height above the ground) are empty in
+/// the `n` columns after `column`.
+fn open_ahead(smb: &mut NesEmulator, column: usize, n: usize) -> bool {
+  (column + 1..=column + n).all(|c| (8..=10).all(|r| smb.ram_read(block_address(c, r)) == 0))
+}
+
 fn poke_terrain(ctx: &FilmContext, w: &mut TakeWriter) -> Result<Value, String> {
   let rule = ctx.rule(RULE_CACHE)?;
   let mut scenes = serde_json::Map::new();
   for scene in ["wall", "floor"] {
     let mut smb = smb_for_rule(ctx)?;
     let mut player = Player::new(rule);
-    play_until(&mut smb, &mut player, 400, &mut |s| smb_x(s) >= 400 && on_ground(s))?;
+    if scene == "wall" {
+      // Open ground: nothing at Mario's height for the next five columns, so
+      // the only thing he can run into is the wall we write.
+      play_until(&mut smb, &mut player, 400, &mut |s| {
+        let x = smb_x(s);
+        x >= 100 && on_ground(s) && open_ahead(s, x as usize / 16, WALL_AHEAD + 1)
+      })?;
+    } else {
+      play_until(&mut smb, &mut player, 400, &mut |s| smb_x(s) >= 400 && on_ground(s))?;
+    }
     let column = smb_x(&mut smb) as usize / 16;
     let cells: Vec<(usize, usize, u8)> = match scene {
-      "wall" => (8..=10).map(|r| (column + 3, r, 0x51)).collect(),
+      "wall" => (8..=10).map(|r| (column + WALL_AHEAD, r, 0x51)).collect(),
       _ => [2, 3].iter().flat_map(|&d| [(column + d, 11, 0), (column + d, 12, 0)]).collect(),
     };
     let mut pokes = Vec::new();
@@ -1296,6 +1314,33 @@ mod tests {
       assert!(meta["streams"].as_object().unwrap().values().all(|n| n.as_u64().unwrap() > 0), "{}", name);
     }
     assert_eq!(read_meta(&out, "lives_glyphs")["streams"]["screen"], 256);
+    let _ = std::fs::remove_dir_all(&out);
+  }
+
+  #[test]
+  #[ignore = "needs the ROMs and target/tetris-reservoir-demos-rule"]
+  fn the_invisible_wall_stands_on_open_ground() {
+    let ctx = FilmContext::load(
+      Path::new("roms2/super_mario_bros.nes"),
+      Path::new("roms2/tetris.nes"),
+      Path::new("target"),
+    )
+    .unwrap();
+    let out = std::env::temp_dir().join(format!("film-wall-{}", std::process::id()));
+    record(&ctx, "poke_terrain", &out).unwrap();
+    let wall = &read_meta(&out, "poke_terrain")["wall"];
+    for poke in wall["pokes"].as_array().unwrap() {
+      assert_eq!(poke["before"], 0, "the wall overwrote real terrain: {}", poke);
+    }
+    // He stops against the wall's left edge, not somewhere else.
+    let column = wall["pokes"][0]["column"].as_u64().unwrap();
+    let last = wall["x"].as_array().unwrap().last().unwrap().as_u64().unwrap();
+    assert!(
+      last < column * 16 && last + 16 >= column * 16,
+      "stopped at x {} for a wall at column {}",
+      last,
+      column
+    );
     let _ = std::fs::remove_dir_all(&out);
   }
 

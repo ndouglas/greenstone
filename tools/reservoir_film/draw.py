@@ -294,39 +294,60 @@ def arrow(img, a, b, colour=DIM, width=3):
         d.line((b, (b[0] - 14 * math.cos(ang + s), b[1] - 14 * math.sin(ang + s))), fill=colour, width=width)
 
 
+# Three of 1-1's own colour sets, light to dark (NES palette entries):
+# cloud, brick, question block and Mario.
+SMB_PALETTES = [
+    ((252, 252, 252), (60, 188, 252), (0, 88, 248)),
+    ((252, 188, 176), (200, 76, 12), (136, 20, 0)),
+    ((252, 160, 68), (228, 92, 16), (136, 20, 0)),
+    ((252, 160, 68), (216, 40, 0), (136, 112, 0)),
+]
+
+
 def glyph_tiles(screens, digit_box, size=16):
-    """The ones-digit tile of each lives screen past nine, tinted MATRIX green."""
+    """The ones-digit tile of each lives screen past nine, once per colour set
+    in SMB_PALETTES: a list of tile lists. The game draws them in three
+    shades over black; each shade maps, by brightness, to a set's light, mid
+    and dark colour, and black to the background."""
     x, y, w, h = digit_box
-    out = []
+    luts = []
+    for light, mid, dark in SMB_PALETTES:
+        lut = np.zeros((4, 3), dtype=np.uint8)
+        lut[0], lut[1], lut[2], lut[3] = BG, dark, mid, light
+        luts.append(lut)
+    shades = []
     for i in range(10, len(screens)):
         tile = np.asarray(screens[i])[y:y + 8, x:x + 8].astype(np.float32)
         lum = tile.mean(axis=2) / 255
         if lum.max() < 0.05:
             continue
-        rgb = (lum[..., None] * np.array(MATRIX, dtype=np.float32)).astype(np.uint8)
-        out.append(Image.fromarray(rgb).resize((size, size), Image.NEAREST))
-    return out
+        # Black, then the game's dark, mid and light shades (about 0.3, 0.6, 0.9).
+        shades.append(np.digitize(lum, [0.05, 0.45, 0.75]))
+    return [[Image.fromarray(lut[s]).resize((size, size), Image.NEAREST) for s in shades] for lut in luts]
 
 
-def rain(img, tiles, t, seed, speed=1.0, density=1.0):
-    """Columns of falling tiles; each column has its own speed and phase from
-    `seed`, and a tile's glyph changes as it falls."""
+def rain(img, sets, t, seed, speed=1.0, density=1.0):
+    """Columns of falling tiles; each column has its own speed, phase and
+    colour set (one of `sets`, lists of tiles) from `seed`, and a tile's glyph
+    changes as it falls."""
     rng = np.random.default_rng(seed)
-    size = tiles[0].size[0]
+    size = sets[0][0].size[0]
     cols = W // size
     speeds = rng.uniform(80, 260, cols) * speed
     phases = rng.uniform(0, H, cols)
     lengths = rng.integers(6, 22, cols)
-    picks = rng.integers(0, len(tiles), (cols, 64))
+    picks = rng.integers(0, len(sets[0]), (cols, 64))
     keep = rng.random(cols)
+    which = rng.integers(0, len(sets), cols)
     for c in range(cols):
         if keep[c] > density:
             continue
+        tiles = sets[which[c]]
         head = (phases[c] + speeds[c] * t) % (H + lengths[c] * size)
         for k in range(lengths[c]):
             y = int(head - k * size)
             if 0 <= y < H:
-                glyph = tiles[picks[c, (k + int(t * 8)) % 64]]
+                glyph = tiles[picks[c, (k + int(t * 8)) % 64] % len(tiles)]
                 shade = 1.0 - k / lengths[c]
                 if k > 0:
                     glyph = Image.eval(glyph, lambda v, s=shade: int(v * s))

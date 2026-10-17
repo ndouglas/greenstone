@@ -35,11 +35,35 @@ class Widgets(unittest.TestCase):
         self.assertEqual(img.getpixel((5, 5)), draw.BG, "an empty cell stays background")
 
     def test_rain_is_deterministic(self):
-        tiles = [Image.new("RGB", (16, 16), (255, 255, 255))] * 4
+        tiles = [[Image.new("RGB", (16, 16), (255, 255, 255))] * 4]
         a, b = draw.blank(), draw.blank()
         draw.rain(a, tiles, 1.5, seed=7)
         draw.rain(b, tiles, 1.5, seed=7)
         self.assertTrue(np.array_equal(np.asarray(a), np.asarray(b)))
+
+    def test_glyph_tiles_wear_smb_palettes_not_matrix_green(self):
+        # Eleven screens; each ones digit uses the game's four shades.
+        shades = [(0, 0, 0), (0, 102, 120), (76, 154, 236), (236, 238, 236)]
+        screens = np.zeros((11, 240, 256, 3), dtype=np.uint8)
+        for k in range(4):
+            screens[10, 0:8, 2 * k:2 * k + 2] = shades[k]
+        sets = draw.glyph_tiles(screens, (0, 0, 8, 8))
+        self.assertEqual(len(sets), len(draw.SMB_PALETTES))
+        for palette, tiles in zip(draw.SMB_PALETTES, sets):
+            used = set(map(tuple, np.asarray(tiles[0]).reshape(-1, 3)))
+            self.assertLessEqual(used, {draw.BG, *palette})
+            self.assertNotIn(draw.MATRIX, used)
+
+    def test_rain_gives_each_column_one_palette(self):
+        red = [Image.new("RGB", (16, 16), (255, 0, 0))]
+        blue = [Image.new("RGB", (16, 16), (0, 0, 255))]
+        img = draw.blank()
+        draw.rain(img, [red, blue], 1.5, seed=7)
+        a = np.asarray(img)
+        for c in range(W // 16):
+            col = a[:, c * 16:(c + 1) * 16].reshape(-1, 3)
+            reds, blues = (col[:, 0] > 100).any(), (col[:, 2] > 100).any()
+            self.assertFalse(reds and blues, f"column {c} mixes palettes")
 
     def test_bar_chart_draws_only_the_shown_rows(self):
         rows = [{"label": f"r{i}", "v": 0.1 * (i + 1)} for i in range(5)]

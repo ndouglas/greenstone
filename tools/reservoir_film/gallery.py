@@ -59,7 +59,7 @@ def frames():
     lives = takes["lives_glyphs"]
     tiles = draw.glyph_tiles(lives.frames("screen"), lives.meta["digit_box"])
     draw.rain(img, tiles, 3.0, seed=1)
-    out.append((f"rain ({len(tiles)} tiles)", img))
+    out.append((f"rain ({len(tiles[0])} tiles)", img))
 
     img = draw.blank()
     draw.ripple(img, (64, 40, 1150, 520), 6.0, [(1, 0.3, 0.4), (4, 0.6, 0.5), (5, 0.45, 0.3)])
