@@ -58,6 +58,10 @@ class Compile(unittest.TestCase):
         rest = round(60 / 120 * NES_FRAME_HZ)
         self.assertIn((rest, 0), vols, "the rest silences the pulse")
 
+    def test_an_empty_cue_is_an_error(self):
+        with self.assertRaisesRegex(ValueError, "no music"):
+            compile_cue(self.cue(), loops=0)
+
     def test_writes_are_sorted_and_deduplicated(self):
         _, writes = compile_cue(self.cue(), loops=2)
         self.assertEqual(writes, sorted(writes, key=lambda w: w[0]))

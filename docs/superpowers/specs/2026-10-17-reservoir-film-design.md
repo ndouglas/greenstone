@@ -164,8 +164,8 @@ Played on Greenstone's APU.
   a loop and an ending per cue. **Instruments** are FamiTracker-style
   per-frame macros: volume envelope, duty sequence, delayed vibrato,
   arpeggio, pitch slide.
-- **Channels:** pulse 1 melody, pulse 2 harmony or arpeggio, triangle bass
-  and kick (by a fast pitch drop), noise snare and hats. Mostly 25% and
+- **Channels:** pulse 1 melody, pulse 2 harmony or arpeggio, triangle bass,
+  noise kick, snare and hats. Mostly 25% and
   50% duty at moderate volume; 12.5% only as colour.
 - **The compiler** (`music/compile.py`) turns a cue into a register log,
   one line per write: frame, address, value. Note periods use the NTSC
@@ -187,14 +187,14 @@ Cues:
 | *The Lab* (original) | plinky, curious, mid tempo | chapters 2 and 4 |
 | *Korobeiniki* (traditional) | straight, then a fast triumphant variation | chapters 3 and 6 |
 | *Fooled Again* (original) | sneaky staccato minor | chapter 5 |
-| Bach, Minuet from French Suite No. 3 | thoughtful | chapters 7 and 8 |
+| Petzold, Minuet in G (BWV Anh. 114, long attributed to Bach) | thoughtful | chapters 7 and 8 |
 | *Coin Run* reprise | slow, triangle and one pulse | chapter 9 |
 
 Stings: a 1-up blip per poked life, a sweep-unit "wah-wah-wahhh" when a
 buggy build fails, a fanfare when the bank passes the Goomba pair, a
 death jingle when the simple brain dies. All originals.
 
-Melodies are original except Korobeiniki and Bach, both public domain.
+Melodies are original except Korobeiniki and Petzold's Minuet in G (long attributed to Bach), both public domain.
 Nothing is taken from Koji Kondo's or Hirokazu Tanaka's scores; the
 Mario-flavoured cues borrow a style, not a tune.
 

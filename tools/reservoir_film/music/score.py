@@ -133,7 +133,7 @@ def score(plan, stings, work_dir):
         parts.append(trim(render_cue(cue, loops, bpm, work_dir), seconds))
     mix = crossfade_join(parts)
     for at, sting in stings:
-        s = render_cue(sting, 0, sting.bpm, work_dir)
+        s = render_cue(sting, 1, sting.bpm, work_dir)
         i = round(at * SAMPLE_RATE)
         j = min(len(mix), i + len(s))
         mix[i:j] += s[: j - i]

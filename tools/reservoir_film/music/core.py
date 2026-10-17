@@ -130,6 +130,8 @@ def compile_cue(cue, loops, bpm=None):
                 by_channel[part.channel].append((start, l, pitch, part.instrument))
         beat += length
     total = _frame(beat, bpm)
+    if total == 0:
+        raise ValueError(f"cue {cue.name} has no music at {loops} loops")
     writes, last = [(0, 0x4015, 0x0F), (0, 0x4017, 0x40)], {}
 
     def put(frame, address, value, force=False):
