@@ -36,3 +36,9 @@ class Chapters(unittest.TestCase):
 
     def test_chapter_3(self):
         self.check(3)
+
+    def test_chapter_4(self):
+        self.check(4)
+
+    def test_chapter_5(self):
+        self.check(5)
