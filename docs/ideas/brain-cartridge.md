@@ -700,6 +700,85 @@ into one that generalises. The next things to try are more
 demonstrations per level, so the bank's appetite for coverage is fed
 on both, and a readout fitted on both levels but scored on a third.
 
+Result (2026-10-16, heights, a hold bit, and a level nobody trained on,
+run 38): three tests of what the game actually contributes. The heights
+readout (`bank-heights`, `bank-tidy-heights`) reads each board's ten
+column heights instead of its 200 cells, forty numbers for the bank,
+on the theory that the game's gift is leaky counts of recent input and
+the cell pattern is what lets a readout memorise a layout. The hold
+control (`bank-hold`) is the bank's one-hots plus one bit, A held last
+step, on the theory that the game's closed-loop gain is just a record
+of having pressed. And `--test-stages=4-1` plays the rule on a level
+kept out of every search and fit, scores onsets there (`test`), and
+runs three episodes there (`test x`). The rule reaches about x 1857 on
+4-1 from each offset, dying at the Lakitu section, and its three test
+demonstrations hold 15 press onsets between them.
+
+```
+trained on 1-1 and 6-1 (three demonstrations each), 4-1 held out entirely (run 38)
+condition                  | A acc | onset | cross | test  | mean x | test x | resets
+clock                      | 0.592 | 0.233 | 0.308 | 0.133 |  487.8 | 1016.3 |      0
+raw                        | 0.881 | 0.135 | 0.150 | 0.000 |  324.4 |  470.0 |      0
+random-a                   | 0.555 | 0.353 |     - |     - |  644.0 |  441.3 |      0
+random-tanh                | 0.927 | 0.466 | 0.609 | 0.467 |  532.4 | 1572.0 |      0
+echo-state                 | 0.967 | 0.684 | 0.391 | 0.667 | 1202.8 |  509.3 |      0
+searched-onehot            | 0.819 | 0.797 | 0.669 | 0.800 |  367.4 | 1634.0 |      0
+bank-onehot                | 0.930 | 0.489 | 0.504 | 0.400 |  324.2 |  457.0 |      0
+bank-hold                  | 0.935 | 0.504 | 0.481 | 0.400 |  324.6 |  535.0 |      0
+bank-tetris                | 0.941 | 0.707 | 0.308 | 0.533 |  548.6 |  447.0 |   3931
+bank-tidy                  | 0.940 | 0.805 | 0.406 | 0.333 |  430.4 | 1312.0 |   4357
+bank-heights               | 0.776 | 0.165 | 0.195 | 0.000 |  324.4 |  540.0 |   3840
+bank-tidy-heights          | 0.743 | 0.301 | 0.323 | 0.133 |  393.2 | 1634.0 |   4389
+bank-searched-onehot       | 0.895 | 0.917 | 0.684 | 0.733 |  602.8 |  472.0 |      0
+bank-searched-hold         | 0.936 | 0.301 | 0.180 | 0.200 |  488.4 |  535.0 |      0
+bank-searched-tetris       | 0.859 | 0.729 | 0.451 | 0.333 | 1125.0 |  736.7 |   3757
+bank-searched-tidy         | 0.863 | 0.744 | 0.459 | 0.667 |  800.2 | 1500.3 |   4218
+bank-searched-heights      | 0.673 | 0.263 | 0.256 | 0.000 |  498.0 |  322.0 |   5017
+bank-searched-tidy-heights | 0.668 | 0.293 | 0.211 | 0.133 |  494.4 |  322.0 |   6168
+  every row but the heights, hold and test columns matches run 34
+```
+
+Both theories failed, and the way they failed is the finding.
+
+The heights readout starts almost no jumps: 0.165 to 0.301 within a
+level and 0.000 to 0.133 on 4-1, below the clock. So what the game
+gives the readout is not an amount of recent input but the cell
+pattern, and mostly the newest part of it: where this step's pieces
+landed and in what orientation, which is this step's encoding made
+readable, with a little of the last few steps mixed in below it.
+Heights throw that away, because a piece landing in a column raises
+its height by an amount that depends on the stack beneath it, so the
+same input moves the heights differently every time.
+
+The hold bit adds nothing for the hand bank (0.504 onsets against
+0.489, the same closed loop) and is harmful for the searched one
+(0.301 against 0.917): with "A was down" available, least squares
+explains most of the held steps with it and the onset response
+shrinks under the threshold. It does not reproduce the game's
+closed-loop gain anywhere (searched bank 1125 through Tetris, 488
+with the bit). Tetris is not supplying one bit.
+
+On the level nobody trained on, the best onset recall is the
+memoryless one-hot of the four searched features, 0.800, then the
+sixteen searched one-hots at 0.733, then the echo state and the
+tidied searched bank level at 0.667. With 15 onsets the standard
+error is about 0.12, so that is a tie between the top four and a
+clear gap to raw bytes (0.000), the clock (0.133) and the heights.
+The closed loop on 4-1 does not rank anything: the clock reaches
+1016 and a heights readout that starts two jumps in fifteen reaches
+1634, because 4-1's first screens can be crossed by mistimed jumping.
+
+What this says about the idea, 38 runs in: a Tetris bank is a fair
+nonlinear encoder of whatever it is fed, about as good as a 2,048-unit
+echo state at turning the right features into jump onsets on a level
+it never saw, and better than either at surviving the levels it was
+fitted on. It is not a memory in any sense a readout can use beyond
+the last step or two, and the features fed to it matter far more than
+the game: the same four searched features read straight as one-hots
+are the best single row on the unseen level. A test set of 15 onsets
+cannot separate the leaders; more test levels, or more offsets on 4-1,
+are what would.
+
 A captioned explainer video of the experiment, six chapters ending with
 the whole level in real time, is built by `examples/reservoir_dump.rs`
 followed by `tools/reservoir_video.py`; see
