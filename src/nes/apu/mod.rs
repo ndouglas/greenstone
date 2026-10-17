@@ -17,6 +17,7 @@
 
 pub mod noise;
 pub mod pulse;
+pub mod render;
 pub mod triangle;
 
 use noise::Noise;
