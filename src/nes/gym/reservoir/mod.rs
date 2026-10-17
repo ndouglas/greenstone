@@ -6,6 +6,7 @@ pub mod demo;
 pub mod drive;
 pub mod encode;
 pub mod features;
+pub mod film;
 pub mod logistic;
 pub mod ridge;
 pub mod search;
