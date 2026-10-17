@@ -15,7 +15,8 @@ NUMBERS = Path(__file__).resolve().parent / "numbers.json"
 W, H, FPS = 1280, 720, 60
 TITLE_SECONDS = 4.0
 NES_W, NES_H = 256, 240
-REF = re.compile(r"\{([a-z0-9_]+)\.([A-Za-z0-9_.]+)(?::([^}]+))?\}")
+REF = re.compile(r"\{([a-z0-9_]+)\.([A-Za-z0-9_.\-]+)(?::([^}]+))?\}")
+UNFILLED = re.compile(r"\{[^}]*\}")
 
 
 class Frames:
@@ -153,6 +154,8 @@ def check_captions(chapter, ctx):
     problems = []
     for shot in chapter.shots:
         for start, stop, text in caption_spans(shot, ctx):
+            if UNFILLED.search(text):
+                problems.append(f"chapter {chapter.number}, shot {shot.name}: '{text}' has an unfilled reference")
             need = reading_seconds(text)
             if stop - start + 1e-9 < need:
                 problems.append(f"chapter {chapter.number}, shot {shot.name}: '{text}' shows {stop - start:.1f} s, needs {need:.1f} s")

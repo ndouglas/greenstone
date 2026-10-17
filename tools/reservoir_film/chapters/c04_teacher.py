@@ -90,7 +90,7 @@ CHAPTER = Chapter(4, "The teacher was flipping coins", "Where the examples came 
         Caption(6, "Jump when an enemy is close."),
         Caption(10, "Or a pit is ahead."),
         Caption(14, "Or a wall."),
-        Caption(18, "It clears the level, the same way every time."),
+        Caption(18, "It jumps the same way every time, and clears the level from most starts."),
     ], takes=("rule_tripwires",)),
     Shot("score", 12, score, [
         Caption(0, "The score that matters: when the teacher started a jump, did the brain start one too?"),

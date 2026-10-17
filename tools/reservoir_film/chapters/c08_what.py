@@ -67,12 +67,12 @@ CHAPTER = Chapter(8, "So what is Tetris doing?", "Two theories", [
     Shot("theory1", 20, theory1, [
         Caption(0, "Theory one: Tetris remembers how much happened lately, in how tall the stacks are."),
         Caption(8, "Give a brain only the heights, and test it."),
-        Caption(14, "It almost never jumps. The heights aren't it."),
+        Caption(14, "It almost never jumps when the teacher does. The heights aren't it."),
     ], takes=("heights",)),
     Shot("theory2", 20, theory2, [
         Caption(0, "Theory two: Tetris just remembers 'I was jumping a moment ago'."),
         Caption(8, "Give a brain without Tetris that one bit of memory instead."),
-        Caption(14, "It doesn't come close. Tetris isn't one bit."),
+        Caption(14, "The bit makes it worse, at timing and at distance. Tetris isn't one bit."),
     ], takes=("hold_bit",)),
     Shot("answer", 24, answer, [
         Caption(0, "What the brain really reads is where this step's pieces just landed."),

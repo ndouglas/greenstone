@@ -81,7 +81,8 @@ def tidy(ctx, t, i):
 
 
 def tidy_caption(ctx):
-    if bank(ctx).meta["best"]["tidy"]:
+    means = {c["name"]: c["mean_x"] for c in bank(ctx).meta["conditions"]}
+    if means["bank-tidy"] > means["bank-tetris"]:
         return "A fifth piece that tidies each board, filling its lowest gap, helped the games last."
     return "We also tried a fifth piece that tidies each board. Here, the plain four drove further."
 
@@ -128,10 +129,18 @@ def noise(ctx, t, i):
     rows = [{"label": f"shaken by up to {lv['jitter']}", "v": lv["mean_x"]} for lv in meta["levels"]]
     top = max(r["v"] for r in rows) or 1
     draw.bar_chart(img, (40, 60, 760, 300), rows, "v", "label", shown=len(rows), fmt="x {:.0f}", max_value=top)
-    draw.text(img, (40, 30), "how far it gets, on average", 22, draw.DIM)
+    draw.text(img, (40, 30), f"{shaken_bank(ctx)}: how far it gets, on average", 22, draw.DIM)
     draw.nes(img, ctx.takes["bank_noise"].frames("jitter32")[FADE_IN + i], (860, 60, 384, 360))
     draw.text(img, (1052, 430), "shaken by up to 32", 20, draw.DIM, anchor="ma")
     return img
+
+
+def shaken_bank(ctx):
+    return "the tidy bank" if ctx.takes["bank_noise"].meta["condition"] == "bank-tidy" else "the four games"
+
+
+def noise_intro(ctx):
+    return f"Now shake the numbers going into {shaken_bank(ctx)}."
 
 
 def noise_caption(ctx):
@@ -164,7 +173,7 @@ CHAPTER = Chapter(6, "Four Tetris games", "A bank of boards", [
         Caption(28, ""),
     ], takes=("bank_drive",), stings=drive_stings),
     Shot("noise", 16, noise, [
-        Caption(0, "Shake its numbers a little, and it still plays."),
+        Caption(0, noise_intro),
         Caption(8, noise_caption),
     ], takes=("bank_noise",)),
     Shot("best", 8, best_card, [

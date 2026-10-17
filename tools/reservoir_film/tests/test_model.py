@@ -54,6 +54,10 @@ class TakesTest(unittest.TestCase):
         with self.assertRaisesRegex(KeyError, "walk.none"):
             fill("{walk.none}", self.takes, {})
 
+    def test_fill_reads_hyphenated_keys(self):
+        numbers = {"hold": {"bank-hold": {"onset": 0.5}}}
+        self.assertEqual(fill("{numbers.hold.bank-hold.onset}", self.takes, numbers), "0.5")
+
 
 class CaptionsTest(unittest.TestCase):
     def test_reading_time(self):
@@ -73,3 +77,10 @@ class CaptionsTest(unittest.TestCase):
         problems = check_captions(Chapter(1, "T", "", [shot]), ctx)
         self.assertEqual(len(problems), 1)
         self.assertIn("A caption of exactly six words", problems[0])
+
+    def test_a_reference_left_unfilled_is_a_problem(self):
+        ctx = Context(takes=None, numbers={})
+        shot = Shot(name="s", seconds=10, draw=None, captions=[Caption(0, "It reached x {oops}.")])
+        problems = check_captions(Chapter(1, "T", "", [shot]), ctx)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("{oops}", problems[0])

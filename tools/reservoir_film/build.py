@@ -6,7 +6,7 @@ the chapter markers, and the final MP4.
 
 import argparse
 import hashlib
-import inspect
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -60,13 +60,14 @@ def segment_key(chapter, ctx, sources, take_times):
     h.update(repr([(s.name, shot_seconds(s, ctx), [(c.at, c.text if isinstance(c.text, str) else "fn")
                                                   for c in s.captions]) for s in chapter.shots]).encode())
     h.update(repr(sorted(take_times.items())).encode())
+    h.update(json.dumps(ctx.numbers, sort_keys=True).encode())
     return h.hexdigest()
 
 
 def _sources(chapter):
-    module = sys.modules[chapter.shots[0].draw.__module__] if chapter.shots and chapter.shots[0].draw else None
+    # Every chapter module, since chapters borrow helpers from each other.
     text = (HERE / "draw.py").read_text() + (HERE / "model.py").read_text()
-    return text + (inspect.getsource(module) if module else "")
+    return text + "".join(p.read_text() for p in sorted((HERE / "chapters").glob("*.py")))
 
 
 def _take_times(chapter, ctx):
@@ -158,7 +159,7 @@ def main():
     chosen = [c for c in CHAPTERS if not args.chapter or c.number in args.chapter]
     problems = [p for c in chosen for p in check_captions(c, ctx)]
     if problems:
-        sys.exit("captions too short to read:\n" + "\n".join(problems))
+        sys.exit("caption problems:\n" + "\n".join(problems))
     if args.contact:
         for c in chosen:
             contact_sheet(c, ctx)

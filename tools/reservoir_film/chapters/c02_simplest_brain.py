@@ -95,7 +95,7 @@ def death_sting(ctx):
 
 def death_caption(ctx):
     if weights_meta(ctx)["death_x"] is not None:
-        return "It dies at x {simple_brain_drives.death_x}, every time."
+        return "It dies at x {simple_brain_drives.death_x}."
     return "It never gets anywhere."
 
 

@@ -33,3 +33,13 @@ class Build(unittest.TestCase):
         self.assertNotEqual(a, build.segment_key(chapter(1, 11), CTX, sources="code v1", take_times={"t": 1.0}))
         self.assertNotEqual(a, build.segment_key(chapter(1, 10), CTX, sources="code v2", take_times={"t": 1.0}))
         self.assertNotEqual(a, build.segment_key(chapter(1, 10), CTX, sources="code v1", take_times={"t": 2.0}))
+
+    def test_segment_key_changes_with_the_numbers(self):
+        a = build.segment_key(chapter(1, 10), Context(takes=None, numbers={"n": 1}), sources="v", take_times={})
+        b = build.segment_key(chapter(1, 10), Context(takes=None, numbers={"n": 2}), sources="v", take_times={})
+        self.assertNotEqual(a, b)
+
+    def test_sources_include_modules_a_chapter_borrows_from(self):
+        from reservoir_film.chapters import CHAPTERS
+        c00 = (build.HERE / "chapters" / "c00_cold_open.py").read_text()
+        self.assertIn(c00, build._sources(CHAPTERS[1]))
