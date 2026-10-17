@@ -91,9 +91,21 @@ pub fn terrain_ahead(zero_page: &[u8], buffer_1: &[u8], buffer_2: &[u8]) -> Vec<
 
 /// The zero page with the controller bytes hidden, then the terrain ahead of Mario.
 pub fn smb_window(emu: &mut NesEmulator) -> Vec<u8> {
+  window_with(emu, true)
+}
+
+/// The window with the controller bytes left in: the leak the first readouts
+/// learned from. Only the film uses it, to show the bug.
+pub fn smb_window_leaky(emu: &mut NesEmulator) -> Vec<u8> {
+  window_with(emu, false)
+}
+
+fn window_with(emu: &mut NesEmulator, hide_inputs: bool) -> Vec<u8> {
   let mut window = emu.ram_read_range(SMB_WINDOW_START, SMB_ZERO_PAGE_LEN);
-  for &address in &SMB_INPUT_BYTES {
-    window[(address - SMB_WINDOW_START) as usize] = 0;
+  if hide_inputs {
+    for &address in &SMB_INPUT_BYTES {
+      window[(address - SMB_WINDOW_START) as usize] = 0;
+    }
   }
   let buffer_1 = emu.ram_read_range(SMB_BLOCK_BUFFER_1, SMB_BLOCK_BUFFER_LEN);
   let buffer_2 = emu.ram_read_range(SMB_BLOCK_BUFFER_2, SMB_BLOCK_BUFFER_LEN);
@@ -438,6 +450,26 @@ pub fn beam_search(rom: &[u8], start: &[u8], noops: usize, beam: usize, max_roun
 mod tests {
   use super::*;
   use crate::nes::gym::reservoir::rom_or_skip;
+
+  #[test]
+  fn the_leaky_window_keeps_the_controller_bytes_and_the_default_hides_them() {
+    let rom = match rom_or_skip("roms2/super_mario_bros.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let mut emu = NesEmulator::new(&rom);
+    emu.load_state(&smb_start_state_at(&rom, Stage::ONE_ONE));
+    for address in SMB_INPUT_BYTES {
+      emu.ram_write(address, 0x5A);
+    }
+    let hidden = smb_window(&mut emu);
+    let leaky = smb_window_leaky(&mut emu);
+    for address in SMB_INPUT_BYTES {
+      assert_eq!(hidden[address as usize], 0);
+      assert_eq!(leaky[address as usize], 0x5A);
+    }
+    assert_eq!(hidden.len(), leaky.len());
+  }
 
   fn cand(x: i32, dead: bool) -> Candidate {
     Candidate {

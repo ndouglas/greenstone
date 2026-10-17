@@ -58,6 +58,29 @@ const ENEMY_ARRAYS: [u16; 5] = [0x000F, 0x0016, 0x006E, 0x0087, 0x00CF];
 /// Terrain columns ahead of Mario in the near region; the rest are far.
 const NEAR_COLUMNS: usize = 4;
 
+/// Every window byte, absolute and relative to Mario's x, Mario's own
+/// position bytes included, and the enemy distance: the pool before the
+/// fix, where a byte minus Mario's x is his position in disguise. Only the
+/// film uses it, to show the memoriser.
+pub fn candidates_with_position() -> Vec<Feature> {
+  let mut out = Vec::new();
+  for address in 0..SMB_WINDOW_LEN as u16 {
+    for relative in [false, true] {
+      for shift in SHIFTS {
+        out.push(Feature { address, relative, shift });
+      }
+    }
+  }
+  for shift in SHIFTS {
+    out.push(Feature {
+      address: ENEMY_DISTANCE,
+      relative: false,
+      shift,
+    });
+  }
+  out
+}
+
 /// A part of the window, for a board of the bank to watch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Region {
@@ -210,10 +233,22 @@ pub fn search_features(
   mask: u8,
   log: &mut dyn FnMut(&str),
 ) -> [Feature; PIECES_PER_STEP] {
-  let pool = candidates();
+  search_features_in(&candidates(), windows, buttons, lambda, logistic, mask, log)
+}
+
+/// `search_features` over a given pool.
+pub fn search_features_in(
+  pool: &[Feature],
+  windows: &[Vec<Vec<u8>>],
+  buttons: &[Vec<u8>],
+  lambda: f64,
+  logistic: bool,
+  mask: u8,
+  log: &mut dyn FnMut(&str),
+) -> [Feature; PIECES_PER_STEP] {
   let mut chosen: Vec<Feature> = Vec::new();
   for _ in 0..PIECES_PER_STEP {
-    let best = best_pick(&chosen, &pool, windows, buttons, lambda, logistic, mask);
+    let best = best_pick(&chosen, pool, windows, buttons, lambda, logistic, mask);
     log(&format!(
       "pick {}: {}: held-out onsets {:.3}, A specificity {:.3}",
       chosen.len() + 1,
@@ -308,6 +343,16 @@ pub fn search_bank_encoder(
 mod tests {
   use super::*;
   use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_RIGHT};
+
+  #[test]
+  fn the_permissive_pool_admits_marios_position_and_the_default_does_not() {
+    let wide = candidates_with_position();
+    assert!(wide.iter().any(|f| f.address == 0x86 && !f.relative));
+    assert!(wide.iter().any(|f| f.address == 0x6D));
+    assert!(wide.iter().any(|f| f.address == 0x30 && f.relative), "relative reads of any byte");
+    assert!(!candidates().iter().any(|f| f.address == 0x86 || f.address == 0x6D));
+    assert!(wide.len() > candidates().len());
+  }
 
   /// Three demonstrations where A is pressed exactly when byte 0x33 is 0x50 or more.
   fn synthetic() -> (Vec<Vec<Vec<u8>>>, Vec<Vec<u8>>) {

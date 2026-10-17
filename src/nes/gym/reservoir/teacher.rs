@@ -134,28 +134,39 @@ fn terrain(window: &[u8], columns: usize, row: usize) -> u8 {
   window[SMB_ZERO_PAGE_LEN as usize + columns * BLOCK_ROWS + row]
 }
 
-/// What, if anything, the rule jumps for in this window. Only on the ground.
-pub fn trigger(rule: Rule, window: &[u8]) -> Option<Trigger> {
+/// Which of the rule's three reasons to jump hold in this window. All false in the air.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Tripwires {
+  pub enemy: bool,
+  pub pit: bool,
+  pub wall: bool,
+}
+
+pub fn tripwires(rule: Rule, window: &[u8]) -> Tripwires {
   if window[MARIO_AIRBORNE] != 0 {
-    return None;
+    return Tripwires::default();
   }
   let x = mario_x(window);
   let y = window[MARIO_Y] as i32;
-  let enemy_close = enemies(window)
+  let enemy = enemies(window)
     .iter()
     .any(|e| (0..rule.enemy_px).contains(&(e.x - x)) && (e.y as i32 - y).abs() <= ENEMY_DY);
-  if enemy_close {
-    return Some(Trigger::Enemy);
+  let ahead = 1..=rule.look.min(TERRAIN_COLUMNS - 1);
+  let pit = ahead.clone().any(|d| terrain(window, d, FOOT_ROW) == 0);
+  let wall = ahead.into_iter().any(|d| WALL_ROWS.clone().any(|row| terrain(window, d, row) != 0));
+  Tripwires { enemy, pit, wall }
+}
+
+/// What, if anything, the rule jumps for in this window. Only on the ground.
+pub fn trigger(rule: Rule, window: &[u8]) -> Option<Trigger> {
+  let t = tripwires(rule, window);
+  if t.enemy {
+    Some(Trigger::Enemy)
+  } else if t.pit || t.wall {
+    Some(Trigger::Obstacle)
+  } else {
+    None
   }
-  let obstacle = (1..=rule.look.min(TERRAIN_COLUMNS - 1)).any(|d| {
-    let pit = terrain(window, d, FOOT_ROW) == 0;
-    let wall = WALL_ROWS.clone().any(|row| terrain(window, d, row) != 0);
-    pit || wall
-  });
-  if obstacle {
-    return Some(Trigger::Obstacle);
-  }
-  None
 }
 
 /// The rule with its one piece of state: how many more steps A is held.
@@ -272,6 +283,24 @@ pub fn search_rule(rom: &[u8], offsets: &[(Stage, usize)], max_steps: usize, log
 mod tests {
   use super::*;
   use crate::nes::gym::reservoir::features::SMB_WINDOW_LEN;
+
+  #[test]
+  fn tripwires_report_all_three_and_trigger_agrees() {
+    let rule = Rule::parse("40,3,3,9").unwrap();
+    let mut w = vec![0u8; SMB_WINDOW_LEN];
+    // Ground everywhere ahead, then a pit two columns ahead.
+    for d in 0..TERRAIN_COLUMNS {
+      w[SMB_ZERO_PAGE_LEN as usize + d * BLOCK_ROWS + FOOT_ROW] = 0x54;
+    }
+    w[SMB_ZERO_PAGE_LEN as usize + 2 * BLOCK_ROWS + FOOT_ROW] = 0;
+    let t = tripwires(rule, &w);
+    assert!(t.pit && !t.wall && !t.enemy);
+    assert_eq!(trigger(rule, &w), Some(Trigger::Obstacle));
+    w[MARIO_AIRBORNE] = 1;
+    let t = tripwires(rule, &w);
+    assert!(!t.pit && !t.wall && !t.enemy, "nothing fires in the air");
+    assert_eq!(trigger(rule, &w), None);
+  }
 
   const RULE: Rule = Rule {
     enemy_px: 32,
