@@ -12,11 +12,60 @@ else's emulator can never have. Everything below descends from that.
 
 Status tags: `BUILD` means recommended and cheap, `LATER` means recommended
 but depends on something else, `WRITEUP` means worth doing for the story
-rather than the result, `DEPOSIT` means it belongs in ml-mad-science's grid.
+rather than the result, `DEPOSIT` means it belongs in ml-mad-science's grid,
+`PARKED` means built, answered as far as this machine can take it, and set
+aside.
 
 ## The six
 
-### 1. Tetris reservoir  `BUILD`
+### 1. Tetris reservoir  `PARKED`
+
+Verdict (2026-10-17, after 38 runs): **Tetris can learn to make Mario
+jump, about as well as a 2,048-unit echo state network, and it is not a
+memory.** A bank of four Tetris games, each driven by four features of
+Mario's RAM, turns those features into jump onsets on a level it never
+saw (4-1) about as well as the echo state, and it holds up better than
+the echo state across the levels it was fitted on. But everything the
+readout uses is where this step's pieces just landed. Column heights
+read almost nothing, and a single hold bit does not explain the game's
+closed-loop gain. The features chosen matter more than the game: the
+same four searched features read straight as one-hots tie for best on
+the unseen level.
+
+What held up:
+
+- Every Tetris readout clears the controls (clock, raw bytes, random
+  projections) on press onsets, so the boards are doing real nonlinear
+  work.
+- The controls caught three false wins along the way: a clock that
+  learned 1-1 by heart, bytes measured from Mario's x that were
+  position in disguise, and a feature search that memorised a level
+  through one-hots. Each is described in the results below.
+
+Why it is parked rather than continued:
+
+- The teacher is a hand-written rule, and the feature search finds the
+  bytes the rule reads, so the readout's best possible outcome is
+  copying a policy that already exists.
+- The held-out level has 15 press onsets, so the top four readouts are
+  a statistical tie (standard error about 0.12). More runs at this size
+  are noise.
+- The only thing Tetris could add that an ordinary encoder cannot is
+  memory, and the evidence says it does not.
+
+If it is picked up again, most likely with more hardware:
+
+1. **A task that needs memory.** A cue shown and then hidden, which the
+   agent must act on seconds later. If Tetris cannot carry that either,
+   the idea is finished; if it can, that is the interesting result.
+2. **Many more boards.** Hundreds of Tetris instances as a wide bank.
+   Skipping PPU rendering for the boards, and batching emulators on a
+   GPU in the manner of CuLE, would make that affordable.
+3. **A bigger test set.** More held-out levels or offsets, so the
+   leaders can be told apart.
+
+The record of how we got here follows, oldest first.
+
 
 Plug a commercial ROM in as the brain for Super Mario Bros. Hash the brain
 ROM's 2KB of RAM into eight button bits. That is reservoir computing: a
