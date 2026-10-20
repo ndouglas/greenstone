@@ -20,22 +20,21 @@ CLEARED = {"cleared_distance", "cleared_flag"}
 
 
 def load(root=ROOT):
+    """The deduplicated catalog `prospector rank` writes, the ranking and the calibration."""
     root = Path(root)
-    latest = {}
-    for line in (root / "catalog.jsonl").read_text().splitlines():
-        try:
-            e = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        latest[e["offset"]] = e
+    view = root / "catalog_view.jsonl"
+    if not view.exists():
+        raise SystemExit(f"no {view}; run: cargo run --release --example prospector -- rank")
+    entries = [json.loads(line) for line in view.read_text().splitlines() if line.strip()]
     ranking = json.loads((root / "ranking.json").read_text()) if (root / "ranking.json").exists() else []
     calibration = json.loads((root / "calibration.json").read_text()) if (root / "calibration.json").exists() else {}
-    return [latest[k] for k in sorted(latest)], ranking, calibration
+    return entries, ranking, calibration
 
 
 def sections(entries, ranking):
-    """(title, entries) in SECTION_TITLES order. Duplicates are left out;
-    cleared levels missing from the ranking go after the ranked ones."""
+    """(title, entries) in SECTION_TITLES order. Duplicates (marked by the
+    Rust side's dedupe) are left out; cleared levels missing from the
+    ranking go after the ranked ones."""
     by_offset = {e["offset"]: e for e in entries}
     ranked = {r["offset"] for r in ranking}
     leaders = [by_offset[r["offset"]] for r in ranking if r["offset"] in by_offset]

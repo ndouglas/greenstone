@@ -1,4 +1,7 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
 from prospector import sheet
 
@@ -41,6 +44,25 @@ class Sections(unittest.TestCase):
         self.assertIn("1-1", html)
         self.assertIn("$8007", html)
         self.assertTrue(html.startswith("<!doctype html>"))
+
+
+class Load(unittest.TestCase):
+    def test_load_reads_the_deduplicated_view_that_rank_writes(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            (root / "catalog.jsonl").write_text(json.dumps(entry(0x8000, "walked", fingerprint="aa")) + "\n")
+            (root / "catalog_view.jsonl").write_text(
+                json.dumps(entry(0x8000, "duplicate", fingerprint="aa", duplicate_of=0x8001)) + "\n"
+                + json.dumps(entry(0x8001, "walked", fingerprint="aa")) + "\n")
+            entries, ranking, calibration = sheet.load(root)
+            self.assertEqual([e["class"] for e in entries], ["duplicate", "walked"])
+            self.assertEqual((ranking, calibration), ([], {}))
+
+    def test_load_without_a_view_says_to_run_rank(self):
+        with tempfile.TemporaryDirectory() as root:
+            with self.assertRaises(SystemExit) as caught:
+                sheet.load(Path(root))
+            self.assertIn("rank", str(caught.exception))
 
 
 if __name__ == "__main__":

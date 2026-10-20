@@ -91,18 +91,47 @@ impl Entry {
   }
 }
 
+/// Append one line. A scan killed mid-write leaves a fragment with no
+/// newline; finish it first so the new line isn't glued onto it and lost.
 pub fn append(path: &Path, e: &Entry) -> Result<(), String> {
   if let Some(dir) = path.parent() {
     std::fs::create_dir_all(dir).map_err(|err| format!("create {}: {}", dir.display(), err))?;
   }
   let mut f = std::fs::OpenOptions::new()
     .create(true)
+    .read(true)
     .append(true)
     .open(path)
     .map_err(|err| format!("open {}: {}", path.display(), err))?;
   let mut line = serde_json::to_string(e).map_err(|err| err.to_string())?;
   line.push('\n');
+  if ends_unfinished(&mut f).map_err(|err| err.to_string())? {
+    line.insert(0, '\n');
+  }
   f.write_all(line.as_bytes()).map_err(|err| err.to_string())
+}
+
+fn ends_unfinished(f: &mut std::fs::File) -> std::io::Result<bool> {
+  use std::io::{Read, Seek, SeekFrom};
+  if f.metadata()?.len() == 0 {
+    return Ok(false);
+  }
+  f.seek(SeekFrom::End(-1))?;
+  let mut last = [0u8];
+  f.read_exact(&mut last)?;
+  Ok(last[0] != b'\n')
+}
+
+/// Write `entries` as a whole catalog, one line each, replacing `path`.
+pub fn write_view(path: &Path, entries: &[Entry]) -> Result<(), String> {
+  let mut text = String::new();
+  for e in entries {
+    text.push_str(&serde_json::to_string(e).map_err(|err| err.to_string())?);
+    text.push('\n');
+  }
+  let tmp = path.with_extension("partial");
+  std::fs::write(&tmp, text).map_err(|err| format!("write {}: {}", tmp.display(), err))?;
+  std::fs::rename(&tmp, path).map_err(|err| err.to_string())
 }
 
 /// Every offset's latest entry, by offset. Lines that don't parse (a scan
@@ -120,20 +149,29 @@ pub fn load_catalog(path: &Path) -> Vec<Entry> {
   latest.into_values().collect()
 }
 
-/// Mark every entry whose fingerprint an earlier entry already has as a
-/// duplicate of it. `entries` must be sorted by offset.
+/// Keep one entry per fingerprint and mark the rest as duplicates of it.
+/// The kept twin is the one already searched, else the one the walker got
+/// furthest in, else the lowest offset: twins walk differently (the walker
+/// is seeded by offset), and keeping a stuck twin would hide a walkable level.
 pub fn dedupe(entries: &mut [Entry]) {
-  let mut first: HashMap<String, u16> = HashMap::new();
-  for e in entries.iter_mut() {
-    let Some(fp) = e.fingerprint.clone() else { continue };
-    match first.get(&fp) {
-      Some(&original) => {
-        e.class = Class::Duplicate;
-        e.duplicate_of = Some(original);
+  let mut keep: HashMap<String, usize> = HashMap::new();
+  for (i, e) in entries.iter().enumerate() {
+    let Some(fp) = &e.fingerprint else { continue };
+    let rank = |e: &Entry| (e.solve.is_some(), e.walk_x.unwrap_or(i32::MIN), std::cmp::Reverse(e.offset));
+    match keep.get(fp) {
+      Some(&k) if rank(&entries[k]) >= rank(e) => {}
+      _ => {
+        keep.insert(fp.clone(), i);
       }
-      None => {
-        first.insert(fp, e.offset);
-      }
+    }
+  }
+  for i in 0..entries.len() {
+    let Some(fp) = entries[i].fingerprint.clone() else { continue };
+    let k = keep[&fp];
+    if k != i {
+      let original = entries[k].offset;
+      entries[i].class = Class::Duplicate;
+      entries[i].duplicate_of = Some(original);
     }
   }
 }
@@ -185,6 +223,71 @@ mod tests {
       .unwrap();
     assert_eq!(load_catalog(&path).len(), 1);
     assert!(load_catalog(&path.with_file_name("missing.jsonl")).is_empty());
+  }
+
+  #[test]
+  fn append_after_a_truncated_line_keeps_the_new_line() {
+    let path = tmp("resume");
+    append(&path, &Entry::new(0x8000, Class::Blank)).unwrap();
+    std::fs::OpenOptions::new()
+      .append(true)
+      .open(&path)
+      .unwrap()
+      .write_all(b"{\"offset\":32769,\"hex")
+      .unwrap();
+    append(&path, &Entry::new(0x8002, Class::Jammed)).unwrap();
+    let got: Vec<u16> = load_catalog(&path).iter().map(|e| e.offset).collect();
+    assert_eq!(got, vec![0x8000, 0x8002]);
+  }
+
+  fn twin(offset: u16, class: Class, walk_x: Option<i32>) -> Entry {
+    let mut e = Entry::new(offset, class);
+    e.fingerprint = Some("ff".into());
+    e.walk_x = walk_x;
+    e
+  }
+
+  #[test]
+  fn dedupe_keeps_the_twin_that_walked_furthest() {
+    let mut all = vec![
+      twin(0x8000, Class::Stuck, Some(40)),
+      twin(0x8001, Class::Walked, Some(700)),
+      twin(0x8002, Class::Walked, Some(300)),
+    ];
+    dedupe(&mut all);
+    assert_eq!(
+      all.iter().map(|e| e.class).collect::<Vec<_>>(),
+      vec![Class::Duplicate, Class::Walked, Class::Duplicate]
+    );
+    assert_eq!(all[0].duplicate_of, Some(0x8001));
+    assert_eq!(all[2].duplicate_of, Some(0x8001));
+  }
+
+  #[test]
+  fn dedupe_prefers_a_solved_twin() {
+    let mut solved = twin(0x8002, Class::Unsolved, Some(100));
+    solved.solve = Some(SolveRecord {
+      clear: None,
+      x_reached: 100,
+      rounds: 1,
+      panics: 0,
+      bottleneck: 1,
+      kill_rate: 0.0,
+      path: vec![],
+    });
+    let mut all = vec![twin(0x8000, Class::Walked, Some(900)), solved];
+    dedupe(&mut all);
+    assert_eq!(all[0].class, Class::Duplicate);
+    assert_eq!(all[1].class, Class::Unsolved);
+  }
+
+  #[test]
+  fn write_view_writes_every_entry_as_a_line() {
+    let path = tmp("view");
+    let mut all = vec![twin(0x8000, Class::Stuck, Some(40)), twin(0x8001, Class::Walked, Some(700))];
+    dedupe(&mut all);
+    write_view(&path, &all).unwrap();
+    assert_eq!(load_catalog(&path), all);
   }
 
   #[test]

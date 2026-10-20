@@ -7,11 +7,12 @@
 //!   rank                           print the leaderboard and write ranking.json
 //!   clips [--top N]                record takes for the top N (default 10)
 
-use greenstone::nes::gym::prospector::catalog::{dedupe, load_catalog, SolveRecord};
+use greenstone::nes::gym::prospector::catalog::{dedupe, load_catalog, write_view, SolveRecord};
 use greenstone::nes::gym::prospector::clips::record_clip;
 use greenstone::nes::gym::prospector::patch::check_rom;
 use greenstone::nes::gym::prospector::rank::rows;
 use greenstone::nes::gym::prospector::scan::{calibrate, scan_range, solve_top, CALIBRATION_FILE, CATALOG};
+use greenstone::nes::gym::reservoir::demo::{guarded, quiet_guarded_panics};
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -34,7 +35,7 @@ fn main() {
   check_rom(&rom).unwrap_or_else(|e| fail(&e));
   let out = Path::new("target/prospector");
   // Garbage levels panic the emulator thousands of times; each is caught and catalogued.
-  std::panic::set_hook(Box::new(|_| {}));
+  quiet_guarded_panics();
   match args.first().map(String::as_str) {
     Some("scan") => {
       let from = flag(&args, "--from").map_or(0x8000, |s| hex(&s));
@@ -70,14 +71,18 @@ fn main() {
           );
         }
         std::fs::create_dir_all(out).unwrap_or_else(|e| fail(&e.to_string()));
+        write_view(&out.join("catalog_view.jsonl"), &entries).unwrap_or_else(|e| fail(&e));
         std::fs::write(out.join("ranking.json"), serde_json::to_vec_pretty(&rows).unwrap()).unwrap_or_else(|e| fail(&e.to_string()));
       } else {
         let top = flag(&args, "--top").map_or(10, |s| s.parse().unwrap_or_else(|_| fail("--top takes a number")));
         for r in rows.iter().take(top) {
           let offset = r["offset"].as_u64().unwrap() as u16;
           let entry = entries.iter().find(|e| e.offset == offset).unwrap();
-          let n = record_clip(&rom, entry, r, &out.join("takes")).unwrap_or_else(|e| fail(&e));
-          eprintln!("recorded {} ({} frames)", entry.hex, n);
+          match guarded(|| record_clip(&rom, entry, r, &out.join("takes"))) {
+            Ok(Ok(n)) => eprintln!("recorded {} ({} frames)", entry.hex, n),
+            Ok(Err(e)) => eprintln!("skipped {}: {}", entry.hex, e),
+            Err(panic) => eprintln!("skipped {}: replay panicked: {}", entry.hex, panic),
+          }
         }
       }
     }

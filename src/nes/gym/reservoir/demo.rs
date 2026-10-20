@@ -71,12 +71,41 @@ pub fn round_stats(expanded: &[Candidate], kept: usize) -> RoundStats {
 
 /// Run `f`, turning a panic into its message.
 pub fn guarded<T>(f: impl FnOnce() -> T) -> Result<T, String> {
-  std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)).map_err(|e| {
+  let outer = GUARDED.with(|g| g.replace(true));
+  let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
+  GUARDED.with(|g| g.set(outer));
+  result.map_err(|e| {
     e.downcast_ref::<String>()
       .cloned()
       .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))
       .unwrap_or_else(|| "panic".to_string())
   })
+}
+
+thread_local! {
+  static GUARDED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// True while this thread is inside `guarded`.
+pub fn in_guarded() -> bool {
+  GUARDED.with(|g| g.get())
+}
+
+/// Silence the panic messages of panics `guarded` catches, and only those.
+/// Garbage levels panic the emulator thousands of times in a scan; any other
+/// panic still prints.
+pub fn quiet_guarded_panics() {
+  let default = std::panic::take_hook();
+  std::panic::set_hook(Box::new(move |info| {
+    if !in_guarded() {
+      default(info);
+    }
+  }));
+}
+
+/// The first survivor that has finished, wherever it ranks.
+pub fn first_cleared(survivors: &[Candidate]) -> Option<&Candidate> {
+  survivors.iter().find(|c| c.cleared)
 }
 
 /// What `beam_search_until` found, and how often the emulator panicked.
@@ -516,7 +545,9 @@ pub fn beam_search_until(
     if survivors.is_empty() {
       break;
     }
-    if survivors[0].cleared || survivors[0].x > best.x {
+    if let Some(done) = first_cleared(&survivors) {
+      best = done.clone();
+    } else if survivors[0].x > best.x {
       best = survivors[0].clone();
     }
     max_x = max_x.max(survivors[0].x);
@@ -605,6 +636,23 @@ mod tests {
         kept: 1
       }
     );
+  }
+
+  #[test]
+  fn guarded_marks_its_thread_while_it_runs() {
+    assert!(!in_guarded());
+    assert_eq!(guarded(in_guarded), Ok(true));
+    assert_eq!(guarded(|| -> u8 { panic!("x") }).is_err(), true);
+    assert!(!in_guarded(), "a panic inside must still clear the mark");
+  }
+
+  #[test]
+  fn first_cleared_finds_a_clear_ranked_below_the_lead() {
+    let lead = cand(500, false);
+    let mut behind = cand(100, false);
+    behind.cleared = true;
+    assert_eq!(first_cleared(&[lead.clone(), behind]).map(|c| c.x), Some(100));
+    assert!(first_cleared(&[lead]).is_none());
   }
 
   #[test]
