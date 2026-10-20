@@ -36,6 +36,58 @@ pub const MACROS: [[u8; ROUND_STEPS]; 6] = [
   [0; ROUND_STEPS],
 ];
 
+/// How a goal says a candidate has finished: SMB itself moved on, or Mario
+/// is far enough along alive.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Clear {
+  Flag,
+  Distance,
+}
+
+/// A search's notion of done. Shared across worker threads.
+pub type Goal<'a> = &'a (dyn Fn(&mut NesEmulator) -> Option<Clear> + Sync);
+
+/// One round of the beam: children made, children neither dead nor stuck,
+/// distinct states among those, and survivors kept for the next round.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct RoundStats {
+  pub expanded: usize,
+  pub alive: usize,
+  pub distinct: usize,
+  pub kept: usize,
+}
+
+pub fn round_stats(expanded: &[Candidate], kept: usize) -> RoundStats {
+  let alive: Vec<&Candidate> = expanded.iter().filter(|c| !c.dead && c.stuck < STUCK_LIMIT).collect();
+  let distinct = alive.iter().map(|c| c.key).collect::<std::collections::HashSet<_>>().len();
+  RoundStats {
+    expanded: expanded.len(),
+    alive: alive.len(),
+    distinct,
+    kept,
+  }
+}
+
+/// Run `f`, turning a panic into its message.
+pub fn guarded<T>(f: impl FnOnce() -> T) -> Result<T, String> {
+  std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)).map_err(|e| {
+    e.downcast_ref::<String>()
+      .cloned()
+      .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))
+      .unwrap_or_else(|| "panic".to_string())
+  })
+}
+
+/// What `beam_search_until` found, and how often the emulator panicked.
+#[derive(Debug, Clone)]
+pub struct SearchOutcome {
+  pub demo: Demonstration,
+  pub clear: Option<Clear>,
+  pub panics: usize,
+  pub expansions: usize,
+}
+
 pub fn smb_x(emu: &mut NesEmulator) -> i32 {
   emu.ram_read(smb1_ram::PLAYER_X_PAGE) as i32 * 256 + emu.ram_read(smb1_ram::PLAYER_X_PIXEL) as i32
 }
@@ -353,10 +405,59 @@ pub fn prune_and_rank(mut cands: Vec<Candidate>, beam: usize, seed: u64) -> Vec<
   cands
 }
 
-/// Beam search over save states from `noops` idle frames after `start`. Each
-/// round expands every frontier candidate by every macro across threads, one
-/// emulator per thread. `seed` only breaks exact ranking ties.
 pub fn beam_search(rom: &[u8], start: &[u8], noops: usize, beam: usize, max_rounds: usize, seed: u64, stage: Stage) -> Demonstration {
+  let goal = move |emu: &mut NesEmulator| if smb_cleared_at(emu, stage) { Some(Clear::Flag) } else { None };
+  beam_search_until(rom, start, noops, beam, max_rounds, seed, stage, &goal, &mut |_| {}).demo
+}
+
+fn expand(emu: &mut NesEmulator, parent: &Candidate, macro_index: usize, lives_at_start: u8, goal: Goal) -> Candidate {
+  emu.load_state(&parent.state);
+  let mut path = parent.path.clone();
+  let mut dead = false;
+  for &buttons in &MACROS[macro_index] {
+    emu.step_frames(buttons, MACRO_FRAMES);
+    path.push(buttons);
+    if smb_dead(emu) || emu.ram_read(smb1_ram::LIVES) < lives_at_start {
+      dead = true;
+      break;
+    }
+  }
+  let x = smb_x(emu);
+  let stuck = next_stuck(parent.stuck, x > parent.x, smb_in_cutscene(emu));
+  let cleared = goal(emu).is_some();
+  let y = smb_y(emu);
+  let key = state_key(emu);
+  let state = emu.save_state();
+  let dead = dead || (!cleared && doomed_next_round(emu, &state, lives_at_start));
+  Candidate {
+    x,
+    y,
+    dead,
+    cleared,
+    state,
+    path,
+    stuck,
+    key,
+  }
+}
+
+/// Beam search over save states from `noops` idle frames after `start`,
+/// until `goal` says done. Each round expands every frontier candidate by
+/// every macro across threads, one emulator per thread, and reports its
+/// `RoundStats` to `on_round`. An expansion that panics is a dead branch,
+/// and its thread gets a fresh emulator. `seed` only breaks exact ranking ties.
+#[allow(clippy::too_many_arguments)]
+pub fn beam_search_until(
+  rom: &[u8],
+  start: &[u8],
+  noops: usize,
+  beam: usize,
+  max_rounds: usize,
+  seed: u64,
+  stage: Stage,
+  goal: Goal,
+  on_round: &mut dyn FnMut(RoundStats),
+) -> SearchOutcome {
   let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
   let (first, lives_at_start, key) = {
     let mut emu = NesEmulator::new(rom);
@@ -376,6 +477,8 @@ pub fn beam_search(rom: &[u8], start: &[u8], noops: usize, beam: usize, max_roun
   }];
   let mut best = frontier[0].clone();
   let mut max_x = 0;
+  let panics = std::sync::atomic::AtomicUsize::new(0);
+  let mut expansions = 0;
   for _ in 0..max_rounds {
     let jobs: Vec<(usize, usize)> = (0..frontier.len()).flat_map(|p| (0..MACROS.len()).map(move |m| (p, m))).collect();
     let chunk = jobs.len().div_ceil(threads);
@@ -384,47 +487,32 @@ pub fn beam_search(rom: &[u8], start: &[u8], noops: usize, beam: usize, max_roun
         .chunks(chunk)
         .map(|jobs| {
           let frontier = &frontier;
+          let panics = &panics;
           s.spawn(move || {
             let mut emu = NesEmulator::new(rom);
-            jobs
-              .iter()
-              .map(|&(parent, macro_index)| {
-                emu.load_state(&frontier[parent].state);
-                let mut path = frontier[parent].path.clone();
-                let mut dead = false;
-                for &buttons in &MACROS[macro_index] {
-                  emu.step_frames(buttons, MACRO_FRAMES);
-                  path.push(buttons);
-                  if smb_dead(&mut emu) || emu.ram_read(smb1_ram::LIVES) < lives_at_start {
-                    dead = true;
-                    break;
-                  }
+            let mut out = Vec::with_capacity(jobs.len());
+            for &(parent, macro_index) in jobs {
+              let p = &frontier[parent];
+              match guarded(|| expand(&mut emu, p, macro_index, lives_at_start, goal)) {
+                Ok(c) => out.push(c),
+                Err(_) => {
+                  panics.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                  emu = NesEmulator::new(rom);
+                  out.push(Candidate { dead: true, ..p.clone() });
                 }
-                let x = smb_x(&mut emu);
-                let stuck = next_stuck(frontier[parent].stuck, x > frontier[parent].x, smb_in_cutscene(&mut emu));
-                let cleared = smb_cleared_at(&mut emu, stage);
-                let y = smb_y(&mut emu);
-                let key = state_key(&mut emu);
-                let state = emu.save_state();
-                let dead = dead || (!cleared && doomed_next_round(&mut emu, &state, lives_at_start));
-                Candidate {
-                  x,
-                  y,
-                  dead,
-                  cleared,
-                  state,
-                  path,
-                  stuck,
-                  key,
-                }
-              })
-              .collect::<Vec<_>>()
+              }
+            }
+            out
           })
         })
         .collect();
       handles.into_iter().flat_map(|h| h.join().expect("beam worker panicked")).collect()
     });
+    expansions += expanded.len();
+    let mut stats = round_stats(&expanded, 0);
     let survivors = prune_and_rank(expanded, beam, seed);
+    stats.kept = survivors.len();
+    on_round(stats);
     if survivors.is_empty() {
       break;
     }
@@ -437,12 +525,24 @@ pub fn beam_search(rom: &[u8], start: &[u8], noops: usize, beam: usize, max_roun
     }
     frontier = survivors;
   }
-  Demonstration {
-    buttons: best.path,
-    x_reached: max_x,
-    cleared: best.cleared,
-    noops,
-    stage,
+  let clear = if best.cleared {
+    let mut emu = NesEmulator::new(rom);
+    emu.load_state(&best.state);
+    guarded(|| goal(&mut emu)).ok().flatten()
+  } else {
+    None
+  };
+  SearchOutcome {
+    demo: Demonstration {
+      buttons: best.path,
+      x_reached: max_x,
+      cleared: best.cleared,
+      noops,
+      stage,
+    },
+    clear,
+    panics: panics.into_inner(),
+    expansions,
   }
 }
 
@@ -486,6 +586,76 @@ mod tests {
 
   /// Every test candidate is a distinct state unless a test says otherwise.
   static NEXT_KEY: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1000);
+
+  #[test]
+  fn round_stats_counts_alive_distinct_and_kept() {
+    let a = cand(10, false);
+    let mut twin = cand(11, false);
+    twin.key = a.key;
+    let dead = cand(12, true);
+    let mut stuck = cand(13, false);
+    stuck.stuck = STUCK_LIMIT;
+    let stats = round_stats(&[a, twin, dead, stuck], 1);
+    assert_eq!(
+      stats,
+      RoundStats {
+        expanded: 4,
+        alive: 2,
+        distinct: 1,
+        kept: 1
+      }
+    );
+  }
+
+  #[test]
+  fn guarded_returns_the_panic_message() {
+    assert_eq!(guarded(|| 7), Ok(7));
+    assert_eq!(guarded(|| -> u8 { panic!("boom {}", 1) }), Err("boom 1".to_string()));
+    assert_eq!(guarded(|| -> u8 { panic!("static") }), Err("static".to_string()));
+  }
+
+  #[test]
+  fn the_wrapper_matches_beam_search_until_with_the_stage_goal() {
+    let rom = match rom_or_skip("roms2/super_mario_bros.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let start = smb_start_state(&rom);
+    let plain = beam_search(&rom, &start, 0, 4, 8, 0, Stage::ONE_ONE);
+    let goal = |emu: &mut NesEmulator| if smb_cleared_at(emu, Stage::ONE_ONE) { Some(Clear::Flag) } else { None };
+    let mut rounds = Vec::new();
+    let until = beam_search_until(&rom, &start, 0, 4, 8, 0, Stage::ONE_ONE, &goal, &mut |s| rounds.push(s));
+    assert_eq!(plain.buttons, until.demo.buttons);
+    assert_eq!(plain.x_reached, until.demo.x_reached);
+    assert_eq!(until.clear, None);
+    assert_eq!(until.panics, 0);
+    assert_eq!(rounds.len(), 8);
+    for s in &rounds {
+      assert!(s.kept <= s.distinct && s.distinct <= s.alive && s.alive <= s.expanded, "{:?}", s);
+    }
+    assert_eq!(until.expansions, rounds.iter().map(|s| s.expanded).sum::<usize>());
+  }
+
+  #[test]
+  fn a_panicking_goal_kills_branches_not_the_search() {
+    let rom = match rom_or_skip("roms2/super_mario_bros.nes") {
+      Some(r) => r,
+      None => return,
+    };
+    let start = smb_start_state(&rom);
+    let prev = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {}));
+    let goal = |emu: &mut NesEmulator| -> Option<Clear> {
+      if smb_x(emu) > 60 {
+        panic!("goal exploded");
+      }
+      None
+    };
+    let out = beam_search_until(&rom, &start, 0, 4, 6, 0, Stage::ONE_ONE, &goal, &mut |_| {});
+    std::panic::set_hook(prev);
+    assert!(out.panics > 0, "the goal should have panicked on some branch");
+    assert!(out.demo.x_reached <= 60 + 16, "every branch past x 60 died, got {}", out.demo.x_reached);
+  }
 
   #[test]
   fn prune_prefers_the_higher_candidate_at_equal_x() {
