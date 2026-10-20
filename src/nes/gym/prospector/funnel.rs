@@ -2,7 +2,7 @@
 //! dumb walker get anywhere.
 
 use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_RIGHT};
-use crate::nes::gym::reservoir::demo::{smb_dead, smb_start_state_at, smb_x, Stage, MACRO_FRAMES};
+use crate::nes::gym::reservoir::demo::{beam_search_until, smb_dead, smb_stage, smb_start_state_at, smb_x, Clear, RoundStats, Stage, MACRO_FRAMES};
 use crate::nes::gym::reservoir::features::{SMB_BLOCK_BUFFER_1, SMB_BLOCK_BUFFER_2, SMB_BLOCK_BUFFER_LEN};
 use crate::nes::gym::reward::smb1_ram;
 use crate::nes::gym::NesEmulator;
@@ -157,6 +157,49 @@ pub fn walk(rom: &[u8], state: &[u8], seed: u64) -> Walk {
   }
 }
 
+/// Alive at this x counts as cleared: about the length of 1-1.
+pub const GOAL_X: i32 = 3072;
+pub const SOLVE_BEAM: usize = 16;
+pub const SOLVE_ROUNDS: usize = 150;
+
+/// Cleared when SMB leaves `stage`, or when Mario is alive at `GOAL_X`.
+pub fn goal_for(stage: Stage) -> impl Fn(&mut NesEmulator) -> Option<Clear> + Sync {
+  move |emu: &mut NesEmulator| {
+    if smb_stage(emu) != stage {
+      Some(Clear::Flag)
+    } else if smb_x(emu) >= GOAL_X && !smb_dead(emu) {
+      Some(Clear::Distance)
+    } else {
+      None
+    }
+  }
+}
+
+#[derive(Debug, Clone)]
+pub struct Solved {
+  pub clear: Option<Clear>,
+  pub x_reached: i32,
+  pub panics: usize,
+  pub expansions: usize,
+  /// One button byte per macro step, from the state solved from.
+  pub path: Vec<u8>,
+  pub stats: Vec<RoundStats>,
+}
+
+pub fn solve(rom: &[u8], state: &[u8], stage: Stage) -> Solved {
+  let goal = goal_for(stage);
+  let mut stats = Vec::new();
+  let out = beam_search_until(rom, state, 0, SOLVE_BEAM, SOLVE_ROUNDS, 0, stage, &goal, &mut |s| stats.push(s));
+  Solved {
+    clear: out.clear,
+    x_reached: out.demo.x_reached,
+    panics: out.panics,
+    expansions: out.expansions,
+    path: out.demo.buttons,
+    stats,
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -210,6 +253,20 @@ mod tests {
     let mut emu = NesEmulator::new(&rom);
     emu.load_state(&state);
     assert_eq!(emu.ram_read(smb1_ram::PLAYER_STATE), 0x08);
+  }
+
+  #[test]
+  fn the_goal_needs_a_stage_change_or_distance_alive() {
+    let Some(rom) = rom_or_skip("roms2/super_mario_bros.nes") else { return };
+    let mut emu = NesEmulator::new(&rom);
+    emu.load_state(&level_start_at(&rom, Stage::ONE_ONE).unwrap().0);
+    let goal = goal_for(Stage::ONE_ONE);
+    assert_eq!(goal(&mut emu), None);
+    emu.ram_write(smb1_ram::PLAYER_X_PAGE, (GOAL_X / 256) as u8);
+    emu.ram_write(smb1_ram::PLAYER_X_PIXEL, 0);
+    assert_eq!(goal(&mut emu), Some(Clear::Distance));
+    emu.ram_write(smb1_ram::LEVEL, 1);
+    assert_eq!(goal(&mut emu), Some(Clear::Flag));
   }
 
   #[test]

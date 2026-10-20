@@ -3,3 +3,4 @@
 
 pub mod funnel;
 pub mod patch;
+pub mod rank;
