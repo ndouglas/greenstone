@@ -22,6 +22,7 @@
 pub mod action;
 pub mod env;
 pub mod preprocess;
+pub mod prospector;
 pub mod reservoir;
 pub mod reward;
 
