@@ -59,14 +59,17 @@ pub struct Loaded {
 /// Frames allowed between the boot state and Mario taking control.
 const START_LIMIT: usize = 300;
 
-/// Boot into `stage` and step past the black "WORLD 1-1" card until Mario
-/// is in normal play. Returns that state and its frame (a save state does
-/// not carry the framebuffer), or None if play never starts.
+/// Boot into `stage` and step past the black "WORLD 1-1" card until the
+/// level is running: the player state leaves 0 for the entrance (7) or
+/// normal play (8). Garbage headers often start in the entrance state and
+/// stay there or fall, so waiting for 8 alone would file them as jammed.
+/// Returns that state and its frame (a save state does not carry the
+/// framebuffer), or None if play never starts.
 pub fn level_start_at(rom: &[u8], stage: Stage) -> Option<(Vec<u8>, Vec<u8>)> {
   let mut emu = NesEmulator::new(rom);
   emu.load_state(&smb_start_state_at(rom, stage));
   for _ in 0..START_LIMIT {
-    if emu.ram_read(smb1_ram::PLAYER_STATE) == 0x08 && emu.ram_read(smb1_ram::GAME_ENGINE_STATE) == 1 {
+    if emu.ram_read(smb1_ram::PLAYER_STATE) != 0 && emu.ram_read(smb1_ram::GAME_ENGINE_STATE) == 1 {
       return Some((emu.save_state(), emu.framebuffer().to_vec()));
     }
     emu.step_frame(0);
@@ -252,7 +255,7 @@ mod tests {
     assert!(!one_colour(&frame), "the level's first frame should not be the black card");
     let mut emu = NesEmulator::new(&rom);
     emu.load_state(&state);
-    assert_eq!(emu.ram_read(smb1_ram::PLAYER_STATE), 0x08);
+    assert_ne!(emu.ram_read(smb1_ram::PLAYER_STATE), 0);
   }
 
   #[test]
@@ -267,6 +270,21 @@ mod tests {
     assert_eq!(goal(&mut emu), Some(Clear::Distance));
     emu.ram_write(smb1_ram::LEVEL, 1);
     assert_eq!(goal(&mut emu), Some(Clear::Flag));
+  }
+
+  #[test]
+  fn a_level_that_starts_in_the_entrance_state_is_not_jammed() {
+    let Some(rom) = rom_or_skip("roms2/super_mario_bros.nes") else { return };
+    assert_eq!(
+      load(&patch_rom(&rom, 0xA690)).class,
+      LoadClass::InstantDeath,
+      "$A690 drops Mario into a pit"
+    );
+    assert_ne!(
+      load(&patch_rom(&rom, 0xA68F)).class,
+      LoadClass::Jammed,
+      "$A68F starts, in the entrance state"
+    );
   }
 
   #[test]
