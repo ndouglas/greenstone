@@ -975,6 +975,16 @@ adjustment is troll-level generation with the reward sign flipped.
    Point the area pointer at each offset, BFS over save states for
    solvability, run a brain for lethality, rank. No generator. Output: a
    catalog of SMB's hidden levels with the worst solvable ones on top.
+   **Built**: spec `docs/superpowers/specs/2026-10-20-prospector-design.md`,
+   CLI `examples/prospector.rs`, clips and contact sheet `tools/prospector/`.
+   First run (2026-10-20), all 32,768 offsets with enemies removed:
+   - 11,313 levels walked, 12,672 stuck, 8,067 killed Mario at once, 373 never
+     started, 178 killed the walker, 165 crashed the emulator.
+   - Beam search (beam 16) on the 50 that walked furthest: 21 cleared, all by
+     distance (x 3072), none by flagpole; 29 unsolved.
+   - Narrowest clear: bottleneck 5 ($DB8F, $EDB4, $815A), narrower than 1-1
+     (6) but not 4-1 (3). Most clears are flat runs through cloud-block or
+     brick corridors. Next: search beyond the top 50, and put enemies back.
 2. **Level Demon v1**  `LATER`. Mutate 1-1's object and enemy bytes, keep
    only what BFS clears, reward the brain's death rate. Fire bars are an
    SMB1 object type, so the demon can rediscover the clip's aesthetic on
