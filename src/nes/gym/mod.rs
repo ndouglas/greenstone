@@ -23,6 +23,7 @@ pub mod action;
 pub mod env;
 pub mod preprocess;
 pub mod prospector;
+pub mod punchout;
 pub mod reservoir;
 pub mod reward;
 
