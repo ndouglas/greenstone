@@ -29,6 +29,7 @@ impl Cartridge {
       3 => Mapper::CnRom(Mapper3::new(data)),
       4 => Mapper::Mmc3(Mapper4::new(data)),
       7 => Mapper::AxRom(Mapper7::new(data)),
+      9 => Mapper::Mmc2(Mapper9::new(data)),
       number => panic!("Mapper {number} not implemented"),
     };
     Cartridge { mapper }

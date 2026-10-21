@@ -19,6 +19,9 @@ pub use mapper4::*;
 pub mod mapper7;
 pub use mapper7::*;
 
+pub mod mapper9;
+pub use mapper9::*;
+
 /// Enum-based mapper dispatch, replacing `Box<dyn Mappable>`.
 /// This enables serde serialization of the entire cartridge state.
 #[derive(Serialize, Deserialize)]
@@ -29,6 +32,7 @@ pub enum Mapper {
   CnRom(Mapper3),
   Mmc3(Mapper4),
   AxRom(Mapper7),
+  Mmc2(Mapper9),
 }
 
 impl Mappable for Mapper {
@@ -41,6 +45,7 @@ impl Mappable for Mapper {
       Mapper::CnRom(m) => m.read_prg_u8(address),
       Mapper::Mmc3(m) => m.read_prg_u8(address),
       Mapper::AxRom(m) => m.read_prg_u8(address),
+      Mapper::Mmc2(m) => m.read_prg_u8(address),
     }
   }
 
@@ -53,6 +58,7 @@ impl Mappable for Mapper {
       Mapper::CnRom(m) => m.write_prg_u8(address, data),
       Mapper::Mmc3(m) => m.write_prg_u8(address, data),
       Mapper::AxRom(m) => m.write_prg_u8(address, data),
+      Mapper::Mmc2(m) => m.write_prg_u8(address, data),
     }
   }
 
@@ -65,6 +71,7 @@ impl Mappable for Mapper {
       Mapper::CnRom(m) => m.read_chr_u8(address),
       Mapper::Mmc3(m) => m.read_chr_u8(address),
       Mapper::AxRom(m) => m.read_chr_u8(address),
+      Mapper::Mmc2(m) => m.read_chr_u8(address),
     }
   }
 
@@ -77,6 +84,7 @@ impl Mappable for Mapper {
       Mapper::CnRom(m) => m.write_chr_u8(address, data),
       Mapper::Mmc3(m) => m.write_chr_u8(address, data),
       Mapper::AxRom(m) => m.write_chr_u8(address, data),
+      Mapper::Mmc2(m) => m.write_chr_u8(address, data),
     }
   }
 
@@ -89,6 +97,7 @@ impl Mappable for Mapper {
       Mapper::CnRom(m) => m.signal_scanline(),
       Mapper::Mmc3(m) => m.signal_scanline(),
       Mapper::AxRom(m) => m.signal_scanline(),
+      Mapper::Mmc2(m) => m.signal_scanline(),
     }
   }
 
@@ -101,6 +110,7 @@ impl Mappable for Mapper {
       Mapper::CnRom(m) => m.get_mirroring_mode(),
       Mapper::Mmc3(m) => m.get_mirroring_mode(),
       Mapper::AxRom(m) => m.get_mirroring_mode(),
+      Mapper::Mmc2(m) => m.get_mirroring_mode(),
     }
   }
 
@@ -113,6 +123,7 @@ impl Mappable for Mapper {
       Mapper::CnRom(m) => m.get_irq_flag(),
       Mapper::Mmc3(m) => m.get_irq_flag(),
       Mapper::AxRom(m) => m.get_irq_flag(),
+      Mapper::Mmc2(m) => m.get_irq_flag(),
     }
   }
 }
