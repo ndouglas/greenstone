@@ -366,6 +366,9 @@ impl PPU {
     // Handle rendering for visible scanlines (0-239)
     if self.scanline < 240 {
       self.render_pixel();
+      if self.dot == 256 && rendering_enabled {
+        self.fetch_undrawn_tiles();
+      }
     }
 
     // Advance dot counter first, then process events for the new dot
@@ -519,6 +522,33 @@ impl PPU {
       self.framebuffer[pixel_index] = r;
       self.framebuffer[pixel_index + 1] = g;
       self.framebuffer[pixel_index + 2] = b;
+    }
+  }
+
+  /// Read the pattern bytes of the two tiles after the 32 a line draws.
+  ///
+  /// Hardware fetches 34 tiles per scanline, and the last two are never drawn
+  /// when fine X is zero. Pixels here are read as they are drawn, so those two
+  /// fetches would not happen; MMC2 (Punch-Out!!) hides $FD/$FE tiles there to
+  /// switch CHR banks between lines, so make them.
+  fn fetch_undrawn_tiles(&mut self) {
+    let coarse_y = self.v_address.coarse_y() as u16;
+    let fine_y = self.v_address.fine_y() as u16;
+    let nametable_y = ((self.v_address.nametable() >> 1) & 1) as u16;
+    let pattern_base: u16 = if self.control_register.get_background_address_flag() {
+      0x1000
+    } else {
+      0x0000
+    };
+    for extra in 32..34usize {
+      let column = self.scanline_coarse_x as usize + extra;
+      let tile_x = (column % 32) as u16;
+      let nametable_x = ((column / 32 + self.scanline_nametable_x as usize) % 2) as u16;
+      let nametable_base = 0x2000 + ((nametable_y << 1) | nametable_x) * 0x400;
+      let tile_index = self.vram.read_u8(nametable_base + coarse_y * 32 + tile_x);
+      let pattern_addr = pattern_base + tile_index as u16 * 16 + fine_y;
+      self.vram.read_u8(pattern_addr);
+      self.vram.read_u8(pattern_addr + 8);
     }
   }
 
