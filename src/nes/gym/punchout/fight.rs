@@ -54,13 +54,18 @@ pub struct Step<'a> {
 /// whatever it answers (or the loop's own taps, between rounds and on the
 /// canvas).
 pub fn run_fight(rom: &[u8], opponent: Opponent, policy: &mut dyn FnMut(&mut Step) -> Move) -> Result<Score, String> {
+  run_fight_for(rom, opponent, MAX_STEPS, policy)
+}
+
+/// `run_fight`, stopping after `max_steps` moves.
+pub fn run_fight_for(rom: &[u8], opponent: Opponent, max_steps: usize, policy: &mut dyn FnMut(&mut Step) -> Move) -> Result<Score, String> {
   guarded(|| {
     let (state, _) = fight_start(rom, opponent)?;
     let mut emu = NesEmulator::new(rom);
     emu.load_state(&state);
     let mut score = Score::default();
     let mut was_down = false;
-    for index in 0..MAX_STEPS {
+    for index in 0..max_steps {
       if fight_over(&mut emu) {
         break;
       }

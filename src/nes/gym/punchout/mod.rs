@@ -3,6 +3,7 @@
 //! See `docs/superpowers/specs/2026-10-21-punchout-reservoir-design.md`.
 
 pub mod brains;
+pub mod dagger;
 pub mod fight;
 pub mod gate;
 pub mod moves;
