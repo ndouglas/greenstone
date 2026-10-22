@@ -9,6 +9,7 @@ pub mod gate;
 pub mod moves;
 pub mod ram;
 pub mod start;
+pub mod takes;
 pub mod teacher;
 
 pub const PUNCH_OUT: &str = "roms2/mike_tysons_punch_out.nes";

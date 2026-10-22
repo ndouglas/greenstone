@@ -3,8 +3,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::nes::bus::{BUTTON_A, BUTTON_START};
-use crate::nes::gym::punchout::moves::{play, Move, MOVE_FRAMES};
-use crate::nes::gym::punchout::ram::{fight_over, mac_can_act, mac_down, opponent_down, round_over};
+use crate::nes::gym::punchout::moves::{hold, play_watched, Move, Outcome, MOVE_FRAMES};
+use crate::nes::gym::punchout::ram::{fight_over, mac_can_act, mac_down, mac_health, opponent_down, opponent_health, round_over};
 use crate::nes::gym::punchout::start::{fight_start, Opponent};
 use crate::nes::gym::reservoir::demo::guarded;
 use crate::nes::gym::NesEmulator;
@@ -59,6 +59,31 @@ pub fn run_fight(rom: &[u8], opponent: Opponent, policy: &mut dyn FnMut(&mut Ste
 
 /// `run_fight`, stopping after `max_steps` moves.
 pub fn run_fight_for(rom: &[u8], opponent: Opponent, max_steps: usize, policy: &mut dyn FnMut(&mut Step) -> Move) -> Result<Score, String> {
+  run_fight_watched(rom, opponent, max_steps, policy, &mut |_| {})
+}
+
+/// What a watched fight shows its watcher: every screen, and every step's
+/// move as played (Idle when Mac could not act) with its result.
+pub enum Watched<'e> {
+  Frame(&'e [u8]),
+  Step {
+    index: usize,
+    played: Move,
+    can_act: bool,
+    outcome: Outcome,
+    mac_health: u8,
+    opponent_health: u8,
+  },
+}
+
+/// `run_fight_for`, showing `watch` every frame and every step.
+pub fn run_fight_watched(
+  rom: &[u8],
+  opponent: Opponent,
+  max_steps: usize,
+  policy: &mut dyn FnMut(&mut Step) -> Move,
+  watch: &mut dyn FnMut(Watched),
+) -> Result<Score, String> {
   guarded(|| {
     let (state, _) = fight_start(rom, opponent)?;
     let mut emu = NesEmulator::new(rom);
@@ -87,12 +112,23 @@ pub fn run_fight_for(rom: &[u8], opponent: Opponent, max_steps: usize, policy: &
       } else {
         None
       };
+      let played = if can_act { chosen } else { Move::Idle };
+      let on_frame = &mut |e: &NesEmulator| watch(Watched::Frame(e.framebuffer()));
       let outcome = if let Some(button) = tap {
-        emu.step_frames(if index % 2 == 0 { button } else { 0 }, MOVE_FRAMES);
+        hold(&mut emu, if index % 2 == 0 { button } else { 0 }, on_frame);
         Default::default()
       } else {
-        play(&mut emu, if can_act { chosen } else { Move::Idle })
+        play_watched(&mut emu, played, on_frame)
       };
+      let (mac_health, opponent_health) = (mac_health(&mut emu), opponent_health(&mut emu));
+      watch(Watched::Step {
+        index,
+        played,
+        can_act,
+        outcome,
+        mac_health,
+        opponent_health,
+      });
       score.steps += 1;
       score.active_steps += can_act as usize;
       score.hits += outcome.hit as usize;
@@ -174,6 +210,25 @@ mod tests {
     })
     .unwrap();
     assert!(was_down && got_up, "down {} up {}", was_down, got_up);
+  }
+
+  #[test]
+  fn watching_a_fight_does_not_change_it() {
+    let Some(rom) = rom_or_skip(PUNCH_OUT) else { return };
+    let duck_every_third = |s: &mut Step| if s.index % 3 == 0 { Move::Duck } else { Move::Idle };
+    let plain = run_fight_for(&rom, Opponent::GlassJoe, 300, &mut duck_every_third.clone()).unwrap();
+    let (mut frames, mut steps) = (0, 0);
+    let watched = run_fight_watched(&rom, Opponent::GlassJoe, 300, &mut duck_every_third.clone(), &mut |w| match w {
+      Watched::Frame(rgb) => {
+        assert_eq!(rgb.len(), 256 * 240 * 3);
+        frames += 1;
+      }
+      Watched::Step { .. } => steps += 1,
+    })
+    .unwrap();
+    assert_eq!(format!("{:?}", plain), format!("{:?}", watched));
+    assert_eq!(steps, watched.steps);
+    assert_eq!(frames, watched.steps * MOVE_FRAMES);
   }
 
   #[test]

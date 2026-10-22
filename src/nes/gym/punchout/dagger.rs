@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::nes::gym::punchout::brains::{Brain, BrainKind, Projection};
-use crate::nes::gym::punchout::fight::{run_fight, run_fight_for, Score, MAX_STEPS};
+use crate::nes::gym::punchout::fight::{run_fight_for, Score, MAX_STEPS};
 use crate::nes::gym::punchout::moves::{moves, Move, Phase};
 use crate::nes::gym::punchout::start::{Opponent, HELD_OUT, TRAIN};
 use crate::nes::gym::punchout::teacher::label;
@@ -38,6 +38,26 @@ const RESULTS_FILE: &str = "results.json";
 
 /// A fight's rows for one brain, and the teacher's labels for them.
 type Rows = (Vec<Vec<f32>>, Vec<Move>);
+
+/// How much a run does. `Budget::default()` is the experiment; a smaller one
+/// is for smoke runs of the command line.
+#[derive(Debug, Clone, Copy)]
+pub struct Budget {
+  pub max_steps: usize,
+  pub rounds: usize,
+  /// Run phase one's stop gate.
+  pub gate: bool,
+}
+
+impl Default for Budget {
+  fn default() -> Budget {
+    Budget {
+      max_steps: MAX_STEPS,
+      rounds: ROUNDS,
+      gate: true,
+    }
+  }
+}
 
 /// One fight: what the screen looked like at every step, and the teacher's
 /// labels (with the game's RAM, for the cheat) at the steps it labelled.
@@ -342,7 +362,7 @@ fn fan_out<I: Sync, T: Send>(items: &[I], log: &mut dyn FnMut(&str), work: impl 
 }
 
 /// Round 0: three teacher fights per training opponent, recorded in parallel.
-fn teacher_fights(rom: &[u8], phase: Phase, store: &Store, log: &mut dyn FnMut(&str)) -> Vec<FightRecord> {
+fn teacher_fights(rom: &[u8], phase: Phase, budget: Budget, store: &Store, log: &mut dyn FnMut(&str)) -> Vec<FightRecord> {
   let have = store.load(TEACHER_FILE);
   let missing: Vec<(Opponent, usize)> = TRAIN
     .iter()
@@ -356,7 +376,7 @@ fn teacher_fights(rom: &[u8], phase: Phase, store: &Store, log: &mut dyn FnMut(&
   fan_out(&missing, log, |&(opponent, index), tx| {
     let what = format!("teacher vs {} #{}", opponent.name(), index);
     let record = with_retry(&what, index, index + TEACHER_FIGHTS, tx, |i| {
-      let mut r = record_fight(rom, opponent, phase, Driver::Teacher(teacher_seed(opponent, i)), 1, 1)?;
+      let (mut r, _) = record_with(rom, opponent, phase, Driver::Teacher(teacher_seed(opponent, i)), 1, 1, budget.max_steps)?;
       r.index = i;
       Ok(r)
     });
@@ -389,24 +409,39 @@ fn fit_cached<'a>(cached: impl Iterator<Item = &'a Rows>, phase: Phase) -> Resul
 }
 
 /// One fight by a fitted brain, unrecorded.
-fn student_score(rom: &[u8], tetris: &[u8], kind: BrainKind, readout: &Readout, opponent: Opponent, phase: Phase) -> Result<Score, String> {
+fn student_score(
+  rom: &[u8],
+  tetris: &[u8],
+  kind: BrainKind,
+  readout: &Readout,
+  opponent: Opponent,
+  phase: Phase,
+  max_steps: usize,
+) -> Result<Score, String> {
   let projection = Projection::new();
   let mut brain = Brain::new(kind, tetris)?;
-  run_fight(rom, opponent, &mut |s| {
+  run_fight_for(rom, opponent, max_steps, &mut |s| {
     let proj = projection.project(&s.emu.framebuffer_grayscale_84x84());
     let ram = s.emu.ram_read_range(0, RAM_LEN);
     choose(readout, &brain.row(&proj, &ram), phase)
   })
 }
 
-fn idle_score(rom: &[u8], opponent: Opponent) -> Result<Score, String> {
-  run_fight(rom, opponent, &mut |_| Move::Idle)
+fn idle_score(rom: &[u8], opponent: Opponent, max_steps: usize) -> Result<Score, String> {
+  run_fight_for(rom, opponent, max_steps, &mut |_| Move::Idle)
 }
 
 /// After round 0 of defence: does any brain fitted on the teacher's fights
 /// take fewer hits per minute from Glass Joe than standing still? The
 /// answer is kept in gate.json, so a resumed run asks only once.
-fn stop_gate(rom: &[u8], tetris: &[u8], per_kind: &[(BrainKind, Vec<Rows>)], store: &Store, log: &mut dyn FnMut(&str)) -> Result<(), String> {
+fn stop_gate(
+  rom: &[u8],
+  tetris: &[u8],
+  per_kind: &[(BrainKind, Vec<Rows>)],
+  budget: Budget,
+  store: &Store,
+  log: &mut dyn FnMut(&str),
+) -> Result<(), String> {
   let path = store.path(GATE_FILE);
   if let Some(gate) = std::fs::read_to_string(&path).ok().and_then(|s| serde_json::from_str::<Value>(&s).ok()) {
     return if gate["passed"] == json!(true) {
@@ -415,11 +450,11 @@ fn stop_gate(rom: &[u8], tetris: &[u8], per_kind: &[(BrainKind, Vec<Rows>)], sto
       Err(format!("stop gate: {}", gate))
     };
   }
-  let idle = idle_score(rom, Opponent::GlassJoe)?.hits_per_minute();
+  let idle = idle_score(rom, Opponent::GlassJoe, budget.max_steps)?.hits_per_minute();
   log(&format!("stop gate: always-Idle takes {:.2} hits/min from Glass Joe", idle));
   let results = fan_out(per_kind, log, |(kind, rows), tx| {
     let hpm = fit_cached(rows.iter(), Phase::Defence)
-      .and_then(|readout| student_score(rom, tetris, *kind, &readout, Opponent::GlassJoe, Phase::Defence))
+      .and_then(|readout| student_score(rom, tetris, *kind, &readout, Opponent::GlassJoe, Phase::Defence, budget.max_steps))
       .map(|score| score.hits_per_minute());
     let _ = tx.send(format!("stop gate: {} {:?}", kind.name(), hpm));
     (kind.name(), hpm)
@@ -447,13 +482,14 @@ fn train_kind(
   phase: Phase,
   kind: BrainKind,
   teacher_rows: &[Rows],
+  budget: Budget,
   store: &Store,
   tx: &Sender<String>,
 ) -> Result<(), String> {
   let file = format!("{}.jsonl", kind.name());
   let mut own = store.load(&file);
   let mut own_rows: Vec<(usize, Rows)> = own.iter().map(|r| r.round).zip(rows_of(kind, &own, tetris)?).collect();
-  for round in 1..=ROUNDS {
+  for round in 1..=budget.rounds {
     let missing: Vec<Opponent> = TRAIN
       .iter()
       .copied()
@@ -469,7 +505,7 @@ fn train_kind(
       let done = with_retry(&what, 0, 1, tx, |i| {
         let mut brain = Brain::new(kind, tetris)?;
         let driver = Driver::Student(&mut brain, &readout);
-        let (mut record, rows) = record_with(rom, opponent, phase, driver, STUDENT_LABEL_EVERY, 1, MAX_STEPS)?;
+        let (mut record, rows) = record_with(rom, opponent, phase, driver, STUDENT_LABEL_EVERY, 1, budget.max_steps)?;
         record.index = i;
         Ok((record, rows))
       });
@@ -494,10 +530,40 @@ fn train_kind(
   Ok(())
 }
 
+/// Whether `kind` has fought every training opponent in every round.
+fn rounds_done(kind: BrainKind, budget: Budget, store: &Store) -> bool {
+  let own = store.load(&format!("{}.jsonl", kind.name()));
+  (1..=budget.rounds).all(|round| TRAIN.iter().all(|&o| own.iter().any(|r| r.round == round && r.opponent == o)))
+}
+
 pub fn train(rom: &[u8], tetris: &[u8], phase: Phase, kinds: &[BrainKind], store: &Store, log: &mut dyn FnMut(&str)) -> Result<(), String> {
-  let teacher = teacher_fights(rom, phase, store, log);
+  train_with(rom, tetris, phase, kinds, Budget::default(), store, log)
+}
+
+pub fn train_with(
+  rom: &[u8],
+  tetris: &[u8],
+  phase: Phase,
+  kinds: &[BrainKind],
+  budget: Budget,
+  store: &Store,
+  log: &mut dyn FnMut(&str),
+) -> Result<(), String> {
+  let teacher = teacher_fights(rom, phase, budget, store, log);
   if teacher.is_empty() {
     return Err("no teacher fights were recorded".to_string());
+  }
+  // Replaying the teacher's fights is the slow part of a resume: skip the
+  // brains with every round done, unless the stop gate still needs them all.
+  let gate_pending = phase == Phase::Defence && budget.gate && !store.path(GATE_FILE).exists();
+  let kinds: Vec<BrainKind> = kinds
+    .iter()
+    .copied()
+    .filter(|&k| gate_pending || !rounds_done(k, budget, store))
+    .collect();
+  if kinds.is_empty() {
+    log(&format!("phase {}: every round is done", phase.number()));
+    return Ok(());
   }
   log(&format!(
     "phase {}: replaying {} teacher fights through {} brains",
@@ -505,6 +571,7 @@ pub fn train(rom: &[u8], tetris: &[u8], phase: Phase, kinds: &[BrainKind], store
     teacher.len(),
     kinds.len()
   ));
+  let kinds = &kinds[..];
   let replayed = fan_out(kinds, log, |&kind, _| rows_of(kind, &teacher, tetris));
   let per_kind: Vec<(BrainKind, Vec<Rows>)> = kinds
     .iter()
@@ -512,11 +579,11 @@ pub fn train(rom: &[u8], tetris: &[u8], phase: Phase, kinds: &[BrainKind], store
     .zip(replayed)
     .map(|(k, rows)| rows.map(|r| (k, r)))
     .collect::<Result<_, _>>()?;
-  if phase == Phase::Defence {
-    stop_gate(rom, tetris, &per_kind, store, log)?;
+  if phase == Phase::Defence && budget.gate {
+    stop_gate(rom, tetris, &per_kind, budget, store, log)?;
   }
   let errors: Vec<String> = fan_out(&per_kind, log, |(kind, rows), tx| {
-    train_kind(rom, tetris, phase, *kind, rows, store, tx).map_err(|e| format!("{}: {}", kind.name(), e))
+    train_kind(rom, tetris, phase, *kind, rows, budget, store, tx).map_err(|e| format!("{}: {}", kind.name(), e))
   })
   .into_iter()
   .filter_map(Result::err)
@@ -526,6 +593,13 @@ pub fn train(rom: &[u8], tetris: &[u8], phase: Phase, kinds: &[BrainKind], store
   } else {
     Err(errors.join("; "))
   }
+}
+
+/// A kind's readout fitted on every label it has: the teacher's and its own.
+pub fn final_readout(kind: BrainKind, phase: Phase, store: &Store, tetris: &[u8]) -> Result<Readout, String> {
+  let teacher = rows_of(kind, &store.load(TEACHER_FILE), tetris)?;
+  let own = rows_of(kind, &store.load(&format!("{}.jsonl", kind.name())), tetris)?;
+  fit_cached(teacher.iter().chain(own.iter()), phase)
 }
 
 /// A fight's score as results.json reports it.
@@ -553,8 +627,15 @@ fn score_json(score: &Score, idle_hits_per_minute: f64) -> Value {
 /// The game and the brains are deterministic, so a second fight with the
 /// same readout would be the same fight.
 pub fn test(rom: &[u8], tetris: &[u8], phase: Phase, kinds: &[BrainKind], store: &Store) -> Result<Value, String> {
+  test_with(rom, tetris, phase, kinds, Budget::default(), store, RESULTS_FILE)
+}
+
+/// `test`, within `budget`, writing to `file` in the phase's directory.
+pub fn test_with(rom: &[u8], tetris: &[u8], phase: Phase, kinds: &[BrainKind], budget: Budget, store: &Store, file: &str) -> Result<Value, String> {
   let opponents: Vec<Opponent> = TRAIN.iter().chain(HELD_OUT.iter()).copied().collect();
-  let idle: Vec<Score> = parallel(&opponents, |&o| idle_score(rom, o)).into_iter().collect::<Result<_, _>>()?;
+  let idle: Vec<Score> = parallel(&opponents, |&o| idle_score(rom, o, budget.max_steps))
+    .into_iter()
+    .collect::<Result<_, _>>()?;
   let idle_hpm: Vec<f64> = idle.iter().map(Score::hits_per_minute).collect();
   let teacher = store.load(TEACHER_FILE);
   let per_kind = parallel(kinds, |&kind| -> Result<Value, String> {
@@ -568,7 +649,7 @@ pub fn test(rom: &[u8], tetris: &[u8], phase: Phase, kinds: &[BrainKind], store:
     }
     let mut by_round = serde_json::Map::new();
     for (round, readout) in &fits {
-      let scores = parallel(&opponents, |&o| student_score(rom, tetris, kind, readout, o, phase));
+      let scores = parallel(&opponents, |&o| student_score(rom, tetris, kind, readout, o, phase, budget.max_steps));
       let mut by_opponent = serde_json::Map::new();
       for ((o, score), idle) in opponents.iter().zip(scores).zip(&idle_hpm) {
         by_opponent.insert(
@@ -592,7 +673,7 @@ pub fn test(rom: &[u8], tetris: &[u8], phase: Phase, kinds: &[BrainKind], store:
   let results = json!({ "phase": phase.number(), "idle": idle_json, "kinds": kinds_json });
   std::fs::create_dir_all(&store.root).map_err(|e| e.to_string())?;
   let text = serde_json::to_string_pretty(&results).map_err(|e| e.to_string())?;
-  std::fs::write(store.path(RESULTS_FILE), text).map_err(|e| e.to_string())?;
+  std::fs::write(store.path(file), text).map_err(|e| e.to_string())?;
   Ok(results)
 }
 
@@ -628,6 +709,26 @@ mod tests {
     store.append("stack1.jsonl", &record(2, 3)).unwrap();
     let back = store.load("stack1.jsonl");
     assert_eq!(back.iter().map(|r| r.round).collect::<Vec<_>>(), vec![1, 2]);
+  }
+
+  #[test]
+  fn a_kind_is_done_when_every_round_has_every_training_opponent() {
+    let dir = std::env::temp_dir().join(format!("punchout-done-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let store = Store::new(&dir, Phase::Defence);
+    let budget = Budget {
+      max_steps: 10,
+      rounds: 1,
+      gate: false,
+    };
+    assert!(!rounds_done(BrainKind::Stack(1), budget, &store));
+    for (n, &o) in TRAIN.iter().enumerate() {
+      assert!(!rounds_done(BrainKind::Stack(1), budget, &store), "{} of 3 fought", n);
+      store.append("stack1.jsonl", &FightRecord { opponent: o, ..record(1, 1) }).unwrap();
+    }
+    assert!(rounds_done(BrainKind::Stack(1), budget, &store));
+    assert!(!rounds_done(BrainKind::Stack(1), Budget { rounds: 2, ..budget }, &store));
+    let _ = std::fs::remove_dir_all(&dir);
   }
 
   #[test]

@@ -100,8 +100,21 @@ pub struct Outcome {
 
 /// Hold `mv`'s buttons for `MOVE_FRAMES` frames.
 pub fn play(emu: &mut NesEmulator, mv: Move) -> Outcome {
+  play_watched(emu, mv, &mut |_| {})
+}
+
+/// Hold `buttons` for `MOVE_FRAMES` frames, showing `on_frame` each one.
+pub fn hold(emu: &mut NesEmulator, buttons: u8, on_frame: &mut dyn FnMut(&NesEmulator)) {
+  for _ in 0..MOVE_FRAMES {
+    emu.step_frame(buttons);
+    on_frame(emu);
+  }
+}
+
+/// `play`, showing `on_frame` each frame.
+pub fn play_watched(emu: &mut NesEmulator, mv: Move, on_frame: &mut dyn FnMut(&NesEmulator)) -> Outcome {
   let (mac, opponent) = (mac_health(emu), opponent_health(emu));
-  emu.step_frames(mv.buttons(), MOVE_FRAMES);
+  hold(emu, mv.buttons(), on_frame);
   // Health refills when a fighter gets up, so only falls count.
   let damage_taken = mac.saturating_sub(mac_health(emu));
   let damage_dealt = opponent.saturating_sub(opponent_health(emu));
