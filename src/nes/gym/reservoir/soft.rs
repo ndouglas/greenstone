@@ -19,6 +19,8 @@ const LEAK: f32 = 0.5;
 /// A fixed random tanh expansion of the window, optionally with a random
 /// recurrent matrix so the state carries history (an echo state network).
 pub struct Expansion {
+  inputs: usize,
+  leak: f32,
   w_in: Vec<f32>,
   bias: Vec<f32>,
   w_rec: Option<Vec<f32>>,
@@ -31,9 +33,15 @@ fn uniform(rng: &mut Lcg) -> f32 {
 
 impl Expansion {
   pub fn new(seed: u64, recurrent: bool) -> Expansion {
+    Expansion::shaped(seed, SOFT_INPUTS, recurrent, LEAK)
+  }
+
+  /// An expansion of `inputs` numbers with its own leak; `new` is the SMB
+  /// window's shape. The random draws come in the same order for any shape.
+  pub fn shaped(seed: u64, inputs: usize, recurrent: bool, leak: f32) -> Expansion {
     let mut rng = Lcg::new(seed);
-    let in_scale = INPUT_GAIN / (SOFT_INPUTS as f32).sqrt();
-    let w_in: Vec<f32> = (0..SOFT_UNITS * SOFT_INPUTS).map(|_| uniform(&mut rng) * in_scale).collect();
+    let in_scale = INPUT_GAIN / (inputs as f32).sqrt();
+    let w_in: Vec<f32> = (0..SOFT_UNITS * inputs).map(|_| uniform(&mut rng) * in_scale).collect();
     let bias: Vec<f32> = (0..SOFT_UNITS).map(|_| uniform(&mut rng) * 0.5).collect();
     let w_rec = recurrent.then(|| {
       // Uniform(-1, 1) entries have spectral radius about sqrt(N / 3).
@@ -41,6 +49,8 @@ impl Expansion {
       (0..SOFT_UNITS * SOFT_UNITS).map(|_| uniform(&mut rng) * rec_scale).collect()
     });
     Expansion {
+      inputs,
+      leak,
       w_in,
       bias,
       w_rec,
@@ -51,11 +61,16 @@ impl Expansion {
   /// Feed one window and return `[1.0, unit activations...]`.
   pub fn step(&mut self, window: &[u8]) -> Vec<f32> {
     let x: Vec<f32> = window.iter().map(|&b| b as f32 / 255.0 - 0.5).collect();
+    self.step_centred(&x)
+  }
+
+  /// Feed numbers already centred on zero and return `[1.0, unit activations...]`.
+  pub fn step_centred(&mut self, x: &[f32]) -> Vec<f32> {
     let mut next = vec![0.0f32; SOFT_UNITS];
     for (u, out) in next.iter_mut().enumerate() {
-      let w = &self.w_in[u * SOFT_INPUTS..(u + 1) * SOFT_INPUTS];
+      let w = &self.w_in[u * self.inputs..(u + 1) * self.inputs];
       let mut acc = self.bias[u];
-      for (wi, xi) in w.iter().zip(&x) {
+      for (wi, xi) in w.iter().zip(x) {
         acc += wi * xi;
       }
       if let Some(rec) = &self.w_rec {
@@ -68,7 +83,7 @@ impl Expansion {
     }
     if self.w_rec.is_some() {
       for (h, n) in self.state.iter_mut().zip(&next) {
-        *h = (1.0 - LEAK) * *h + LEAK * n;
+        *h = (1.0 - self.leak) * *h + self.leak * n;
       }
     } else {
       self.state = next;
@@ -104,6 +119,17 @@ mod tests {
     assert!(saturated < SOFT_UNITS / 2, "units should not all saturate: {} saturated", saturated);
     let mut c = Expansion::new(SOFT_SEED + 1, false);
     assert_ne!(c.step(&window(1)), row_a, "another seed is another reservoir");
+  }
+
+  #[test]
+  fn shaped_with_smb_width_matches_new() {
+    for recurrent in [false, true] {
+      let mut a = Expansion::new(SOFT_SEED, recurrent);
+      let mut b = Expansion::shaped(SOFT_SEED, SOFT_INPUTS, recurrent, 0.5);
+      for seed in [1, 2, 1] {
+        assert_eq!(a.step(&window(seed)), b.step(&window(seed)));
+      }
+    }
   }
 
   #[test]
