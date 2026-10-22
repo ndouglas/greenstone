@@ -57,6 +57,11 @@ pub fn fight_over(emu: &mut NesEmulator) -> bool {
   emu.ram_read(SCREEN) != 0xFF && matches!(emu.ram_read(DOWN), 1 | 2)
 }
 
+/// Between rounds: the bell has gone and the game waits for Start.
+pub fn round_over(emu: &mut NesEmulator) -> bool {
+  emu.ram_read(DOWN) == 3
+}
+
 pub fn mac_down(emu: &mut NesEmulator) -> bool {
   emu.ram_read(DOWN) == 2
 }

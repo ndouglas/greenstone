@@ -2,7 +2,9 @@
 //!
 //! See `docs/superpowers/specs/2026-10-21-punchout-reservoir-design.md`.
 
+pub mod fight;
 pub mod gate;
+pub mod moves;
 pub mod ram;
 pub mod start;
 

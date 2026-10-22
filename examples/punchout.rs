@@ -3,6 +3,7 @@
 //! Usage: cargo run --release --example punchout -- <command>
 //!   gate                           boot the ROM and save a strip of frames as PPM
 //!   starts                         save each opponent's first can-act frame as PPM
+//!   idle                           fight each opponent standing still; print the scores
 //!   probe [--punch] [--boot N] [--tap-until N] [--frames N] [--poke ADDR=VAL@FRAME]...
 //!         [--press MASK@FRAME]... [--out NAME]
 //!                                  boot into the fight, then record RAM every frame
@@ -12,7 +13,9 @@
 //!                                  each --press MASK@FRAME holds buttons (hex) for 4 frames
 
 use greenstone::nes::bus::{BUTTON_A, BUTTON_START, BUTTON_UP};
+use greenstone::nes::gym::punchout::fight::run_fight;
 use greenstone::nes::gym::punchout::gate::{boot_strip, write_ppm};
+use greenstone::nes::gym::punchout::moves::Move;
 use greenstone::nes::gym::punchout::start::{fight_start, HELD_OUT, TRAIN};
 use greenstone::nes::gym::punchout::PUNCH_OUT;
 use greenstone::nes::gym::NesEmulator;
@@ -103,6 +106,21 @@ fn main() {
         println!("{} at frame {}", path.display(), frame);
       }
     }
+    Some("idle") => {
+      for o in TRAIN.iter().chain(HELD_OUT.iter()) {
+        let score = run_fight(&rom, *o, &mut |_| Move::Idle).unwrap_or_else(|e| fail(&e));
+        println!(
+          "{:<13} hits/min {:6.2}  hits {:3}  active {:4}/{:4}  down at {:?}  survival {:5.1}s",
+          o.name(),
+          score.hits_per_minute(),
+          score.hits,
+          score.active_steps,
+          score.steps,
+          score.mac_down_at,
+          score.survival_seconds()
+        );
+      }
+    }
     Some("probe") => {
       let punch = args.iter().any(|a| a == "--punch");
       let value = |flag: &str| args.iter().position(|a| a == flag).and_then(|i| args.get(i + 1));
@@ -124,6 +142,6 @@ fn main() {
       let (tap_until, frames) = (count("--tap-until", boot), count("--frames", PROBE_FRAMES));
       probe(&rom, &out.join(name), boot, tap_until, frames, &pokes, &presses, punch);
     }
-    _ => fail("usage: punchout gate | starts | probe [--punch] [--boot N] [--tap-until N] [--frames N] [--poke ADDR=VAL@FRAME]... [--press MASK@FRAME]... [--out NAME]"),
+    _ => fail("usage: punchout gate | starts | idle | probe [--punch] [--boot N] [--tap-until N] [--frames N] [--poke ADDR=VAL@FRAME]... [--press MASK@FRAME]... [--out NAME]"),
   }
 }
