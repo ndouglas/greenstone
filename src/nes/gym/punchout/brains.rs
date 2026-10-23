@@ -73,6 +73,11 @@ impl BrainKind {
       BrainKind::Cheat => "cheat".to_string(),
     }
   }
+
+  /// The contestant or sweep brain with this name.
+  pub fn from_name(name: &str) -> Option<BrainKind> {
+    CONTESTANTS.iter().chain(SWEEP.iter()).copied().find(|k| k.name() == name)
+  }
 }
 
 /// The four contestants of every phase, and the RAM reference.
@@ -246,5 +251,13 @@ mod tests {
   fn names_are_as_the_tables_print_them() {
     let names: Vec<String> = CONTESTANTS.iter().map(|k| k.name()).collect();
     assert_eq!(names, ["stack1", "stack4", "echo0.5", "bank", "cheat"]);
+  }
+
+  #[test]
+  fn every_brain_is_found_by_its_name() {
+    for kind in CONTESTANTS.iter().chain(SWEEP.iter()) {
+      assert_eq!(BrainKind::from_name(&kind.name()), Some(*kind));
+    }
+    assert_eq!(BrainKind::from_name("stack3"), None);
   }
 }

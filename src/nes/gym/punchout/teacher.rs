@@ -54,21 +54,33 @@ fn rollout(emu: &mut NesEmulator, phase: Phase, first: Move, line: &[Move]) -> i
 
 /// The best move from here, leaving the emulator as it was.
 pub fn label(emu: &mut NesEmulator, phase: Phase) -> Move {
+  search(emu, phase).0
+}
+
+/// `label`, and how many rollouts it took.
+fn search(emu: &mut NesEmulator, phase: Phase) -> (Move, usize) {
   let start = emu.save_state();
   let lines = continuations(phase, stars(emu));
   let mut best = (i64::MIN, Move::Idle);
+  let mut rollouts = 0;
   for &first in moves(phase) {
     for line in &lines {
       emu.load_state(&start);
       let s = rollout(emu, phase, first, line);
+      rollouts += 1;
       // Strictly better only: ties keep the earlier move, Idle first.
       if s > best.0 {
         best = (s, first);
       }
+      // Defence scores are never above 0, so nothing later can beat a 0.
+      if phase == Phase::Defence && best.0 == 0 {
+        emu.load_state(&start);
+        return (best.1, rollouts);
+      }
     }
   }
   emu.load_state(&start);
-  best.1
+  (best.1, rollouts)
 }
 
 #[cfg(test)]
@@ -114,6 +126,19 @@ mod tests {
     assert_ne!(label(&mut emu, Phase::Defence), Move::Idle, "a punch is coming");
     emu.load_state(&history[0]);
     assert_eq!(label(&mut emu, Phase::Defence), Move::Idle, "nothing is coming at the bell");
+  }
+
+  #[test]
+  fn defence_stops_searching_once_idle_takes_no_hit() {
+    let Some(rom) = rom_or_skip(PUNCH_OUT) else { return };
+    let (state, _) = fight_start(&rom, Opponent::GlassJoe).unwrap();
+    let mut emu = NesEmulator::new(&rom);
+    emu.load_state(&state);
+    // Nothing is coming at the bell: Idle scores the best Defence can, 0.
+    assert_eq!(search(&mut emu, Phase::Defence), (Move::Idle, 1));
+    // Counter has no such ceiling, so it tries every move on every line.
+    let full = moves(Phase::Counter).len() * continuations(Phase::Counter, stars(&mut emu)).len();
+    assert_eq!(search(&mut emu, Phase::Counter).1, full);
   }
 
   #[test]

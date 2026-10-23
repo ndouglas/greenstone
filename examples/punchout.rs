@@ -2,8 +2,10 @@
 //! $PUNCHOUT_ROOT for train, test and takes.
 //!
 //! Usage: cargo run --release --example punchout -- <command>
-//!   train --phase N [--sweep]      record teacher fights and DAgger rounds (resumable);
-//!                                  --sweep trains phase 1's memory sweep
+//!   train --phase N [--sweep] [--kinds NAME,...]
+//!                                  record teacher fights and DAgger rounds (resumable);
+//!                                  --sweep trains phase 1's memory sweep; --kinds
+//!                                  trains only the named brains (e.g. stack4,echo0.5)
 //!   test --phase N [--sweep]       fight every opponent with every brain; write results
 //!   takes --phase N                film each contestant's best training and held-out
 //!                                  fights (and, for phase 1, always-Idle against Glass Joe)
@@ -106,15 +108,31 @@ fn phase_arg(args: &[String]) -> Phase {
     .unwrap_or_else(|| fail("--phase takes 1, 2 or 3"))
 }
 
-/// The brains a command runs: the contestants, or with --sweep phase 1's
-/// memory sweep.
-fn kinds_arg(args: &[String], phase: Phase) -> &'static [BrainKind] {
-  if !args.iter().any(|a| a == "--sweep") {
-    &CONTESTANTS
+/// The brains a command runs: the contestants, with --sweep phase 1's memory
+/// sweep, or with --kinds NAME,NAME... just those (train only: a test writes
+/// every brain's results at once).
+fn kinds_arg(args: &[String], phase: Phase) -> Vec<BrainKind> {
+  let all = if !args.iter().any(|a| a == "--sweep") {
+    CONTESTANTS.to_vec()
   } else if phase == Phase::Defence {
-    &SWEEP
+    SWEEP.to_vec()
   } else {
     fail("--sweep is phase 1's memory sweep")
+  };
+  match args.windows(2).find(|w| w[0] == "--kinds") {
+    None => all,
+    Some(_) if args.first().is_some_and(|c| c != "train") => fail("--kinds is for train only"),
+    Some(w) => w[1]
+      .split(',')
+      .map(|name| match BrainKind::from_name(name) {
+        Some(kind) if all.contains(&kind) => kind,
+        _ => fail(&format!(
+          "--kinds: no brain {} here; these are {}",
+          name,
+          all.iter().map(|k| k.name()).collect::<Vec<_>>().join(",")
+        )),
+      })
+      .collect(),
   }
 }
 
@@ -257,7 +275,7 @@ fn main() {
         let t = started.elapsed().as_secs();
         println!("[{:02}:{:02}:{:02}] {}", t / 3600, t / 60 % 60, t % 60, line);
       };
-      train_with(&rom, &tetris, phase, kinds_arg(&args, phase), budget(), &store, &mut log).unwrap_or_else(|e| fail(&e));
+      train_with(&rom, &tetris, phase, &kinds_arg(&args, phase), budget(), &store, &mut log).unwrap_or_else(|e| fail(&e));
       log("done");
     }
     Some("test") => {
@@ -268,7 +286,7 @@ fn main() {
       let sweep = args.iter().any(|a| a == "--sweep");
       let file = if sweep { "sweep.json" } else { "results.json" };
       let results =
-        test_with(&rom, &tetris, phase, kinds_arg(&args, phase), budget(), &store, file).unwrap_or_else(|e| fail(&e));
+        test_with(&rom, &tetris, phase, &kinds_arg(&args, phase), budget(), &store, file).unwrap_or_else(|e| fail(&e));
       let text = serde_json::to_string_pretty(&results).unwrap_or_default();
       if sweep {
         std::fs::write(root.join("sweep.json"), &text).unwrap_or_else(|e| fail(&e.to_string()));
