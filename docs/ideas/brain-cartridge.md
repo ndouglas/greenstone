@@ -841,6 +841,114 @@ Earlier tables from this day, including the single-demonstration run
 where the playfield drive led raw on a time split, are in the git history
 of this file.
 
+### 1a. Reservoir Punch-Out!!  `LATER`
+
+The Tetris reservoir's sequel, on a game where the signal is a tell on
+screen a fraction of a second before the punch. Brains read the screen
+(an 84x84 grey frame, minus the HUD, projected to 256 numbers), never
+RAM, and press one of a phase's moves every 4 frames. A save-state
+lookahead teacher labels the best move by trying each for 60 frames, and
+DAgger refits a ridge readout on the teacher's fights plus the teacher's
+labels for the student's own. Glass Joe, Von Kaiser and Piston Honda
+are trained on; Don Flamenco and Bald Bull are held out. Spec:
+`docs/superpowers/specs/2026-10-21-punchout-reservoir-design.md`; plan:
+`docs/superpowers/plans/2026-10-21-punchout-reservoir.md`; code:
+`src/nes/gym/punchout/` and `examples/punchout.rs` (`train`, `test`,
+`takes`). Mapper 9 (MMC2) was built for it.
+
+Five brains: `stack1` and `stack4` (the last 1 or 4 projections), `echo0.5`
+(a 2,048-unit echo state, leak 0.5), `bank` (four Tetris boards fed the
+projection), and `cheat` (all 2,048 bytes of RAM, the reference). Three
+phases, each with more moves: Defence (dodge and duck), Counter (plus
+left and right jabs), Fight (plus the star uppercut). Scores are hits
+taken per minute (lower is better), damage dealt to the opponent, and the
+dodge rate, 1 minus hits per minute over always-Idle's. Every brain is
+scored after the teacher-only fit (round 0) and after four DAgger rounds
+(round 4); the opponents are scripted, so one fight per opponent is
+the whole test.
+
+```
+always-Idle, hits/min      GJ 20.98  VK 37.87  PH 32.00  DF 0.00  BB 43.20
+
+phase 1, Defence           GJ     VK     PH     BB (dodge)
+  echo0.5  round 0        2.95  37.87  31.81  34.95 (0.19)
+  echo0.5  round 4        0.00  17.39  12.31  27.02 (0.37)
+  stack4   round 0        2.95  37.87  23.14  18.03 (0.58)
+  stack4   round 4        2.46  25.87  12.97  17.31 (0.60)
+  cheat    round 4       20.49  31.03  17.92  43.20 (0.00)
+  bank     round 4        identical to always-Idle everywhere
+
+phase 2, Counter           GJ     VK     PH     DF            BB (dodge)
+  stack4   round 0       17.87  24.97  16.50  16.07          12.77 (0.70)
+  stack4   round 4        0.00   1.94   2.49   5.17, 26 dealt 22.76 (0.47)
+  echo0.5  round 4        1.12   4.01   6.40  23.24          24.49 (0.43)
+
+phase 3, Fight             GJ     VK     PH     DF            BB (dodge)
+  stack4   round 0       21.19  24.94  18.96   0.00          19.18 (0.56)
+  stack4   round 4        0.00   4.67  10.34  11.22          22.67 (0.48)
+  echo0.5  round 4        3.70   2.98  11.10  19.07          18.40 (0.57)
+  cheat    round 4        7.15  35.33  22.09  41.47          16.17 (0.63)
+```
+
+Don Flamenco never attacks a Mac who stands still, so in Defence every
+brain takes nothing from him and his dodge rate is undefined; from Counter
+on, punching him is what draws his attacks. In Fight, stack4 knocks
+down all three training opponents (Glass Joe twice, 277 damage, no hits
+taken; Von Kaiser once; Piston Honda twice) and echo0.5 knocks Piston
+Honda down three times. Nobody wins: a fight is capped at 2,400 steps,
+under three rounds, and no brain lands three knockdowns in one round.
+
+What the phases say:
+
+- Four frames of screen are enough to dodge. stack4 and echo0.5 go from
+  standing still to near-perfect defence on the trained opponents in
+  every phase, and in Counter take 2 to 6 hits a minute where idle
+  takes 32 to 38.
+- DAgger fits the opponents it sees and costs the one it does not.
+  Round 4 beats round 0 on every trained opponent, but stack4 against
+  Bald Bull goes from 12.77 to 22.76 hits a minute in Counter and from
+  19.18 to 22.67 in Fight. The student's own fights only ever show it
+  Glass Joe, Von Kaiser and Piston Honda.
+- The RAM cheat is not an upper bound here. Raw bytes scaled to 0-1
+  under a linear readout dodge worse than the screen brains on every
+  trained opponent, though the cheat is best against Bald Bull in Fight.
+- The bank does nothing until Fight. About 97% of the teacher's labels
+  are Idle, and the bank's features do not separate the rest. Its rows
+  do change every step (a probe found 300 distinct rows in 300 steps),
+  but its window averages 16 projected numbers per byte, which shrinks
+  the spread so pieces land only in Tetris columns 3 to 6. Widening
+  that is the obvious next bank experiment.
+
+Does the game need more memory than four frames? Phase 1's sweep, round
+4 (stack N keeps one projection per 4-frame step, so stack8 spans 28
+frames; a higher echo leak forgets faster):
+
+```
+           GJ     VK     PH     BB (dodge)
+  stack1  3.45  34.25  32.00  28.05 (0.35)
+  stack2  0.00  29.85  23.75  15.00 (0.65)
+  stack4  2.46  25.87  12.97  17.31 (0.60)
+  stack8  0.00  20.31   9.14  23.79 (0.45)
+  echo0.2 2.96  26.51  22.82  22.25 (0.49)
+  echo0.5 0.00  17.39  12.31  27.02 (0.37)
+  echo0.9 0.00  14.79  10.61  22.97 (0.47)
+```
+
+More crisp history helps on the opponents trained on (stack8 beats
+stack4 on all three) and does not carry to Bald Bull, where stack2 is
+best. Long blurry memory does not help: echo0.2, which remembers longest,
+is the worst echo brain, and echo0.9, which remembers least, the best.
+The question the sweep cannot answer is the gap between samples: a brain
+sees one frame in four, so a tell shorter than 4 frames can fall between
+them. Feeding all four frames of a step is the cheap test.
+
+Cost: the bank dominated, about 2.9 s a step, so a phase took about 12 h
+on a shared machine. `train --kinds` now trains a subset, and Defence
+labels stop after one rollout when Idle takes no hit. Follow-up runs (a
+widened bank, four-frame inputs) belong on a bigger machine. Film takes
+of each brain's best fights are in `target/punchout/takes/`; the film
+itself has its own plan.
+
 ### 2. Second-mover polarity  `DEPOSIT`
 
 ml-mad-science stop 1 tags "data moves freely, no tether" as DEGENERATE.
