@@ -432,8 +432,8 @@ fn idle_score(rom: &[u8], opponent: Opponent, max_steps: usize) -> Result<Score,
 }
 
 /// After round 0 of defence: does any brain fitted on the teacher's fights
-/// take fewer hits per minute from Glass Joe than standing still? The
-/// answer is kept in gate.json, so a resumed run asks only once.
+/// take fewer hits per minute from Glass Joe than standing still? A pass
+/// is kept in gate.json, so a resumed run asks only once.
 fn stop_gate(
   rom: &[u8],
   tetris: &[u8],
@@ -465,13 +465,13 @@ fn stop_gate(
     .map(|(name, h)| (name, h.map_or_else(|e| json!({ "error": e }), |h| json!(h))))
     .collect();
   let gate = json!({ "idle_hits_per_minute": idle, "hits_per_minute": kinds, "passed": passed });
+  if !passed {
+    // Not kept: a run with other brains (say, a --kinds subset) asks again.
+    return Err(format!("stop gate: no brain beats always-Idle: {}", gate));
+  }
   std::fs::create_dir_all(&store.root).map_err(|e| e.to_string())?;
   std::fs::write(&path, serde_json::to_string_pretty(&gate).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-  if passed {
-    Ok(())
-  } else {
-    Err(format!("stop gate: no brain beats always-Idle: {}", gate))
-  }
+  Ok(())
 }
 
 /// Rounds 1..=ROUNDS for one kind: fit on everything so far, fight each
@@ -695,6 +695,26 @@ mod tests {
       rams: vec![],
       score: Score::default(),
     }
+  }
+
+  #[test]
+  fn a_failed_stop_gate_is_not_kept() {
+    let Some(rom) = rom_or_skip(PUNCH_OUT) else { return };
+    let dir = std::env::temp_dir().join(format!("punchout-gate-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let store = Store::new(&dir, Phase::Defence);
+    // A brain that only ever saw Idle stands still, so it cannot beat Idle;
+    // a later run with other brains must get to ask the gate again.
+    let rows: Rows = (vec![vec![1.0; 1 + PROJ]; 8], vec![Move::Idle; 8]);
+    let per_kind = vec![(BrainKind::Stack(1), vec![rows])];
+    let budget = Budget {
+      max_steps: 200,
+      rounds: 1,
+      gate: true,
+    };
+    assert!(stop_gate(&rom, &[], &per_kind, budget, &store, &mut |_| {}).is_err());
+    assert!(!store.path(GATE_FILE).exists(), "a failed gate was written to gate.json");
+    let _ = std::fs::remove_dir_all(&dir);
   }
 
   #[test]

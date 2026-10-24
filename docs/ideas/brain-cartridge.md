@@ -895,31 +895,42 @@ brain takes nothing from him and his dodge rate is undefined; from Counter
 on, punching him is what draws his attacks. In Fight, stack4 knocks
 down all three training opponents (Glass Joe twice, 277 damage, no hits
 taken; Von Kaiser once; Piston Honda twice) and echo0.5 knocks Piston
-Honda down three times. Nobody wins: a fight is capped at 2,400 steps,
-under three rounds, and no brain lands three knockdowns in one round.
+Honda down three times. Nobody wins within the cap of 2,400 steps,
+under three rounds.
 
 What the phases say:
 
-- Four frames of screen are enough to dodge. stack4 and echo0.5 go from
-  standing still to near-perfect defence on the trained opponents in
-  every phase, and in Counter take 2 to 6 hits a minute where idle
-  takes 32 to 38.
-- DAgger fits the opponents it sees and costs the one it does not.
-  Round 4 beats round 0 on every trained opponent, but stack4 against
-  Bald Bull goes from 12.77 to 22.76 hits a minute in Counter and from
-  19.18 to 22.67 in Fight. The student's own fights only ever show it
-  Glass Joe, Von Kaiser and Piston Honda.
+- Four samples of screen, 12 frames apart end to end, are enough to
+  learn to defend. stack4 and echo0.5 take fewer hits than standing
+  still from every trained opponent in every phase, and Counter is
+  where they come closest to perfect: 0 to 2.5 hits a minute for stack4
+  and 1.1 to 6.4 for echo0.5, where idle takes 21 to 38. Defence is
+  harder than it looks: against Von Kaiser they still take 25.87 and
+  17.39.
+- For stack4 and echo0.5, round 4 beats round 0 on every trained
+  opponent in every phase; what DAgger does to the held-out ones
+  depends on the brain. echo0.5 improves against Bald Bull in every
+  phase (34.95 to 27.02, 38.61 to 24.49, 35.74 to 18.40), and stack4
+  improves against Don Flamenco in Counter (16.07 to 5.17). But stack4
+  gets worse against Bald Bull in Counter (12.77 to 22.76) and Fight
+  (19.18 to 22.67): its rounds only ever show it Glass Joe, Von Kaiser
+  and Piston Honda.
 - The RAM cheat is not an upper bound here. Raw bytes scaled to 0-1
-  under a linear readout dodge worse than the screen brains on every
-  trained opponent, though the cheat is best against Bald Bull in Fight.
-- The bank does nothing until Fight. About 97% of the teacher's labels
-  are Idle, and the bank's features do not separate the rest. Its rows
-  do change every step (a probe found 300 distinct rows in 300 steps),
-  but its window averages 16 projected numbers per byte, which shrinks
-  the spread so pieces land only in Tetris columns 3 to 6. Widening
-  that is the obvious next bank experiment.
+  under a linear readout take more hits than stack4 and echo0.5 from
+  every trained opponent in every phase, though the cheat beats stack1
+  against Von Kaiser and Piston Honda in Defence and is the best brain
+  against Bald Bull in Fight.
+- The bank is standing still in Defence and nearly so after it. The
+  teacher's labels are mostly Idle (96.7%, 84.7% and 85.3% in the three
+  phases), and the bank's features do not separate the rest: it is
+  identical to idle in Defence, and its best is 16.47 hits a minute and
+  30 damage against Glass Joe in Fight. Its rows do change every step
+  (a probe found 300 distinct rows in 300 steps), but its window
+  averages 16 projected numbers per byte, which shrinks the spread so
+  pieces land only in Tetris columns 3 to 6. Widening that is the
+  obvious next bank experiment.
 
-Does the game need more memory than four frames? Phase 1's sweep, round
+Does the game need more memory than four samples? Phase 1's sweep, round
 4 (stack N keeps one projection per 4-frame step, so stack8 spans 28
 frames; a higher echo leak forgets faster):
 
@@ -936,8 +947,10 @@ frames; a higher echo leak forgets faster):
 
 More crisp history helps on the opponents trained on (stack8 beats
 stack4 on all three) and does not carry to Bald Bull, where stack2 is
-best. Long blurry memory does not help: echo0.2, which remembers longest,
-is the worst echo brain, and echo0.9, which remembers least, the best.
+best. Long blurry memory does not help on the trained opponents:
+echo0.2, which remembers longest, is the worst echo brain there, and
+echo0.9, which remembers least, the best; on Bald Bull the order turns
+over and echo0.2 is the best echo brain, by under one hit a minute.
 The question the sweep cannot answer is the gap between samples: a brain
 sees one frame in four, so a tell shorter than 4 frames can fall between
 them. Feeding all four frames of a step is the cheap test.
