@@ -76,5 +76,20 @@ class Chapters(unittest.TestCase):
         fight = shot.draw(ctx, last / 60, last).crop((x, y, x + w, y + h)).convert("L")
         self.assertGreater(sum(fight.getdata()) / (w * h), 40)
 
+    def test_a_finished_fight_side_by_side_holds_its_last_lit_frame(self):
+        ctx = context()
+        shot = chapter(9).shots[0]
+        last = int(shot_seconds(shot, ctx) * 60) - 1
+        # Round 4 is on the right, and its take ends first.
+        right = shot.draw(ctx, last / 60, last).crop((660, 20, 1220, 545)).convert("L")
+        self.assertGreater(sum(right.getdata()) / (560 * 525), 40)
+
+    def test_the_pixel_count_adds_up(self):
+        # 84x84 is 7,056; the score is cropped off, leaving 68x84 = 5,712.
+        self.assertIn("score cropped off, is 5,712 pixels", self.text(4))
+
+    def test_the_verdict_claims_only_the_teachers_fight_knockouts(self):
+        self.assertNotIn("knocks everyone out", self.text(11))
+
     def test_the_teachers_ko_is_said_with_its_real_length(self):
         self.assertIn("801 moves", self.text(3))

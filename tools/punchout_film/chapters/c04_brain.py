@@ -97,7 +97,7 @@ CHAPTER = Chapter(4, "Building a brain", "Out of things that never learn", [
         Caption(5, "Ours multiplies the screen by one random matrix, rolled once from a seed and never trained."),
     ]),
     Shot("see", 14, see, [
-        Caption(0, "The screen below the score, shrunk to 84 by 84, is 5,712 pixels. The matrix turns them into 256 numbers."),
+        Caption(0, "The screen, shrunk to 84 by 84 with the score cropped off, is 5,712 pixels. The matrix turns them into 256 numbers."),
         Caption(8, "Nobody chose what any of these numbers means."),
     ], takes=(ECHO,)),
     Shot("remember_swap", 10, diagram_shot(4, swaps=[("see", -2, 1), ("remember", 3, 4)], focus="remember"), [

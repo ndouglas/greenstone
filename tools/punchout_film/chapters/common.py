@@ -128,7 +128,7 @@ def pair(img, takes, frame, labels):
     for k, (take, label) in enumerate(zip(takes, labels)):
         x = 40 + k * 620
         n = take.frames("punchout").n
-        f = min(frame, n - 1)
+        f = min(frame, last_lit(take))
         draw.nes(img, take.frames("punchout")[f], (x, 20, 560, 525))
         draw.text(img, (x, 552), label, 22, draw.INK, bold=True)
         draw.text(img, (x + 560, 552), plural(hits_so_far(take, f), "hit"), 22, draw.RED, anchor="ra", bold=True)

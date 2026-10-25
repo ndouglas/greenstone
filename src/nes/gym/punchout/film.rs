@@ -163,7 +163,13 @@ pub fn expected_score(take: &FilmTake, root: &Path) -> Option<Value> {
         let rounds = results["kinds"][kind.name()].as_object()?;
         let key = match round {
           Round::Zero => "round 0".to_string(),
-          Round::Final => rounds.keys().max_by_key(|k| k[6..].parse::<usize>().unwrap_or(0))?.clone(),
+          // A kind that failed has an "error" key beside its rounds.
+          Round::Final => rounds
+            .keys()
+            .filter_map(|k| Some((k.strip_prefix("round ")?.parse::<usize>().ok()?, k)))
+            .max()?
+            .1
+            .clone(),
         };
         let entry = rounds.get(&key)?.get(opponent.name())?;
         entry.get("hits").map(|_| entry.clone())
@@ -193,6 +199,19 @@ mod tests {
   use crate::nes::gym::reservoir::rom_or_skip;
 
   const ROOT: &str = "target/punchout";
+
+  #[test]
+  fn expected_score_skips_a_kind_that_errored() {
+    let root = std::env::temp_dir().join(format!("punchout-film-errored-{}", std::process::id()));
+    let dir = root.join("phase1");
+    std::fs::create_dir_all(&dir).unwrap();
+    let results = json!({"kinds": {"stack4": {"error": "fit failed", "round 4": {"glass-joe": {"hits": 3}}}}});
+    std::fs::write(dir.join("results.json"), results.to_string()).unwrap();
+    let take = final_take(Defence, BrainKind::Stack(4), GlassJoe);
+    let got = expected_score(&take, &root);
+    std::fs::remove_dir_all(&root).unwrap();
+    assert_eq!(got, Some(json!({"hits": 3})));
+  }
 
   #[test]
   fn film_take_names_are_unique_and_match_the_plan() {

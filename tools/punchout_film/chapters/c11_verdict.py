@@ -44,7 +44,7 @@ CHAPTER = Chapter(11, "Verdict", "What each strange part did", [
         Caption(0, "Seeing by dice roll worked. A random projection was enough to dodge."),
         Caption(6, "For memory, a short crisp stack beat long blurry echoes. The Tetris bank never got a fair test."),
         Caption(14, "One ridge solve came close to perfect in Counter."),
-        Caption(20, "The teacher knocks everyone out. Its students never win."),
+        Caption(20, "In Fight, the teacher knocks out everyone it meets. Its students never win."),
         Caption(26, "Odd, mostly ineffective, and fun."),
     ]),
     Shot("verdict", 12, verdict),
