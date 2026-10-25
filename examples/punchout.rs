@@ -26,7 +26,7 @@
 use greenstone::nes::bus::{BUTTON_A, BUTTON_START, BUTTON_UP};
 use greenstone::nes::gym::punchout::brains::{BrainKind, CONTESTANTS, SWEEP};
 use greenstone::nes::gym::punchout::dagger::{final_readout, test_with, train_with, Budget, Store};
-use greenstone::nes::gym::punchout::fight::run_fight;
+use greenstone::nes::gym::punchout::fight::{run_fight, MAX_STEPS};
 use greenstone::nes::gym::punchout::gate::{boot_strip, write_ppm};
 use greenstone::nes::gym::punchout::moves::{Move, Phase};
 use greenstone::nes::gym::punchout::start::{fight_start, Opponent, HELD_OUT, TRAIN};
@@ -212,7 +212,9 @@ fn takes(rom: &[u8], tetris: &[u8], phase: Phase, root: &Path) {
         let out = dir.join(format!("phase{}-{}-{}", phase.number(), name, opponent.name()));
         let steps = match kind {
           None => record_idle_take(rom, phase, opponent, &out),
-          Some(kind) => final_readout(kind, phase, store, tetris).and_then(|readout| record_take(rom, tetris, phase, kind, opponent, &readout, &out)),
+          Some(kind) => {
+            final_readout(kind, phase, store, tetris).and_then(|readout| record_take(rom, tetris, phase, kind, opponent, &readout, MAX_STEPS, &out))
+          }
         };
         match steps {
           Ok(n) => println!("{}: {} steps", out.display(), n),

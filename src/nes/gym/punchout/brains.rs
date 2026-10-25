@@ -155,6 +155,17 @@ impl Brain {
   }
 }
 
+impl Brain {
+  /// The bank's four Tetris playfields as they stand, or `None` for a brain
+  /// without boards.
+  pub fn boards(&mut self) -> Option<Vec<Vec<u8>>> {
+    match self {
+      Brain::Bank(boards) => Some(boards.iter_mut().map(|b| b.playfield()).collect()),
+      _ => None,
+    }
+  }
+}
+
 /// The bank's 16-byte window: byte `b * 4 + k` is the mean of a 16-number
 /// slice of the projection, mapped so `>> 4` lands on a Tetris column.
 pub fn bank_window(proj: &[f32]) -> [u8; 16] {
