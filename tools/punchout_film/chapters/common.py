@@ -1,6 +1,8 @@
 """Helpers the chapters share: a fight on the left with a panel of what
 happened so far on the right, and the build-up diagram."""
 
+import numpy as np
+
 from reservoir_film import draw
 from reservoir_film.model import H, W
 
@@ -16,9 +18,27 @@ MOVE_NAMES = {"Idle": "stand still", "DodgeLeft": "dodge left", "DodgeRight": "d
               "JabLeft": "left jab", "JabRight": "right jab", "Uppercut": "star uppercut"}
 
 
+_LAST_LIT = {}
+
+
+def last_lit(take):
+    """The take's last frame before the game fades to black, so a finished
+    fight holds on its knockout rather than on a black screen."""
+    if take.path not in _LAST_LIT:
+        frames = take.frames("punchout")
+        k = frames.n - 1
+        # A frame well inside the fight sets what lit looks like.
+        lit = np.asarray(frames[max(0, k - 200)]).mean()
+        while k > 0 and np.asarray(frames[k]).mean() < 0.9 * lit:
+            k -= 1
+        _LAST_LIT[take.path] = k
+    return _LAST_LIT[take.path]
+
+
 def frame_index(take, i, speed=1, start=0):
-    """The take's frame for output frame `i`, played at `speed` from `start`."""
-    return min(start + int(i * speed), take.frames("punchout").n - 1)
+    """The take's frame for output frame `i`, played at `speed` from `start`
+    and held on its last lit frame once the take runs out."""
+    return min(start + int(i * speed), last_lit(take))
 
 
 def hits_so_far(take, frame):

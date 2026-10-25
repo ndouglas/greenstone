@@ -67,5 +67,14 @@ class Chapters(unittest.TestCase):
     def test_chapter_11(self):
         self.check(11)
 
+    def test_a_finished_fight_holds_its_last_lit_frame(self):
+        from punchout_film.chapters.common import FIGHT_BOX
+        ctx = context()
+        shot = next(s for s in chapter(3).shots if s.name == "knockout")
+        last = int(shot_seconds(shot, ctx) * 60) - 1
+        x, y, w, h = FIGHT_BOX
+        fight = shot.draw(ctx, last / 60, last).crop((x, y, x + w, y + h)).convert("L")
+        self.assertGreater(sum(fight.getdata()) / (w * h), 40)
+
     def test_the_teachers_ko_is_said_with_its_real_length(self):
         self.assertIn("801 moves", self.text(3))

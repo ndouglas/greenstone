@@ -34,7 +34,7 @@ CHAPTER = Chapter(5, "Defence", "Dodge, duck, or stand there", [
         Caption(17, "Against Glass Joe: {numbers.phase1.echo0_5.r4.glass-joe.hpm:.1f} hits a minute, where standing still takes {numbers.idle.glass-joe.hpm:.1f}."),
     ], takes=("p1-idle-glass-joe", "p1-echo0.5-glass-joe")),
     Shot("bank", 16, bank, [
-        Caption(0, "The bank, against the same opponent: {numbers.phase1.bank.r4.glass-joe.hpm:.2f} hits a minute."),
+        Caption(0, "The bank, against the same opponent: {numbers.phase1.bank.r4.glass-joe.hpm:.1f} hits a minute."),
         Caption(6, "Identical to standing still, as chapter 4 predicted. Its readout found nothing in those boards worth acting on."),
         Caption(12, "These are the trained brains. How the training goes round, we'll come to."),
     ], takes=("p1-bank-glass-joe",)),
