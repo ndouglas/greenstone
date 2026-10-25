@@ -7,6 +7,9 @@
 //!                                  --sweep trains phase 1's memory sweep; --kinds
 //!                                  trains only the named brains (e.g. stack4,echo0.5)
 //!   test --phase N [--sweep]       fight every opponent with every brain; write results
+//!   film-takes [--only NAME,...]   record the film's takes that are missing from
+//!                                  target/punchout-film/takes/, reporting any whose
+//!                                  score differs from the training results
 //!   takes --phase N                film each contestant's best training and held-out
 //!                                  fights (and, for phase 1, always-Idle against Glass Joe)
 //!
@@ -27,6 +30,7 @@ use greenstone::nes::bus::{BUTTON_A, BUTTON_START, BUTTON_UP};
 use greenstone::nes::gym::punchout::brains::{BrainKind, CONTESTANTS, SWEEP};
 use greenstone::nes::gym::punchout::dagger::{final_readout, test_with, train_with, Budget, Store};
 use greenstone::nes::gym::punchout::fight::{run_fight, MAX_STEPS};
+use greenstone::nes::gym::punchout::film::{expected_score, record, score_mismatch, FilmTake, FILM_TAKES};
 use greenstone::nes::gym::punchout::gate::{boot_strip, write_ppm};
 use greenstone::nes::gym::punchout::moves::{Move, Phase};
 use greenstone::nes::gym::punchout::start::{fight_start, Opponent, HELD_OUT, TRAIN};
@@ -225,6 +229,47 @@ fn takes(rom: &[u8], tetris: &[u8], phase: Phase, root: &Path) {
   });
 }
 
+/// Where the film's takes go.
+const FILM_TAKES_DIR: &str = "target/punchout-film/takes";
+
+/// Record each of the film's takes (or those named in `only`) that `dir`
+/// lacks, a few at a time, and report any whose score differs from the
+/// training results it should reproduce.
+fn film_takes(rom: &[u8], tetris: &[u8], root: &Path, dir: &Path, only: Option<&[String]>) {
+  let todo: Vec<&FilmTake> = FILM_TAKES
+    .iter()
+    .filter(|t| only.is_none_or(|names| names.contains(&t.name())))
+    .filter(|t| !dir.join(t.name()).join("take.json").exists())
+    .collect();
+  let next = std::sync::atomic::AtomicUsize::new(0);
+  let workers = std::thread::available_parallelism().map_or(4, |n| n.get()).min(8);
+  std::thread::scope(|scope| {
+    for _ in 0..workers {
+      scope.spawn(|| loop {
+        let Some(take) = todo.get(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed)) else {
+          break;
+        };
+        let out = dir.join(take.name());
+        match record(take, rom, tetris, root, &out) {
+          Ok(n) => println!("{}: {} steps", out.display(), n),
+          Err(e) => {
+            eprintln!("{}: {}", out.display(), e);
+            continue;
+          }
+        }
+        let got: Option<Value> = std::fs::read_to_string(out.join("take.json"))
+          .ok()
+          .and_then(|s| serde_json::from_str(&s).ok());
+        if let (Some(expected), Some(got)) = (expected_score(take, root), got) {
+          if let Some(diff) = score_mismatch(&expected, &got["score"]) {
+            eprintln!("MISMATCH {}: {}", take.name(), diff);
+          }
+        }
+      });
+    }
+  });
+}
+
 fn main() {
   quiet_guarded_panics();
   let args: Vec<String> = std::env::args().skip(1).collect();
@@ -299,6 +344,20 @@ fn main() {
       let tetris = std::fs::read(TETRIS).unwrap_or_else(|e| fail(&format!("{}: {}", TETRIS, e)));
       takes(&rom, &tetris, phase_arg(&args), &root());
     }
+    Some("film-takes") => {
+      let tetris = std::fs::read(TETRIS).unwrap_or_else(|e| fail(&format!("{}: {}", TETRIS, e)));
+      let only: Option<Vec<String>> = args
+        .iter()
+        .position(|a| a == "--only")
+        .map(|i| args.get(i + 1).unwrap_or_else(|| fail("--only takes NAME,...")).split(',').map(String::from).collect());
+      if let Some(names) = &only {
+        let valid: Vec<String> = FILM_TAKES.iter().map(FilmTake::name).collect();
+        if let Some(bad) = names.iter().find(|n| !valid.contains(n)) {
+          fail(&format!("no film take {}; the takes are {}", bad, valid.join(", ")));
+        }
+      }
+      film_takes(&rom, &tetris, &root(), Path::new(FILM_TAKES_DIR), only.as_deref());
+    }
     Some("probe") => {
       let punch = args.iter().any(|a| a == "--punch");
       let value = |flag: &str| args.iter().position(|a| a == flag).and_then(|i| args.get(i + 1));
@@ -320,6 +379,6 @@ fn main() {
       let (tap_until, frames) = (count("--tap-until", boot), count("--frames", PROBE_FRAMES));
       probe(&rom, &out.join(name), boot, tap_until, frames, &pokes, &presses, punch);
     }
-    _ => fail("usage: punchout train|test|takes --phase N [--sweep] | gate | starts | idle | probe [--punch] [--boot N] [--tap-until N] [--frames N] [--poke ADDR=VAL@FRAME]... [--press MASK@FRAME]... [--out NAME]"),
+    _ => fail("usage: punchout train|test|takes --phase N [--sweep] | film-takes [--only NAME,...] | gate | starts | idle | probe [--punch] [--boot N] [--tap-until N] [--frames N] [--poke ADDR=VAL@FRAME]... [--press MASK@FRAME]... [--out NAME]"),
   }
 }

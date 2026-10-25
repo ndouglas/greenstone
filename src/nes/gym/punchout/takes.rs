@@ -5,16 +5,21 @@ use std::path::Path;
 
 use serde_json::{json, Value};
 
+use crate::nes::bus::BUTTON_START;
 use crate::nes::gym::punchout::brains::{Brain, BrainKind, Projection};
 use crate::nes::gym::punchout::dagger::choose;
 use crate::nes::gym::punchout::fight::{run_fight_watched, Step, Watched, MAX_STEPS};
 use crate::nes::gym::punchout::moves::{moves, Move, Phase};
 use crate::nes::gym::punchout::start::Opponent;
+use crate::nes::gym::punchout::teacher::label;
 use crate::nes::gym::reservoir::film::TakeWriter;
 use crate::nes::gym::reservoir::ridge::Readout;
+use crate::nes::gym::NesEmulator;
 
 /// The stream a take writes the fight's screen to.
 pub const STREAM: &str = "punchout";
+/// Frames between Start taps while booting, as the gate's boot strip taps.
+const BOOT_START_EVERY: usize = 240;
 
 /// Play one fight with `kind` and `readout` against `opponent` for at most
 /// `max_steps` steps, writing the screen at every frame and a metadata line
@@ -54,6 +59,30 @@ pub fn record_take(
 /// A take of Mac standing still: the cold open.
 pub fn record_idle_take(rom: &[u8], phase: Phase, opponent: Opponent, out: &Path) -> Result<usize, String> {
   take(rom, phase, "idle", opponent, MAX_STEPS, &mut |_| (Move::Idle, Value::Null), out)
+}
+
+/// A take of the save-state teacher fighting: it labels every step Mac can
+/// act and plays its label, as in its index-0 training fight.
+pub fn record_teacher_take(rom: &[u8], phase: Phase, opponent: Opponent, out: &Path) -> Result<usize, String> {
+  let mut policy = |s: &mut Step| {
+    let mv = if s.can_act { label(s.emu, phase) } else { Move::Idle };
+    (mv, Value::Null)
+  };
+  take(rom, phase, "teacher", opponent, MAX_STEPS, &mut policy, out)
+}
+
+/// A take of the cartridge booting: `frames` frames from power-on, tapping
+/// Start the way `boot_strip` does so the title gives way to the intro.
+pub fn record_boot_take(rom: &[u8], frames: usize, out: &Path) -> Result<usize, String> {
+  let mut writer = TakeWriter::new(out)?;
+  let mut emu = NesEmulator::new(rom);
+  for f in 1..=frames {
+    let buttons = if f % BOOT_START_EVERY < 4 { BUTTON_START } else { 0 };
+    emu.step_frames(buttons, 1);
+    writer.frame(STREAM, emu.framebuffer())?;
+  }
+  writer.finish(json!({ "kind": "boot", "steps": [] }))?;
+  Ok(frames)
 }
 
 /// One fight with `policy`, which answers each step with a move and any

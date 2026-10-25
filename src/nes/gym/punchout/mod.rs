@@ -5,6 +5,7 @@
 pub mod brains;
 pub mod dagger;
 pub mod fight;
+pub mod film;
 pub mod gate;
 pub mod moves;
 pub mod ram;

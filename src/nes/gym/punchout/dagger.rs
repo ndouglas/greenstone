@@ -595,6 +595,12 @@ pub fn train_with(
   }
 }
 
+/// A kind's readout fitted on the teacher's labels alone: round 0, as
+/// `test_with` scores it.
+pub fn round0_readout(kind: BrainKind, phase: Phase, store: &Store, tetris: &[u8]) -> Result<Readout, String> {
+  fit_cached(rows_of(kind, &store.load(TEACHER_FILE), tetris)?.iter(), phase)
+}
+
 /// A kind's readout fitted on every label it has: the teacher's and its own.
 pub fn final_readout(kind: BrainKind, phase: Phase, store: &Store, tetris: &[u8]) -> Result<Readout, String> {
   let teacher = rows_of(kind, &store.load(TEACHER_FILE), tetris)?;
