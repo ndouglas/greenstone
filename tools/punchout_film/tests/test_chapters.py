@@ -58,5 +58,14 @@ class Chapters(unittest.TestCase):
     def test_chapter_8(self):
         self.check(8)
 
+    def test_chapter_9(self):
+        self.check(9)
+
+    def test_chapter_10(self):
+        self.check(10)
+
+    def test_chapter_11(self):
+        self.check(11)
+
     def test_the_teachers_ko_is_said_with_its_real_length(self):
         self.assertIn("801 moves", self.text(3))

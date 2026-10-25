@@ -107,13 +107,18 @@ def pair(img, takes, frame, labels):
     and its latest move."""
     for k, (take, label) in enumerate(zip(takes, labels)):
         x = 40 + k * 620
-        f = min(frame, take.frames("punchout").n - 1)
-        draw.nes(img, take.frames("punchout")[f], (x, 24, 580, 544))
-        draw.text(img, (x, 574), label, 22, draw.INK, bold=True)
-        draw.text(img, (x + 580, 574), plural(hits_so_far(take, f), "hit"), 22, draw.RED, anchor="ra", bold=True)
+        n = take.frames("punchout").n
+        f = min(frame, n - 1)
+        draw.nes(img, take.frames("punchout")[f], (x, 20, 560, 525))
+        draw.text(img, (x, 552), label, 22, draw.INK, bold=True)
+        draw.text(img, (x + 560, 552), plural(hits_so_far(take, f), "hit"), 22, draw.RED, anchor="ra", bold=True)
+        if frame >= n:
+            draw.text(img, (x + 280, 260), "fight over" if take.meta["score"]["won"] else "Mac is down", 36,
+                      draw.RED, anchor="ma", bold=True)
+            continue
         move = recent_move(take, f)
         if move:
-            draw.text(img, (x + 290, 574), MOVE_NAMES[move], 22, draw.GOLD, anchor="ma", bold=True)
+            draw.text(img, (x, 584), MOVE_NAMES[move], 22, draw.GOLD, bold=True)
 
 
 def proj_grid(img, values, box):

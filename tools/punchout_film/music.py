@@ -9,4 +9,5 @@ BELL = Cue(name="bell", title="Bell", bpm=150, loop=Section([Part("p1", PLINK, "
 
 STINGS = {**TETRIS_STINGS, "bell": BELL}
 
-CHAPTER_CUES = {1: "coin_run", 2: "underground", 3: "lab", 4: "korobeiniki", 5: "underground", 6: "lab", 7: "korobeiniki_fast", 8: "fooled"}
+CHAPTER_CUES = {1: "coin_run", 2: "underground", 3: "lab", 4: "korobeiniki", 5: "underground", 6: "lab", 7: "korobeiniki_fast", 8: "fooled", 9: "minuet",
+                10: "lab", 11: "reprise"}
