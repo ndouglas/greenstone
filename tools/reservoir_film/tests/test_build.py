@@ -21,7 +21,7 @@ class Build(unittest.TestCase):
                          "0:00 Cold open\n0:39 1. Mario is just numbers\n2:23 2. Long\n")
 
     def test_ffmetadata_has_one_chapter_each(self):
-        text = build.ffmetadata([chapter(0, 10), chapter(1, 20)], CTX)
+        text = build.ffmetadata([chapter(0, 10), chapter(1, 20)], CTX, "T")
         self.assertTrue(text.startswith(";FFMETADATA1"))
         self.assertEqual(text.count("[CHAPTER]"), 2)
         self.assertIn("START=10000", text)
@@ -40,6 +40,6 @@ class Build(unittest.TestCase):
         self.assertNotEqual(a, b)
 
     def test_sources_include_modules_a_chapter_borrows_from(self):
-        from reservoir_film.chapters import CHAPTERS
+        from reservoir_film.film import TETRIS
         c00 = (build.HERE / "chapters" / "c00_cold_open.py").read_text()
-        self.assertIn(c00, build._sources(CHAPTERS[1]))
+        self.assertIn(c00, build._sources(TETRIS))

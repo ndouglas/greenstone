@@ -45,23 +45,42 @@ class Take:
         return Frames(self.path / f"{stream}.rgb", n)
 
 
+RECORD_HINT = "cargo run --release --example reservoir_film -- --take {name}"
+
+
 class Takes:
-    def __init__(self, root=TAKES_DIR):
+    def __init__(self, root=TAKES_DIR, hint=RECORD_HINT):
         self.root = Path(root)
+        self.hint = hint
         self.cache = {}
 
     def __getitem__(self, name):
         if name not in self.cache:
             path = self.root / name
             if not (path / "take.json").exists():
-                raise FileNotFoundError(
-                    f"no take at {path}; record it with: cargo run --release --example reservoir_film -- --take {name}")
+                raise FileNotFoundError(f"no take at {path}; record it with: {self.hint.format(name=name)}")
             self.cache[name] = Take(path)
         return self.cache[name]
 
 
-def load_numbers():
-    return json.loads(NUMBERS.read_text())
+def load_numbers(path=NUMBERS):
+    return json.loads(Path(path).read_text())
+
+
+@dataclass
+class Film:
+    """One film the compositor can build: where its takes and output live,
+    its chapters and score, and the sources whose text keys its cache."""
+    name: str
+    title: str
+    takes_dir: Path
+    out: Path
+    segments: Path
+    record_hint: str
+    numbers: Path
+    chapters: Callable
+    cues: Callable
+    sources: list
 
 
 def reading_seconds(text):

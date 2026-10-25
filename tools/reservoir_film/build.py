@@ -1,5 +1,5 @@
-"""Build the reservoir film: one cached segment per chapter, then the score,
-the chapter markers, and the final MP4.
+"""Build a film: one cached segment per chapter, then the score, the chapter
+markers, and the final MP4. Run as a module, it builds the Tetris film:
 
     cd tools && python3 -m reservoir_film.build [--chapter N]... [--quick] [--no-music] [--contact]
 """
@@ -15,11 +15,9 @@ import numpy as np
 from PIL import Image
 
 from . import draw
-from .model import (FPS, H, TAKES_DIR, TITLE_SECONDS, W, Context, Takes, caption_spans, chapter_seconds,
-                    check_captions, load_numbers, shot_seconds, shot_stings)
+from .model import (FPS, H, TITLE_SECONDS, W, Context, Takes, caption_spans, chapter_seconds, check_captions,
+                    load_numbers, shot_seconds, shot_stings)
 
-SEGMENTS = TAKES_DIR / "segments"
-OUT = TAKES_DIR / "tetris-reservoir.mp4"
 HERE = Path(__file__).resolve().parent
 
 
@@ -44,8 +42,8 @@ def youtube_chapters(chapters, ctx):
     return "".join(f"{_stamp(t)} {_label(ch)}\n" for t, ch in zip(chapter_starts(chapters, ctx), chapters))
 
 
-def ffmetadata(chapters, ctx):
-    lines = [";FFMETADATA1", "title=Can Tetris play Mario?"]
+def ffmetadata(chapters, ctx, title):
+    lines = [";FFMETADATA1", f"title={title}"]
     starts = chapter_starts(chapters, ctx)
     for ch, start in zip(chapters, starts):
         end = start + chapter_seconds(ch, ctx)
@@ -64,10 +62,14 @@ def segment_key(chapter, ctx, sources, take_times):
     return h.hexdigest()
 
 
-def _sources(chapter):
-    # Every chapter module, since chapters borrow helpers from each other.
-    text = (HERE / "draw.py").read_text() + (HERE / "model.py").read_text()
-    return text + "".join(p.read_text() for p in sorted((HERE / "chapters").glob("*.py")))
+def _sources(film):
+    # Every module the film's chapters draw with, since chapters borrow
+    # helpers from each other and from the shared widgets.
+    files = []
+    for path in film.sources:
+        path = Path(path)
+        files += sorted(path.rglob("*.py")) if path.is_dir() else [path]
+    return "".join(p.read_text() for p in files)
 
 
 def _take_times(chapter, ctx):
@@ -91,11 +93,11 @@ def frames_of(chapter, ctx, quick):
             yield img
 
 
-def render_segment(chapter, ctx, quick):
-    SEGMENTS.mkdir(parents=True, exist_ok=True)
+def render_segment(film, chapter, ctx, quick):
+    film.segments.mkdir(parents=True, exist_ok=True)
     name = f"{'quick-' if quick else ''}c{chapter.number:02d}"
-    out, keyfile = SEGMENTS / f"{name}.mp4", SEGMENTS / f"{name}.key"
-    key = segment_key(chapter, ctx, _sources(chapter), _take_times(chapter, ctx))
+    out, keyfile = film.segments / f"{name}.mp4", film.segments / f"{name}.key"
+    key = segment_key(chapter, ctx, _sources(film), _take_times(chapter, ctx))
     if out.exists() and keyfile.exists() and keyfile.read_text() == key:
         print(f"chapter {chapter.number}: cached")
         return out
@@ -133,8 +135,8 @@ def sampled_frames(chapter, ctx, every):
             t += every
 
 
-def contact_sheet(chapter, ctx):
-    out = TAKES_DIR / "contact"
+def contact_sheet(film, chapter, ctx):
+    out = film.segments.parent / "contact"
     out.mkdir(parents=True, exist_ok=True)
     thumbs = [img.resize((320, 180)) for img in sampled_frames(chapter, ctx, 2.0)]
     rows = (len(thumbs) + 7) // 8
@@ -144,27 +146,28 @@ def contact_sheet(chapter, ctx):
     sheet.save(out / f"c{chapter.number:02d}.png")
 
 
-def main():
-    from .chapters import CHAPTERS
-    from .music.cues import CHAPTER_CUES, CUES, STINGS
+def run(film, argv):
     from .music.score import score, write_wav
 
+    CHAPTERS = film.chapters()
+    CUES, CHAPTER_CUES, STINGS = film.cues()
+    SEGMENTS = film.segments
     ap = argparse.ArgumentParser()
     ap.add_argument("--chapter", type=int, action="append")
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--no-music", action="store_true")
     ap.add_argument("--contact", action="store_true")
-    args = ap.parse_args()
-    ctx = Context(takes=Takes(), numbers=load_numbers())
+    args = ap.parse_args(argv)
+    ctx = Context(takes=Takes(film.takes_dir, film.record_hint), numbers=load_numbers(film.numbers))
     chosen = [c for c in CHAPTERS if not args.chapter or c.number in args.chapter]
     problems = [p for c in chosen for p in check_captions(c, ctx)]
     if problems:
         sys.exit("caption problems:\n" + "\n".join(problems))
     if args.contact:
         for c in chosen:
-            contact_sheet(c, ctx)
+            contact_sheet(film, c, ctx)
         return
-    segments = [render_segment(c, ctx, args.quick) for c in chosen]
+    segments = [render_segment(film, c, ctx, args.quick) for c in chosen]
     if args.chapter or args.quick:
         return
     listing = SEGMENTS / "segments.txt"
@@ -173,8 +176,8 @@ def main():
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(listing),
                     "-c", "copy", str(video)], check=True)
     meta = SEGMENTS / "chapters.ffmeta"
-    meta.write_text(ffmetadata(CHAPTERS, ctx))
-    (TAKES_DIR / "chapters.txt").write_text(youtube_chapters(CHAPTERS, ctx))
+    meta.write_text(ffmetadata(CHAPTERS, ctx, film.title))
+    (film.out.parent / "chapters.txt").write_text(youtube_chapters(CHAPTERS, ctx))
     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(video), "-i", str(meta)]
     if not args.no_music:
         starts = chapter_starts(CHAPTERS, ctx)
@@ -191,9 +194,14 @@ def main():
                 "-c:a", "aac", "-b:a", "192k"]
     else:
         cmd += ["-map", "0:v"]
-    cmd += ["-map_metadata", "1", "-map_chapters", "1", "-c:v", "copy", str(OUT)]
+    cmd += ["-map_metadata", "1", "-map_chapters", "1", "-c:v", "copy", str(film.out)]
     subprocess.run(cmd, check=True)
-    print(f"wrote {OUT}")
+    print(f"wrote {film.out}")
+
+
+def main():
+    from .film import TETRIS
+    run(TETRIS, sys.argv[1:])
 
 
 if __name__ == "__main__":
