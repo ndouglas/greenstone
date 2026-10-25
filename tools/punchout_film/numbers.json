@@ -1,0 +1,1687 @@
+{
+ "idle": {
+  "bald-bull": {
+   "hpm": 43.199999999999996
+  },
+  "don-flamenco": {
+   "hpm": 0.0
+  },
+  "glass-joe": {
+   "hpm": 20.97669256381798
+  },
+  "piston-honda": {
+   "hpm": 32.0
+  },
+  "von-kaiser": {
+   "hpm": 37.87128712871287
+  }
+ },
+ "phase1": {
+  "bank": {
+   "r0": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 12,
+     "hpm": 43.199999999999996,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 21,
+     "hpm": 20.97669256381798,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 16,
+     "hpm": 32.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 17,
+     "hpm": 37.87128712871287,
+     "knockdowns": 0,
+     "won": false
+    }
+   },
+   "r4": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 12,
+     "hpm": 43.199999999999996,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 21,
+     "hpm": 20.97669256381798,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 16,
+     "hpm": 32.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 17,
+     "hpm": 37.87128712871287,
+     "knockdowns": 0,
+     "won": false
+    }
+   }
+  },
+  "cheat": {
+   "r0": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 12,
+     "hpm": 43.199999999999996,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 21,
+     "hpm": 20.97669256381798,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 16,
+     "hpm": 32.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 17,
+     "hpm": 37.87128712871287,
+     "knockdowns": 0,
+     "won": false
+    }
+   },
+   "r4": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 12,
+     "hpm": 43.199999999999996,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 0,
+     "dodge": 0.023041474654378002,
+     "hits": 24,
+     "hpm": 20.49335863377609,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.4401346604215457,
+     "hits": 17,
+     "hpm": 17.915690866510538,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.18052738336713992,
+     "hits": 18,
+     "hpm": 31.03448275862069,
+     "knockdowns": 0,
+     "won": false
+    }
+   }
+  },
+  "echo0_5": {
+   "r0": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.1909385113268608,
+     "hits": 12,
+     "hpm": 34.95145631067961,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 0,
+     "dodge": 0.8591747421069084,
+     "hits": 6,
+     "hpm": 2.954048140043764,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.00597713097713104,
+     "hits": 17,
+     "hpm": 31.808731808731807,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 17,
+     "hpm": 37.87128712871287,
+     "knockdowns": 0,
+     "won": false
+    }
+   },
+   "r4": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.37451886066204765,
+     "hits": 13,
+     "hpm": 27.02078521939954,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 0,
+     "dodge": 1.0,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.6153115501519757,
+     "hits": 18,
+     "hpm": 12.310030395136778,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.5407786302926967,
+     "hits": 20,
+     "hpm": 17.39130434782609,
+     "knockdowns": 0,
+     "won": false
+    }
+   }
+  },
+  "stack1": {
+   "r0": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.18300653594771243,
+     "hits": 12,
+     "hpm": 35.29411764705882,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 0,
+     "dodge": 0.5412546560548812,
+     "hits": 19,
+     "hpm": 9.622960045019695,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 16,
+     "hpm": 32.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 17,
+     "hpm": 37.87128712871287,
+     "knockdowns": 0,
+     "won": false
+    }
+   },
+   "r4": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.35064935064935054,
+     "hits": 12,
+     "hpm": 28.051948051948052,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 0,
+     "dodge": 0.8356139390622149,
+     "hits": 7,
+     "hpm": 3.4482758620689657,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 16,
+     "hpm": 32.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.09563487128466619,
+     "hits": 18,
+     "hpm": 34.24947145877378,
+     "knockdowns": 0,
+     "won": false
+    }
+   }
+  },
+  "stack4": {
+   "r0": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.5826377295492488,
+     "hits": 12,
+     "hpm": 18.030050083472453,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 0,
+     "dodge": 0.8591747421069084,
+     "hits": 6,
+     "hpm": 2.954048140043764,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.2767857142857143,
+     "hits": 18,
+     "hpm": 23.142857142857142,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 17,
+     "hpm": 37.87128712871287,
+     "knockdowns": 0,
+     "won": false
+    }
+   },
+   "r4": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.5993589743589743,
+     "hits": 11,
+     "hpm": 17.307692307692307,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 0,
+     "dodge": 0.8826456184224236,
+     "hits": 5,
+     "hpm": 2.461706783369803,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.5945561456752655,
+     "hits": 19,
+     "hpm": 12.974203338391503,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.31689952834386403,
+     "hits": 19,
+     "hpm": 25.869894099848715,
+     "knockdowns": 0,
+     "won": false
+    }
+   }
+  }
+ },
+ "phase2": {
+  "bank": {
+   "r0": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 12,
+     "hpm": 43.199999999999996,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 21,
+     "hpm": 20.97669256381798,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 16,
+     "hpm": 32.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 17,
+     "hpm": 37.87128712871287,
+     "knockdowns": 0,
+     "won": false
+    }
+   },
+   "r4": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 12,
+     "hpm": 43.199999999999996,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 10,
+     "dodge": 0.058762078871767986,
+     "hits": 24,
+     "hpm": 19.74405850091408,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 1,
+     "dodge": -0.010479041916167775,
+     "hits": 18,
+     "hpm": 32.33532934131737,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 17,
+     "hpm": 37.87128712871287,
+     "knockdowns": 0,
+     "won": false
+    }
+   }
+  },
+  "cheat": {
+   "r0": {
+    "bald-bull": {
+     "dealt": 3,
+     "dodge": 0.1071428571428571,
+     "hits": 12,
+     "hpm": 38.57142857142857,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 21,
+     "hpm": 20.97669256381798,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 16,
+     "hpm": 32.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 17,
+     "hpm": 37.87128712871287,
+     "knockdowns": 0,
+     "won": false
+    }
+   },
+   "r4": {
+    "bald-bull": {
+     "dealt": 8,
+     "dodge": 0.4331065759637188,
+     "hits": 12,
+     "hpm": 24.489795918367346,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 268,
+     "dodge": 0.6377161238439888,
+     "hits": 14,
+     "hpm": 7.599517490952955,
+     "knockdowns": 2,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 96,
+     "dodge": 0.38465250965250963,
+     "hits": 17,
+     "hpm": 19.69111969111969,
+     "knockdowns": 1,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 15,
+     "dodge": 0.15503267973856216,
+     "hits": 16,
+     "hpm": 32.0,
+     "knockdowns": 0,
+     "won": false
+    }
+   }
+  },
+  "echo0_5": {
+   "r0": {
+    "bald-bull": {
+     "dealt": 1,
+     "dodge": 0.10616061606160598,
+     "hits": 13,
+     "hpm": 38.613861386138616,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 10,
+     "hpm": 27.272727272727273,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 10,
+     "dodge": 0.07399794450154162,
+     "hits": 24,
+     "hpm": 19.424460431654676,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 103,
+     "dodge": 0.450187969924812,
+     "hits": 13,
+     "hpm": 17.593984962406015,
+     "knockdowns": 1,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 5,
+     "dodge": 0.12790070156502975,
+     "hits": 16,
+     "hpm": 33.027522935779814,
+     "knockdowns": 0,
+     "won": false
+    }
+   },
+   "r4": {
+    "bald-bull": {
+     "dealt": 25,
+     "dodge": 0.4331065759637188,
+     "hits": 12,
+     "hpm": 24.489795918367346,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 11,
+     "hpm": 23.23943661971831,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 254,
+     "dodge": 0.9464025460277803,
+     "hits": 2,
+     "hpm": 1.1242973141786383,
+     "knockdowns": 3,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 177,
+     "dodge": 0.8001453488372093,
+     "hits": 11,
+     "hpm": 6.395348837209302,
+     "knockdowns": 2,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 63,
+     "dodge": 0.8942027562276997,
+     "hits": 8,
+     "hpm": 4.006677796327212,
+     "knockdowns": 0,
+     "won": false
+    }
+   }
+  },
+  "stack1": {
+   "r0": {
+    "bald-bull": {
+     "dealt": 1,
+     "dodge": 0.04580152671755722,
+     "hits": 12,
+     "hpm": 41.221374045801525,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 21,
+     "hpm": 20.97669256381798,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 16,
+     "hpm": 32.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 17,
+     "hpm": 37.87128712871287,
+     "knockdowns": 0,
+     "won": false
+    }
+   },
+   "r4": {
+    "bald-bull": {
+     "dealt": 8,
+     "dodge": 0.21786120591581337,
+     "hits": 11,
+     "hpm": 33.78839590443686,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 10,
+     "hpm": 14.018691588785046,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 157,
+     "dodge": 0.6132528504359491,
+     "hits": 16,
+     "hpm": 8.112676056338028,
+     "knockdowns": 1,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.2820945945945946,
+     "hits": 17,
+     "hpm": 22.972972972972972,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.1415790650861104,
+     "hits": 19,
+     "hpm": 32.50950570342206,
+     "knockdowns": 0,
+     "won": false
+    }
+   }
+  },
+  "stack4": {
+   "r0": {
+    "bald-bull": {
+     "dealt": 52,
+     "dodge": 0.7043010752688172,
+     "hits": 11,
+     "hpm": 12.774193548387096,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 10,
+     "hpm": 16.07142857142857,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 96,
+     "dodge": 0.14829256764740628,
+     "hits": 24,
+     "hpm": 17.866004962779158,
+     "knockdowns": 1,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 107,
+     "dodge": 0.484260391198044,
+     "hits": 15,
+     "hpm": 16.503667481662593,
+     "knockdowns": 1,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 15,
+     "dodge": 0.3407848576323733,
+     "hits": 20,
+     "hpm": 24.965325936199722,
+     "knockdowns": 0,
+     "won": false
+    }
+   },
+   "r4": {
+    "bald-bull": {
+     "dealt": 17,
+     "dodge": 0.4731800766283525,
+     "hits": 11,
+     "hpm": 22.75862068965517,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 26,
+     "dodge": null,
+     "hits": 10,
+     "hpm": 5.1664753157290475,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 216,
+     "dodge": 1.0,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 2,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 248,
+     "dodge": 0.9222529371112647,
+     "hits": 4,
+     "hpm": 2.48790601243953,
+     "knockdowns": 4,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 220,
+     "dodge": 0.9488564435817368,
+     "hits": 3,
+     "hpm": 1.9368723098995695,
+     "knockdowns": 4,
+     "won": false
+    }
+   }
+  }
+ },
+ "phase3": {
+  "bank": {
+   "r0": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 12,
+     "hpm": 43.199999999999996,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 21,
+     "hpm": 20.97669256381798,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 16,
+     "hpm": 32.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 17,
+     "hpm": 37.87128712871287,
+     "knockdowns": 0,
+     "won": false
+    }
+   },
+   "r4": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 12,
+     "hpm": 43.199999999999996,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 10,
+     "hpm": 5.241700640652301,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 30,
+     "dodge": 0.21494866840928906,
+     "hits": 23,
+     "hpm": 16.46778042959427,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.16044776119402981,
+     "hits": 14,
+     "hpm": 26.865671641791046,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.07410236822001537,
+     "hits": 18,
+     "hpm": 35.064935064935064,
+     "knockdowns": 0,
+     "won": false
+    }
+   }
+  },
+  "cheat": {
+   "r0": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.06367041198501877,
+     "hits": 12,
+     "hpm": 40.44943820224719,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 21,
+     "hpm": 20.97669256381798,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 16,
+     "hpm": 32.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 15,
+     "dodge": 0.12173913043478268,
+     "hits": 17,
+     "hpm": 33.26086956521739,
+     "knockdowns": 0,
+     "won": false
+    }
+   },
+   "r4": {
+    "bald-bull": {
+     "dealt": 49,
+     "dodge": 0.625748502994012,
+     "hits": 9,
+     "hpm": 16.167664670658684,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 10,
+     "hpm": 41.474654377880185,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 277,
+     "dodge": 0.6592606599224733,
+     "hits": 12,
+     "hpm": 7.1475843812045,
+     "knockdowns": 3,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 4,
+     "dodge": 0.3095335515548281,
+     "hits": 15,
+     "hpm": 22.0949263502455,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.06697459584295617,
+     "hits": 17,
+     "hpm": 35.33487297921478,
+     "knockdowns": 0,
+     "won": false
+    }
+   }
+  },
+  "echo0_5": {
+   "r0": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.17268351383874836,
+     "hits": 11,
+     "hpm": 35.74007220216607,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 13,
+     "hpm": 9.234411996842937,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 25,
+     "dodge": 0.09990009990009996,
+     "hits": 24,
+     "hpm": 18.88111888111888,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 36,
+     "dodge": 0.07216494845360821,
+     "hits": 16,
+     "hpm": 29.690721649484537,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 17,
+     "hpm": 37.87128712871287,
+     "knockdowns": 0,
+     "won": false
+    }
+   },
+   "r4": {
+    "bald-bull": {
+     "dealt": 23,
+     "dodge": 0.5740396530359355,
+     "hits": 11,
+     "hpm": 18.401486988847584,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 10,
+     "hpm": 19.06779661016949,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 194,
+     "dodge": 0.8236445488353885,
+     "hits": 7,
+     "hpm": 3.69935408103347,
+     "knockdowns": 2,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 244,
+     "dodge": 0.6532059186189889,
+     "hits": 20,
+     "hpm": 11.097410604192355,
+     "knockdowns": 3,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 41,
+     "dodge": 0.9213523247136692,
+     "hits": 6,
+     "hpm": 2.978488692774407,
+     "knockdowns": 0,
+     "won": false
+    }
+   }
+  },
+  "stack1": {
+   "r0": {
+    "bald-bull": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 12,
+     "hpm": 43.199999999999996,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 21,
+     "hpm": 20.97669256381798,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 0,
+     "dodge": -0.04813664596273304,
+     "hits": 18,
+     "hpm": 33.54037267080746,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.0,
+     "hits": 17,
+     "hpm": 37.87128712871287,
+     "knockdowns": 0,
+     "won": false
+    }
+   },
+   "r4": {
+    "bald-bull": {
+     "dealt": 20,
+     "dodge": 0.4989979959919839,
+     "hits": 12,
+     "hpm": 21.643286573146295,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 31,
+     "dodge": null,
+     "hits": 10,
+     "hpm": 23.076923076923077,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 174,
+     "dodge": 0.6617867867867868,
+     "hits": 14,
+     "hpm": 7.094594594594595,
+     "knockdowns": 1,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 9,
+     "dodge": 0.4655581947743468,
+     "hits": 16,
+     "hpm": 17.102137767220903,
+     "knockdowns": 0,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 0,
+     "dodge": 0.3173513570598797,
+     "hits": 16,
+     "hpm": 25.852782764811487,
+     "knockdowns": 0,
+     "won": false
+    }
+   }
+  },
+  "stack4": {
+   "r0": {
+    "bald-bull": {
+     "dealt": 45,
+     "dodge": 0.5560629122272958,
+     "hits": 14,
+     "hpm": 19.178082191780824,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 116,
+     "dodge": null,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 1,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 15,
+     "dodge": -0.009999103219442196,
+     "hits": 25,
+     "hpm": 21.186440677966104,
+     "knockdowns": 0,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 142,
+     "dodge": 0.4075278810408921,
+     "hits": 17,
+     "hpm": 18.959107806691453,
+     "knockdowns": 1,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 50,
+     "dodge": 0.34153207882649284,
+     "hits": 22,
+     "hpm": 24.937027707808564,
+     "knockdowns": 0,
+     "won": false
+    }
+   },
+   "r4": {
+    "bald-bull": {
+     "dealt": 23,
+     "dodge": 0.47512919896640826,
+     "hits": 13,
+     "hpm": 22.674418604651162,
+     "knockdowns": 0,
+     "won": false
+    },
+    "don-flamenco": {
+     "dealt": 0,
+     "dodge": null,
+     "hits": 15,
+     "hpm": 11.221945137157107,
+     "knockdowns": 0,
+     "won": false
+    },
+    "glass-joe": {
+     "dealt": 277,
+     "dodge": 1.0,
+     "hits": 0,
+     "hpm": 0.0,
+     "knockdowns": 2,
+     "won": false
+    },
+    "piston-honda": {
+     "dealt": 183,
+     "dodge": 0.6767241379310345,
+     "hits": 18,
+     "hpm": 10.344827586206897,
+     "knockdowns": 2,
+     "won": false
+    },
+    "von-kaiser": {
+     "dealt": 160,
+     "dodge": 0.8767248686218003,
+     "hits": 9,
+     "hpm": 4.6685878962536025,
+     "knockdowns": 1,
+     "won": false
+    }
+   }
+  }
+ },
+ "sweep": {
+  "echo0_2": {
+   "bald-bull": {
+    "dealt": 0,
+    "dodge": 0.48501872659176026,
+    "hits": 11,
+    "hpm": 22.247191011235955,
+    "knockdowns": 0,
+    "won": false
+   },
+   "don-flamenco": {
+    "dealt": 0,
+    "dodge": null,
+    "hits": 0,
+    "hpm": 0.0,
+    "knockdowns": 0,
+    "won": false
+   },
+   "glass-joe": {
+    "dealt": 0,
+    "dodge": 0.859097662053327,
+    "hits": 6,
+    "hpm": 2.9556650246305423,
+    "knockdowns": 0,
+    "won": false
+   },
+   "piston-honda": {
+    "dealt": 0,
+    "dodge": 0.28684627575277344,
+    "hits": 16,
+    "hpm": 22.82091917591125,
+    "knockdowns": 0,
+    "won": false
+   },
+   "von-kaiser": {
+    "dealt": 0,
+    "dodge": 0.29995440036479704,
+    "hits": 19,
+    "hpm": 26.511627906976745,
+    "knockdowns": 0,
+    "won": false
+   }
+  },
+  "echo0_5": {
+   "bald-bull": {
+    "dealt": 0,
+    "dodge": 0.37451886066204765,
+    "hits": 13,
+    "hpm": 27.02078521939954,
+    "knockdowns": 0,
+    "won": false
+   },
+   "don-flamenco": {
+    "dealt": 0,
+    "dodge": null,
+    "hits": 0,
+    "hpm": 0.0,
+    "knockdowns": 0,
+    "won": false
+   },
+   "glass-joe": {
+    "dealt": 0,
+    "dodge": 1.0,
+    "hits": 0,
+    "hpm": 0.0,
+    "knockdowns": 0,
+    "won": false
+   },
+   "piston-honda": {
+    "dealt": 0,
+    "dodge": 0.6153115501519757,
+    "hits": 18,
+    "hpm": 12.310030395136778,
+    "knockdowns": 0,
+    "won": false
+   },
+   "von-kaiser": {
+    "dealt": 0,
+    "dodge": 0.5407786302926967,
+    "hits": 20,
+    "hpm": 17.39130434782609,
+    "knockdowns": 0,
+    "won": false
+   }
+  },
+  "echo0_9": {
+   "bald-bull": {
+    "dealt": 0,
+    "dodge": 0.4682907965970611,
+    "hits": 11,
+    "hpm": 22.96983758700696,
+    "knockdowns": 0,
+    "won": false
+   },
+   "don-flamenco": {
+    "dealt": 0,
+    "dodge": null,
+    "hits": 0,
+    "hpm": 0.0,
+    "knockdowns": 0,
+    "won": false
+   },
+   "glass-joe": {
+    "dealt": 0,
+    "dodge": 1.0,
+    "hits": 0,
+    "hpm": 0.0,
+    "knockdowns": 0,
+    "won": false
+   },
+   "piston-honda": {
+    "dealt": 0,
+    "dodge": 0.6685018610421836,
+    "hits": 19,
+    "hpm": 10.607940446650124,
+    "knockdowns": 0,
+    "won": false
+   },
+   "von-kaiser": {
+    "dealt": 0,
+    "dodge": 0.6094542993861473,
+    "hits": 20,
+    "hpm": 14.790468364831552,
+    "knockdowns": 0,
+    "won": false
+   }
+  },
+  "stack1": {
+   "bald-bull": {
+    "dealt": 0,
+    "dodge": 0.35064935064935054,
+    "hits": 12,
+    "hpm": 28.051948051948052,
+    "knockdowns": 0,
+    "won": false
+   },
+   "don-flamenco": {
+    "dealt": 0,
+    "dodge": null,
+    "hits": 0,
+    "hpm": 0.0,
+    "knockdowns": 0,
+    "won": false
+   },
+   "glass-joe": {
+    "dealt": 0,
+    "dodge": 0.8356139390622149,
+    "hits": 7,
+    "hpm": 3.4482758620689657,
+    "knockdowns": 0,
+    "won": false
+   },
+   "piston-honda": {
+    "dealt": 0,
+    "dodge": 0.0,
+    "hits": 16,
+    "hpm": 32.0,
+    "knockdowns": 0,
+    "won": false
+   },
+   "von-kaiser": {
+    "dealt": 0,
+    "dodge": 0.09563487128466619,
+    "hits": 18,
+    "hpm": 34.24947145877378,
+    "knockdowns": 0,
+    "won": false
+   }
+  },
+  "stack2": {
+   "bald-bull": {
+    "dealt": 0,
+    "dodge": 0.6527777777777777,
+    "hits": 10,
+    "hpm": 15.0,
+    "knockdowns": 0,
+    "won": false
+   },
+   "don-flamenco": {
+    "dealt": 0,
+    "dodge": null,
+    "hits": 0,
+    "hpm": 0.0,
+    "knockdowns": 0,
+    "won": false
+   },
+   "glass-joe": {
+    "dealt": 0,
+    "dodge": 1.0,
+    "hits": 0,
+    "hpm": 0.0,
+    "knockdowns": 0,
+    "won": false
+   },
+   "piston-honda": {
+    "dealt": 0,
+    "dodge": 0.25769794721407624,
+    "hits": 18,
+    "hpm": 23.75366568914956,
+    "knockdowns": 0,
+    "won": false
+   },
+   "von-kaiser": {
+    "dealt": 0,
+    "dodge": 0.21178421617403187,
+    "hits": 20,
+    "hpm": 29.850746268656714,
+    "knockdowns": 0,
+    "won": false
+   }
+  },
+  "stack4": {
+   "bald-bull": {
+    "dealt": 0,
+    "dodge": 0.5993589743589743,
+    "hits": 11,
+    "hpm": 17.307692307692307,
+    "knockdowns": 0,
+    "won": false
+   },
+   "don-flamenco": {
+    "dealt": 0,
+    "dodge": null,
+    "hits": 0,
+    "hpm": 0.0,
+    "knockdowns": 0,
+    "won": false
+   },
+   "glass-joe": {
+    "dealt": 0,
+    "dodge": 0.8826456184224236,
+    "hits": 5,
+    "hpm": 2.461706783369803,
+    "knockdowns": 0,
+    "won": false
+   },
+   "piston-honda": {
+    "dealt": 0,
+    "dodge": 0.5945561456752655,
+    "hits": 19,
+    "hpm": 12.974203338391503,
+    "knockdowns": 0,
+    "won": false
+   },
+   "von-kaiser": {
+    "dealt": 0,
+    "dodge": 0.31689952834386403,
+    "hits": 19,
+    "hpm": 25.869894099848715,
+    "knockdowns": 0,
+    "won": false
+   }
+  },
+  "stack8": {
+   "bald-bull": {
+    "dealt": 0,
+    "dodge": 0.4493392070484581,
+    "hits": 12,
+    "hpm": 23.788546255506606,
+    "knockdowns": 0,
+    "won": false
+   },
+   "don-flamenco": {
+    "dealt": 0,
+    "dodge": null,
+    "hits": 0,
+    "hpm": 0.0,
+    "knockdowns": 0,
+    "won": false
+   },
+   "glass-joe": {
+    "dealt": 0,
+    "dodge": 1.0,
+    "hits": 0,
+    "hpm": 0.0,
+    "knockdowns": 0,
+    "won": false
+   },
+   "piston-honda": {
+    "dealt": 0,
+    "dodge": 0.7142379679144385,
+    "hits": 19,
+    "hpm": 9.144385026737968,
+    "knockdowns": 0,
+    "won": false
+   },
+   "von-kaiser": {
+    "dealt": 0,
+    "dodge": 0.4637417912533185,
+    "hits": 19,
+    "hpm": 20.30878859857482,
+    "knockdowns": 0,
+    "won": false
+   }
+  }
+ },
+ "teacher": {
+  "phase1": {
+   "glass-joe": {
+    "dealt": 0,
+    "hits": 0,
+    "knockdowns": 0,
+    "steps": 2400,
+    "won": false
+   },
+   "piston-honda": {
+    "dealt": 0,
+    "hits": 12,
+    "knockdowns": 0,
+    "steps": 2400,
+    "won": false
+   },
+   "von-kaiser": {
+    "dealt": 0,
+    "hits": 0,
+    "knockdowns": 0,
+    "steps": 2400,
+    "won": false
+   }
+  },
+  "phase2": {
+   "glass-joe": {
+    "dealt": 328,
+    "hits": 0,
+    "knockdowns": 4,
+    "steps": 2400,
+    "won": false
+   },
+   "piston-honda": {
+    "dealt": 240,
+    "hits": 0,
+    "knockdowns": 3,
+    "steps": 1389,
+    "won": true
+   },
+   "von-kaiser": {
+    "dealt": 160,
+    "hits": 0,
+    "knockdowns": 3,
+    "steps": 1217,
+    "won": true
+   }
+  },
+  "phase3": {
+   "glass-joe": {
+    "dealt": 288,
+    "hits": 0,
+    "knockdowns": 3,
+    "steps": 1018,
+    "won": true
+   },
+   "piston-honda": {
+    "dealt": 240,
+    "hits": 0,
+    "knockdowns": 3,
+    "steps": 817,
+    "won": true
+   },
+   "von-kaiser": {
+    "dealt": 160,
+    "hits": 0,
+    "knockdowns": 3,
+    "steps": 801,
+    "won": true
+   }
+  }
+ },
+ "teacher_idle_share": {
+  "phase1": 0.9670201679642003,
+  "phase2": 0.8466566652378912,
+  "phase3": 0.852979274611399
+ }
+}

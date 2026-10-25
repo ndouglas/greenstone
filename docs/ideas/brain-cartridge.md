@@ -898,6 +898,23 @@ taken; Von Kaiser once; Piston Honda twice) and echo0.5 knocks Piston
 Honda down three times. Nobody wins within the cap of 2,400 steps,
 under three rounds.
 
+The teacher itself, for comparison: its first fight against each training
+opponent is pure lookahead (the other two play a tenth of their moves at
+random, so the deterministic game gives three different fights). In
+Defence it can't punch, so it never wins, but it takes no hits from Glass
+Joe or Von Kaiser. From Counter on it knocks opponents out, taking no
+hits:
+
+```
+pure teacher               GJ                VK                PH
+  phase 1, Defence      0 hits            0 hits           12 hits
+  phase 2, Counter      4 kd, no win      KO, 1,217 steps  KO, 1,389 steps
+  phase 3, Fight        KO, 1,018 steps   KO, 801 steps    KO, 817 steps
+```
+
+Every pure teacher fight from Counter on takes 0 hits; a KO here is three
+knockdowns. The students copy a teacher that wins, and none of them wins.
+
 What the phases say:
 
 - Four samples of screen, 12 frames apart end to end, are enough to
