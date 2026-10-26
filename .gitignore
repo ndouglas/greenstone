@@ -14,3 +14,6 @@ Cargo.lock
 
 /target
 roms2/*.nes
+
+# Superpowers plan workspaces
+/.superpowers/
