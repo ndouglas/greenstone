@@ -62,6 +62,53 @@ def segment_key(chapter, ctx, sources, take_times):
     return h.hexdigest()
 
 
+def _span_starts(chapter, spans, ctx):
+    """Seconds into the chapter (title card included) where each span begins."""
+    title = TITLE_SECONDS if chapter.number > 0 else 0.0
+    shot_at, t = {}, title
+    for shot in chapter.shots:
+        shot_at[shot.name] = (t, shot_seconds(shot, ctx))
+        t += shot_seconds(shot, ctx)
+    starts = []
+    for shot, offset, _ in spans:
+        if shot not in shot_at:
+            raise ValueError(f"chapter {chapter.number} has no shot {shot}")
+        offset = offset(ctx) if callable(offset) else offset
+        at, length = shot_at[shot]
+        if not 0 <= offset < length:
+            raise ValueError(f"span at {chapter.number}/{shot} starts {offset}s in, past the shot's {length}s")
+        starts.append(at + offset)
+    if starts[0] != title or spans[0][0] != chapter.shots[0].name:
+        raise ValueError(f"chapter {chapter.number}'s first span must start its first shot")
+    if starts != sorted(starts):
+        raise ValueError(f"chapter {chapter.number}'s spans are out of order")
+    return [0.0] + starts[1:]
+
+
+def cue_plan(chapters, chapter_cues, cues, ctx):
+    """(cue, seconds, label) for each stretch of the film with one cue. A
+    chapter's entry is a cue name for the whole chapter, or a list of
+    (shot, offset, cue) spans, each running until the next begins; the
+    title card belongs to the first."""
+    plan = []
+    for ch in chapters:
+        entry = chapter_cues[ch.number]
+        total = chapter_seconds(ch, ctx)
+        if isinstance(entry, str):
+            plan.append((cues[entry], total, f"{ch.number}/{ch.shots[0].name}"))
+            continue
+        starts = _span_starts(ch, entry, ctx)
+        for (shot, _, name), start, end in zip(entry, starts, starts[1:] + [total]):
+            plan.append((cues[name], end - start, f"{ch.number}/{shot}"))
+    return plan
+
+
+def unfit_spans(plan):
+    """The spans whose cue can't be stretched to fit without trimming or padding."""
+    from .music.score import fit
+    return [f"{label} ({cue.name})" for cue, seconds, label in plan if fit(cue, seconds)[2]]
+
+
 def _sources(film):
     # Every module the film's chapters draw with, since chapters borrow
     # helpers from each other and from the shared widgets.
@@ -181,7 +228,11 @@ def run(film, argv):
     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(video), "-i", str(meta)]
     if not args.no_music:
         starts = chapter_starts(CHAPTERS, ctx)
-        plan = [(CUES[CHAPTER_CUES[c.number]], chapter_seconds(c, ctx)) for c in CHAPTERS]
+        spans = cue_plan(CHAPTERS, CHAPTER_CUES, CUES, ctx)
+        unfit = unfit_spans(spans)
+        if unfit and film.strict_score:
+            sys.exit("cues that don't fit their spans:\n" + "\n".join(unfit))
+        plan = [(cue, seconds) for cue, seconds, _ in spans]
         stings = []
         for c, start in zip(CHAPTERS, starts):
             at = start + (TITLE_SECONDS if c.number > 0 else 0)

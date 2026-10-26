@@ -81,6 +81,8 @@ class Film:
     chapters: Callable
     cues: Callable
     sources: list
+    # Fail the build when a cue can't be stretched to fit its span.
+    strict_score: bool = False
 
 
 def reading_seconds(text):
