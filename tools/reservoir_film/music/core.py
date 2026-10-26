@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 CPU_HZ = 1789773
 NES_FRAME_HZ = CPU_HZ / 29781
 NAMES = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
-TOKEN = re.compile(r"^(r|[kosh]|[A-G](?:#|b)?-?\d)/(\d+)(\.?)$")
+TOKEN = re.compile(r"^(r|[koshc]|[A-G](?:#|b)?-?\d)/(\d+)(\.?)$")
 
 # Noise drums: (period index into the noise table, mode bit, volume per frame).
 DRUMS = {
@@ -17,6 +17,8 @@ DRUMS = {
     "s": (6, 0, (14, 12, 9, 7, 5, 3, 2, 1, 0)),
     "h": (2, 0, (9, 5, 2, 0)),
     "o": (3, 0, (9, 8, 7, 6, 5, 4, 3, 2, 1, 0)),
+    # A crowd: a low hiss that swells for half a second and dies away.
+    "c": (5, 0, tuple(round(12 * min(f / 30, 1) * min(1, (90 - f) / 60)) for f in range(90)) + (0,)),
 }
 
 PULSE_BASE = {"p1": 0x4000, "p2": 0x4004}

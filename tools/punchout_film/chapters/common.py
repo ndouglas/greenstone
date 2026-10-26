@@ -41,6 +41,23 @@ def frame_index(take, i, speed=1, start=0):
     return min(start + int(i * speed), last_lit(take))
 
 
+def downs(take, field):
+    """The steps where `field` ("opponent_health" or "mac_health") reaches
+    zero from above: each knockdown."""
+    health = [s[field] for s in take.meta["steps"]]
+    return [k for k in range(1, len(health)) if health[k] == 0 and health[k - 1] > 0]
+
+
+def step_seconds(step, speed):
+    """Seconds into a shot playing a take at `speed` when `step` begins."""
+    return step * MOVE_FRAMES / speed / 60
+
+
+def knockdown_stings(take, speed):
+    """The crowd roars at each knockdown Mac deals."""
+    return [(step_seconds(k, speed), "roar") for k in downs(take, "opponent_health")]
+
+
 def hits_so_far(take, frame):
     steps = take.meta["steps"]
     return sum(s["hit"] for s in steps[:frame // MOVE_FRAMES + 1])

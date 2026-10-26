@@ -3,7 +3,7 @@
 from reservoir_film import draw
 from reservoir_film.model import Caption, Chapter, Shot
 
-from .common import fight, fight_panel, frame_index
+from .common import downs, fight, fight_panel, frame_index, step_seconds
 
 # The whole fight, at four times speed.
 IDLE_SPEED = 4
@@ -19,6 +19,13 @@ def idle(ctx, t, i):
     fight(img, take, f, "always-Idle vs Glass Joe, four times speed")
     fight_panel(img, take, f, "always-Idle", show_move=False)
     return img
+
+
+def funeral_offset(ctx):
+    """Seconds into the idle shot of Mac's last knockdown, where the funeral
+    march begins. Not the take's mac_down_at, which is his first."""
+    take = ctx.takes["p1-idle-glass-joe"]
+    return step_seconds(downs(take, "mac_health")[-1], IDLE_SPEED)
 
 
 def floor(ctx, t, i):

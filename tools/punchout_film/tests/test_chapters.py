@@ -91,5 +91,28 @@ class Chapters(unittest.TestCase):
     def test_the_verdict_claims_only_the_teachers_fight_knockouts(self):
         self.assertNotIn("knocks everyone out", self.text(11))
 
+    def test_funeral_march_starts_at_macs_last_knockdown(self):
+        from punchout_film.chapters.c02_idle import funeral_offset
+        from punchout_film.chapters.common import downs
+        ctx = context()
+        self.assertEqual(downs(ctx.takes["p1-idle-glass-joe"], "mac_health")[-1], 1106)
+        self.assertLess(abs(funeral_offset(ctx) - 18.43), 0.05)
+
+    def test_knockdowns_get_a_roar(self):
+        from reservoir_film.model import shot_stings
+        ctx = context()
+        stings = shot_stings(chapter(8).shots[0], ctx)
+        bells = sorted(t for t, n in stings if n == "bell")
+        self.assertTrue(bells)
+        self.assertEqual(sorted(t for t, n in stings if n == "roar"), bells)
+        knockout = next(s for s in chapter(3).shots if s.name == "knockout")
+        stings = shot_stings(knockout, ctx)
+        bells = [t for t, n in stings if n == "bell"]
+        roars = sorted(t for t, n in stings if n == "roar")
+        self.assertEqual(len(bells), 1)
+        self.assertEqual(len(roars), 4)
+        self.assertTrue(all(t < bells[0] for t in roars[:3]))
+        self.assertEqual(roars[3], bells[0])
+
     def test_the_teachers_ko_is_said_with_its_real_length(self):
         self.assertIn("801 moves", self.text(3))

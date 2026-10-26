@@ -16,3 +16,9 @@ class Music(unittest.TestCase):
                     for _, name in shot.stings:
                         self.assertIn(name, stings)
         self.assertIn("bell", stings)
+
+    def test_roar_is_a_sting(self):
+        from reservoir_film.music.core import compile_cue
+        _, _, stings = PUNCHOUT.cues()
+        self.assertIn("roar", stings)
+        compile_cue(stings["roar"], 1)

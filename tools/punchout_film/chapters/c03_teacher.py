@@ -3,7 +3,7 @@
 from reservoir_film import draw
 from reservoir_film.model import Caption, Chapter, Shot
 
-from .common import diagram_shot, fight, fight_panel, frame_index
+from .common import diagram_shot, fight, fight_panel, frame_index, knockdown_stings
 
 # The knockout fight plays at double speed.
 KO_SPEED = 2
@@ -34,7 +34,9 @@ def ko_seconds(ctx):
 
 
 def ko_bell(ctx):
-    return [(ko_seconds(ctx) - 4, "bell")]
+    """The bell and a roar at the knockout, and a roar at each knockdown."""
+    ko = ko_seconds(ctx) - 4
+    return [(ko, "bell"), (ko, "roar")] + knockdown_stings(ctx.takes["p3-teacher-von-kaiser"], KO_SPEED)
 
 
 CHAPTER = Chapter(3, "The teacher", "Who cheats with save states", [

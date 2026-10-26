@@ -4,7 +4,7 @@ from reservoir_film import draw
 from reservoir_film.model import Caption, Chapter, Shot
 
 from ..insides import MOVE_FRAMES
-from .common import fight, fight_panel, frame_index
+from .common import downs, fight, fight_panel, frame_index, knockdown_stings, step_seconds
 
 TAKE = "p3-stack4-glass-joe"
 SPEED = 4
@@ -20,10 +20,9 @@ def knockdowns(ctx, t, i):
 
 
 def bells(ctx):
-    """A bell each time Glass Joe's health reaches zero."""
-    health = [s["opponent_health"] for s in ctx.takes[TAKE].meta["steps"]]
-    downs = [k for k in range(1, len(health)) if health[k] == 0 and health[k - 1] > 0]
-    return [(k * MOVE_FRAMES / SPEED / 60, "bell") for k in downs]
+    """A bell and a roar each time Glass Joe's health reaches zero."""
+    take = ctx.takes[TAKE]
+    return [(step_seconds(k, SPEED), "bell") for k in downs(take, "opponent_health")] + knockdown_stings(take, SPEED)
 
 
 def seconds(ctx):
