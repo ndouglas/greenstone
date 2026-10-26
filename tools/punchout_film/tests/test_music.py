@@ -66,3 +66,12 @@ class Music(unittest.TestCase):
             cue = cues[name]
             compile_cue(cue, 2)
             self.assertEqual(cue.credit == "original", name == "ring_entrance", name)
+
+    def test_the_triumph_is_its_own_tune(self):
+        from punchout_film.music import ode, triumph
+        self.assertNotEqual(triumph.loop.parts[0].notes, ode.loop.parts[0].notes)
+        self.assertEqual(triumph.loop.parts[1].instrument, ode.loop.parts[0].instrument, "a brass countermelody on p2")
+
+    def test_the_fanfare_lands_on_its_tonic(self):
+        from punchout_film.music import RING_CHORDS
+        self.assertEqual(RING_CHORDS[-1], "C")

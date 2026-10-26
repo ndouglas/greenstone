@@ -42,7 +42,7 @@ GALOP_DRUMS = "k/8 h/8 s/8 h/8 k/8 h/8 s/8 h/8"
 ROLL = " ".join(["s/16"] * 16)
 
 # --- Ring entrance: an original fanfare ------------------------------------
-RING_CHORDS = ["C", "C", "F", "G"]
+RING_CHORDS = ["C", "C", "F", "C"]
 ring_entrance = Cue(
     name="ring_entrance", title="Ring Entrance", bpm=132,
     intro=Section([Part("p1", BRASS, "r/1"), Part("p2", STAC, "r/1"), Part("tri", BASS, "r/1"),
@@ -202,19 +202,35 @@ ode = Cue(
                     Part("noise", DRUM, "o/2 r/2")]),
 )
 
-# Over the top: the tune on blaring brass, an arpeggio
+def dotted(bar):
+    """Each quarter note of `bar` as a dotted fanfare figure."""
+    out = []
+    for token in bar.split():
+        pitch, length = token.split("/")
+        out.append(f"{pitch}/8. {pitch}/16" if length == "4" else token)
+    return " ".join(out)
+
+
+# The triumph's tune: Ode to Joy in dotted fanfare rhythm, its last phrase
+# climbing to a high D instead of settling.
+ODE_BARS = ODE.split(" | ")
+TRIUMPH = bars(*[dotted(b) if k not in (3, 7) else b for k, b in enumerate(ODE_BARS[:7])],
+               "D5/8 F#5/8 A5/8 C#6/8 D6/2")
+
+# Over the top: the tune on blaring brass, a second brass voice answering
+# ta-ta-ta TAAA, an arpeggio
 # shimmering under it, a triangle run every bar and a pounding drum.
 triumph = Cue(
     name="triumph", title="Triumph", bpm=140, credit=ODE_CREDIT,
-    intro=Section([Part("p1", BRASS, "A4/8 A4/8 A4/8 D5/8 F#5/8 A5/8 D6/4"), Part("p2", OCT, "r/1"),
+    intro=Section([Part("p1", BRASS, "A4/8 A4/8 A4/8 D5/8 F#5/8 A5/8 D6/4"), Part("p2", BRASS, "r/1"),
                    Part("tri", BASS, run_up("D")), Part("noise", DRUM, ROLL)]),
     loop=Section([
-        Part("p1", BRASS, ODE),
-        Part("p2", OCT, each(ODE_CHORDS, lambda c: octave_arp(c).strip())),
+        Part("p1", BRASS, TRIUMPH),
+        Part("p2", BRASS, each(ODE_CHORDS, lambda c: " ".join([f"r/8 {TONE[c]}/8 {TONE[c]}/8 {TONE[c]}/8 {TONE[c]}/2"]))),
         Part("tri", BASS, each(ODE_CHORDS, run_up)),
         Part("noise", DRUM, bars(*["k/8 k/8 s/4 k/8 k/8 s/4"] * 8)),
     ]),
-    ending=Section([Part("p1", BRASS, "D6/1"), Part("p2", OCT, "D5/1"), Part("tri", BASS, "D2/1"),
+    ending=Section([Part("p1", BRASS, "D6/1"), Part("p2", BRASS, "F#5/1"), Part("tri", BASS, "D2/1"),
                     Part("noise", DRUM, ROLL)]),
 )
 
