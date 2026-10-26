@@ -3,6 +3,8 @@ pumped-up public-domain tune from his supposed homeland; the jokes are in
 the arranging. Nothing here comes from Nintendo's score or any modern
 arrangement: every tune is written out from the public-domain melody."""
 
+from dataclasses import replace
+
 from reservoir_film.music.core import Cue, Instrument, Part, Section
 from reservoir_film.music.cues import BASS, CUES as TETRIS_CUES, DRUM, HARM, OCT, PLINK, SOFT, STAC, SWEEP, bars, each
 from reservoir_film.music.cues import STINGS as TETRIS_STINGS
@@ -118,7 +120,7 @@ def octave_arp(c):
 
 
 marseillaise = Cue(
-    name="marseillaise", title="La Marseillaise", bpm=112, credit=MARS_CREDIT,
+    name="marseillaise", title="La Marseillaise", bpm=126, credit=MARS_CREDIT,
     intro=Section(MARS_INTRO),
     loop=Section([
         Part("p1", BRASS, MARS), Part("p2", STAC, each(MARS_CHORDS, stab)),
@@ -140,11 +142,12 @@ marseillaise_fast = Cue(
 # Lift music: slow, soft, polite, brushed.
 marseillaise_elevator = Cue(
     name="marseillaise_elevator", title="La Marseillaise (lift music)", bpm=76, credit=MARS_CREDIT,
+    # Only the first phrase, "Allons enfants … est arrivé": the bank's scene is short.
     loop=Section([
-        Part("p1", SOFT, MARS),
-        Part("p2", HARM, each(MARS_CHORDS, lambda c: "{0}/2 {1}/2".format(*LOUNGE.get(c, (TONE[c], TONE[c]))))),
-        Part("tri", BASS, each(MARS_CHORDS, lambda c: "{0}/2 {1}/2".format(*ROOT[c]))),
-        Part("noise", DRUM, bars(*["r/4 h/4 r/4 h/4"] * 8)),
+        Part("p1", SOFT, " | ".join(MARS.split(" | ")[:4])),
+        Part("p2", HARM, each(MARS_CHORDS[:4], lambda c: "{0}/2 {1}/2".format(*LOUNGE.get(c, (TONE[c], TONE[c]))))),
+        Part("tri", BASS, each(MARS_CHORDS[:4], lambda c: "{0}/2 {1}/2".format(*ROOT[c]))),
+        Part("noise", DRUM, bars(*["r/4 h/4 r/4 h/4"] * 4)),
     ]),
     ending=Section([Part("p1", SOFT, "G4/1"), Part("p2", HARM, "E5/1"), Part("tri", BASS, "G2/1"),
                     Part("noise", DRUM, "r/1")]),
@@ -220,7 +223,7 @@ AUGUSTIN = bars("C5/4. D5/8 C5/8 Bb4/8", "A4/4 F4/4 F4/4", "G4/4 C4/4 C4/4", "A4
                 "C5/4. D5/8 C5/8 Bb4/8", "A4/4 F4/4 F4/4", "G4/4 C4/4 C4/4", "F4/2.")
 AUGUSTIN_CHORDS = ["F", "F", "C", "F", "F", "F", "C", "F"]
 augustin = Cue(
-    name="augustin", title="Ach du lieber Augustin", bpm=200, credit="Ach du lieber Augustin (traditional)",
+    name="augustin", title="Ach du lieber Augustin", bpm=200, credit="traditional",
     loop=Section([
         Part("p1", BRASS, AUGUSTIN), Part("p2", STAC, each(AUGUSTIN_CHORDS, lambda c: f"r/4 {TONE[c]}/4 {TONE[c]}/4")),
         Part("tri", BASS, each(AUGUSTIN_CHORDS, lambda c: f"{ROOT[c][0]}/4 r/4 {ROOT[c][1]}/4")),
@@ -265,7 +268,12 @@ valkyries = Cue(
                     Part("noise", DRUM, "o/2 r/2")]),
 )
 
-PUNCHOUT_CUES = [ring_entrance, cancan, funeral, marseillaise, marseillaise_fast, marseillaise_elevator,
+# The Tetris film's lab music at two other tempos, so it can fill chapter
+# 3's short opening and chapter 4's close. The tune is the same.
+lab_brisk = replace(TETRIS_CUES["lab"], name="lab_brisk", bpm=124)
+lab_slow = replace(TETRIS_CUES["lab"], name="lab_slow", bpm=92)
+
+PUNCHOUT_CUES = [lab_brisk, lab_slow, ring_entrance, cancan, funeral, marseillaise, marseillaise_fast, marseillaise_elevator,
                  marseillaise_stall, ode, triumph, augustin, turca, valkyries]
 CUES = {**TETRIS_CUES, **{c.name: c for c in PUNCHOUT_CUES}}
 
@@ -276,5 +284,44 @@ ROAR = Cue(name="roar", title="Roar", bpm=160, loop=Section([Part("noise", Instr
 
 STINGS = {**TETRIS_STINGS, "bell": BELL, "roar": ROAR}
 
-CHAPTER_CUES = {1: "coin_run", 2: "underground", 3: "lab", 4: "korobeiniki", 5: "underground", 6: "lab", 7: "korobeiniki_fast", 8: "fooled", 9: "minuet",
-                10: "lab", 11: "reprise"}
+
+
+def _funeral_offset(ctx):
+    from .chapters.c02_idle import funeral_offset
+    return funeral_offset(ctx)
+
+
+# Which cue plays where: a cue name for a whole chapter, or (shot, seconds
+# into the shot, cue) spans, each running until the next begins.
+CHAPTER_CUES = {
+    1: "ring_entrance",
+    2: [("idle", 0, "cancan"), ("idle", _funeral_offset, "funeral")],
+    3: [("swap", 0, "lab_brisk"), ("defence", 0, "marseillaise"), ("knockout", 0, "triumph")],
+    4: [("see_swap", 0, "lab"), ("bank", 0, "korobeiniki"), ("decide_swap", 0, "lab_slow")],
+    5: [("sidestep", 0, "marseillaise_fast"), ("bank", 0, "marseillaise_elevator")],
+    6: "ode",
+    7: "augustin",
+    8: "marseillaise_stall",
+    9: "turca",
+    10: "valkyries",
+    11: "reprise",
+}
+
+
+def music_credits():
+    """(head, body) for each piece of borrowed music, in the order the film
+    first plays it, then everything else."""
+    seen, out = set(), []
+    for entry in CHAPTER_CUES.values():
+        for name in [entry] if isinstance(entry, str) else [span[2] for span in entry]:
+            cue = CUES[name]
+            # Traditional tunes share a credit, so they're told apart by title.
+            key = cue.credit if ", " in cue.credit else cue.title
+            if cue.credit == "original" or key in seen:
+                continue
+            seen.add(key)
+            if ", " in cue.credit:
+                out.append(tuple(cue.credit.split(", ", 1)))
+            else:
+                out.append((cue.title, cue.credit.capitalize() + "."))
+    return out + [("Everything else", "Original.")]

@@ -23,4 +23,5 @@ PUNCHOUT = Film(name="punchout", title="Reservoir Punch-Out!!", takes_dir=OUT_DI
                 record_hint="cargo run --release --example punchout -- film-takes --only {name}",
                 numbers=HERE / "numbers.json", chapters=_chapters, cues=_cues,
                 sources=[REPO / "tools" / "reservoir_film" / "draw.py", REPO / "tools" / "reservoir_film" / "model.py",
-                         HERE])
+                         HERE],
+                strict_score=True)

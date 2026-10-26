@@ -4,14 +4,13 @@ credits."""
 from reservoir_film import draw
 from reservoir_film.model import Caption, Chapter, H, Shot, W
 
+from ..music import music_credits
 from .common import diagram_shot
 
 CREDITS = [
     ("Made with", "Greenstone, an NES emulator written in Rust."),
     ("Music", "Played on Greenstone's own sound chip."),
-    ("Korobeiniki", "Traditional."),
-    ("Minuet in G", "Christian Petzold, long attributed to Bach."),
-    ("Everything else", "Original."),
+    *music_credits(),
     ("Mike Tyson's Punch-Out!! and Tetris", "Nintendo's. We only read their screens and poked their memory."),
 ]
 
@@ -49,5 +48,6 @@ CHAPTER = Chapter(11, "Verdict", "What each strange part did", [
     ]),
     Shot("verdict", 12, verdict),
     Shot("next", 10, next_card),
-    Shot("credits", 16, credits),
+    # Long enough for the last line to scroll off the top.
+    Shot("credits", (H + len(CREDITS) * 110) / 60 + 2, credits),
 ])

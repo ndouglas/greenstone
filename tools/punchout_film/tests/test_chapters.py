@@ -114,5 +114,12 @@ class Chapters(unittest.TestCase):
         self.assertTrue(all(t < bells[0] for t in roars[:3]))
         self.assertEqual(roars[3], bells[0])
 
+    def test_credits_scroll_fully(self):
+        from punchout_film.chapters.c11_verdict import CREDITS
+        shot = next(s for s in chapter(11).shots if s.name == "credits")
+        t = shot_seconds(shot, context())
+        last_line = 720 - t * 60 + (len(CREDITS) - 1) * 110
+        self.assertLess(last_line + 34 + 40, 0)
+
     def test_the_teachers_ko_is_said_with_its_real_length(self):
         self.assertIn("801 moves", self.text(3))
