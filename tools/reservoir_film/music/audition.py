@@ -27,14 +27,14 @@ def spectrogram(x, path, width=1200, height=300):
     Image.fromarray(s).resize((width, height)).save(path)
 
 
-def main(names):
-    OUT.mkdir(parents=True, exist_ok=True)
-    every = {**CUES, **STINGS}
+def main(names, cues=CUES, stings=STINGS, out=OUT):
+    out.mkdir(parents=True, exist_ok=True)
+    every = {**cues, **stings}
     for name in names or list(every):
         cue = every[name]
-        x = render_cue(cue, 1 if name in STINGS else 2, cue.bpm, OUT / "work")
-        write_wav(x, OUT / f"{name}.wav")
-        spectrogram(x, OUT / f"{name}.png")
+        x = render_cue(cue, 1 if name in stings else 2, cue.bpm, out / "work")
+        write_wav(x, out / f"{name}.wav")
+        spectrogram(x, out / f"{name}.png")
         peak = float(np.max(np.abs(x)))
         silent = float(np.mean(np.abs(x) < 1e-3))
         print(f"{name}: {len(x) / SAMPLE_RATE:.1f} s, peak {peak:.2f}, silent {silent:.0%}")

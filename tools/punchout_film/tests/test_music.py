@@ -22,3 +22,14 @@ class Music(unittest.TestCase):
         _, _, stings = PUNCHOUT.cues()
         self.assertIn("roar", stings)
         compile_cue(stings["roar"], 1)
+
+    NEW_CUES = ["ring_entrance", "cancan", "funeral", "marseillaise", "marseillaise_fast",
+                "marseillaise_elevator", "marseillaise_stall"]
+
+    def test_cues_compile_and_credit_their_composers(self):
+        from reservoir_film.music.core import compile_cue
+        cues, _, _ = PUNCHOUT.cues()
+        for name in self.NEW_CUES:
+            cue = cues[name]
+            compile_cue(cue, 2)
+            self.assertEqual(cue.credit == "original", name == "ring_entrance", name)
