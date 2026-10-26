@@ -14,8 +14,9 @@ KAZOO = Instrument(volume=(8, 8, 7, 7), duty=(0,), vibrato=(0, 0.35, 5), release
 
 # Each chord's march bass (root, fifth) and one tone to stab.
 ROOT = {"C": ("C3", "G2"), "G": ("G2", "D3"), "F": ("F2", "C3"), "D": ("D3", "A2"), "Am": ("A2", "E3"),
-        "Bbm": ("Bb2", "F2"), "Gb": ("Gb2", "Db3")}
-TONE = {"C": "E4", "G": "B4", "F": "A4", "D": "F#4", "Am": "C5", "Bbm": "Db4", "Gb": "Bb3"}
+        "Bbm": ("Bb2", "F2"), "Gb": ("Gb2", "Db3"), "A": ("A2", "E3"), "E": ("E2", "B2"), "Bm": ("B2", "F#2")}
+TONE = {"C": "E4", "G": "B4", "F": "A4", "D": "F#4", "Am": "C5", "Bbm": "Db4", "Gb": "Bb3", "A": "C#5", "E": "G#4",
+        "Bm": "D5"}
 # A lounge chord: the third and the sixth above the root.
 LOUNGE = {"C": ("E4", "A4"), "G": ("B4", "E5"), "D": ("F#4", "B4")}
 
@@ -165,8 +166,107 @@ marseillaise_stall = Cue(
                     Part("noise", DRUM, "r/2 k/4 r/4")]),
 )
 
+# --- Ode to Joy: Beethoven, as a march, then as a triumph -----------------
+ODE = bars("F#5/4 F#5/4 G5/4 A5/4", "A5/4 G5/4 F#5/4 E5/4", "D5/4 D5/4 E5/4 F#5/4", "F#5/4. E5/8 E5/2",
+           "F#5/4 F#5/4 G5/4 A5/4", "A5/4 G5/4 F#5/4 E5/4", "D5/4 D5/4 E5/4 F#5/4", "E5/4. D5/8 D5/2")
+ODE_CHORDS = ["D", "A", "D", "A", "D", "A", "D", "D"]
+ODE_CREDIT = "Ludwig van Beethoven, Ode to Joy from Symphony No. 9 (1824)"
+
+
+def run_up(c):
+    """A triangle run from the chord's root up an octave, in eighths."""
+    scale = ["D", "E", "F#", "G", "A", "B", "C#"]
+    root = ROOT[c][0][:-1]
+    k, octave, notes = scale.index(root), 2, []
+    for i in range(8):
+        letter = scale[(k + i) % 7]
+        # Octaves turn over at C.
+        if i > 0 and letter.startswith("C"):
+            octave += 1
+        notes.append(f"{letter}{octave}/8")
+    return " ".join(notes)
+
+
+ode = Cue(
+    name="ode", title="Ode to Joy (march)", bpm=132, credit=ODE_CREDIT,
+    intro=Section([Part("p1", BRASS, "r/1"), Part("p2", STAC, "r/1"), Part("tri", BASS, march("D")),
+                   Part("noise", DRUM, ROLL)]),
+    loop=Section([
+        Part("p1", BRASS, ODE), Part("p2", STAC, each(ODE_CHORDS, stab)),
+        Part("tri", BASS, each(ODE_CHORDS, oompah)), Part("noise", DRUM, bars(*[MARCH_DRUMS] * 8)),
+    ]),
+    ending=Section([Part("p1", BRASS, "D6/2 r/2"), Part("p2", STAC, "F#5/2 r/2"), Part("tri", BASS, "D3/2 r/2"),
+                    Part("noise", DRUM, "o/2 r/2")]),
+)
+
+# Over the top: the tune on blaring brass, an arpeggio
+# shimmering under it, a triangle run every bar and a pounding drum.
+triumph = Cue(
+    name="triumph", title="Triumph", bpm=140, credit=ODE_CREDIT,
+    intro=Section([Part("p1", BRASS, "A4/8 A4/8 A4/8 D5/8 F#5/8 A5/8 D6/4"), Part("p2", OCT, "r/1"),
+                   Part("tri", BASS, run_up("D")), Part("noise", DRUM, ROLL)]),
+    loop=Section([
+        Part("p1", BRASS, ODE),
+        Part("p2", OCT, each(ODE_CHORDS, lambda c: octave_arp(c).strip())),
+        Part("tri", BASS, each(ODE_CHORDS, run_up)),
+        Part("noise", DRUM, bars(*["k/8 k/8 s/4 k/8 k/8 s/4"] * 8)),
+    ]),
+    ending=Section([Part("p1", BRASS, "D6/1"), Part("p2", OCT, "D5/1"), Part("tri", BASS, "D2/1"),
+                    Part("noise", DRUM, ROLL)]),
+)
+
+# --- Ach du lieber Augustin: an oompah band in too much of a hurry ---------
+AUGUSTIN = bars("C5/4. D5/8 C5/8 Bb4/8", "A4/4 F4/4 F4/4", "G4/4 C4/4 C4/4", "A4/4 F4/4 F4/4",
+                "C5/4. D5/8 C5/8 Bb4/8", "A4/4 F4/4 F4/4", "G4/4 C4/4 C4/4", "F4/2.")
+AUGUSTIN_CHORDS = ["F", "F", "C", "F", "F", "F", "C", "F"]
+augustin = Cue(
+    name="augustin", title="Ach du lieber Augustin", bpm=200, credit="Ach du lieber Augustin (traditional)",
+    loop=Section([
+        Part("p1", BRASS, AUGUSTIN), Part("p2", STAC, each(AUGUSTIN_CHORDS, lambda c: f"r/4 {TONE[c]}/4 {TONE[c]}/4")),
+        Part("tri", BASS, each(AUGUSTIN_CHORDS, lambda c: f"{ROOT[c][0]}/4 r/4 {ROOT[c][1]}/4")),
+        Part("noise", DRUM, bars(*["k/4 h/4 h/4"] * 8)),
+    ]),
+    ending=Section([Part("p1", BRASS, "F5/4 F4/4 r/4"), Part("p2", STAC, "A4/4 r/2"),
+                    Part("tri", BASS, "F2/4 F2/4 r/4"), Part("noise", DRUM, "k/4 o/4 r/4")]),
+)
+
+# --- Rondo alla Turca: Mozart's own joke about a Janissary band ------------
+TURCA = bars("B4/16 A4/16 G#4/16 A4/16 C5/4 D5/16 C5/16 B4/16 C5/16 E5/4",
+             "F5/16 E5/16 D#5/16 E5/16 B5/16 A5/16 G#5/16 A5/16 B5/16 A5/16 G#5/16 A5/16 C6/4",
+             "A5/8 C6/8 B5/8 A5/8 G#5/8 A5/8 B5/8 A5/8", "G#5/8 A5/8 B5/8 A5/8 G#5/8 F#5/8 E5/4")
+TURCA_CHORDS = ["Am", "Am", "Am", "E"]
+turca = Cue(
+    name="turca", title="Rondo alla Turca", bpm=132, credit="Wolfgang Amadeus Mozart, Rondo alla Turca (1783)",
+    loop=Section([
+        Part("p1", BRASS, TURCA), Part("p2", STAC, each(TURCA_CHORDS, stab)),
+        Part("tri", BASS, each(TURCA_CHORDS, oompah)),
+        Part("noise", DRUM, bars(*["k/8 k/8 s/4 k/8 k/8 s/4"] * 4)),
+    ]),
+    ending=Section([Part("p1", BRASS, "A5/4 A4/4 r/2"), Part("p2", STAC, "C5/4 r/4 r/2"),
+                    Part("tri", BASS, "A2/4 A2/4 r/2"), Part("noise", DRUM, "k/4 o/4 r/2")]),
+)
+
+# --- Ride of the Valkyries: the cheat rides in -----------------------------
+VALKYRIES = bars("F#4/8. B4/16 D5/8. B4/16 D5/2", "B4/8. D5/16 F#5/8. D5/16 F#5/2",
+                 "D5/8. F#5/16 A5/8. F#5/16 A5/2", "A4/8. D5/16 F#5/8. D5/16 F#5/2")
+VALKYRIES_CHORDS = ["Bm", "Bm", "D", "D"]
+valkyries = Cue(
+    name="valkyries", title="Ride of the Valkyries", bpm=112,
+    credit="Richard Wagner, Ride of the Valkyries from Die Walküre (1856)",
+    loop=Section([
+        Part("p1", BRASS, VALKYRIES),
+        # The strings' trill, as a pulse shaking between two notes.
+        Part("p2", STAC, each(VALKYRIES_CHORDS, lambda c: " ".join([f"{TONE[c]}/16 {TONE[c][:-1]}5/16"] * 8)
+                              if TONE[c].endswith("4") else " ".join([f"{TONE[c]}/16 C#5/16"] * 8))),
+        Part("tri", BASS, each(VALKYRIES_CHORDS, lambda c: " ".join([f"{ROOT[c][0]}/8 {ROOT[c][0]}/16 {ROOT[c][0]}/16"] * 4))),
+        Part("noise", DRUM, bars(*[" ".join(["k/8 h/16 h/16"] * 4)] * 4)),
+    ]),
+    ending=Section([Part("p1", BRASS, "B4/2 r/2"), Part("p2", STAC, "r/1"), Part("tri", BASS, "B1/2 r/2"),
+                    Part("noise", DRUM, "o/2 r/2")]),
+)
+
 PUNCHOUT_CUES = [ring_entrance, cancan, funeral, marseillaise, marseillaise_fast, marseillaise_elevator,
-                 marseillaise_stall]
+                 marseillaise_stall, ode, triumph, augustin, turca, valkyries]
 CUES = {**TETRIS_CUES, **{c.name: c for c in PUNCHOUT_CUES}}
 
 # The bell at a knockout: an original three-note ring.

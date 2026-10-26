@@ -24,7 +24,7 @@ class Music(unittest.TestCase):
         compile_cue(stings["roar"], 1)
 
     NEW_CUES = ["ring_entrance", "cancan", "funeral", "marseillaise", "marseillaise_fast",
-                "marseillaise_elevator", "marseillaise_stall"]
+                "marseillaise_elevator", "marseillaise_stall", "ode", "triumph", "augustin", "turca", "valkyries"]
 
     def test_cues_compile_and_credit_their_composers(self):
         from reservoir_film.music.core import compile_cue
