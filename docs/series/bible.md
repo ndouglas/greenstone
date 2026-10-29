@@ -118,7 +118,7 @@ up. Numbers are plain whole numbers, never sub-numbered.
 | 001 | One neuron draws a line (w·x + b, slope and intercept; a balance scale) | "Is Mario in the air?" from two numbers; across several games |
 | 002 | When the line lies: the assumptions a single neuron makes | ID bytes, BCD scores (Tetris), a wrapping frame counter, the "cheating" byte |
 | 003 | Learning is nudging the line after each mistake | The same neuron, learning |
-| 004 | Some questions no single line can answer | A question that is not linearly separable |
+| 004 | Some questions no single line can answer | Mario's speed says "in the air" only when it isn't zero, on either side: two cuts, 97% (from 001's experiments), which no one neuron can draw |
 | 005 | Bends and layers: hidden neurons redraw the space | Solving 004's question |
 | 006 | Learning is rolling downhill (loss and gradients) | The landscape of 005's network |
 | 007 | A neuron's weights are a picture of what it wants | A neuron that sees screen pixels |
