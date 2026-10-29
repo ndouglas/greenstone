@@ -12,7 +12,7 @@ from series.script import Section
 # each row wider than the frame so the wall can drift.
 ROWS = ((0.22, 0.30, 0.18, 0.26, 0.20), (0.16, 0.34, 0.24, 0.22, 0.18), (0.26, 0.20, 0.28, 0.22, 0.24))
 GAP = 0.08
-DIM = 0.68
+DIM = 0.82
 
 
 def board_tiles(section: Section) -> list[Mobject]:
@@ -37,10 +37,14 @@ def wall(tiles: list[Mobject]) -> Group:
     for fractions in ROWS:
         row = Group()
         for f in fractions:
-            tile = pool[k % len(pool)].copy()
+            # A slot of the row's height and the tile's width; the picture is
+            # scaled evenly to fit inside it, never stretched.
+            slot = Rectangle(width=f * width * 1.25, height=row_h, stroke_width=0,
+                             fill_color=style.BACKGROUND, fill_opacity=1)
+            picture = pool[k % len(pool)].copy()
             k += 1
-            tile.stretch_to_fit_width(f * width * 1.25).stretch_to_fit_height(row_h)
-            row.add(tile)
+            picture.scale(min(slot.width / picture.width, slot.height / picture.height) * 0.92)
+            row.add(Group(slot, picture.move_to(slot)))
         rows.add(row.arrange(buff=GAP))
     rows.arrange(DOWN, buff=GAP)
     return rows.align_to([-width / 2, 0, 0], LEFT)
@@ -56,4 +60,7 @@ def title_card(section: Section, tiles: list[Mobject]) -> Group:
         words.add(Text(f"Chapter {section.number}", font=style.FONT, color=style.INPUT).scale(0.45))
     words.add(Text(section.title, font=style.FONT, color=style.TEXT).scale(1.0))
     words.arrange(DOWN, buff=0.3)
-    return Group(backdrop, shade, words)
+    # A soft dark field behind the words, so no tile competes with them.
+    backing = RoundedRectangle(corner_radius=0.3, width=words.width + 1.6, height=words.height + 1.0,
+                               stroke_width=0, fill_color=BLACK, fill_opacity=0.6).move_to(words)
+    return Group(backdrop, shade, backing, words)

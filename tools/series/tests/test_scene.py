@@ -303,5 +303,15 @@ class Chapters(unittest.TestCase):
         self.assertFalse(any("Chapter" in t for t in texts(title_card(intro, []))))
 
 
+    def test_the_wall_keeps_each_pictures_shape(self):
+        from manim import Rectangle
+        from series.title import wall
+        tile = Rectangle(width=2.0, height=1.0)
+        for row in wall([tile]):
+            for slot in row:
+                picture = slot[-1]
+                self.assertAlmostEqual(picture.width / picture.height, 2.0, delta=0.01)
+
+
 if __name__ == "__main__":
     unittest.main()
