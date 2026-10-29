@@ -1,0 +1,59 @@
+[rosenblatt1958]
+title = "The perceptron: A probabilistic model for information storage and organization in the brain. Psychological Review, 65(6), 386-408"
+authors = "F. Rosenblatt"
+year = 1958
+url = "https://doi.org/10.1037/h0042519"
+
+[bluedot2024]
+title = "Introduction to Mechanistic Interpretability (BlueDot Impact blog)"
+authors = "Sarah"
+year = 2024
+url = "https://blog.bluedot.org/p/introduction-to-mechanistic-interpretability"
+
+[hendrycks2025]
+title = "The Misguided Quest for Mechanistic AI Interpretability (AI Frontiers)"
+authors = "Dan Hendrycks and Laura Hiscott"
+year = 2025
+url = "https://newsletter.ai-frontiers.org/p/the-misguided-quest-for-mechanistic"
+
+[nesdev-memory]
+title = "CPU memory map (NESdev Wiki; accessed 2026)"
+authors = "NESdev Wiki contributors"
+year = 2026
+url = "https://www.nesdev.org/wiki/CPU_memory_map"
+
+[nesdev-oam]
+title = "PPU OAM (NESdev Wiki; accessed 2026)"
+authors = "NESdev Wiki contributors"
+year = 2026
+url = "https://www.nesdev.org/wiki/PPU_OAM"
+
+[datacrystal-smb1]
+title = "Super Mario Bros./RAM map (Data Crystal, revision 70369)"
+authors = "Data Crystal contributors"
+year = 2026
+url = "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros./RAM_map"
+
+[datacrystal-smb3]
+title = "Super Mario Bros. 3/RAM map (Data Crystal, revision 63618)"
+authors = "Data Crystal contributors"
+year = 2024
+url = "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/RAM_map"
+
+[datacrystal-cv]
+title = "Castlevania (NES, Famicom Disk System)/RAM map (Data Crystal, revision 71689)"
+authors = "Data Crystal contributors"
+year = 2026
+url = "https://datacrystal.tcrf.net/wiki/Castlevania_(NES,_Famicom_Disk_System)/RAM_map"
+
+[openstax-linear]
+title = "College Algebra 2e, section 4.1: Linear Functions (OpenStax)"
+authors = "Jay Abramson et al."
+year = 2021
+url = "https://openstax.org/books/college-algebra-2e/pages/4-1-linear-functions"
+
+[exp001]
+title = "This video's experiments: recordings, results and code (docs/series/games/001.md, tools/series/lab/exp001.py)"
+authors = "Greenstone"
+year = 2026
+url = "https://github.com/ndouglas/greenstone/blob/main/docs/series/games/001.md"

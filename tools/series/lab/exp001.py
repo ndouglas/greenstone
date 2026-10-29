@@ -87,11 +87,33 @@ def best_cut(v: np.ndarray, y: np.ndarray) -> tuple[float, float]:
     return best[1], best[0]
 
 
+def best_line(x: np.ndarray, y: np.ndarray, angles: int = 360) -> tuple[np.ndarray, float, float]:
+    """The best straight line through two inputs: every direction tried, and
+    for each, every cut along it. Returns w, b (in the inputs' own units)
+    and its accuracy."""
+    mean, scale = x.mean(0), x.std(0) + 1e-9
+    z = (x - mean) / scale
+    best = (0.0, np.zeros(2), 0.0)
+    for theta in np.linspace(0, 2 * np.pi, angles, endpoint=False):
+        d = np.array([np.cos(theta), np.sin(theta)])
+        s = z @ d
+        for cut in np.quantile(s, np.linspace(0.005, 0.995, 199)):
+            a = float(((s > cut).astype(int) == y).mean())
+            if a > best[0]:
+                best = (a, d, float(cut))
+    a, d, cut = best
+    w = d / scale
+    return w, float(-cut - w @ mean), a
+
+
 def run(data_root: Path = DATA, out: Path = OUT) -> dict:
     numbers: dict[str, str | int | float] = {}
 
     def put(name: str, value: float) -> None:
         numbers[name], numbers[name + "_spoken"] = percent(value)
+
+    def put_int(name: str, value: int) -> None:
+        numbers[name], numbers[name + "_spoken"] = int(value), spoken_number(int(value))
 
     for game in ANSWER_KEYS:
         train = [load(data_root / game / s) for s in ("1", "2")]
@@ -101,7 +123,7 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
         # Always answering the commoner answer: the score to beat.
         put(f"{game}_baseline", max(yt.mean(), 1 - yt.mean()))
         cut, _ = best_cut(x[:, 0], y)
-        numbers[f"{game}_height_cut"] = int(cut)
+        put_int(f"{game}_height_cut", int(cut))
         put(f"{game}_height_accuracy", accuracy(np.array([-1.0]), cut, xt[:, :1], yt))
         put(f"{game}_air_rate", yt.mean())
         if x.shape[1] == 2:
@@ -113,7 +135,13 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
             p.fit((x - x.mean(0)) / scale, y, epochs=20, rate=0.01, seed=0)
             put(f"{game}_learned_line_accuracy", float((p.predict((xt - x.mean(0)) / scale) == yt).mean()))
             numbers[f"{game}_learned_speed_share"] = round(abs(p.w[1]) / (abs(p.w[0]) + abs(p.w[1])), 3)
+            w, b, _ = best_line(x, y)
+            put(f"{game}_best_line_accuracy", accuracy(w, b, xt, yt))
         numbers[f"{game}_test_frames"] = int(len(yt))
+        ground = x[y == 0, 0]
+        put_int(f"{game}_standing_height", int(np.median(ground)))
+        put_int(f"{game}_standing_height_low", int(np.percentile(ground, 1)))
+        put_int(f"{game}_standing_height_high", int(np.percentile(ground, 99)))
     numbers["test_minutes"] = 5
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(numbers, indent=2, sort_keys=True) + "\n")

@@ -59,6 +59,18 @@ class Experiment(unittest.TestCase):
         with self.assertRaises(ValueError):
             exp001.check_inputs(game="smb1", inputs=[0x1D, 0xCE])
 
+    def test_the_best_line_finds_a_tilted_boundary(self):
+        rng = np.random.default_rng(1)
+        x = rng.uniform(0, 100, size=(2000, 2))
+        y = (x[:, 0] + x[:, 1] > 100).astype(int)
+        w, b, acc = exp001.best_line(x, y)
+        self.assertGreater(acc, 0.97)
+        self.assertGreater(exp001.accuracy(w, b, x, y), 0.97)
+
+    def test_numbers_have_spoken_forms(self):
+        self.assertEqual(exp001.spoken_number(176), "one hundred and seventy-six")
+        self.assertEqual(exp001.percent(0.94), ("94%", "ninety-four percent"))
+
     def test_a_hand_line_is_scored_on_held_out_frames(self):
         x = np.array([[0.0, 0.0], [10.0, 0.0], [0.0, 10.0], [10.0, 10.0]])
         y = np.array([0, 1, 0, 1])
