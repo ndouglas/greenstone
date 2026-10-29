@@ -87,3 +87,15 @@ title = "Pattern Recognition and Machine Learning, section 4.1.1: Two classes (S
 authors = "C. M. Bishop"
 year = 2006
 url = "https://www.microsoft.com/en-us/research/publication/pattern-recognition-machine-learning/"
+
+[masswerk-6502]
+title = "6502 Instruction Set (Virtual 6502 / mass:werk; accessed 2026): DEC sets the N and Z flags; BNE and BEQ branch on Z; CMP sets them by comparison"
+authors = "N. Landsteiner"
+year = 2026
+url = "https://www.masswerk.at/6502/6502_instruction_set.html"
+
+[smbdis]
+title = "SMBDIS.ASM: a comprehensive Super Mario Bros. disassembly (NonMaskableInterrupt: dec TimerControl, bne NoDecTimers; Start: cmp #$a5, bne ColdBoot)"
+authors = "doppelganger"
+year = 2012
+url = "https://gist.github.com/1wErt3r/4048722"
