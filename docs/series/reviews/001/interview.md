@@ -182,3 +182,19 @@ direction". Correct; `how-found` defers learning to a later video. Nate's
 note for 003 recorded in the bible: linear regression and his update
 methods (`ndouglas/linear-regression`, `bitterbridge/p5js-sketches`);
 basic network material only as far as the interpretability thread needs.
+
+### Round 6: animation, and the series
+
+**Q16 (the depth offset).** Nate: show it; directly portray as much as
+possible. Applied: `depth` now says the game counts from a line a little
+below the top of the screen, and its board draws that zero line on the
+footage with a ruler that follows Mario.
+
+**Q17 (the doubters, this early).** Nate: worth acknowledging. Kept.
+
+**Q18 (what comes next).** Nate: stay on one neuron and show it being
+trained, perhaps over a whole playthrough of Super Mario Bros., watching
+the neuron change. Proposed: make learning 002 and move "when the line
+lies" to 003 (Nate to decide). Needs: play beyond 1-1 (an existing input
+recording of the whole game, or the rule teacher), and exp001's finding
+that the learning rule reaches 84%, below search's 94%, and never settles.

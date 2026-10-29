@@ -68,8 +68,8 @@ cite = ["exp001"]
 
 [[line]]
 id = "depth"
-text = "Instead, the neuron reads a different number from the game's memory: Mario's depth, meaning how far down the screen he is, counted in dots from near the top. A bigger depth means lower on the screen."
-board = "A ruler down the left of the screen, its zero 32 dots below the top (depth d is screen row d + 32), so the marker at Mario reads his depth"
+text = "Instead, the neuron reads a different number from the game's memory: Mario's depth, meaning how far down the screen he is. The game counts it in dots, starting from a line a little below the top of the screen, so a bigger depth means lower on the screen."
+board = "Footage: a line drawn across the screen 32 dots below the top, labelled 0, and a ruler counting down from it to Mario's feet (depth d is screen row d + 32); the ruler's number follows him as he jumps"
 cite = ["datacrystal-smb1", "nesdev-oam", "exp001"]
 
 [[line]]
