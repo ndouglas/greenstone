@@ -167,6 +167,7 @@ pub fn record(game: &Game, rom: &[u8], player: &mut dyn Player, frames: usize, o
   let (mut ram, mut buttons) = (file("ram.u8")?, file("buttons.u8")?);
   let mut take = if footage { Some(TakeWriter::new(out)?) } else { None };
   let (mut airborne, mut restarts) = (0usize, 0usize);
+  let mut restart_frames = Vec::new();
   for f in 0..frames {
     let b = player.buttons(&mut emu, f);
     emu.step_frame(b);
@@ -179,6 +180,7 @@ pub fn record(game: &Game, rom: &[u8], player: &mut dyn Player, frames: usize, o
     if game.died(&mut emu) {
       emu.load_state(&start);
       restarts += 1;
+      restart_frames.push(f);
     }
   }
   ram.flush().map_err(|e| e.to_string())?;
@@ -197,6 +199,8 @@ pub fn record(game: &Game, rom: &[u8], player: &mut dyn Player, frames: usize, o
     "airborne_byte": game.airborne_byte,
     "label_rate": summary.label_rate,
     "restarts": restarts,
+    // The frames after which play started over (the next frame is a fresh start).
+    "restart_frames": restart_frames,
   });
   std::fs::write(out.join("meta.json"), serde_json::to_vec_pretty(&meta).unwrap()).map_err(|e| e.to_string())?;
   if let Some(t) = take {
@@ -268,8 +272,29 @@ mod tests {
     // In SMB3 the first Goomba walks into a Mario who stands still. (In SMB1
     // it never appears: a still Mario never scrolls the screen to it.)
     let Some(rom) = rom_or_skip(SMB3.rom) else { return };
-    let summary = record(&SMB3, &rom, &mut Idle, 1200, &tmp("death"), false).unwrap();
+    let d = tmp("death");
+    let summary = record(&SMB3, &rom, &mut Idle, 1200, &d, false).unwrap();
     assert!(summary.restarts >= 1, "no restart in a minute of standing still");
+    let meta: serde_json::Value = serde_json::from_slice(&std::fs::read(d.join("meta.json")).unwrap()).unwrap();
+    assert_eq!(meta["restart_frames"].as_array().unwrap().len(), summary.restarts);
+  }
+
+  #[test]
+  fn smb3_restarts_as_the_death_begins() {
+    // $058C turns on the frame Mario 3's death begins and stays on through
+    // the death animation; a restart should cut it off at once.
+    let Some(rom) = rom_or_skip(SMB3.rom) else { return };
+    let d = tmp("smb3-death");
+    let summary = record(&SMB3, &rom, &mut Idle, 1200, &d, false).unwrap();
+    let ram = std::fs::read(d.join("ram.u8")).unwrap();
+    let dying = ram.chunks(2048).filter(|f| f[0x058C] != 0).count();
+    assert!(summary.restarts >= 1);
+    assert!(
+      dying <= summary.restarts,
+      "{} dying frames recorded for {} deaths",
+      dying,
+      summary.restarts
+    );
   }
 
   #[test]

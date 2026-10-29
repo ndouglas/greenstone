@@ -18,7 +18,7 @@ pub struct Game {
   pub y: u16,
   /// The player's vertical speed, if the game keeps one.
   pub vy: Option<u16>,
-  is_airborne: fn(u8) -> bool,
+  pub(crate) is_airborne: fn(u8) -> bool,
   start: fn(&[u8]) -> NesEmulator,
   died: fn(&mut NesEmulator) -> bool,
 }
@@ -84,11 +84,13 @@ pub mod smb3 {
   pub const VY: u16 = 0x00CF;
   /// Mario's lives.
   pub const LIVES: u16 = 0x0736;
+  /// Non-zero while Mario is dying (found by experiment; see the games doc).
+  pub const DYING: u16 = 0x058C;
 }
 
 /// Castlevania, per Data Crystal's "Castlevania (NES, Famicom Disk System)/RAM map".
 pub mod castlevania {
-  /// Simon's state: 01 jumping, 07 dropping, 00 walking, … (see the games doc).
+  /// Simon's state: 01 jumping, 05 knocked back, 07 dropping, 00 walking, …
   pub const STATE: u16 = 0x046C;
   /// Simon's real y coordinate.
   pub const Y: u16 = 0x003F;
@@ -127,8 +129,10 @@ pub const SMB3: Game = Game {
   y: smb3::Y,
   vy: Some(smb3::VY),
   is_airborne: |v| v != 0,
-  // Lives ($0736) start at 4 and drop once the death animation ends.
-  died: |emu| emu.ram_read(smb3::LIVES) < 4,
+  // Not on Data Crystal's map: found by experiment. It turns on the frame a
+  // death begins and stays on through the death animation (about 200 frames),
+  // until the lives counter drops.
+  died: |emu| emu.ram_read(smb3::DYING) != 0,
   // Title, one player, then on the map: Right one square, Up to level 1, A.
   start: |rom| {
     let mut emu = NesEmulator::new(rom);
@@ -151,7 +155,8 @@ pub const CASTLEVANIA: Game = Game {
   airborne_byte: castlevania::STATE,
   y: castlevania::Y,
   vy: None,
-  is_airborne: |v| matches!(v, 0x01 | 0x07),
+  // Jumping, knocked back (he flies backwards through the air), dropping.
+  is_airborne: |v| matches!(v, 0x01 | 0x05 | 0x07),
   died: |emu| emu.ram_read(castlevania::STATE) == 0x08,
   // Start at the title, Start again; a third Start would pause the game.
   start: |rom| {
@@ -216,6 +221,14 @@ mod tests {
   #[test]
   fn castlevania_airborne_is_zero_on_the_ground_and_not_after_a_jump() {
     jump_and_land(&CASTLEVANIA);
+  }
+
+  #[test]
+  fn castlevania_knockback_counts_as_in_the_air() {
+    let mut emu_state = 0x05u8;
+    assert!((CASTLEVANIA.is_airborne)(emu_state), "knocked back (05) is in the air");
+    emu_state = 0x00;
+    assert!(!(CASTLEVANIA.is_airborne)(emu_state));
   }
 
   #[test]

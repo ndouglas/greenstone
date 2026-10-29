@@ -54,6 +54,34 @@ class Learning(unittest.TestCase):
         self.assertTrue(all(m > 0 for m in mistakes))
 
 
+class Landing(unittest.TestCase):
+    def test_landing_looks_ahead_within_the_air_only(self):
+        # In the air on frames 0-5, landing on frame 6; ground after.
+        air = np.array([1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0], dtype=bool)
+        keep, lands = exp001.landing(air, restarts=[], within=3)
+        self.assertEqual(keep.tolist(), [0, 1, 2, 3, 4, 5])
+        self.assertEqual(lands.tolist(), [0, 0, 0, 1, 1, 1])
+
+    def test_a_restart_is_not_a_landing(self):
+        air = np.array([1, 1, 1, 1, 0, 0, 0, 0], dtype=bool)
+        keep, lands = exp001.landing(air, restarts=[2], within=3)
+        self.assertNotIn(0, keep.tolist())
+        self.assertNotIn(1, keep.tolist())
+        self.assertNotIn(2, keep.tolist())
+
+
+class Keys(unittest.TestCase):
+    def test_knockback_counts_as_in_the_air_in_castlevania(self):
+        ram = np.zeros((3, 2048), dtype=np.uint8)
+        ram[:, 0x046C] = [0x00, 0x01, 0x05]
+        self.assertEqual(exp001.label("castlevania")(ram).tolist(), [False, True, True])
+
+    def test_any_nonzero_flag_is_in_the_air_in_smb3(self):
+        ram = np.zeros((3, 2048), dtype=np.uint8)
+        ram[:, 0x00D8] = [0, 1, 6]
+        self.assertEqual(exp001.label("smb3")(ram).tolist(), [False, True, True])
+
+
 class Experiment(unittest.TestCase):
     def test_the_answer_key_is_not_an_input(self):
         with self.assertRaises(ValueError):
@@ -69,6 +97,8 @@ class Experiment(unittest.TestCase):
 
     def test_numbers_have_spoken_forms(self):
         self.assertEqual(exp001.spoken_number(176), "one hundred and seventy-six")
+        self.assertEqual(exp001.spoken_number(1300), "one thousand three hundred")
+        self.assertEqual(exp001.spoken_number(2048), "two thousand and forty-eight")
         self.assertEqual(exp001.percent(0.94), ("94%", "ninety-four percent"))
 
     def test_a_hand_line_is_scored_on_held_out_frames(self):

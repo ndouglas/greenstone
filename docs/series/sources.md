@@ -395,6 +395,30 @@ small models.
 | Better agendas | Technical governance, evals, adversarial robustness, characterizing alignment difficulty, technical outreach | the critique video |
 | Concessions | Interp is more feasible than neuroscience; causal methods, activation patching and probes are more rigorous; some researchers should work on it | the critique video |
 
+## 13. What are probing classifiers and can they help us understand what's happening inside AI models? (BlueDot Impact)
+
+Sarah (guest post), BlueDot Impact blog, 2025-05-15.
+https://blog.bluedot.org/p/what-are-probing-classifiers
+
+Read in full (its ResNet-50 graph's values weren't visible).
+
+| Concept | What the post says | Series |
+|---|---|---|
+| Information is hard to localize | One neuron fires in unrelated contexts; one input activates many neurons across layers | 010 |
+| What a probe is | A small, simpler model trained separately on one layer's activations, to see what that layer encodes | 008 (and 001's neuron is a probe of the game) |
+| Probing layer by layer | Train a probe on each layer for the same task; where accuracy rises shows where the information appears (a 10-layer cat classifier, hypothetically) | 008 (our networks, layer by layer, against RAM) |
+| An existing result | Alain and Bengio's linear probes on ResNet-50 (arXiv 1610.01644, 2016): error falls steadily through the layers | 008 |
+| Probing for other properties | Probe for factors besides the task (indoor vs. outdoor; nouns vs. verbs) | 008 (game variables besides the question) |
+| Knowing vs. using | A probe shows a layer *contains* information, not that the model *uses* it (a hiring model may encode gender without using it) | 008 → causal-intervention video |
+| Probe capacity | Too simple a probe misses information; too powerful a probe learns the task itself | 008 (pressure test: probe size) |
+| You must know what to look for | Probes find only properties someone thought to test, with labelled data | 008 (vs. sparse dictionaries, unsupervised) |
+| Labels run out | For abilities beyond human labelling, a probe can't be checked | 008 (the NES's advantage: RAM labels everything) |
+
+Works it cites: Alain and Bengio, "Understanding intermediate layers
+using linear classifier probes" (arXiv 1610.01644, 2016); arXiv
+2308.14752 (deception) and 2206.13353 (power-seeking), named only by
+number.
+
 ## Gaps
 
 - The middle and end of the podcast transcript are summary-only (†).

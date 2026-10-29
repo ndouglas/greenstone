@@ -17,11 +17,13 @@ DATA = REPO / "target" / "series" / "001-one-neuron" / "data"
 OUT = VIDEOS / "001-one-neuron" / "numbers.json"
 
 # The answer key: the byte that says whether the player is in the air, and
-# which of its values mean "yes" (see docs/series/games/001.md).
+# which of its values mean "yes" (None: any non-zero value). These match
+# src/nes/gym/series/ram.rs; see docs/series/games/001.md.
 ANSWER_KEYS = {
     "smb1": (0x001D, (1, 2)),
-    "smb3": (0x00D8, (1,)),
-    "castlevania": (0x046C, (0x01, 0x07)),
+    "smb3": (0x00D8, None),
+    # Jumping, knocked back (he flies backwards through the air), dropping.
+    "castlevania": (0x046C, (0x01, 0x05, 0x07)),
 }
 
 # What the neuron reads: (name, address, signed). Never the answer key.
@@ -40,7 +42,22 @@ def check_inputs(game: str, inputs: list[int]) -> None:
 
 def label(game: str):
     address, yes = ANSWER_KEYS[game]
+    if yes is None:
+        return lambda ram: ram[:, address] != 0
     return lambda ram: np.isin(ram[:, address], yes)
+
+
+def landing(air: np.ndarray, restarts: list[int], within: int) -> tuple[np.ndarray, np.ndarray]:
+    """Frames where the player is in the air, and whether he's on the ground
+    at some frame in the next `within`. Frames whose look-ahead crosses a
+    restart are left out: a fresh start isn't a landing."""
+    n = len(air)
+    crossed = np.zeros(n, dtype=bool)
+    for r in restarts:
+        crossed[max(0, r - within + 1) : r + 1] = True
+    keep = np.array([t for t in range(n - within) if air[t] and not crossed[t]], dtype=int)
+    lands = np.array([int((~air[t + 1 : t + 1 + within]).any()) for t in keep], dtype=int)
+    return keep, lands
 
 
 def features(game: str, recs) -> tuple[np.ndarray, np.ndarray]:
@@ -74,7 +91,14 @@ def spoken_number(n: int) -> str:
     if n < 1000:
         rest = n % 100
         return ones[n // 100] + " hundred" + ("" if rest == 0 else " and " + spoken_number(rest))
+    if n < 1_000_000:
+        rest = n % 1000
+        joiner = " and " if 0 < rest < 100 else " "
+        return spoken_number(n // 1000) + " thousand" + ("" if rest == 0 else joiner + spoken_number(rest))
     raise ValueError(n)
+
+
+LAND_WITHIN = 10
 
 
 def best_cut(v: np.ndarray, y: np.ndarray) -> tuple[float, float]:
@@ -138,11 +162,60 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
             w, b, _ = best_line(x, y)
             put(f"{game}_best_line_accuracy", accuracy(w, b, xt, yt))
         numbers[f"{game}_test_frames"] = int(len(yt))
+        numbers[f"{game}_restarts_per_recording"] = int(round(np.mean([r.meta["restarts"] for r in train + test])))
+        put_int(f"{game}_seconds_between_deaths", int(round(18000 / 60 / max(numbers[f"{game}_restarts_per_recording"], 1))))
+        # Where the one-cut neuron goes wrong, on the test frames.
+        wrong = (xt[:, 0] < cut).astype(int) != yt
+        on_something = wrong & (yt == 0)
+        put(f"{game}_mistakes_on_ground_above_floor", on_something.sum() / max(wrong.sum(), 1))
         ground = x[y == 0, 0]
         put_int(f"{game}_standing_height", int(np.median(ground)))
         put_int(f"{game}_standing_height_low", int(np.percentile(ground, 1)))
         put_int(f"{game}_standing_height_high", int(np.percentile(ground, 99)))
     numbers["test_minutes"] = 5
+
+    # Two numbers that both matter: Mario is in the air; will he land in
+    # the next LAND_WITHIN frames? (Low and falling fast means soon.)
+    def land_data(recs):
+        xs, ys = [], []
+        for r in recs:
+            air = label("smb1")(r.ram)
+            keep, lands = landing(air, r.meta.get("restart_frames", []), LAND_WITHIN)
+            h = r.ram[keep, 0x00CE].astype(float)
+            vy = r.ram[keep, 0x009F].astype(float)
+            xs.append(np.stack([h, np.where(vy > 127, vy - 256, vy)], 1))
+            ys.append(lands)
+        return np.concatenate(xs), np.concatenate(ys)
+
+    train = [load(data_root / "smb1" / s) for s in ("1", "2")]
+    test = [load(data_root / "smb1" / "3")]
+    x, y = land_data(train)
+    xt, yt = land_data(test)
+    put("smb1_land_rate", yt.mean())
+    put("smb1_land_baseline", max(yt.mean(), 1 - yt.mean()))
+    for i, name in ((0, "height"), (1, "speed")):
+        best = max(((side * (x[:, i] - t) > 0).astype(int) == y).mean().item() for t in np.unique(x[:, i]) for side in (1, -1))
+        t, side = next((t, side) for t in np.unique(x[:, i]) for side in (1, -1)
+                       if ((side * (x[:, i] - t) > 0).astype(int) == y).mean() == best)
+        put(f"smb1_land_{name}_cut_accuracy", ((side * (xt[:, i] - t) > 0).astype(int) == yt).mean())
+    w, b, _ = best_line(x, y)
+    put("smb1_land_line_accuracy", accuracy(w, b, xt, yt))
+    numbers["smb1_land_within"] = LAND_WITHIN
+    numbers["smb1_land_within_spoken"] = spoken_number(LAND_WITHIN)
+    # The line, as "lands soon when speed > slope × height + intercept".
+    numbers["smb1_land_weights"] = [round(float(w[0]), 4), round(float(w[1]), 4), round(float(b), 3)]
+
+    # Castlevania keeps where Simon is in his jump, not a speed.
+    cv = [load(data_root / "castlevania" / s) for s in ("1", "2", "3")]
+    ram = np.concatenate([r.ram for r in cv])
+    jumping = ram[:, 0x046C] == 0x01
+    put_int("castlevania_speed_slot_nonzero_frames", int((ram[:, 0x03C4] != 0).sum()))
+    put_int("castlevania_jump_steps", int(ram[jumping, 0x0488].max()))
+
+    # Mario's score in these recordings (six digit bytes, millions to tens).
+    s1 = np.concatenate([r.ram for r in train + test])
+    digits = (s1[:, 0x07DD:0x07E3] & 0x0F).astype(int)
+    put_int("smb1_top_score", int((digits * np.array([100000, 10000, 1000, 100, 10, 1])).sum(1).max() * 10))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(numbers, indent=2, sort_keys=True) + "\n")
     return numbers

@@ -4,25 +4,25 @@ title = "001: One neuron draws a line"
 
 [[line]]
 id = "memory"
-text = "Every moment it's running, a Nintendo Entertainment System keeps the game going with two thousand and forty-eight numbers in its memory."
-board = "An NES; its 2,048 bytes of RAM as a grid of numbers, changing as Mario runs"
+text = "A Nintendo Entertainment System runs its games out of a small working memory: two thousand and forty-eight numbers, each between zero and two hundred and fifty-five, changing many times a second."
+board = "An NES; its 2,048 bytes of work RAM as a grid of numbers, changing as Mario runs"
 cite = ["nesdev-memory"]
 
 [[line]]
-id = "series"
-text = "This series is about what happens when we try to look inside things that learn, and what we find in their numbers."
-board = "The grid of numbers dims; a network of dots and connecting lines fades in beside it"
-framing = true
+id = "answer-keys"
+text = "Some of those numbers have known meanings: where the player is, how many lives are left, whether he's jumping. That makes old games a good place to study things that learn. When we ask a learning machine a question about a game, the game's own memory holds the right answer."
+board = "Three squares in the grid light up with labels: position, lives, jumping"
+cite = ["datacrystal-smb1"]
 
 [[line]]
 id = "nobody-knows"
-text = "The systems we now call artificial intelligence are built from huge numbers of simple pieces called neurons, and researchers understand very little of what goes on inside them."
-board = "The network grows to thousands of dots, too many to follow"
-cite = ["bluedot2024"]
+text = "The systems we now call artificial intelligence are built from enormous numbers of simple pieces called artificial neurons, loosely inspired by brain cells, and researchers understand very little of what goes on inside them."
+board = "A network of dots and lines grows to thousands of dots, too many to follow"
+cite = ["bluedot2024", "mcculloch1943"]
 
 [[line]]
 id = "doubters"
-text = "Some researchers argue that studying them piece by piece is the wrong approach altogether. That's a serious argument, and to judge it, you need to know what one of those pieces is."
+text = "Some researchers argue that studying these systems one piece at a time is misguided, and that we should study the patterns spread across many pieces instead. We'll give that argument its own video. To weigh it, you need to know what one piece is."
 board = "The crowded network shrinks back to a single dot"
 cite = ["hendrycks2025"]
 
@@ -42,60 +42,61 @@ framing = true
 
 [[line]]
 id = "simplest-neuron"
-text = "The simplest kind of neuron does the same thing: it takes in a number, compares it with a setting, and answers yes or no."
+text = "The oldest and simplest kind of artificial neuron does the same thing: it takes in a number, compares it with a setting, and answers yes or no."
 board = "The thermometer becomes a number line with one cut; yes on one side, no on the other"
-cite = ["rosenblatt1958"]
+cite = ["mcculloch1943"]
 
 # --- Mario ---
 
 [[line]]
 id = "question"
-text = "Here's a question to ask about Super Mario Bros.: is Mario in the air right now?"
+text = "Here's a question about Super Mario Bros.: is Mario in the air right now?"
 board = "Super Mario Bros. footage; Mario jumps, lands, runs"
 framing = true
 
 [[line]]
 id = "answer-key"
-text = "The game already knows. One of its numbers is zero while Mario is standing, one while he's in the air from a jump, and two when he's walked off a ledge."
+text = "The game already knows. One number in its memory is zero while Mario is on the ground, one while he's in the air from a jump, and two while he's falling after walking off a ledge. One and two both mean: in the air."
 board = "One square of the memory grid lights up and ticks between 0, 1 and 2 as Mario jumps and lands"
 cite = ["datacrystal-smb1"]
 
 [[line]]
 id = "never-see"
-text = "That number will be our answer key. We'll check our neuron against it, but we'll never let the neuron see it."
-board = "The answer-key square gets a padlock"
+text = "That number is our answer key. We'll use it to check the neuron, and to choose its setting, but the neuron itself never gets to read it."
+board = "The answer-key square gets a padlock; a line from it runs to a scorecard, not to the neuron"
 framing = true
 
 [[line]]
 id = "height"
-text = "Instead, the neuron gets a different number: how far down the screen Mario is. The NES counts from the top, so a bigger number means lower."
-board = "A ruler down the left of the screen, zero at the top; a marker follows Mario's feet"
+text = "Instead, the neuron reads a different number: Mario's height number, which says how far down the screen he is. The NES counts from the top, so a bigger height number means lower down."
+board = "A ruler down the left of the screen, zero at the top; a marker follows Mario"
 cite = ["datacrystal-smb1", "nesdev-oam"]
 
 [[line]]
-id = "floor"
-text = "When Mario stands on the ground in the first level, that number is {smb1_standing_height}."
-spoken = "When Mario stands on the ground in the first level, that number is {smb1_standing_height_spoken}."
-board = "Mario standing; the ruler reads 176 at his feet"
-cite = ["exp001", "datacrystal-smb1"]
-
-[[line]]
-id = "the-cut"
-text = "So here's a neuron, set by hand: if the number is less than {smb1_height_cut}, answer \"in the air\". Otherwise, answer \"on the ground\"."
-spoken = "So here's a neuron, set by hand: if the number is less than {smb1_height_cut_spoken}, answer in the air. Otherwise, answer on the ground."
-board = "A horizontal cut across the screen at Mario's feet; above it is marked 'in the air'"
+id = "recording"
+text = "To get examples, we had a program play the first level, pressing random buttons for random lengths of time, starting over every time Mario died, which was about every {smb1_seconds_between_deaths} seconds. We recorded three five-minute sessions, sixty frames a second, and kept the memory from every frame."
+spoken = "To get examples, we had a program play the first level, pressing random buttons for random lengths of time, starting over every time Mario died, which was about every {smb1_seconds_between_deaths_spoken} seconds. We recorded three five-minute sessions, sixty frames a second, and kept the memory from every frame."
+board = "Fast-forwarded footage of the random player, dying and restarting; three tapes labelled 1, 2, 3"
 cite = ["exp001"]
 
 [[line]]
-id = "recording"
-text = "To test it, we had a program play the game for fifteen minutes, pressing buttons the way a restless person might, and we kept every frame. We picked the setting using ten of those minutes, and tested the neuron on the five it hadn't seen."
-board = "Fast-forwarded footage; a counter of frames ticking up; the last third marked 'test'"
+id = "choosing"
+text = "Then we tried every possible setting for the height number on the first two sessions, and kept the one that matched the answer key most often. It came out at {smb1_height_cut}: exactly Mario's height number when he's standing on the ground."
+spoken = "Then we tried every possible setting for the height number on the first two sessions, and kept the one that matched the answer key most often. It came out at {smb1_height_cut_spoken}: exactly Mario's height number when he's standing on the ground."
+board = "A cut sweeps down the screen; a score for each position; it settles at Mario's feet on the ground"
+cite = ["exp001"]
+
+[[line]]
+id = "the-neuron"
+text = "So our neuron is: if Mario's height number is less than {smb1_height_cut}, meaning he's higher than the ground, answer \"in the air\". Otherwise, answer \"on the ground\"."
+spoken = "So our neuron is: if Mario's height number is less than {smb1_height_cut_spoken}, meaning he's higher than the ground, answer in the air. Otherwise, answer on the ground."
+board = "The cut across the screen at ground level; above it is marked 'in the air'"
 cite = ["exp001"]
 
 [[line]]
 id = "baseline"
-text = "First, the score to beat. A neuron that always said \"on the ground\" would be right {smb1_baseline} of the time, because Mario spends a little more than half his time standing."
-spoken = "First, the score to beat. A neuron that always said on the ground would be right {smb1_baseline_spoken} of the time, because Mario spends a little more than half his time standing."
+text = "Before we test it, the score to beat. In the third session, the one the neuron hadn't been tuned on, Mario was on the ground a little more than half the time, so a neuron that always said \"on the ground\" would be right {smb1_baseline} of the time."
+spoken = "Before we test it, the score to beat. In the third session, the one the neuron hadn't been tuned on, Mario was on the ground a little more than half the time, so a neuron that always said on the ground would be right {smb1_baseline_spoken} of the time."
 board = "A bar for 'always on the ground' at 55%"
 cite = ["exp001"]
 
@@ -108,169 +109,190 @@ cite = ["exp001"]
 
 [[line]]
 id = "its-mistakes"
-text = "Most of its mistakes come when Mario is standing on top of something, a block or a pipe. Then he's on the ground, but higher up the screen, so the neuron says he's flying."
+text = "{smb1_mistakes_on_ground_above_floor} of its mistakes come when Mario is standing on top of something, a block or a pipe. Then he's on the ground, but higher up, so the neuron says he's in the air."
+spoken = "{smb1_mistakes_on_ground_above_floor_spoken} of its mistakes come when Mario is standing on top of something, a block or a pipe. Then he's on the ground, but higher up, so the neuron says he's in the air."
 board = "Mario standing on a pipe; the cut line is below his feet; the neuron's answer flashes 'in the air' in error"
-cite = ["exp001", "datacrystal-smb1"]
+cite = ["exp001"]
 
 # --- Weight and bias ---
 
 [[line]]
-id = "weight-and-bias"
-text = "A neuron's full recipe has two more parts. Before it compares, it multiplies its number by a weight, and adds another number called the bias. Then it says yes if the total is above zero."
-board = "A box labelled 'neuron': the input goes in, is multiplied by w, has b added, and a light shows yes or no"
-cite = ["rosenblatt1958"]
+id = "why-weights"
+text = "A thermostat can only ever read one number. To let a neuron read more than one, each number it reads gets a multiplier of its own, called a weight."
+board = "The neuron box: one input, then a second input slot appears, each with a multiplier"
+cite = ["goodfellow2016"]
+
+[[line]]
+id = "recipe"
+text = "Here's the full recipe. Take each input, x, and multiply it by its weight, w. Add up the results. Add one more number, called the bias, b. If the total is above zero, the answer is yes."
+board = "x, w and b each appear and are labelled in turn; the total, and a light for yes"
+cite = ["goodfellow2016", "mcculloch1943"]
 
 [[line]]
 id = "formula"
-text = "Written out, that's w·x + b, and the answer is yes when it comes out above zero."
-spoken = "Written out, that's w times x, plus b, and the answer is yes when it comes out above zero."
+text = "With one input, that's w·x + b > 0."
+spoken = "With one input, that's: w times x, plus b, is above zero."
 board = "w·x + b > 0 assembles, w in orange, x in blue, b in purple"
-cite = ["rosenblatt1958"]
+cite = ["goodfellow2016"]
 
 [[line]]
-id = "parts"
-text = "x is the input: here, Mario's position on the screen. The weight, w, says how much that input counts, and in which direction. The bias, b, sets where the cut falls."
-board = "Each symbol in turn grows and is labelled in plain words"
-cite = ["rosenblatt1958"]
+id = "bias-is-setting"
+text = "The bias does the job the thermostat's setting did. Instead of comparing with a setting, the neuron adds the bias and compares with zero."
+board = "The thermostat's setting slides over and becomes the b in the formula"
+cite = ["goodfellow2016"]
 
 [[line]]
 id = "our-numbers"
-text = "For our neuron, the weight is minus one and the bias is {smb1_height_cut}. Minus the position, plus {smb1_height_cut}, is above zero exactly when the position is less than {smb1_height_cut}: the same cut as before."
-spoken = "For our neuron, the weight is minus one and the bias is {smb1_height_cut_spoken}. Minus the position, plus {smb1_height_cut_spoken}, is above zero exactly when the position is less than {smb1_height_cut_spoken}: the same cut as before."
-board = "The formula with -1 and 176 filled in; two example positions worked through, one above the line and one below"
-cite = ["exp001"]
-
-# --- Two inputs, and the line ---
-
-[[line]]
-id = "two-inputs"
-text = "A neuron can take more than one number. Each gets its own weight, and the neuron adds them all up, with the bias, before it compares with zero."
-board = "The neuron box with two inputs, each multiplied by its own weight, feeding one sum"
-cite = ["rosenblatt1958"]
+text = "For our Mario neuron, the weight is minus one and the bias is {smb1_height_cut}. The weight is negative because a smaller height number means higher up. If Mario's height number is 150: minus 150, plus {smb1_height_cut}, makes 26. That's above zero, so: in the air. If it's 180: minus 180, plus {smb1_height_cut}, makes minus 4. That's below zero, so: on the ground."
+spoken = "For our Mario neuron, the weight is minus one and the bias is {smb1_height_cut_spoken}. The weight is negative because a smaller height number means higher up. If Mario's height number is a hundred and fifty: minus a hundred and fifty, plus {smb1_height_cut_spoken}, makes twenty-six. That's above zero, so: in the air. If it's a hundred and eighty: minus a hundred and eighty, plus {smb1_height_cut_spoken}, makes minus four. That's below zero, so: on the ground."
+board = "The formula with -1 and 176 filled in; the two worked examples, one above the cut and one below"
+framing = true
 
 [[line]]
 id = "balance"
-text = "Picture a balance scale. Each input, times its weight, is a block in one pan. The bias is a counterweight. The neuron says yes when the pan with the blocks goes down."
-board = "The balance-scale sketch: two blocks drop into the left pan, the bias into the right, the beam tips to 'yes'"
+text = "You can picture it as a balance scale, with a yes pan and a no pan. Each input, times its weight, is a block. A positive result goes in the yes pan, and a negative one in the no pan. The bias is one more block, in whichever pan its sign says. The neuron says yes when the yes pan is heavier."
+board = "The balance-scale sketch with labelled yes and no pans"
 framing = true
 
 [[line]]
-id = "the-picture"
-text = "With two inputs, you can draw every possible moment as a dot on a flat picture, one number across and the other up. The neuron's answer changes along a straight line across that picture: yes on one side, no on the other."
-board = "A scatter of dots; a straight line sweeps across it, the dots on one side light up"
-cite = ["rosenblatt1958", "openstax-linear"]
+id = "balance-mario"
+text = "For Mario at 150, the height block weighs 150, in the no pan, because its weight is negative. The bias block weighs {smb1_height_cut}, in the yes pan. The yes pan is heavier, so the scale tips to yes: in the air."
+spoken = "For Mario at a hundred and fifty, the height block weighs a hundred and fifty, in the no pan, because its weight is negative. The bias block weighs {smb1_height_cut_spoken}, in the yes pan. The yes pan is heavier, so the scale tips to yes: in the air."
+board = "A 150 block drops into the no pan, a 176 block into the yes pan; the scale tips to yes"
+framing = true
+
+# --- Two numbers that both matter ---
 
 [[line]]
-id = "school"
-text = "If you remember y = mx + b from school, it's the same line. The weights set how it tilts, and the bias slides it without tilting it."
-spoken = "If you remember y equals m x plus b from school, it's the same line. The weights set how it tilts, and the bias slides it without tilting it."
-board = "y = mx + b beside the neuron's formula; the line tilts as a weight changes, then slides as the bias changes"
-cite = ["openstax-linear"]
+id = "new-question"
+text = "Now a question that needs two numbers. While Mario is in the air: will he land in the next {smb1_land_within} frames, a sixth of a second?"
+spoken = "Now a question that needs two numbers. While Mario is in the air: will he land in the next {smb1_land_within_spoken} frames, a sixth of a second?"
+board = "Mario mid-jump, a timer counting ten frames ahead"
+cite = ["exp001"]
 
 [[line]]
-id = "speed"
-text = "So let's give our neuron a second number from Mario's memory: how fast he's moving up or down."
-board = "A second memory square lights up, ticking through negative and positive values as Mario jumps"
+id = "two-inputs"
+text = "This neuron reads his height number and a second number from his memory: how fast he's moving up or down. That speed number is negative while he rises and positive while he falls, again because the NES counts downward."
+board = "A second memory square lights up, negative as Mario rises, positive as he falls"
 cite = ["datacrystal-smb1"]
 
 [[line]]
-id = "no-help"
-text = "And here's the surprise: it doesn't help. We tried every straight line through the two numbers, and the best was right {smb1_best_line_accuracy} of the time, the same as the position alone."
-spoken = "And here's the surprise: it doesn't help. We tried every straight line through the two numbers, and the best was right {smb1_best_line_accuracy_spoken} of the time, the same as the position alone."
-board = "The scatter of real moments, position across and speed up, with the best line drawn: it's nearly straight up and down"
+id = "land-baseline"
+text = "Mario is usually still in the air ten frames later, so always answering \"no\" is right {smb1_land_baseline} of the time. A single cut on his height does no better, at {smb1_land_height_cut_accuracy}. A single cut on his speed gets {smb1_land_speed_cut_accuracy}."
+spoken = "Mario is usually still in the air ten frames later, so always answering no is right {smb1_land_baseline_spoken} of the time. A single cut on his height does no better, at {smb1_land_height_cut_accuracy_spoken}. A single cut on his speed gets {smb1_land_speed_cut_accuracy_spoken}."
+board = "Three bars: 75%, 75%, 84%"
 cite = ["exp001"]
 
 [[line]]
-id = "why-speed"
-text = "The reason is in the speed itself. While Mario stands, it's exactly zero. While he's in the air, it's almost always something else: negative going up, positive coming down."
-board = "The scatter again: the standing dots sit on one flat row at zero speed; the jumping dots spread above and below it"
-cite = ["exp001", "datacrystal-smb1"]
+id = "land-line"
+text = "Using both numbers, each with its own weight, the neuron gets {smb1_land_line_accuracy}."
+spoken = "Using both numbers, each with its own weight, the neuron gets {smb1_land_line_accuracy_spoken}."
+board = "A fourth bar at 91%"
+cite = ["exp001"]
 
 [[line]]
-id = "two-cuts"
-text = "So speed tells you something only when it isn't zero, whichever side of zero it's on. A straight line has only two sides. To say \"not zero\", you'd need two cuts: one just below zero and one just above."
-spoken = "So speed tells you something only when it isn't zero, whichever side of zero it's on. A straight line has only two sides. To say not zero, you'd need two cuts: one just below zero and one just above."
-board = "Two cuts close around the zero row; a single line tries and can only split it on one side"
+id = "the-picture"
+text = "Here's what that neuron looks like. Draw every moment Mario was in the air as a dot on a sheet of paper: his height number along the bottom, his speed up the side. The moments just before a landing gather toward one corner: low down, and falling fast."
+board = "The real scatter: height across, speed up; dots coloured by 'landed within 10 frames'"
+cite = ["exp001"]
+
+[[line]]
+id = "the-border"
+text = "The neuron's yes and no meet along a straight line across that sheet, a border. On one side of it, the neuron says \"lands soon\"; on the other, \"not yet\"."
+spoken = "The neuron's yes and no meet along a straight line across that sheet, a border. On one side of it, the neuron says lands soon; on the other, not yet."
+board = "The border drawn across the scatter; one side shaded 'lands soon'"
 framing = true
 
 [[line]]
-id = "rule-result"
-text = "A rule with two cuts, speed isn't zero, is right {smb1_speed_not_zero_accuracy} of the time. But one neuron draws one line, so one neuron can't say it."
-spoken = "A rule with two cuts, speed isn't zero, is right {smb1_speed_not_zero_accuracy_spoken} of the time. But one neuron draws one line, so one neuron can't say it."
-board = "A third bar at 97%, drawn in a different style: 'not one neuron'"
+id = "the-tilt"
+text = "The border is tilted, because the two numbers trade off against each other. The higher Mario is, the faster he has to be falling to land in time. A bit lower can make up for a bit slower."
+board = "A dot slides along the border: lower and slower, higher and faster, all on the line"
 cite = ["exp001"]
+
+[[line]]
+id = "school"
+text = "If you remember y = mx + b from school, this border is the same kind of straight line. How steeply it tilts comes from how the two weights compare, and the bias moves it without changing its tilt. The letters don't line up one for one, but the idea does."
+spoken = "If you remember y equals m x plus b from school, this border is the same kind of straight line. How steeply it tilts comes from how the two weights compare, and the bias moves it without changing its tilt. The letters don't line up one for one, but the idea does."
+board = "The border tilts as one weight changes; then slides, keeping its tilt, as the bias changes"
+cite = ["openstax-linear"]
+
+[[line]]
+id = "scale-again"
+text = "On the balance scale, it's the same picture: the height block and the speed block both go on, each scaled by its weight, and a landing is coming when together they outweigh the bias."
+board = "The scale with two input blocks and the bias, tipping as Mario's two numbers change"
+framing = true
 
 # --- Other games ---
 
 [[line]]
 id = "other-games"
-text = "Other games keep the answer in their own ways."
-board = "Castlevania and Super Mario Bros. 3 footage side by side"
+text = "Back to the first question, in the air or not, in two other games."
+board = "Super Mario Bros. 3 and Castlevania footage side by side"
 framing = true
 
 [[line]]
+id = "smb3"
+text = "In Super Mario Bros. 3, the same kind of neuron, with its own setting, also lands on the height of the ground, {smb3_height_cut} in that game's numbers. It's right {smb3_height_accuracy} of the time, where always guessing \"on the ground\" gets {smb3_baseline}."
+spoken = "In Super Mario Bros. 3, the same kind of neuron, with its own setting, also lands on the height of the ground, {smb3_height_cut_spoken} in that game's numbers. It's right {smb3_height_accuracy_spoken} of the time, where always guessing on the ground gets {smb3_baseline_spoken}."
+board = "Super Mario Bros. 3: the cut at the ground; two bars, 50% and 87%"
+cite = ["datacrystal-smb3", "exp001"]
+
+[[line]]
 id = "castlevania"
-text = "In Castlevania, a number in memory says whether Simon is jumping or dropping. Using his position alone, the same one-cut neuron is right {castlevania_height_accuracy} of the time, where always guessing \"on the ground\" gets {castlevania_baseline}."
-spoken = "In Castlevania, a number in memory says whether Simon is jumping or dropping. Using his position alone, the same one-cut neuron is right {castlevania_height_accuracy_spoken} of the time, where always guessing on the ground gets {castlevania_baseline_spoken}."
-board = "Castlevania: the cut across the screen at Simon's feet; two bars, 72% and 95%"
+text = "In Castlevania, you play Simon, a monster hunter with a whip. A number in memory says whether he's jumping, falling, or being knocked backwards through the air. A neuron with one setting on his height gets {castlevania_height_accuracy}, where always guessing \"on the ground\" gets {castlevania_baseline}."
+spoken = "In Castlevania, you play Simon, a monster hunter with a whip. A number in memory says whether he's jumping, falling, or being knocked backwards through the air. A neuron with one setting on his height gets {castlevania_height_accuracy_spoken}, where always guessing on the ground gets {castlevania_baseline_spoken}."
+board = "Castlevania: the cut at Simon's feet; two bars, 67% and 92%"
 cite = ["datacrystal-cv", "exp001"]
 
 [[line]]
 id = "castlevania-arc"
-text = "Castlevania doesn't store a speed for Simon's jump at all. Its slot for vertical speed stayed at zero through every jump we recorded."
-board = "Simon jumping; the vertical-speed square stays at zero while his position arcs"
+text = "Castlevania keeps Simon's jump differently. Instead of a speed, it counts how far through the jump he is, step by step, up to {castlevania_jump_steps}. The number its memory map calls his vertical speed never changed in any of our recordings. So there's no speed number to give a second neuron input. Same question, different numbers."
+spoken = "Castlevania keeps Simon's jump differently. Instead of a speed, it counts how far through the jump he is, step by step, up to {castlevania_jump_steps_spoken}. The number its memory map calls his vertical speed never changed in any of our recordings. So there's no speed number to give a second neuron input. Same question, different numbers."
+board = "Simon jumping; a step counter ticks 1, 2, 3 … 39 while his height arcs"
 cite = ["datacrystal-cv", "exp001"]
-
-[[line]]
-id = "smb3"
-text = "In Super Mario Bros. 3, the same neuron does much worse: right {smb3_height_accuracy} of the time, against {smb3_baseline} for always guessing \"on the ground\"."
-spoken = "In Super Mario Bros. 3, the same neuron does much worse: right {smb3_height_accuracy_spoken} of the time, against {smb3_baseline_spoken} for always guessing on the ground."
-board = "Two bars, 64% and 75%"
-cite = ["datacrystal-smb3", "exp001"]
-
-[[line]]
-id = "smb3-why"
-text = "Its levels go up as well as across, so there's no single floor. In our recordings, Mario stood at positions anywhere from {smb3_standing_height_low} to {smb3_standing_height_high}, and no one cut can separate standing from flying across all of them."
-spoken = "Its levels go up as well as across, so there's no single floor. In our recordings, Mario stood at positions anywhere from {smb3_standing_height_low_spoken} to {smb3_standing_height_high_spoken}, and no one cut can separate standing from flying across all of them."
-board = "Super Mario Bros. 3: Mario standing at several different heights, each marked on the ruler"
-cite = ["exp001"]
-
-[[line]]
-id = "same-question"
-text = "Same question, same kind of neuron. How well it works depends on how each game happens to keep its numbers."
-board = "Three games' bars side by side"
-framing = true
 
 # --- Place value ---
 
 [[line]]
 id = "score"
-text = "One more thing a single neuron can do. Super Mario Bros. keeps the score as six separate digits in memory, from millions down to tens."
+text = "The adding-up half of a neuron can do something you already do every day. Super Mario Bros. keeps the score as six separate digits in memory, from millions down to tens."
 board = "The score at the top of the screen; six memory squares light up, one per digit"
 cite = ["datacrystal-smb1"]
 
 [[line]]
 id = "place-value"
-text = "Give those digits weights of a million, a hundred thousand, and so on down to ten, add them up, and you have the score. Reading a number written in digits is a neuron with weights."
-board = "Each digit block is multiplied by its place value and dropped into the pan; the total reads the score"
+text = "Give those digits weights of a million, a hundred thousand, and so on down to ten, and add them up: the total is the score. That's how you read any number written in digits. Add a bias and the comparison with zero, and the same neuron could answer a question like: has Mario scored more than a thousand points?"
+board = "Each digit block is multiplied by its place value and goes on the scale; then a bias of -1000 goes in the no pan"
 cite = ["datacrystal-smb1"]
 
 # --- The one idea ---
 
 [[line]]
 id = "all-of-it"
-text = "That's everything inside this neuron: a weight for each input, a bias, and a line. We can see all of it, and we know exactly what it does."
-board = "The neuron box, the formula and the line, all on screen at once, with nothing hidden"
+text = "That's everything inside this neuron: a weight for each input, a bias, and the straight border they draw. We can see all of it, and we know exactly what it does."
+board = "The neuron box, the formula and the border, all on screen at once, with nothing hidden"
 framing = true
 
 [[line]]
-id = "only-one"
-text = "It's the only neuron in this series that we'll understand completely. Every network after it will be harder to see into than this one."
+id = "modern"
+text = "The artificial neurons in today's systems are close cousins of this one. They start with the same weighted sum and bias, but instead of a bare yes or no, they pass on a number that says how far past the border the input is."
+board = "The yes/no light becomes a dial that rises the further past the border a dot sits"
+cite = ["goodfellow2016"]
+
+[[line]]
+id = "harder"
+text = "Networks of thousands of them are much harder to see into than this single neuron. That's what the rest of this series is about."
 board = "The single dot, with a crowd of dots waiting faintly behind it"
 framing = true
 
 [[line]]
 id = "the-idea"
-text = "One neuron draws one straight line through its inputs, and answers by which side of the line you're on. Whatever you ask it, that's the only kind of answer it can give."
-board = "The line through the scatter, yes on one side, no on the other"
+text = "One neuron weighs its inputs, adds them up with a bias, and answers by which side of a straight border the total puts you on."
+board = "The border through the scatter, yes on one side, no on the other"
+framing = true
+
+[[line]]
+id = "disclaimer"
+text = "I'm not an expert, just someone learning this in public. If you spot a mistake, please tell me."
+board = "Plain card"
 framing = true

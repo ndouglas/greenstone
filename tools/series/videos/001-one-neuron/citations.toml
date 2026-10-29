@@ -57,3 +57,15 @@ title = "This video's experiments: recordings, results and code (docs/series/gam
 authors = "Greenstone"
 year = 2026
 url = "https://github.com/ndouglas/greenstone/blob/main/docs/series/games/001.md"
+
+[mcculloch1943]
+title = "A logical calculus of the ideas immanent in nervous activity. Bulletin of Mathematical Biophysics, 5, 115-133"
+authors = "W. S. McCulloch and W. Pitts"
+year = 1943
+url = "https://doi.org/10.1007/BF02478259"
+
+[goodfellow2016]
+title = "Deep Learning, chapter 6: Deep Feedforward Networks (MIT Press)"
+authors = "I. Goodfellow, Y. Bengio and A. Courville"
+year = 2016
+url = "https://www.deeplearningbook.org/contents/mlp.html"
