@@ -115,7 +115,8 @@ explanation and animation and feel comfortable discussing all of it.
   Arkanoid, Adventures of Lolo, Marble Madness). Existing mappers
   (0, 1, 2, 3, 4, 7, 9) cover most of the library; a game on another
   mapper means writing that mapper.
-- The repo is public; the videos will be too.
+- The repo is public; the videos will be too. ROMs live in `roms2/`,
+  which is gitignored, and are never committed.
 
 ## Review and correctness
 
@@ -127,6 +128,16 @@ explanation and animation and feel comfortable discussing all of it.
   citation**, listed in the video's description and credits. A claim
   that can't be cited is either demonstrated by a reproducible
   experiment (and the experiment cited) or cut.
+- **The script stands on its own.** It must be coherent by itself and
+  carry enough to understand the topic without the video: imagine a
+  blind audience member, someone cross-examining Nate on it in a
+  courtroom, or an interviewer asking him about it. The video adds the
+  richness a text script can't; it never carries meaning the script
+  lacks.
+- **A council of expert reviewers, iterated.** Each script is reviewed by
+  several expert agents, each with one lens (clarity, legibility and
+  coherence; pedagogy; skepticism; empiricism; and others as needed),
+  and revised over a few rounds until their takes converge.
 - **Two adversarial reviews per script.** Two independent reviewer
   agents, each told to find anything incorrect, unsupported, uncited,
   handwaved or out of order, read the script against its sources. A
@@ -134,6 +145,19 @@ explanation and animation and feel comfortable discussing all of it.
   outside expert; these reviews stand in for one.
 - **A disclaimer in every video**: Nate is not an expert, just a guy
   learning this stuff, and the series is him learning in public.
+
+## How a video is made
+
+1. The idea, from the bible's curriculum, gets 5–6 ideonomy passes.
+2. The script, revised through the council's rounds, then the two
+   adversarial reviews. Nate reviews.
+3. **A storyboard render**: the whole video with placeholders where the
+   animations will go, but real narration, music and credits, to test
+   pacing. Nate reviews.
+4. **Each animation explored on its own**, outside the video (no
+   narration, music or context), rendered short and iterated until it
+   works. Nate reviews them.
+5. The full render. Nate reviews.
 
 ## The pilot batch
 

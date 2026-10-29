@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** The series bible, and a pipeline that turns a video's script into a finished, narrated, line-timed Manim video with Greenstone footage, credits and a description, where any line can be re-voiced by dropping in a recorded take, proven on a short test clip (video 000).
+**Goal:** The series bible, and a pipeline that turns a video's script into a storyboard render and then a finished, narrated, line-timed Manim video with Greenstone footage, credits and a description, where any line can be re-voiced by dropping in a recorded take, plus a sketch tool for iterating on one animation alone; proven on a short test clip (video 000).
 
 **Architecture:** A new Python package `tools/series/`, run in its own uv virtualenv (Manim and the narrator need Python 3.12 and heavy dependencies the films don't). A video is a directory `tools/series/videos/NNN-slug/` holding `script.toml` (title, lines), `citations.toml` and `scene.py` (a Manim scene). The build synthesizes each line with a local narrator (cached by text), prefers a recorded take when one matches the line's text, renders the scene with each line's animations lasting as long as its audio, mixes an optional music bed, and writes the video and its description to `target/series/NNN-slug/`.
 
@@ -14,7 +14,7 @@
 
 - Never stage `src/main.rs` or `src/nes/bus/mod.rs`; leave `.claude/`, `AGENTS.md` alone.
 - Commit with `git commit -F /private/tmp/claude-501/-Users-nathan-Projects-ndouglas-greenstone/cf099f6b-6b2a-4507-8759-c42c3f7c29f4/scratchpad/msg.txt`; every message ends with a blank line then `Claude-Session: https://claude.ai/code/session_01GxcjqSAGjzrqp9ufw5r46e`. Don't push.
-- The repo is public. Nothing downloads ROMs.
+- The repo is public. ROMs live in the gitignored `roms2/` and are never committed.
 - "The narrator runs on this machine with a good free voice, not a paid service."
 - "The script is the source of truth. Narration is written as text, line by line. Each line is voiced, and the animation for that line lasts as long as its audio."
 - "Re-voicing uses one recorded take per script line ... Any line can be re-recorded any number of times and replaced alone."
@@ -39,14 +39,14 @@
 **Files:**
 - Create: `docs/series/bible.md`
 - Create: `docs/series/ideonomy/001-one-neuron-draws-a-line.md`
-- Create: `docs/series/review-prompt.md`
+- Create: `docs/series/review-prompt.md`, `docs/series/council.md`
 
 **Interfaces:**
 - Produces: the bible every later video is written against, and the reviewer prompt Task 5 and every video use.
 
-- [ ] **Step 1: Write `docs/series/bible.md`** with these sections, taking content from the spec: Curriculum (the pilot arc table, numbered 001–010, as revisable); Per-video entries for 001 and 002 (the one idea, prerequisites, callbacks, games, citations to find); Assumptions ledger (the five assumptions from the spec's "Video 1 and 2's pressure test", each tagged with the video that introduces it); Visual language (placeholder pointing at `tools/series/style.py`, for Nate's review); Rules (the spec's teaching rules and anti-goals, one line each); How a video is made (bible → 5–6 ideonomy passes → script → two adversarial reviews → Nate's review → animation → Nate's review).
+- [ ] **Step 1: Write `docs/series/bible.md`** with these sections, taking content from the spec: Curriculum (the pilot arc table, numbered 001–010, as revisable); Per-video entries for 001 and 002 (the one idea, prerequisites, callbacks, games, citations to find); Assumptions ledger (the five assumptions from the spec's "Video 1 and 2's pressure test", each tagged with the video that introduces it); Visual language (placeholder pointing at `tools/series/style.py`, for Nate's review); Rules (the spec's teaching rules and anti-goals, one line each); How a video is made (the spec's five steps: ideonomy passes; script through the council and two adversarial reviews; storyboard render; each animation explored alone; full render; Nate reviews after each).
 - [ ] **Step 2: Write `docs/series/ideonomy/001-one-neuron-draws-a-line.md`**: the six passes run in the design conversation (procedure, spectrum, graph, matrix, notation, cycle), as recorded in the session transcript, with their method tuples.
-- [ ] **Step 3: Write `docs/series/review-prompt.md`**: the adversarial reviewer's prompt. It is given a video's `script.toml`, `citations.toml` and the bible; it reports every line that is incorrect, unsupported by its citations, uncited (and not `framing`), handwaved ("we'll see later"), out of order against the bible's prerequisites, or an LLM cliché; each finding names the line id; "nothing substantial" is a valid answer.
+- [ ] **Step 3: Write `docs/series/review-prompt.md`**: the adversarial reviewer's prompt. It is given a video's `script.toml`, `citations.toml` and the bible; it reports every line that is incorrect, unsupported by its citations, uncited (and not `framing`), handwaved ("we'll see later"), out of order against the bible's prerequisites, or an LLM cliché; each finding names the line id; "nothing substantial" is a valid answer. `docs/series/council.md` holds the council: one prompt per lens (clarity, legibility and coherence; pedagogy; skepticism; empiricism; a lay viewer of the spec's description; a blind listener; a cross-examiner who tests whether the script stands on its own), each returning findings by line id, and the procedure: run all lenses, revise, repeat for up to three rounds or until no lens reports anything substantial, then the two adversarial reviews.
 - [ ] **Step 4: Commit** `docs/series/` with message "Start the series bible."
 
 ### Task 2: Environment and the script model
@@ -124,17 +124,41 @@
 
 **Interfaces:**
 - Consumes: everything above.
-- Produces: `DISCLAIMER: str`; `description(video: Video) -> str`; `credits(video: Video) -> manim.Mobject`; `build(name: str, engine: Engine, draft: bool = False) -> Path` (returns the finished mp4) and the CLI `python -m series.build NAME [--draft]`.
+- Produces: `DISCLAIMER: str`; `description(video: Video) -> str`; `credits(video: Video) -> manim.Mobject`; `StoryboardScene(NarratedScene)`, which says every line over a placeholder card (the line's id and text, and its `board` note if the line has one); `NarratedScene.placeholder(self, line_id: str) -> None`, saying one line over its card, for scenes partly animated; `build(name: str, engine: Engine, draft: bool = False, storyboard: bool = False) -> Path` (returns the mp4) and the CLI `python -m series.build NAME [--draft] [--storyboard]`. `Line` gains an optional `board: str | None` (a note on what the animation will show).
 
 - [ ] **Step 1: Write the failing tests:**
   - `test_description_lists_every_cited_source_once`: a video citing key `k` on two lines lists `k`'s title, authors, year and URL exactly once, in first-cited order.
   - `test_description_ends_with_the_disclaimer`: the description ends with `DISCLAIMER`, whose text is exactly: "I'm not an expert, just a guy learning this stuff, in public. If you spot a mistake, please tell me."
   - `test_build_reports_stale_takes` (`test_build.py`, fake engine, `draft=True`, a two-line video with one stale take): the build finishes, prints the stale line's id, and writes `description.txt` next to the mp4.
+  - `test_storyboard_needs_no_scene_file` (fake engine, draft): a video with no `scene.py` builds with `storyboard=True` into `NAME-storyboard.mp4`, with duration equal to its lines' voices plus pads plus the credits, with music.
   - `test_music_is_mixed_under_the_narration`: with `music` set to a 1 kHz test tone, the output's audio is longer than zero and the tone is present at lower level than the narration's peak (ffmpeg `volumedetect` on each).
 - [ ] **Step 2: Run** the test command. Expected: errors, modules missing.
 - [ ] **Step 3: Implement** `credits.py` (the credits mobject lists the citations and ends on the disclaimer) and `build.py`: load the video; `voices` into `target/series/NAME/`; import `videos/NAME/scene.py`, set the scene's `video` and `voices`, and render it (1080p60, or low quality with `--draft`); then, when `music` is set, mix it with ffmpeg at −18 dB under the narration, trimmed to the video; write `NAME.mp4` and `description.txt`; print each line's source (take or synth) and any stale takes.
 - [ ] **Step 4: Run** the test command. Expected: all pass.
 - [ ] **Step 5: Write video 000.** Four lines, each cited or `framing`: an opening; "a neuron multiplies, adds, and compares", animating `w·x + b` in the style colours (with `spoken` text); a Greenstone clip (`GameFootage` from an existing Punch-Out!! film take) under a line about the game's memory being the answer key (cite the design's Intent as a `framing` line, since it's a claim about this series); the credits. Music: an existing APU cue WAV from `target/punchout-film/music/`.
-- [ ] **Step 6: Build it** with `cd tools && series/.venv/bin/python -m series.build 000-test-clip`. Expected: `target/series/000-test-clip/000-test-clip.mp4` exists, plays with narration, footage and music; the report shows four synth lines.
-- [ ] **Step 7: Prove the re-voice swap.** Record one line with macOS `say -o` into `videos/000-test-clip/takes/<id>.wav` (converted to WAV with ffmpeg), list it in `takes.toml` with the line's text, rebuild. Expected: the report shows that line as `take`, the other three reuse the cache, and the video's duration changes by that line's length difference. Then edit that line's `text` and rebuild. Expected: the line is reported stale and voiced by the narrator. Remove the test take afterwards.
-- [ ] **Step 8: Commit** (not the takes, which `.gitignore` excludes).
+- [ ] **Step 6: Storyboard it** with `cd tools && series/.venv/bin/python -m series.build 000-test-clip --storyboard`. Expected: `000-test-clip-storyboard.mp4` with every line on a card, narrated, with music and credits.
+- [ ] **Step 7: Build it** with `cd tools && series/.venv/bin/python -m series.build 000-test-clip`. Expected: `target/series/000-test-clip/000-test-clip.mp4` exists, plays with narration, footage and music; the report shows four synth lines.
+- [ ] **Step 8: Prove the re-voice swap.** Record one line with macOS `say -o` into `videos/000-test-clip/takes/<id>.wav` (converted to WAV with ffmpeg), list it in `takes.toml` with the line's text, rebuild. Expected: the report shows that line as `take`, the other three reuse the cache, and the video's duration changes by that line's length difference. Then edit that line's `text` and rebuild. Expected: the line is reported stale and voiced by the narrator. Remove the test take afterwards.
+- [ ] **Step 9: Commit** (not the takes, which `.gitignore` excludes).
+
+### Task 6: Sketches: one animation alone
+
+**Files:**
+- Create: `tools/series/sketch.py`, `tools/series/tests/test_sketch.py`
+- Create: `tools/series/videos/000-test-clip/sketches/neuron.py`
+
+**Interfaces:**
+- Consumes: `style.py`, `GameFootage` (Task 4).
+- Produces: `sketch(path: Path, draft: bool = True, stills: int = 9) -> tuple[Path, Path]` (the mp4 and a contact sheet PNG) and the CLI `python -m series.sketch PATH [--final] [--stills N]`. A sketch file holds one Manim `Scene` subclass named `Sketch`, with no narration; timings are written in the sketch as plain `run_time`s. Output goes to `target/series/NAME/sketches/STEM.mp4` and `STEM-sheet.png`.
+
+The contact sheet is how the builder judges an animation without watching it: `stills` frames evenly spaced through the clip, in a grid, each labelled with its time, so composition, clutter and legibility can be checked frame by frame (the builder can read images, not play video). Nate watches the mp4.
+
+- [ ] **Step 1: Write the failing tests:**
+  - `test_a_sketch_renders_alone`: a sketch file whose `Sketch` fades in a dot for 1 s renders an mp4 of 1 s ± 0.1 with no audio stream.
+  - `test_the_contact_sheet_has_one_still_per_slot`: with `stills=4`, the sheet PNG is a 2×2 grid (its size is 2 × the still size in each direction) and the four stills are taken at evenly spaced times.
+  - `test_a_file_without_sketch_is_an_error`: a file with no `Sketch` class raises an error naming the file.
+- [ ] **Step 2: Run** the test command. Expected: errors, `series.sketch` missing.
+- [ ] **Step 3: Implement** `sketch` (render with Manim's API at low quality, or 1080p60 with `--final`; extract stills with ffmpeg; tile them with labels).
+- [ ] **Step 4: Run** the test command. Expected: all pass.
+- [ ] **Step 5: Sketch one animation.** `sketches/neuron.py`: the balance-scale neuron from the bible (two inputs as weights on pans, the bias as a counterweight, tipping to yes or no). Render it, read the contact sheet, and revise at least once for clutter and legibility.
+- [ ] **Step 6: Commit.**
