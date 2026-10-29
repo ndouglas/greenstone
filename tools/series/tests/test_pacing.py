@@ -25,16 +25,25 @@ class Pacing(unittest.TestCase):
         self.assertAlmostEqual(pacing.section_seconds(sec, voices), 4.0 + 10.5 + 22.0)
 
     def test_too_long_names_the_section(self):
-        sec, voices = section(("a", 250.0, None), title="Is it any good?")
+        sec, _ = section(("a", 1.0, None), title="Is it any good?")
         video = Video(name="v", dir=Path("."), title="t", music=None, lines=sec.lines, citations={}, sections=(sec,))
-        problems = pacing.too_long(video, voices)
+        problems = pacing.too_long(video, {"chapter-1": 256.0})
         self.assertEqual(len(problems), 1)
         self.assertIn("chapter-1", problems[0])
         self.assertIn("Is it any good?", problems[0])
         self.assertIn("4:16", problems[0])
-        short, short_voices = section(("a", 60.0, None))
-        self.assertEqual(pacing.too_long(Video(name="v", dir=Path("."), title="t", music=None, lines=short.lines,
-                                               citations={}, sections=(short,)), short_voices), [])
+        self.assertEqual(pacing.too_long(video, {"chapter-1": 60.0}), [])
+
+    def test_lengths_estimates_every_section(self):
+        sec, voices = section(("a", 10.0, 0.5), ("b", 20.0, None))
+        video = Video(name="v", dir=Path("."), title="t", music=None, lines=sec.lines, citations={}, sections=(sec,))
+        self.assertEqual(pacing.lengths(video, voices), {"chapter-1": pacing.section_seconds(sec, voices)})
+
+    def test_clock_never_reads_under_the_length(self):
+        # A section a fraction over the limit must not read as exactly the limit.
+        self.assertEqual(pacing.clock(240.4), "4:01")
+        self.assertEqual(pacing.clock(240.0), "4:00")
+        self.assertEqual(pacing.clock(59.2), "1:00")
 
 
 if __name__ == "__main__":

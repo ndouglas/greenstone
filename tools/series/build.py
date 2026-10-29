@@ -12,8 +12,8 @@ from pathlib import Path
 from manim import tempconfig
 
 from series.credits import description
-from series.pacing import clock, section_seconds, too_long
-from series.scene import CREDITS_SECONDS, NarratedScene, ScriptOrderError, StoryboardScene
+from series.pacing import clock, lengths, too_long
+from series.scene import NarratedScene, ScriptOrderError, StoryboardScene
 from series.script import REPO, VIDEOS, load_video
 from series.voice import Engine, KokoroEngine, take_problems, voices
 
@@ -23,7 +23,7 @@ MUSIC_DB = -18
 FADE_SECONDS = 2.0
 # Peak level of the final mix (about -1 dBFS).
 LIMIT = 0.89
-__all__ = ["CREDITS_SECONDS", "SectionTooLong", "build"]
+__all__ = ["SectionTooLong", "build"]
 
 
 class SectionTooLong(Exception):
@@ -91,12 +91,16 @@ def build(name: str, engine: Engine, draft: bool = False, storyboard: bool = Fal
         print(f"{line.id}: {found[line.id].source}")
     for line_id in stale:
         print(f"STALE take: {line_id} was recorded from different text; re-record it (narrator used)")
+    estimate = lengths(video, found)
     for section in video.sections:
-        print(f"{section.id} {section.title} {clock(section_seconds(section, found))}")
-    if problems := too_long(video, found):
+        print(f"{section.id} {section.title} {clock(estimate[section.id])}")
+    if problems := too_long(video, estimate):
         raise SectionTooLong("; ".join(problems))
     cls = type(base.__name__, (base,), {"video": video, "voices": found, "require_credits": True})
-    movie, _ = render(cls, out / "media", draft)
+    movie, scene = render(cls, out / "media", draft)
+    # The scene's own waits and animations count too: check the lengths it really ran.
+    if problems := too_long(video, scene.section_lengths):
+        raise SectionTooLong("as rendered: " + "; ".join(problems))
     final = out / f"{name}{'-storyboard' if storyboard else ''}.mp4"
     mix(movie, video.music, final)
     (out / "description.txt").write_text(description(video))

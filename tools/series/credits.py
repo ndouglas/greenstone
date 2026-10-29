@@ -7,6 +7,13 @@ from manim import DOWN, LEFT, Text, VGroup
 from series import style
 from series.script import Citation, Video
 
+# Each page of the end cards holds this long.
+PAGE_SECONDS = 6.0
+# Text size, the widest a line may be, and the tallest a page may be.
+SIZE = 0.6
+WIDTH = 12.0
+HEIGHT = 6.0
+BUFF = 0.35
 DISCLAIMER = "I'm not an expert, just a guy learning this stuff, in public. If you spot a mistake, please tell me."
 
 
@@ -29,13 +36,34 @@ def description(video: Video) -> str:
     return "\n\n".join(parts) + "\n"
 
 
-def credits(video: Video) -> VGroup:
-    """The end card: the sources, shrunk to fit if there are many, then the
-    disclaimer, always at the same readable size."""
-    rows = [Text("Sources", font=style.FONT, color=style.TEXT, weight="BOLD")]
-    rows += [Text(textwrap.fill(f"{c.authors} ({c.year}). {c.title}.", 64), font=style.FONT, color=style.TEXT)
-             for c in cited(video)]
-    sources = VGroup(*rows).arrange(DOWN, aligned_edge=LEFT, buff=0.35)
-    sources.scale(min(0.6, 12 / sources.width, 5.0 / sources.height))
-    disclaimer = Text(textwrap.fill(DISCLAIMER, 64), font=style.FONT, color=style.TEXT, slant="ITALIC").scale(0.6)
-    return VGroup(sources, disclaimer).arrange(DOWN, aligned_edge=LEFT, buff=0.5)
+def stack(*rows: Text) -> VGroup:
+    return VGroup(*rows).arrange(DOWN, aligned_edge=LEFT, buff=BUFF)
+
+
+def heading(page: int, pages: int) -> Text:
+    return Text(f"Sources ({page} of {pages})", font=style.FONT, color=style.TEXT, weight="BOLD").scale(SIZE)
+
+
+def credit_pages(video: Video) -> list[VGroup]:
+    """The end cards: the sources a page at a time, every one at the same
+    readable size, closing on the disclaimer (on its own page if it won't fit)."""
+    entries = [Text(textwrap.fill(f"{c.authors} ({c.year}). {c.title}.", 64), font=style.FONT, color=style.TEXT)
+               for c in cited(video)]
+    # One size for every page, narrower only if a line is too wide.
+    size = min([SIZE] + [WIDTH / e.width for e in entries])
+    for e in entries:
+        e.scale(size)
+    disclaimer = Text(textwrap.fill(DISCLAIMER, 64), font=style.FONT, color=style.TEXT, slant="ITALIC").scale(SIZE)
+    groups: list[list[Text]] = []
+    for e in entries:
+        if not groups or stack(heading(1, 1), *groups[-1], e).height > HEIGHT:
+            groups.append([])
+        groups[-1].append(e)
+    fits = bool(groups) and stack(heading(1, 1), *groups[-1], disclaimer).height <= HEIGHT
+    pages = [stack(heading(i + 1, len(groups)), *g, *([disclaimer] if fits and i == len(groups) - 1 else []))
+             for i, g in enumerate(groups)]
+    return pages if fits else pages + [stack(disclaimer)]
+
+
+def credits_seconds(video: Video) -> float:
+    return len(credit_pages(video)) * PAGE_SECONDS

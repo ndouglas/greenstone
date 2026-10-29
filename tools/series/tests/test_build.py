@@ -5,13 +5,17 @@ import re
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 import numpy as np
 import soundfile
 
-from series.build import CREDITS_SECONDS, SectionTooLong, build
+from series import pacing
+from series.build import SectionTooLong, build
+from series.credits import credits_seconds
 from series.pacing import STILLNESS
+from series.script import load_video
 from series.voice import TAKES
 
 RATE = 24000
@@ -77,6 +81,33 @@ def band_level(path, hz, start=0.0, length=None):
                           "-af", f"{trim},bandpass=f={hz}:width_type=h:w=100,volumedetect",
                           "-f", "null", "-"], capture_output=True, text=True).stderr
     return float(re.search(r"mean_volume: (-?(?:[\d.]+|inf)) dB", err).group(1))  # silence is -inf
+
+
+def sectioned(chapter_text):
+    def beat(id, text, role=None):
+        r = f'role = "{role}"\n' if role else ""
+        return f'[[section.line]]\nid = "{id}"\n{r}text = "{text}"\nboard = "a picture"\nframing = true\n'
+    return ('title = "t"\n[[section]]\nkind = "introduction"\ntitle = "Introduction"\n' + beat("hi", "Hi.") +
+            '[[section]]\nkind = "chapter"\ntitle = "Too long"\n' + beat("in", chapter_text, "intro") +
+            beat("out", "Done.", "conclusion") +
+            '[[section]]\nkind = "conclusions"\ntitle = "Conclusions"\n' + beat("bye", "Bye."))
+
+
+SECTIONED_SCENE = '''
+from series.scene import NarratedScene
+
+
+class VideoScene(NarratedScene):
+    def construct(self):
+        self.show_title("introduction")
+        self.say("hi")
+        self.show_title("chapter-1")
+        self.say("in")
+        self.say("out")
+        self.show_title("conclusions")
+        self.say("bye")
+        self.roll_credits()
+'''
 
 
 class Build(unittest.TestCase):
@@ -174,33 +205,30 @@ class Build(unittest.TestCase):
             movie = build("001-test", ToneEngine(), draft=True, storyboard=True, videos=root, out_root=out)
         self.assertEqual(movie.name, "001-test-storyboard.mp4")
         lines = len("The first line.") / 20 + len("The second line.") / 20
-        self.assertAlmostEqual(duration(movie), lines + 2 * STILLNESS + CREDITS_SECONDS, delta=0.15)
+        self.assertAlmostEqual(duration(movie), lines + 2 * STILLNESS + credits_seconds(load_video(d)), delta=0.15)
 
     def test_a_section_over_the_limit_stops_the_build(self):
         root, d = videos(scene=False)
-        long = "x" * 5000  # ToneEngine: 250 s
-        (d / "script.toml").write_text(f'''
-title = "t"
-[[section]]
-kind = "chapter"
-title = "Too long"
-[[section.line]]
-id = "in"
-role = "intro"
-text = "{long}"
-framing = true
-[[section.line]]
-id = "out"
-role = "conclusion"
-text = "Done."
-framing = true
-''')
+        (d / "script.toml").write_text(sectioned("x" * 5000))  # ToneEngine: 250 s
         out = Path(tempfile.mkdtemp())
         with contextlib.redirect_stdout(io.StringIO()):
             with self.assertRaises(SectionTooLong) as e:
                 build("001-test", ToneEngine(), draft=True, storyboard=True, videos=root, out_root=out)
         self.assertIn("chapter-1", str(e.exception))
         self.assertFalse((out / "001-test" / "media").exists())
+
+    def test_a_scene_that_runs_a_section_long_is_caught(self):
+        # The estimate counts only voices, stillness and the title; a scene's
+        # own waits are measured as it renders.
+        root, d = videos(scene=False)
+        (d / "script.toml").write_text(sectioned("Short."))
+        (d / "scene.py").write_text(SECTIONED_SCENE.replace('self.say("in")', 'self.say("in")\n        self.wait(3)'))
+        report = io.StringIO()
+        with mock.patch.object(pacing, "SECTION_LIMIT", 10.0), contextlib.redirect_stdout(report):
+            with self.assertRaises(SectionTooLong) as e:
+                build("001-test", ToneEngine(), draft=True, videos=root, out_root=Path(tempfile.mkdtemp()))
+        self.assertIn("chapter-1", str(e.exception))
+        self.assertIn("as rendered", str(e.exception))
 
     def test_music_is_mixed_under_the_narration(self):
         root, d = videos(music='music = "MUSIC"')

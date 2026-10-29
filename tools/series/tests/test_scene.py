@@ -8,7 +8,8 @@ import numpy as np
 import soundfile
 from manim import Dot, FadeIn, Text, tempconfig
 
-from series.scene import CREDITS_SECONDS, NarratedScene, ScriptOrderError, StoryboardScene
+from series.credits import PAGE_SECONDS, credits_seconds
+from series.scene import NarratedScene, ScriptOrderError, StoryboardScene
 from series.title import title_card
 from series.script import Section, load_video
 from series.voice import Voice
@@ -27,10 +28,12 @@ framing = true
 '''
 
 
-def fixtures(lengths, script=SCRIPT):
+def fixtures(lengths, script=SCRIPT, citations=None):
     d = Path(tempfile.mkdtemp())
     (d / "001-test").mkdir()
     (d / "001-test" / "script.toml").write_text(script)
+    if citations:
+        (d / "001-test" / "citations.toml").write_text(citations)
     voices = {}
     for line_id, seconds in lengths.items():
         path = d / f"{line_id}.wav"
@@ -186,138 +189,187 @@ class Credits(unittest.TestCase):
         self.assertIn("b", str(e.exception))
 
 
+    def test_the_credits_turn_their_pages(self):
+        sources = "".join(f'[s{i}]\ntitle = "Source {i}"\nauthors = "A. Author"\nyear = 2000\nurl = "https://x/{i}"\n'
+                          for i in range(30))
+        script = 'title = "t"\n[[line]]\nid = "a"\ntext = "One."\ncite = [' + ", ".join(f'"s{i}"' for i in range(30)) + "]\n"
+        video, voices, d = fixtures({"a": 0.5}, script, sources)
 
-CHAPTERS = '''
-title = "t"
-[[section]]
-kind = "chapter"
-title = "One"
-[[section.line]]
-id = "i1"
-role = "intro"
-text = "In."
-framing = true
-pause = 0.5
-[[section.line]]
-id = "c1"
-role = "conclusion"
-text = "Out."
-framing = true
-[[section]]
-kind = "chapter"
-title = "Two"
-[[section.line]]
-id = "i2"
-role = "intro"
-text = "In again."
-framing = true
-[[section.line]]
-id = "c2"
-role = "conclusion"
-text = "Out again."
-framing = true
-'''
+        expected = []
+
+        class S(NarratedScene):
+            def construct(self):
+                # Measured here: Manim wraps text to the render's pixel width.
+                expected.append(credits_seconds(self.video))
+                self.say("a")
+                self.roll_credits()
+
+        S.video, S.voices = video, voices
+        movie = render(S, d / "media")
+        self.assertGreater(expected[0], PAGE_SECONDS)
+        self.assertAlmostEqual(float(probe(movie, "format=duration")["format"]["duration"]),
+                               0.5 + 2.0 + expected[0], delta=0.1)
+
+
+def beat(id, role=None, extra=""):
+    r = f'role = "{role}"\n' if role else ""
+    return f'[[section.line]]\nid = "{id}"\n{r}text = "{id}."\nboard = "{id} drawn"\nframing = true\n{extra}'
+
+
+CHAPTERS = ('title = "t"\n'
+            '[[section]]\nkind = "introduction"\ntitle = "Introduction"\n' + beat("h") +
+            '[[section]]\nkind = "chapter"\ntitle = "One"\n' + beat("i1", "intro", "pause = 0.5\n") + beat("c1", "conclusion") +
+            '[[section]]\nkind = "chapter"\ntitle = "Two"\n' + beat("i2", "intro") + beat("c2", "conclusion") +
+            '[[section]]\nkind = "conclusions"\ntitle = "Conclusions"\n' + beat("t"))
+BEATS = {"introduction": ("h",), "chapter-1": ("i1", "c1"), "chapter-2": ("i2", "c2"), "conclusions": ("t",)}
+
+
+def chapters(seconds=0.5):
+    return fixtures({i: seconds for ids in BEATS.values() for i in ids}, CHAPTERS)
+
+
+def say_all(scene, after_title=None):
+    """Title and say every section in order; `after_title(id)` runs after each title screen."""
+    for section_id, ids in BEATS.items():
+        scene.show_title(section_id)
+        if after_title:
+            after_title(section_id)
+        for i in ids:
+            scene.say(i)
 
 
 class Chapters(unittest.TestCase):
     def test_a_beat_can_shorten_its_stillness(self):
-        video, voices, d = fixtures({"i1": 1.0, "c1": 1.0, "i2": 1.0, "c2": 1.0}, CHAPTERS)
+        video, voices, d = chapters(1.0)
         times = []
 
         class S(NarratedScene):
             def construct(self):
-                self.show_title("chapter-1")
-                self.say("i1")
-                times.append(self.time)
-                self.say("c1")
-                self.show_title("chapter-2")
-                self.say("i2")
-                self.say("c2")
+                say_all(self, lambda sid: times.append(self.time) if sid == "chapter-1" else None)
+                times.append(self.section_lengths["chapter-1"])
 
         S.video, S.voices = video, voices
         render(S, d / "media")
-        self.assertAlmostEqual(times[0], 4.0 + 1.0 + 0.5, delta=0.1)
+        # Chapter 1: its title, then i1 (1 s, then 0.5 s still), then c1 (1 s, then 2 s).
+        self.assertAlmostEqual(times[1], 4.0 + 1.5 + 3.0, delta=0.05)
 
     def test_a_title_screen_is_silent_and_holds(self):
-        video, voices, d = fixtures({"i1": 1.0, "c1": 1.0, "i2": 1.0, "c2": 1.0}, CHAPTERS)
+        video, voices, d = chapters(1.0)
+        for v in voices.values():
+            t = np.arange(int(v.seconds * RATE)) / RATE
+            soundfile.write(v.path, (0.5 * np.sin(2 * np.pi * 440 * t)).astype(np.float32), RATE)
         times = []
 
         class S(NarratedScene):
             def construct(self):
-                self.show_title("chapter-1")
-                # Nothing is said during it: no sound was added yet.
-                times.append((self.time, len(self.said)))
-                for line_id in ("i1", "c1"):
-                    self.say(line_id)
-                self.show_title("chapter-2")
-                for line_id in ("i2", "c2"):
-                    self.say(line_id)
+                say_all(self, lambda sid: times.append((self.time, len(self.said))) if sid == "introduction" else None)
 
         S.video, S.voices = video, voices
         movie = render(S, d / "media")
         self.assertAlmostEqual(times[0][0], 4.0, delta=0.05)
         self.assertEqual(times[0][1], 0)
-        # Total: two titles, four 1 s voices, stillness 0.5 + 2 + 2 + 2.
-        self.assertAlmostEqual(float(probe(movie, "format=duration")["format"]["duration"]), 8.0 + 4.0 + 6.5, delta=0.1)
+        # Four titles, six 1 s voices, stillness 2 + 0.5 + 2 + 2 + 2 + 2.
+        self.assertAlmostEqual(float(probe(movie, "format=duration")["format"]["duration"]), 16.0 + 6.0 + 10.5, delta=0.1)
+        # The title screen is silent; the first beat is not.
+        pcm = subprocess.run(["ffmpeg", "-v", "error", "-i", str(movie), "-vn", "-ac", "1", "-ar", str(RATE),
+                              "-f", "f32le", "-"], capture_output=True, check=True).stdout
+        audio = np.frombuffer(pcm, dtype=np.float32)
+        self.assertLess(np.abs(audio[: int(3.9 * RATE)]).max(), 1e-3)
+        self.assertGreater(np.abs(audio[int(4.1 * RATE): int(4.9 * RATE)]).max(), 0.1)
 
     def test_a_title_screen_starts_from_a_clear_screen(self):
-        video, voices, d = fixtures({"i1": 0.5, "c1": 0.5, "i2": 0.5, "c2": 0.5}, CHAPTERS)
+        video, voices, d = chapters()
         left = []
 
         class S(NarratedScene):
             def construct(self):
-                self.show_title("chapter-1")
                 dot = Dot()
-                self.add(dot)
-                self.say("i1")
-                self.say("c1")
-                self.show_title("chapter-2")
-                left.append(dot in self.mobjects)
-                self.say("i2")
-                self.say("c2")
+
+                def check(section_id):
+                    if section_id == "chapter-1":
+                        self.add(dot)
+                    elif section_id == "chapter-2":
+                        left.append(dot in self.mobjects)
+
+                say_all(self, check)
 
         S.video, S.voices = video, voices
         render(S, d / "media")
         self.assertEqual(left, [False])
 
     def test_a_sections_first_beat_needs_its_title_screen(self):
-        video, voices, d = fixtures({"i1": 0.5, "c1": 0.5, "i2": 0.5, "c2": 0.5}, CHAPTERS)
+        video, voices, d = chapters()
 
         class NoTitle(NarratedScene):
             def construct(self):
-                self.say("i1")
+                self.say("h")
+
+        class NoLaterTitle(NarratedScene):
+            def construct(self):
+                for section_id in ("introduction", "chapter-1"):
+                    self.show_title(section_id)
+                    for i in BEATS[section_id]:
+                        self.say(i)
+                self.say("i2")
 
         class TwoTitles(NarratedScene):
             def construct(self):
-                self.show_title("chapter-1")
-                self.show_title("chapter-1")
+                self.show_title("introduction")
+                self.show_title("introduction")
 
         class Unknown(NarratedScene):
             def construct(self):
                 self.show_title("chapter-9")
 
-        for cls in (NoTitle, TwoTitles, Unknown):
+        for cls, name in ((NoTitle, "introduction"), (NoLaterTitle, "chapter-2"), (TwoTitles, "introduction"),
+                          (Unknown, "chapter-9")):
+            cls.video, cls.voices = video, voices
+            with self.assertRaises(ScriptOrderError) as e:
+                render(cls, d / "media")
+            self.assertIn(name, str(e.exception))
+
+    def test_titles_come_in_order_just_before_their_sections(self):
+        video, voices, d = chapters()
+
+        class Early(NarratedScene):
+            def construct(self):
+                self.show_title("introduction")
+                self.show_title("chapter-1")
+
+        class Skipped(NarratedScene):
+            def construct(self):
+                self.show_title("chapter-2")
+
+        class MidChapter(NarratedScene):
+            def construct(self):
+                self.show_title("introduction")
+                self.say("h")
+                self.show_title("chapter-1")
+                self.say("i1")
+                self.show_title("chapter-2")
+
+        for cls in (Early, Skipped, MidChapter):
             cls.video, cls.voices = video, voices
             with self.assertRaises(ScriptOrderError) as e:
                 render(cls, d / "media")
             self.assertIn("chapter-", str(e.exception))
 
     def test_the_storyboard_shows_every_title(self):
-        video, voices, d = fixtures({"i1": 0.5, "c1": 0.5, "i2": 0.5, "c2": 0.5}, CHAPTERS)
+        video, voices, d = chapters()
 
         class S(StoryboardScene):
             pass
 
         S.video, S.voices = video, voices
-        expected = 2 * 4.0 + 4 * 0.5 + (0.5 + 2.0 + 2.0 + 2.0) + CREDITS_SECONDS
+        expected = 4 * 4.0 + 6 * 0.5 + (0.5 + 5 * 2.0) + credits_seconds(video)
         self.assertAlmostEqual(float(probe(render(S, d / "media"), "format=duration")["format"]["duration"]),
                                expected, delta=0.2)
 
     def test_title_card_numbers_only_chapters(self):
-        video = load_video(fixtures({}, CHAPTERS)[2] / "001-test")
+        video = chapters()[0]
         # Manim's Text keeps its words without their spaces.
         texts = lambda card: [m.text for m in card.get_family() if isinstance(m, Text)]
-        chapter = title_card(video.sections[0], [])
+        chapter = title_card(video.sections[1], [])
         self.assertIn("Chapter1", texts(chapter))
         intro = Section(id="introduction", kind="introduction", number=None, title="Introduction", lines=())
         self.assertFalse(any("Chapter" in t for t in texts(title_card(intro, []))))

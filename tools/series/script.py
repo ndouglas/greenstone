@@ -93,6 +93,12 @@ def load_video(dir: Path) -> Video:
     seen = set()
 
     def make_line(raw: dict, section: str | None) -> Line:
+        for field in ("text", "spoken", "board"):
+            if field in raw and not isinstance(raw[field], str):
+                raise ScriptError(f"line {raw['id']}'s {field} must be text in quotes")
+        pause = raw.get("pause")
+        if pause is not None and (isinstance(pause, bool) or not isinstance(pause, (int, float)) or pause < 0):
+            raise ScriptError(f"line {raw['id']}'s pause must be a number of seconds, zero or more")
         line = Line(
             id=raw["id"],
             text=fill(raw["id"], raw["text"]),
@@ -116,6 +122,9 @@ def load_video(dir: Path) -> Video:
         for key in line.cite:
             if key not in citations:
                 raise ScriptError(f"line {line.id} cites {key!r}, which citations.toml doesn't list")
+        # A beat is one thought and one picture.
+        if section is not None and not line.board:
+            raise ScriptError(f"beat {line.id} has no board; every beat in a section has one picture")
         if line.role is not None and line.role not in ROLES:
             raise ScriptError(f"line {line.id}'s role is {line.role!r}; it must be one of {', '.join(ROLES)}")
         return line
@@ -135,6 +144,8 @@ def load_video(dir: Path) -> Video:
             raise ScriptError("the introduction must be the first section, and there can be only one")
         if kind == "conclusions" and i != len(raw_sections) - 1:
             raise ScriptError("the conclusions must be the last section, and there can be only one")
+        if not isinstance(raw.get("title", ""), str):
+            raise ScriptError(f"{sid}'s title must be text in quotes")
         if not raw.get("title", "").strip():
             raise ScriptError(f"{sid} has no title")
         beats = tuple(make_line(b, sid) for b in raw.get("line", []))
@@ -149,6 +160,8 @@ def load_video(dir: Path) -> Video:
         elif any(roles):
             raise ScriptError(f"{sid} isn't a chapter, so its beats don't take intro or conclusion roles")
         sections.append(Section(id=sid, kind=kind, number=number, title=raw["title"], lines=beats))
+    if sections and (sections[0].kind != "introduction" or sections[-1].kind != "conclusions"):
+        raise ScriptError("a video with sections opens with an introduction and closes with conclusions")
     lines = [l for sec in sections for l in sec.lines]
     for raw in script.get("line", []):
         # [[line]] is always top-level in TOML, even written inside a

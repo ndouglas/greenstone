@@ -263,7 +263,10 @@ still as a horizon, so every dot's height above it is its total.
   conclusion beat (from X to Y, why it mattered, what's next). No section
   runs over four minutes; a longer one is split (Nate, 2026-10-29).
 - A beat is one thought and one picture; two pictures make two beats.
-  Every beat is followed by about two seconds of stillness.
+  Every beat is followed by about two seconds of stillness. The script
+  loader refuses a beat without a `board`.
+- The sources roll at the end a page at a time, each page held six
+  seconds, closing on the disclaimer.
 - Never: LLM clichés; "we'll see why later" (reorder or break it down
   instead); anything unsupported, incorrect or uncited; clunky animation;
   too much on screen at once; slop.
@@ -288,4 +291,6 @@ still as a horizon, so every dot's height above it is its total.
 5. **Sketches:** each animation explored alone with
    `python -m series.sketch`, judged from its contact sheet and iterated.
    Nate reviews.
-6. **Full render:** `python -m series.build NNN-slug`. Nate reviews.
+6. **Full render:** `python -m series.build NNN-slug`; it checks each
+   section's length again as rendered, since a scene's own waits count.
+   Nate reviews.

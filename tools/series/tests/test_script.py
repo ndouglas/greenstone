@@ -178,13 +178,17 @@ framing = true
 
 def beat(id, role=None, extra=""):
     r = f'role = "{role}"\n' if role else ""
-    return f'[[section.line]]\nid = "{id}"\n{r}text = "{id}."\nframing = true\n{extra}'
+    return f'[[section.line]]\nid = "{id}"\n{r}text = "{id}."\nboard = "{id} drawn"\nframing = true\n{extra}'
 
 
 def chapter(title, *ids):
     first, *rest = ids
     body = beat(first, "intro") + "".join(beat(i) for i in rest[:-1]) + beat(rest[-1], "conclusion")
     return f'[[section]]\nkind = "chapter"\ntitle = "{title}"\n{body}'
+
+
+INTRO = '[[section]]\nkind = "introduction"\ntitle = "Introduction"\n' + beat("hello")
+ENDS = '[[section]]\nkind = "conclusions"\ntitle = "Conclusions"\n' + beat("tldr")
 
 
 SECTIONED = (
@@ -210,8 +214,8 @@ class Sections(unittest.TestCase):
         self.assertEqual(v.sections[1].lines[-1].role, "conclusion")
 
     def test_a_chapter_needs_its_intro_first_and_conclusion_last(self):
-        no_intro = 'title = "t"\n[[section]]\nkind = "chapter"\ntitle = "One"\n' + beat("a") + beat("b", "conclusion")
-        no_end = 'title = "t"\n[[section]]\nkind = "chapter"\ntitle = "One"\n' + beat("a", "intro") + beat("b")
+        no_intro = 'title = "t"\n' + INTRO + '[[section]]\nkind = "chapter"\ntitle = "One"\n' + beat("a") + beat("b", "conclusion") + ENDS
+        no_end = 'title = "t"\n' + INTRO + '[[section]]\nkind = "chapter"\ntitle = "One"\n' + beat("a", "intro") + beat("b") + ENDS
         for script in (no_intro, no_end):
             with self.assertRaises(ScriptError) as e:
                 load_video(video(script))
@@ -228,23 +232,58 @@ class Sections(unittest.TestCase):
                 load_video(video(script))
 
     def test_roles_belong_to_chapters(self):
-        script = 'title = "t"\n[[section]]\nkind = "introduction"\ntitle = "I"\n' + beat("i", "intro")
+        script = 'title = "t"\n[[section]]\nkind = "introduction"\ntitle = "I"\n' + beat("i", "intro") + ENDS
         with self.assertRaises(ScriptError):
             load_video(video(script))
 
     def test_a_stray_line_among_sections_is_refused(self):
         # [[line]] is always top-level in TOML: one pasted into a chapter
         # would silently play after the Conclusions.
-        stray = SECTIONED.replace(beat("a2"), '[[line]]\nid = "a2"\ntext = "a2."\nframing = true\n')
+        stray = SECTIONED.replace(beat("a2"), '[[line]]\nid = "a2"\ntext = "a2."\nboard = "a2 drawn"\nframing = true\n')
         with self.assertRaises(ScriptError) as e:
             load_video(video(stray))
         self.assertIn("section.line", str(e.exception))
 
     def test_a_beat_can_set_its_own_pause(self):
-        script = SECTIONED.replace('id = "a2"\ntext = "a2."\nframing = true\n', 'id = "a2"\ntext = "a2."\nframing = true\npause = 0.5\n')
+        script = SECTIONED.replace(beat("a2"), beat("a2", extra="pause = 0.5\n"))
         v = load_video(video(script))
         self.assertEqual(next(l for l in v.lines if l.id == "a2").pause, 0.5)
         self.assertIsNone(next(l for l in v.lines if l.id == "a1").pause)
+
+    def test_a_role_out_of_place_mid_chapter_is_refused(self):
+        for role in ("intro", "conclusion"):
+            script = SECTIONED.replace(beat("a2"), beat("a2", role))
+            with self.assertRaises(ScriptError) as e:
+                load_video(video(script))
+            self.assertIn("out of place", str(e.exception))
+
+    def test_pause_and_title_must_be_the_right_kind(self):
+        for bad in ('pause = "2"\n', "pause = -1\n", "pause = true\n"):
+            with self.assertRaises(ScriptError) as e:
+                load_video(video(SECTIONED.replace(beat("a2"), beat("a2", extra=bad))))
+            self.assertIn("a2", str(e.exception))
+        v = load_video(video(SECTIONED.replace(beat("a2"), beat("a2", extra="pause = 3\n"))))
+        self.assertEqual(next(l for l in v.lines if l.id == "a2").pause, 3)
+        with self.assertRaises(ScriptError) as e:
+            load_video(video(SECTIONED.replace('title = "One"', "title = 1")))
+        self.assertIn("title", str(e.exception))
+        with self.assertRaises(ScriptError) as e:
+            load_video(video(SECTIONED.replace('board = "a2 drawn"', "board = 2")))
+        self.assertIn("a2", str(e.exception))
+
+    def test_every_beat_has_one_picture(self):
+        script = SECTIONED.replace(beat("a2"), beat("a2").replace('board = "a2 drawn"\n', ""))
+        with self.assertRaises(ScriptError) as e:
+            load_video(video(script))
+        self.assertIn("a2", str(e.exception))
+        self.assertIn("board", str(e.exception))
+
+    def test_a_sectioned_video_opens_and_closes_with_its_summaries(self):
+        body = chapter("One", "a1", "a2")
+        for script in ('title = "t"\n' + body + ENDS, 'title = "t"\n' + INTRO + body):
+            with self.assertRaises(ScriptError) as e:
+                load_video(video(script))
+            self.assertRegex(str(e.exception), "introduction|conclusions")
 
     def test_a_script_without_sections_still_loads(self):
         v = load_video(video('title = "t"\n[[line]]\nid = "a"\ntext = "A."\nframing = true\n'))
