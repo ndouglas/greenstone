@@ -9,6 +9,7 @@ from typing import Literal, Protocol
 
 import soundfile
 
+from series.pacing import NARRATION_SPEED
 from series.script import Video
 
 # Per video: <id>.wav takes, and takes.toml mapping each id to the text it
@@ -27,10 +28,11 @@ class Engine(Protocol):
 class KokoroEngine:
     """Kokoro-82M, run locally."""
 
-    def __init__(self, voice: str = DEFAULT_VOICE):
+    def __init__(self, voice: str = DEFAULT_VOICE, speed: float = NARRATION_SPEED):
         self.voice = voice
-        # The version is in the name, so a new Kokoro re-voices the cache.
-        self.name = f"kokoro-{version('kokoro')}-{voice}"
+        self.speed = speed
+        # The version and speed are in the name, so changing either re-voices the cache.
+        self.name = f"kokoro-{version('kokoro')}-{voice}-speed{speed}"
         self.pipeline = None
 
     def synthesize(self, text: str, out: Path) -> None:
@@ -39,7 +41,7 @@ class KokoroEngine:
 
         if self.pipeline is None:
             self.pipeline = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
-        audio = [chunk.audio.numpy() for chunk in self.pipeline(text, voice=self.voice)]
+        audio = [chunk.audio.numpy() for chunk in self.pipeline(text, voice=self.voice, speed=self.speed)]
         if not audio:
             raise ValueError(f"nothing to pronounce in {text!r}; give the line a `spoken` version")
         out.parent.mkdir(parents=True, exist_ok=True)

@@ -143,10 +143,14 @@ class Voices(unittest.TestCase):
 
     def test_kokoro_engine_names_its_version(self):
         self.assertIn(version("kokoro"), KokoroEngine("af_heart").name)
+        self.assertIn("speed0.9", KokoroEngine().name)
+
+    def test_the_speed_is_part_of_the_cache_key(self):
+        self.assertNotEqual(KokoroEngine(speed=0.9).name, KokoroEngine(speed=1.0).name)
 
     def test_kokoro_says_when_there_is_nothing_to_pronounce(self):
         engine = KokoroEngine("af_heart")
-        engine.pipeline = lambda text, voice: iter([])
+        engine.pipeline = lambda text, voice, speed: iter([])
         with self.assertRaises(ValueError) as e:
             engine.synthesize("...", self.out / "x.wav")
         self.assertIn("nothing to pronounce", str(e.exception))
