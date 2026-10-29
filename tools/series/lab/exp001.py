@@ -159,6 +159,7 @@ def worked_examples(cut: int, k: int, threshold: int) -> dict[str, int]:
     return {"example_air_total": air, "land_example_speed_yes": speed_yes, "land_example_yes": yes,
             "land_example_speed_no": -speed_no, "land_example_no": -no,
             "land_balance_yes_pan": LAND_EXAMPLE_DEPTH + speed_yes,
+            "land_balance_no_pan": -speed_no + threshold,
             "example_air_depth": EXAMPLE_AIR_DEPTH, "land_example_depth": LAND_EXAMPLE_DEPTH,
             "land_example_falling": LAND_EXAMPLE_FALLING, "land_example_rising": -LAND_EXAMPLE_RISING}
 
@@ -219,7 +220,7 @@ def whole_number_border(w: np.ndarray, b: float) -> tuple[int, int]:
 
 
 def check_claims(cut: int, standing: int, smb3_cut: int, smb3_standing: int, train: float, test: float,
-                 depth_alone: float, not_yet: float) -> None:
+                 depth_alone: float, not_yet: float, best_line: float) -> None:
     """The script's plain-word claims about the numbers: refuse a run that
     makes any of them false."""
     problems = []
@@ -229,6 +230,8 @@ def check_claims(cut: int, standing: int, smb3_cut: int, smb3_standing: int, tra
         problems.append(f"Super Mario Bros. 3's setting ({smb3_cut}) isn't its floor ({smb3_standing})")
     if test < train:
         problems.append(f"the new session scored worse ({test:.3f}) than the ones it was chosen on ({train:.3f})")
+    if best_line > test + 0.01:
+        problems.append(f"adding falling speed helps a straight line ({best_line:.3f} against {test:.3f})")
     if abs(depth_alone - not_yet) >= 0.01:
         problems.append(f"depth alone ({depth_alone:.3f}) isn't about as good as always 'not yet' ({not_yet:.3f})")
     if problems:
@@ -308,7 +311,8 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
             put(f"{game}_learned_line_accuracy", float((p.predict((xt - x.mean(0)) / scale) == yt).mean()))
             numbers[f"{game}_learned_speed_share"] = round(abs(p.w[1]) / (abs(p.w[0]) + abs(p.w[1])), 3)
             w, b, _ = best_line(x, y)
-            put(f"{game}_best_line_accuracy", accuracy(w, b, xt, yt))
+            raw[game]["best_line"] = accuracy(w, b, xt, yt)
+            put(f"{game}_best_line_accuracy", raw[game]["best_line"])
         numbers[f"{game}_test_frames"] = int(len(yt))
         numbers[f"{game}_restarts_per_recording"] = int(round(np.mean([r.meta["restarts"] for r in train + test])))
         put_int(f"{game}_seconds_between_deaths", seconds_between_deaths(
@@ -423,7 +427,8 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
     check_claims(cut=numbers["smb1_height_cut"], standing=numbers["smb1_standing_height"],
                  smb3_cut=numbers["smb3_height_cut"], smb3_standing=numbers["smb3_standing_height"],
                  train=raw["smb1"]["train"], test=raw["smb1"]["test"],
-                 depth_alone=raw["land_height"], not_yet=raw["land_baseline"])
+                 depth_alone=raw["land_height"], not_yet=raw["land_baseline"],
+                 best_line=raw["smb1"]["best_line"])
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(numbers, indent=2, sort_keys=True) + "\n")
     return numbers

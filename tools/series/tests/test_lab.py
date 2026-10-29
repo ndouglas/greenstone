@@ -131,6 +131,7 @@ class Experiment(unittest.TestCase):
         self.assertEqual(exp001.worked_examples(cut=176, k=5, threshold=152), {
             "example_air_total": 26, "land_example_speed_yes": 20, "land_example_yes": 8,
             "land_example_speed_no": 10, "land_example_no": 22, "land_balance_yes_pan": 160,
+            "land_balance_no_pan": 162,
             "example_air_depth": 150, "land_example_depth": 140, "land_example_falling": 4, "land_example_rising": 2})
 
     def test_worked_examples_refuse_numbers_that_flip_their_answers(self):
@@ -159,9 +160,10 @@ class Experiment(unittest.TestCase):
 
     def test_the_scripts_plain_words_are_checked(self):
         good = dict(cut=176, standing=176, smb3_cut=128, smb3_standing=128, train=0.938, test=0.940,
-                    depth_alone=0.748, not_yet=0.745)
+                    depth_alone=0.748, not_yet=0.745, best_line=0.941)
         exp001.check_claims(**good)
-        for bad in ({"cut": 170}, {"smb3_cut": 120}, {"test": 0.90}, {"depth_alone": 0.80}):
+        # "Adding his falling speed doesn't help a straight line here."
+        for bad in ({"cut": 170}, {"smb3_cut": 120}, {"test": 0.90}, {"depth_alone": 0.80}, {"best_line": 0.96}):
             with self.assertRaises(ValueError, msg=str(bad)):
                 exp001.check_claims(**{**good, **bad})
 
