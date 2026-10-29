@@ -158,7 +158,6 @@ def worked_examples(cut: int, k: int, threshold: int) -> dict[str, int]:
         raise ValueError(f"the worked examples' answers no longer hold (air {air}, lands soon {yes}, not yet {no})")
     return {"example_air_total": air, "land_example_speed_yes": speed_yes, "land_example_yes": yes,
             "land_example_speed_no": -speed_no, "land_example_no": -no,
-            "land_balance_yes_pan": LAND_EXAMPLE_DEPTH + speed_yes,
             "land_balance_no_pan": -speed_no + threshold,
             "example_air_depth": EXAMPLE_AIR_DEPTH, "land_example_depth": LAND_EXAMPLE_DEPTH,
             "land_example_falling": LAND_EXAMPLE_FALLING, "land_example_rising": -LAND_EXAMPLE_RISING}

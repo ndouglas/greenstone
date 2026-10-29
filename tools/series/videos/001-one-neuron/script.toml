@@ -253,7 +253,7 @@ cite = ["exp001"]
 
 [[section.line]]
 id = "other-games"
-text = "The same kind of neuron works in other games, each with its own setting, found and tested the same way."
+text = "The same kind of neuron works in other games, each with its own setting, found and tested the same way; in each game, every session picks the same setting."
 board = "Super Mario Bros., Super Mario Bros. 3 and Castlevania side by side, each with its own setting line"
 cite = ["exp001"]
 pause = 1.0
@@ -280,7 +280,7 @@ cite = ["exp001"]
 
 [[section.line]]
 id = "testing-end-1"
-text = "So the neuron is good: in three games, it's right far more often than always guessing the same answer, and in each game, every session picks the same setting."
+text = "So the neuron is good: in three games, on play it wasn't chosen on, it's right far more often than always guessing the same answer."
 board = "The three games' bars together, each with its three session strips"
 cite = ["exp001"]
 
@@ -300,7 +300,7 @@ cite = ["exp001"]
 [[section.line]]
 id = "testing-end"
 role = "conclusion"
-text = "So it goes wrong where it only knows about the floor. Other questions need two numbers from the start, and to write a neuron that reads two, we need the recipe."
+text = "So it goes wrong because all it knows about is the floor. Other questions need two numbers to answer well, and to write a neuron that reads two, we need the recipe."
 board = "Mario on a pipe; then a second input slot, empty, beside the neuron"
 cite = ["exp001"]
 
@@ -337,7 +337,7 @@ pause = 3.0
 
 [[section.line]]
 id = "our-numbers"
-text = "For our Mario neuron, the weight is minus one, so that smaller depths give bigger totals: like the thermostat, whose heat comes on below its setting, this neuron's yes is at smaller depths."
+text = "For our Mario neuron, the weight is minus one, so smaller depths give bigger totals. Like the thermostat, whose heat comes on below its setting, this neuron's yes is at smaller depths."
 board = "The formula with -1 filled in as the weight"
 cite = ["exp001"]
 
@@ -372,16 +372,17 @@ cite = ["exp001", "bishop2006"]
 
 [[section.line]]
 id = "why-zero"
-text = "Why zero? Any fixed number would work. If the total is 130, asking whether it's above 100 is the same as asking whether 30 is above zero, so we can always take that number off the bias and compare with zero instead."
-spoken = "Why zero? Any fixed number would work. If the total is a hundred and thirty, asking whether it's above a hundred is the same as asking whether thirty is above zero, so we can always take that number off the bias and compare with zero instead."
+text = "Why zero? Any fixed number would work. If the total is 130, asking whether it's above 100 is the same as asking whether 30 is above zero, so we can always take the 100 off the total, by taking it off the bias, and compare with zero instead."
+spoken = "Why zero? Any fixed number would work. If the total is a hundred and thirty, asking whether it's above a hundred is the same as asking whether thirty is above zero, so we can always take the hundred off the total, by taking it off the bias, and compare with zero instead."
 board = "130 > 100 becomes 30 > 0; then '> 100' on the right of the formula slides across and joins the bias as '- 100', leaving '> 0'"
 cite = ["bishop2006"]
+pause = 3.0
 
 [[section.line]]
 id = "why-zero-3"
-text = "Computers move a number across in the same way. To check whether a number is 165, the NES's processor subtracts 165 and looks at whether anything is left: the comparison becomes a comparison with zero."
-spoken = "Computers move a number across in the same way. To check whether a number is a hundred and sixty-five, the NES's processor subtracts a hundred and sixty-five and looks at whether anything is left: the comparison becomes a comparison with zero."
-board = "The NES's chip; '165?' becomes '− 165 = 0?'; beside it, the real instruction from Super Mario Bros. at $8025, 'cmp #$a5', labelled 'compare with 165'"
+text = "Computers do the same. To check whether a number is at least 10, the NES's processor takes 10 away and looks at whether it had to go below zero: the comparison becomes a comparison with zero."
+spoken = "Computers do the same. To check whether a number is at least ten, the NES's processor takes ten away and looks at whether it had to go below zero: the comparison becomes a comparison with zero."
+board = "The NES's chip; 'at least 10?' becomes '− 10: below zero?'; beside it, the real instruction from Super Mario Bros. at $801B, 'cmp #10', checking a digit of the top score"
 cite = ["masswerk-6502", "smbdis", "exp001"]
 
 [[section.line]]
@@ -393,7 +394,7 @@ cite = ["bishop2006"]
 [[section.line]]
 id = "recipe-end"
 role = "conclusion"
-text = "So we've gone from a setting to the recipe neurons like ours follow: a weight on each input, a bias, and a test against zero. Next, we draw it as a line, which shows we can multiply all its numbers by the same amount without changing a single answer."
+text = "So we've gone from a setting to the recipe neurons like ours follow: a weight on each input, a bias, and a test against zero. Next, we draw it as a line, which shows we can multiply all its numbers by the same plus number without changing a single answer."
 board = "The formula, with the thermostat's number line fading behind it"
 framing = true
 
@@ -534,7 +535,7 @@ cite = ["exp001"]
 
 [[section.line]]
 id = "the-map-3"
-text = "In Mario's terms: right is nearer the floor, up is falling faster, and below the level where his falling speed is zero, he's rising."
+text = "In Mario's terms: right is nearer the floor, up is falling faster, and where his falling speed is below zero, he's rising."
 board = "Arrows on the map labelled 'nearer the floor', 'falling faster', 'rising'"
 cite = ["exp001"]
 
@@ -571,7 +572,7 @@ cite = ["bishop2006"]
 
 [[section.line]]
 id = "settings-are-borders-2"
-text = "A neuron reading only depth would draw a straight up-and-down border on this map, because its setting is one depth, whatever his speed. One reading only falling speed would draw a level one."
+text = "A neuron reading only depth would draw a straight up-and-down border on this map, because its setting is one depth, whatever his speed. One reading only falling speed would draw a flat one."
 board = "An up-and-down border, then a level one"
 cite = ["bishop2006"]
 
@@ -589,7 +590,7 @@ cite = ["bishop2006"]
 
 [[section.line]]
 id = "bias-slides-2"
-text = "Changing one weight against the other changes the lean."
+text = "Making one weight bigger compared with the other changes the lean."
 board = "The two weights change against each other, and the border leans"
 cite = ["bishop2006"]
 
@@ -630,7 +631,6 @@ id = "the-tilt-3"
 text = "If that total is above zero, he lands soon."
 board = "'> 0' completes the formula, beside 'lands soon'"
 cite = ["exp001"]
-pause = 2.0
 
 [[section.line]]
 id = "the-tilt-2"
@@ -640,8 +640,7 @@ cite = ["exp001", "bishop2006"]
 
 [[section.line]]
 id = "the-tilt-4"
-text = "Rounding the rest then moved the border only a hair: it's still right {smb1_land_whole_accuracy} of the time."
-spoken = "Rounding the rest then moved the border only a hair: it's still right {smb1_land_whole_accuracy_spoken} of the time."
+text = "Rounding the rest then moved the border only a hair, and barely changed its answers."
 board = "The rounded numbers; the border shifts by a hair"
 cite = ["exp001"]
 
@@ -653,8 +652,8 @@ cite = ["exp001"]
 
 [[section.line]]
 id = "why-plus-2"
-text = "And the bias is minus {smb1_land_threshold} for the reason we saw with 100: asking whether depth plus {smb1_land_speed_weight} times the falling speed is more than {smb1_land_threshold} is the same as taking {smb1_land_threshold} off and asking whether the total is above zero."
-spoken = "And the bias is minus {smb1_land_threshold_spoken} for the reason we saw with a hundred: asking whether depth plus {smb1_land_speed_weight_spoken} times the falling speed is more than {smb1_land_threshold_spoken} is the same as taking {smb1_land_threshold_spoken} off and asking whether the total is above zero."
+text = "And the bias is minus {smb1_land_threshold} for the reason we saw when we asked why zero: asking whether depth plus {smb1_land_speed_weight} times the falling speed is more than {smb1_land_threshold} is the same as taking {smb1_land_threshold} off and asking whether the total is above zero."
+spoken = "And the bias is minus {smb1_land_threshold_spoken} for the reason we saw when we asked why zero: asking whether depth plus {smb1_land_speed_weight_spoken} times the falling speed is more than {smb1_land_threshold_spoken} is the same as taking {smb1_land_threshold_spoken} off and asking whether the total is above zero."
 board = "'> {smb1_land_threshold}' slides across and becomes '− {smb1_land_threshold}'"
 cite = ["exp001"]
 
@@ -690,7 +689,7 @@ pause = 3.0
 [[section.line]]
 id = "found-end"
 role = "conclusion"
-text = "So the search gave us a border, and written down, it's one line of arithmetic that says: the higher Mario is, the faster he has to be falling to land on the floor soon. Next, a way to work it without any minus signs."
+text = "So the search gave us a border, and written down, it's one line of arithmetic that says: the higher Mario is, the faster he has to be falling to land on the floor soon. Next, a way to work it by only adding."
 board = "The formula beside the border, and Mario mid-fall"
 framing = true
 
@@ -701,7 +700,7 @@ title = "Weighing it"
 [[section.line]]
 id = "weigh-intro"
 role = "intro"
-text = "Sums with minus signs are hard to follow by ear. Here's a way to see a neuron's answer without any: weigh it."
+text = "Sums that take numbers away are hard to follow by ear. Here's a way to see a neuron's answer where every number is only ever added, to one pan or the other: weigh it."
 board = "A balance scale appears beside the border's formula"
 framing = true
 
@@ -720,7 +719,7 @@ framing = true
 
 [[section.line]]
 id = "balance-3"
-text = "A plus number goes in the yes pan, and a minus number in the no pan. The bias is one more block, in the pan its own sign says."
+text = "A plus number goes in the yes pan, and a minus number in the no pan. The bias, the weight on that input that's always one, is one more block, in the pan its own sign says."
 board = "A plus block drops into the yes pan, a minus block and the bias's block into the no pan"
 framing = true
 
@@ -733,8 +732,8 @@ pause = 1.0
 
 [[section.line]]
 id = "land-balance"
-text = "Now take the same depth, {smb1_land_example_depth}, but rising, at a falling speed of minus {smb1_land_example_rising}. The depth's {smb1_land_example_depth} goes in the yes pan."
-spoken = "Now take the same depth, {smb1_land_example_depth_spoken}, but rising, at a falling speed of minus {smb1_land_example_rising_spoken}. The depth's {smb1_land_example_depth_spoken} goes in the yes pan."
+text = "Take Mario at depth {smb1_land_example_depth} again, as in the last chapter, but this time rising, at a falling speed of minus {smb1_land_example_rising}. The depth's {smb1_land_example_depth} goes in the yes pan."
+spoken = "Take Mario at depth {smb1_land_example_depth_spoken} again, as in the last chapter, but this time rising, at a falling speed of minus {smb1_land_example_rising_spoken}. The depth's {smb1_land_example_depth_spoken} goes in the yes pan."
 board = "A {smb1_land_example_depth} block drops into the yes pan"
 framing = true
 
@@ -756,7 +755,7 @@ pause = 3.0
 [[section.line]]
 id = "weigh-end"
 role = "conclusion"
-text = "So the same answer can be worked as a sum or weighed on a scale, and both say not yet. What's left is to see how often the border is right."
+text = "So a neuron's answer can be weighed instead of summed, only ever adding, and it comes out the same: not yet. What's left is to see how often the border is right."
 board = "The scale tipped to no, beside the border"
 framing = true
 
@@ -843,6 +842,7 @@ text = "With one input, that's a setting, like a thermostat's. Reading Mario's d
 spoken = "With one input, that's a setting, like a thermostat's. Reading Mario's depth, it was right about whether he was in the air {smb1_height_accuracy_spoken} of the time, against {smb1_baseline_spoken} for always saying on the ground, and went wrong mostly when he stood on something raised."
 board = "The first neuron's setting across the screen, its bar at {smb1_height_accuracy} beside {smb1_baseline}"
 cite = ["exp001"]
+pause = 3.0
 
 [[section.line]]
 id = "tldr-3"

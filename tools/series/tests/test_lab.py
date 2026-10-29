@@ -130,7 +130,8 @@ class Experiment(unittest.TestCase):
     def test_worked_examples_follow_the_found_numbers(self):
         self.assertEqual(exp001.worked_examples(cut=176, k=5, threshold=152), {
             "example_air_total": 26, "land_example_speed_yes": 20, "land_example_yes": 8,
-            "land_example_speed_no": 10, "land_example_no": 22, "land_balance_yes_pan": 160,
+            "land_example_speed_no": 10, "land_example_no": 22,
+            # The rising example on the scale: 10 and 152 in the no pan, against 140.
             "land_balance_no_pan": 162,
             "example_air_depth": 150, "land_example_depth": 140, "land_example_falling": 4, "land_example_rising": 2})
 
