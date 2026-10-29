@@ -21,3 +21,4 @@ roms2/*.nes
 # The series' Python environment, and recorded narration takes
 /tools/series/.venv/
 /tools/series/videos/*/takes/
+/tools/series/**/__pycache__/
