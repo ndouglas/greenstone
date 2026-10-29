@@ -164,15 +164,16 @@ experiments and their results are in `docs/series/games/001.md`.
   A behavioural test and attribution (the balance-scale blocks) appear
   unnamed.
 - **Said out loud:** we can see all of this neuron and know exactly what
-  it does; networks of many are much harder to see into.
+  it does; networks of many are much harder to see into; scaling every
+  weight and the bias by the same positive amount doesn't move the border
+  (called back in 003, where weight size matters).
 - **Organisms:** none (the first is 002's cheating byte).
 - **Moved out:** place value (to 002); "speed isn't zero" and its two
   cuts (to 004); Castlevania's jump counter (to 002, encoding).
 - **Plants for later:** the distance from the border (the modern neuron's
   graded output, paid off with sigmoid and ReLU); shuffled inputs change
   nothing (convolutional networks); weights over pixels as a picture
-  (007); the widest-gap border (margin); scaling the weights doesn't
-  move the border (003, where weight size matters).
+  (007); the widest-gap border (margin).
 
 ### 002: When the line lies
 
