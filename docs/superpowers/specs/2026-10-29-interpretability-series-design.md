@@ -21,6 +21,15 @@ against, and save states let us rewind and change one thing. Interpretability
 work rarely has an answer key; here it always does. The NES is also
 deterministic, so every result replays exactly.
 
+The series also says why mechanistic interpretability is worth
+exploring at all, acknowledging the field's critics at full strength (in
+particular Hendrycks and Hiscott, "The Misguided Quest for Mechanistic
+AI Interpretability", 2025). Its answer is the value of understanding
+complex systems at every level: systems thinking, combining holistic and
+reductionist approaches, and the NES as a system with ground truth at
+both levels. The stance and where it lands in the curriculum are in the
+series bible.
+
 The emotional promise: no one ever feels dumb watching these videos. They
 come out feeling they can take on the world.
 

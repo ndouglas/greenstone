@@ -4,6 +4,56 @@ The living document every video is written against. The design behind it
 is `docs/superpowers/specs/2026-10-29-interpretability-series-design.md`;
 this file is where the series' decisions accumulate as videos are made.
 
+## Why look inside at all?
+
+The series takes the strongest criticism of its subject seriously.
+Hendrycks and Hiscott argue that mechanistic interpretability rests on a
+clockwork assumption that complex systems don't satisfy, and that it has
+delivered little (`sources.md`, section 4). Much of what they say is
+right, and the series says so out loud: complex systems resist
+reduction, single-neuron stories are often fragile, feature
+visualizations mislead, and the field has been prone to hype.
+
+The series' answer:
+
+- **Understanding a complex system is worth attempting, at every
+  level.** Weather, cells and minds are studied both top-down (patterns,
+  statistics, the whole) and bottom-up (mechanisms, parts). Neither
+  replaces the other; each checks the other. Systems thinking asks how
+  the parts and the whole relate, not which one is "real".
+- **Holistic and reductionist approaches belong together.** The series
+  teaches both: neurons and circuits, and representations, probes and
+  directions spread over many neurons. Representation engineering, the
+  critics' preferred approach, gets its own video.
+- **The NES is a system with ground truth at both levels.** A game has
+  high-level variables (Mario's speed, the score) and the bytes and
+  frames they're built from. That lets the series test claims the
+  critique says are hard to test: does a neuron really track a
+  variable, or only seem to on this data? Does a top-down direction
+  capture it better?
+- **Being honest about limits is part of the method.** Every pressure
+  test asks where an idea breaks. The critique's arguments are the
+  pressure tests' raw material, cited where they bite.
+- **Learning the field is worth it even if the strongest hopes fail.**
+  The viewer should be able to read an interpretability claim and judge
+  it, which needs both the methods and their criticism.
+
+Where it lands in the videos:
+
+- **001** says briefly why anyone would look inside a network, and that
+  some researchers doubt it's the right approach, a doubt the series
+  will take up properly.
+- **Each pressure test** cites the critique's specific arguments where
+  they apply (feature visualization in 009, fragile single-neuron
+  stories in 008 and 010, the long tail in 002).
+- **A dedicated video** (after the series has covered features,
+  superposition and sparse autoencoders, so the viewer can weigh it)
+  makes the critique's full case, with the disclosure that its lead
+  author created the alternative it proposes. Then it gives the
+  series' answer.
+- **A representation-engineering video** teaches the top-down
+  alternative on the NES.
+
 ## Curriculum
 
 The pilot arc. It will be revised as ideas are pressure-tested: an idea
@@ -25,8 +75,10 @@ up. Numbers are plain whole numbers, never sub-numbered.
 
 Beyond the pilot (direction, not commitment): superposition; causal
 intervention by rewinding and editing the game; circuits; convolutional
-networks; sparse dictionaries and sparse autoencoders; a small
-transformer; Greenstone's own reservoir brains.
+networks; sparse dictionaries and sparse autoencoders; representation
+engineering (the top-down alternative); the case against mechanistic
+interpretability, and the series' answer; a small transformer;
+Greenstone's own reservoir brains.
 
 ## Videos
 
@@ -115,6 +167,9 @@ input, weight, bias and output each keep their colour in every video.
 - Every line is cited, demonstrated by a reproducible experiment, or
   marked `framing` (no factual claim); otherwise it's cut.
 - A disclaimer in every video: not an expert, learning in public.
+- The field's critics are presented fairly, at full strength, where
+  their arguments bite; the series never pretends a method works better
+  than the evidence shows.
 - Never: LLM clichés; "we'll see why later" (reorder or break it down
   instead); anything unsupported, incorrect or uncited; clunky animation;
   too much on screen at once; slop.

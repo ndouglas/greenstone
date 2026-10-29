@@ -115,6 +115,41 @@ checked against the transcript before use.
 | Research philosophy† | Simple baselines first; ground truth; expect most hypotheses to be false | throughout (method) |
 | Universality in toy models† | A series of papers revising a group-composition hypothesis | later |
 
+## 4. The Misguided Quest for Mechanistic AI Interpretability (AI Frontiers)
+
+Dan Hendrycks and Laura Hiscott. AI Frontiers, 2025-05-15.
+https://newsletter.ai-frontiers.org/p/the-misguided-quest-for-mechanistic
+
+The series' main critic, and the one it answers (see the bible's "Why
+look inside at all?"). Disclosure worth making on screen: Hendrycks
+co-created representation engineering, the alternative the article
+proposes.
+
+Thesis: mechanistic interpretability assumes a complex system can be
+understood bottom-up, like clockwork; after a decade it has produced no
+lasting results, and top-down, representation-level work should take
+priority.
+
+| Argument | What the article says | Series |
+|---|---|---|
+| The clockwork premise | "Mechanistic" assumes nuts-and-bolts explanations, which may not suit AI | 001 (why), the critique video |
+| Complex systems resist reduction | Meteorology, biology and psychology work with higher-level patterns, not every molecule or neuron | the critique video; the NES as a two-level system |
+| Emergence | Many weak nonlinear connections make the whole more than its parts; bigger is more capable and less transparent | the critique video |
+| We can't explain ourselves | Polanyi's paradox: we know more than we can tell (choosing a parking spot) | the critique video |
+| Brevity vs. faithfulness | Terabytes of weights won't fit a paragraph-long explanation; if they did, the model could be far simpler (Hinton, 2018) | 002 onward (what a line can't say) |
+| Compression loses the long tail | Simplified explanations drop the exceptions that matter for safety (Rehder) | 002 (when the line lies) |
+| Feature visualization is unreliable | Visualizations are abstract and selected; natural examples explain activations better (arXiv 2010.12606) | 009 |
+| Saliency maps fail sanity checks | Explanations barely change when the model's weights are randomized (arXiv 1810.03292) | later (saliency) |
+| Single-neuron stories are fragile | A BERT neuron's apparent role vanished on another dataset (arXiv 2104.07143) | 008, 010 |
+| It doesn't scale | Months of work to find a partial circuit in Chinchilla 70B, broken by a small format change (arXiv 2307.09458) | later |
+| SAEs disappointed | Hard to get working; DeepMind deprioritized them; beaten by a simple baseline at detecting harmful intent | later (SAEs) |
+| Little return | A decade and millions of dollars for "roughly nonexistent" returns | the critique video |
+| The alternative: top-down | Work at the level with the most invariances (Gell-Mann); representation engineering studies patterns across many neurons | later (a representation-engineering video) |
+| Concessions | Some understanding is needed; an "MRI for AI" would be useful; mechanistic work needn't stop, but should be judged by its record | the critique video |
+
+The arXiv papers above are cited by number in the article; check each
+one's title and authors before citing it.
+
 ## Gaps
 
 - The middle and end of the podcast transcript are summary-only (†).
