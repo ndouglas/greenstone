@@ -282,7 +282,8 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
         restarts = r.meta.get("restart_frames", [])
         vy = r.ram[:, 0x009F].astype(int)
         vy = np.where(vy > 127, vy - 256, vy)
-        normal = r.ram[:, 0x000E] == 0x08
+        # Normal play, or the blink after being hit (0x0A), which isn't a death.
+        normal = np.isin(r.ram[:, 0x000E], (0x08, 0x0A))
         keep, _ = landing(air, restarts, LAND_WITHIN)
         kinds += [false_alarm_kind(air, vy, r.ram[:, 0x00CE].astype(int), normal, restarts, t) for t in keep]
     kinds = np.array(kinds)

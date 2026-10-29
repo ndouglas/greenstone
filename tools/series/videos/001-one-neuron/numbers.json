@@ -45,8 +45,8 @@
   "smb1_land_baseline_spoken": "seventy-five percent",
   "smb1_land_false_alarm_kinds": {
     "bounce": 125,
-    "died": 6,
-    "late": 13,
+    "died": 0,
+    "late": 19,
     "pit": 78
   },
   "smb1_land_false_alarms_bounce_or_pit": "91%",
