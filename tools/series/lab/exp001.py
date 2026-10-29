@@ -220,7 +220,8 @@ def whole_number_border(w: np.ndarray, b: float) -> tuple[int, int]:
 
 
 def check_claims(cut: int, standing: int, smb3_cut: int, smb3_standing: int, train: float, test: float,
-                 depth_alone: float, not_yet: float, best_line: float) -> None:
+                 depth_alone: float, not_yet: float, best_line: float,
+                 raised_depth: float, floor_depth: float, falling_depth: float, falling_not_yet: float) -> None:
     """The script's plain-word claims about the numbers: refuse a run that
     makes any of them false."""
     problems = []
@@ -232,6 +233,11 @@ def check_claims(cut: int, standing: int, smb3_cut: int, smb3_standing: int, tra
         problems.append(f"the new session scored worse ({test:.3f}) than the ones it was chosen on ({train:.3f})")
     if best_line > test + 0.01:
         problems.append(f"adding falling speed helps a straight line ({best_line:.3f} against {test:.3f})")
+    if raised_depth >= floor_depth:
+        problems.append(f"landings on raised things ({raised_depth}) don't sit left of floor landings ({floor_depth})")
+    if falling_depth < falling_not_yet + 0.1:
+        problems.append(f"among falling moments depth alone ({falling_depth:.3f}) barely beats always 'not yet' "
+                        f"({falling_not_yet:.3f}), so rising and falling aren't what defeats it")
     if abs(depth_alone - not_yet) >= 0.01:
         problems.append(f"depth alone ({depth_alone:.3f}) isn't about as good as always 'not yet' ({not_yet:.3f})")
     if problems:
@@ -382,6 +388,18 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
                 land_heights.append(-1)
     land_heights = np.array(land_heights)
     raised = missed & (land_heights >= 0) & (land_heights < numbers["smb1_height_cut"])
+    # Where the landings sit on the map: moments before a landing on something
+    # raised against before one on the floor, by depth.
+    raw["raised_depth"] = float(np.median(xt[(land_heights >= 0) & (land_heights < numbers["smb1_height_cut"]), 0]))
+    raw["floor_depth"] = float(np.median(xt[land_heights >= numbers["smb1_height_cut"], 0]))
+    # Depth alone, among falling moments only: if it does well there, what
+    # defeats it overall is not knowing rising from falling.
+    fall, fall_t = x[:, 1] > 0, xt[:, 1] > 0
+    scores = [(((side * (x[fall, 0] - t) > 0).astype(int) == y[fall]).mean(), t, side)
+              for t in np.unique(x[fall, 0]) for side in (1, -1)]
+    _, t, side = max(scores, key=lambda s: s[0])
+    raw["falling_depth"] = ((side * (xt[fall_t, 0] - t) > 0).astype(int) == yt[fall_t]).mean()
+    raw["falling_not_yet"] = max(yt[fall_t].mean(), 1 - yt[fall_t].mean())
     put("smb1_land_misses_on_raised", raised.sum() / max(missed.sum(), 1))
     put("smb1_land_raised_share_of_all_mistakes", raised.sum() / max((said != yt).sum(), 1))
     # The same border in whole numbers: height + k × speed against a threshold.
@@ -428,7 +446,9 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
                  smb3_cut=numbers["smb3_height_cut"], smb3_standing=numbers["smb3_standing_height"],
                  train=raw["smb1"]["train"], test=raw["smb1"]["test"],
                  depth_alone=raw["land_height"], not_yet=raw["land_baseline"],
-                 best_line=raw["smb1"]["best_line"])
+                 best_line=raw["smb1"]["best_line"],
+                 raised_depth=raw["raised_depth"], floor_depth=raw["floor_depth"],
+                 falling_depth=raw["falling_depth"], falling_not_yet=raw["falling_not_yet"])
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(numbers, indent=2, sort_keys=True) + "\n")
     return numbers

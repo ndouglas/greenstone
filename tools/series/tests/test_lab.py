@@ -160,10 +160,13 @@ class Experiment(unittest.TestCase):
 
     def test_the_scripts_plain_words_are_checked(self):
         good = dict(cut=176, standing=176, smb3_cut=128, smb3_standing=128, train=0.938, test=0.940,
-                    depth_alone=0.748, not_yet=0.745, best_line=0.941)
+                    depth_alone=0.748, not_yet=0.745, best_line=0.941,
+                    raised_depth=114, floor_depth=155, falling_depth=0.84, falling_not_yet=0.575)
         exp001.check_claims(**good)
         # "Adding his falling speed doesn't help a straight line here."
-        for bad in ({"cut": 170}, {"smb3_cut": 120}, {"test": 0.90}, {"depth_alone": 0.80}, {"best_line": 0.96}):
+        for bad in ({"cut": 170}, {"smb3_cut": 120}, {"test": 0.90}, {"depth_alone": 0.80}, {"best_line": 0.96},
+                    # "Landings on blocks and pipes sit further left"; "it can't tell rising from falling".
+                    {"raised_depth": 160}, {"falling_depth": 0.60}):
             with self.assertRaises(ValueError, msg=str(bad)):
                 exp001.check_claims(**{**good, **bad})
 
