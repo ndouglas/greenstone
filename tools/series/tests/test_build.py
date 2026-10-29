@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 import soundfile
 
-from series.build import CREDITS_SECONDS, build
+from series.build import CREDITS_SECONDS, SectionTooLong, build
 from series.pacing import STILLNESS
 from series.voice import TAKES
 
@@ -175,6 +175,32 @@ class Build(unittest.TestCase):
         self.assertEqual(movie.name, "001-test-storyboard.mp4")
         lines = len("The first line.") / 20 + len("The second line.") / 20
         self.assertAlmostEqual(duration(movie), lines + 2 * STILLNESS + CREDITS_SECONDS, delta=0.15)
+
+    def test_a_section_over_the_limit_stops_the_build(self):
+        root, d = videos(scene=False)
+        long = "x" * 5000  # ToneEngine: 250 s
+        (d / "script.toml").write_text(f'''
+title = "t"
+[[section]]
+kind = "chapter"
+title = "Too long"
+[[section.line]]
+id = "in"
+role = "intro"
+text = "{long}"
+framing = true
+[[section.line]]
+id = "out"
+role = "conclusion"
+text = "Done."
+framing = true
+''')
+        out = Path(tempfile.mkdtemp())
+        with contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(SectionTooLong) as e:
+                build("001-test", ToneEngine(), draft=True, storyboard=True, videos=root, out_root=out)
+        self.assertIn("chapter-1", str(e.exception))
+        self.assertFalse((out / "001-test" / "media").exists())
 
     def test_music_is_mixed_under_the_narration(self):
         root, d = videos(music='music = "MUSIC"')
