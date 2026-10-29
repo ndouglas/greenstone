@@ -21,6 +21,17 @@ against, and save states let us rewind and change one thing. Interpretability
 work rarely has an answer key; here it always does. The NES is also
 deterministic, so every result replays exactly.
 
+The series teaches interpretability as a toolkit, not only its
+mechanistic school: behavioural, attributional, probing, mechanistic,
+concept-based (representation engineering), dictionary learning and
+causal intervention, each with its strengths and blind spots. It treats
+failure as a subject ("why did it die, and what does that teach?") and
+weaves in **model organisms** from early on: small networks and agents
+built with a known flaw (reward hacking, specification gaming, goal
+misgeneralization, shortcut learning, substrate exploits, planted hidden
+goals), explored whenever a concept first can be, in a sensible order,
+without crowding the video's idea.
+
 The series also says why mechanistic interpretability is worth
 exploring at all, acknowledging the field's critics at full strength (in
 particular Hendrycks and Hiscott, "The Misguided Quest for Mechanistic

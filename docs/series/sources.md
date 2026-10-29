@@ -150,6 +150,83 @@ priority.
 The arXiv papers above are cited by number in the article; check each
 one's title and authors before citing it.
 
+## 5. Representation Engineering: A Top-Down Approach to AI Transparency
+
+Andy Zou, Long Phan, Sarah Chen, James Campbell, Phillip Guo, Richard
+Ren, Alexander Pan, Xuwang Yin, Mantas Mazeika, Ann-Kathrin Dombrowski,
+Shashwat Goel, Nathaniel Li, Michael J. Byun, Zifan Wang, Alex Mallen,
+Steven Basart, Sanmi Koyejo, Dawn Song, Matt Fredrikson, J. Zico Kolter,
+Dan Hendrycks. arXiv:2310.01405, 2023 (v4 2025).
+https://arxiv.org/abs/2310.01405 ; project page https://www.ai-transparency.org
+
+Read word for word: the abstract and sections 1 to 4.3.1. Items marked †
+come from a summary of the rest.
+
+| Concept | What the paper says | Series |
+|---|---|---|
+| Representations as the unit | Population-level patterns of activity, not single neurons or circuits, are the unit of analysis | the toolkit; RepE video |
+| Top-down vs. bottom-up | The "Hopfieldian" view (representational spaces) against the "Sherringtonian" (neurons and circuits), from cognitive neuroscience; Marr's levels | RepE video; Marr (see MoSSAIC) |
+| Concepts and functions | Concepts (truthfulness, utility, morality, emotion) vs. functions (lying, power-seeking) | RepE video |
+| Representation reading | Locating a concept's representation, for extraction and monitoring | RepE video; 008 (probing) |
+| LAT (linear artificial tomography) | Design paired stimuli that differ only in the concept, collect activity, take PCA of the differences: the first component is the "reading vector" | RepE video |
+| Other linear readers | Linear probes, difference of cluster means, K-means | 008 |
+| Four tests of a reading | Correlation, manipulation (push it), termination (remove it, like a lesion), recovery (put it back, like a rescue) | every causal claim in the series |
+| Representation control | Reading well isn't controlling well | RepE video |
+| Reading vectors, contrast vectors | Add or subtract a fixed direction; or a per-input difference from a contrastive pair (stronger) | RepE video |
+| LoRRA | Low-rank adapters trained to move representations toward contrast-vector targets | later |
+| Operators | Add/subtract, sign-gated add, projection out | RepE video |
+| Honesty results | A truthfulness direction beats few-shot prompting on TruthfulQA; a lie detector from per-token honesty scores† | RepE video |
+| Limits | Reading is correlation until tested causally; honesty isn't truthfulness; the detector fires on talk about lying†; mostly LLaMA-2 variants† | RepE video (pressure test) |
+
+## 6. Model Organisms of Misalignment
+
+Evan Hubinger (evhub), Nicholas Schiefer, Carson Denison, Ethan Perez.
+AI Alignment Forum, 2023-08-08.
+https://www.alignmentforum.org/posts/ChDH335ckdvpxXaXX/model-organisms-of-misalignment-the-case-for-a-new-pillar-of-1
+
+| Concept | What the post says | Series |
+|---|---|---|
+| Model organisms | Deliberately built, "in vitro" demonstrations of failures, so methods can be tested against a failure known to be there | woven in throughout |
+| Build failures from components | Demonstrate each piece (a misaligned goal, deception, situational awareness) in isolation, "spoonfeeding" at first and then less | woven in |
+| Smallest models first | Build an organism in the earliest, smallest model where the failure is possible | the series' NES-scale organisms |
+| Realism spectrum | From "capable when trained or prompted to" up to "appears even when training discourages it" | woven in (how real is each organism?) |
+| Phase diagram | Map which factors (training pressure, information available, compute) make a failure more likely | experiments |
+| Testing detection methods | Do oversight, red-teaming and interpretability catch a planted flaw? | every tool's pressure test |
+| Reward hacking; overriding the reward | Models that game or rewrite their reward | early (with learning) |
+| Exploiting evaluator ignorance | Using gaps in what the overseer can check | later |
+| Treacherous turn | Behaving well when watched, differently when not | later (as far as NES scale allows) |
+| Risks | Organisms could do harm (don't release them); elicited failures may work differently from natural ones | the series' honesty about what its organisms show |
+
+Our organisms are far too small to be deceptive; what they can be is
+reward hackers, specification gamers, goal misgeneralizers, shortcut
+learners, substrate exploiters, and agents with planted hidden goals.
+
+## 7. MoSSAIC: AI Safety After Mechanism
+
+Matt Farr, Aditya Arpitha Prasad, Chris Pang, Aditya Adiga, Jayson Amati,
+Sahil K. Position paper (OpenReview).
+https://openreview.net/pdf/993beec93b3578542e7ece79c71a93a6bffb17e3.pdf
+
+Read in full. Its second half ("live theory") is explicitly speculative.
+
+| Concept | What the paper says | Series |
+|---|---|---|
+| Four kinds of interpretability | Behavioural (black box), attributional (gradients, saliency), concept-based (representation engineering), mechanistic (circuits, features), after Bereska and Gavves (2024) | the toolkit, the series' spine |
+| What mechanistic explanations commit to | Causal-mechanistic, ontic (the structures are real), falsifiable, model-level (after Ayonrinde and Jaburi, 2025) | pressure tests |
+| The causal–mechanistic paradigm | The belief that decomposing a system's computation yields reliable safety claims | the critique videos |
+| Obfuscated activations | Bailey et al. (2024): attacks that keep harmful behaviour while fooling every latent-space monitor tried; rebuilt over 70 times in red-team/blue-team rounds | an organism: an agent penalized when a probe reads it |
+| The Hydra effect | McGrath et al. (2023): ablate a layer and later layers compensate (about 70% restored); "erasure" layers ease off | an experiment: self-repair in our networks |
+| Multiple realizability | The same behaviour can be realized by many internal patterns | 010 onward |
+| Two assumptions | Fixity of structure; reliability of extrapolation | the critique videos |
+| Substrate | The layered environment a system runs on (weights, architecture, OS, hardware, paradigm, economy), after Brand's pace layering | the NES as a stack of substrates |
+| Marr's three levels | Computational, algorithmic, implementation (a cash register's base-10 arithmetic) | 002 (BCD is the algorithmic level) |
+| Substrate examples | Game of Life vs. von Neumann machines; quantum vs. classical; GPUs and the hardware lottery | decide |
+| Scaffolding shift | Tools and agent frameworks move capabilities outside the model | later |
+| Architecture shifts | RNNs → transformers → Mamba; tools need reworking | the series' own architecture ladder |
+| AI-assisted evolution | Thompson's evolved FPGA circuit (1996) exploited the chip's analogue physics | an organism: an agent exploiting an emulator inaccuracy |
+| Self-modification; deep deceptiveness; diffuse deception | Systems that reshape themselves, hide from monitors, or spread a harm across components | later |
+| Substrate-independent vs. live theory | Generalizing by abstraction (Big-O) vs. by carrying specifics across contexts; speculative | decide |
+
 ## Gaps
 
 - The middle and end of the podcast transcript are summary-only (†).

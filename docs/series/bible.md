@@ -54,6 +54,50 @@ Where it lands in the videos:
 - **A representation-engineering video** teaches the top-down
   alternative on the NES.
 
+## Interpretability as a toolkit
+
+The series teaches interpretability as a whole, not one school of it.
+Each approach is a tool with its own strengths and blind spots, and the
+NES lets the series hold several of them up to the same answer key:
+
+- **Behavioural:** treat the network as a black box; test what it does.
+- **Attributional:** which inputs drove an answer (gradients, saliency).
+- **Probing:** is a variable readable inside the network?
+- **Mechanistic:** neurons, features and circuits, bottom-up.
+- **Concept-based (representation engineering):** top-down directions
+  read from contrasting examples, and used to steer.
+- **Dictionary learning (sparse autoencoders):** pull apart features
+  packed into too few neurons.
+- **Causal intervention:** change one thing (an activation, or the game
+  itself through a save state) and see what follows. Every reading is
+  tested by pushing it, removing it and restoring it.
+
+(After Bereska and Gavves, 2024, as summarized in MoSSAIC, and Zou et
+al., 2023; see `sources.md`.)
+
+## Failures and model organisms
+
+"The model didn't work" is where an investigation starts, not where it
+ends. Why did it fail, and what does that teach about learning? The
+series builds failures on purpose, too: **model organisms**
+(Hubinger et al., 2023), small networks and agents with a flaw we
+planted or know is there, so each tool can be tested against a failure
+we know exists.
+
+Our models are too small to be deceptive. They can be reward hackers,
+specification gamers, goal misgeneralizers (an agent that learned "run
+right", not "reach the flag"), shortcut learners, exploiters of the
+substrate they run on (an emulator inaccuracy a real NES wouldn't have),
+probe evaders, and agents with planted hidden goals (auditing games).
+
+Rule (Nate's): organisms are woven in from early on. A concept is
+explored with an organism whenever it first can be, in a sensible order,
+without crowding the video's one idea. 002's "cheating byte" is the
+first: a shortcut the neuron takes when we let it.
+
+Real failures we already have to dissect: the Punch-Out!! brains that
+stand still, the bank brain that does nothing, and the cheat.
+
 ## Curriculum
 
 The pilot arc. It will be revised as ideas are pressure-tested: an idea
@@ -77,8 +121,10 @@ Beyond the pilot (direction, not commitment): superposition; causal
 intervention by rewinding and editing the game; circuits; convolutional
 networks; sparse dictionaries and sparse autoencoders; representation
 engineering (the top-down alternative); the case against mechanistic
-interpretability, and the series' answer; a small transformer;
-Greenstone's own reservoir brains.
+interpretability, and the series' answer; multiple realizability
+(self-repair after ablation, probe evasion); substrates and Marr's
+levels (the NES as a stack of them); a small transformer; Greenstone's
+own reservoir brains. Model organisms are woven through all of it.
 
 ## Videos
 
