@@ -28,6 +28,19 @@ class Footage(unittest.TestCase):
         footage.update(1 / 60)
         self.assertEqual(int(footage.pixel_array[0, 0, 0]), 200)
 
+    def test_a_start_past_the_end_is_an_error(self):
+        root = Path(tempfile.mkdtemp())
+        fake_take(root)
+        with self.assertRaises(ValueError):
+            GameFootage("clip", "game", start_frame=5, root=root)
+
+    def test_running_past_the_end_warns(self):
+        root = Path(tempfile.mkdtemp())
+        fake_take(root)
+        footage = GameFootage("clip", "game", root=root)
+        with self.assertWarns(RuntimeWarning):
+            footage.update(3 / 60)
+
     def test_missing_take_names_its_own_films_record_hint(self):
         with self.assertRaises(FileNotFoundError) as e:
             GameFootage("p9-missing", "punchout", root=Path(tempfile.mkdtemp()),

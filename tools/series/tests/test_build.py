@@ -69,11 +69,13 @@ def duration(path):
     return float(json.loads(out)["format"]["duration"])
 
 
-def band_level(path, hz):
-    """Mean volume, in dB, of the audio around `hz`."""
-    err = subprocess.run(["ffmpeg", "-i", str(path), "-af", f"bandpass=f={hz}:width_type=h:w=100,volumedetect",
+def band_level(path, hz, start=0.0, length=None):
+    """Mean volume, in dB, of the audio around `hz` (optionally of a window)."""
+    trim = f"atrim=start={start}" + (f":duration={length}" if length else "")
+    err = subprocess.run(["ffmpeg", "-i", str(path), "-vn",
+                          "-af", f"{trim},bandpass=f={hz}:width_type=h:w=100,volumedetect",
                           "-f", "null", "-"], capture_output=True, text=True).stderr
-    return float(re.search(r"mean_volume: (-?[\d.]+) dB", err).group(1))
+    return float(re.search(r"mean_volume: (-?(?:[\d.]+|inf)) dB", err).group(1))  # silence is -inf
 
 
 class Build(unittest.TestCase):
@@ -90,6 +92,59 @@ class Build(unittest.TestCase):
         self.assertIn("one", report.getvalue())
         self.assertIn("stale", report.getvalue().lower())
         self.assertTrue((movie.parent / "description.txt").exists())
+
+    def test_a_missing_videoscene_fails_before_any_synthesis(self):
+        root, d = videos()
+        (d / "scene.py").write_text("from series.scene import NarratedScene\n\nclass Other(NarratedScene):\n    pass\n")
+        engine = ToneEngine()
+        engine.synthesize = lambda text, out: self.fail("synthesized before finding the scene")
+        with self.assertRaises(LookupError) as e:
+            build("001-test", engine, draft=True, videos=root, out_root=Path(tempfile.mkdtemp()))
+        self.assertIn("VideoScene", str(e.exception))
+
+    def test_takes_are_reported_even_if_the_render_fails(self):
+        root, d = videos()
+        (d / "scene.py").write_text(SCENE.replace('self.say("one")', 'raise RuntimeError("boom")'))
+        (d / TAKES).mkdir()
+        tone(d / TAKES / "one.wav", 440, 1.0)
+        (d / TAKES / "takes.toml").write_text('one = "An older first line."\n')
+        report = io.StringIO()
+        with contextlib.redirect_stdout(report), self.assertRaises(RuntimeError):
+            build("001-test", ToneEngine(), draft=True, videos=root, out_root=Path(tempfile.mkdtemp()))
+        self.assertIn("STALE", report.getvalue())
+
+    def test_a_scene_that_never_rolls_credits_fails(self):
+        root, d = videos()
+        (d / "scene.py").write_text(SCENE.replace("self.roll_credits()", "pass"))
+        with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(Exception) as e:
+            build("001-test", ToneEngine(), draft=True, videos=root, out_root=Path(tempfile.mkdtemp()))
+        self.assertIn("credits", str(e.exception))
+
+    def test_the_music_bed_loops_and_fades_out(self):
+        root, d = videos(music='music = "MUSIC"')
+        music = d / "music.wav"
+        tone(music, 1000, 1.0)  # far shorter than the video
+        (d / "script.toml").write_text((d / "script.toml").read_text().replace('"MUSIC"', f'"{music}"'))
+        with contextlib.redirect_stdout(io.StringIO()):
+            movie = build("001-test", ToneEngine(), draft=True, videos=root, out_root=Path(tempfile.mkdtemp()))
+        end = duration(movie)
+        self.assertGreater(band_level(movie, 1000, start=3.0, length=2.0), -45)
+        self.assertLess(band_level(movie, 1000, start=end - 0.2, length=0.2),
+                        band_level(movie, 1000, start=3.0, length=2.0) - 10)
+
+    def test_the_mix_does_not_clip(self):
+        root, d = videos(music='music = "MUSIC"')
+        music = d / "music.wav"
+        tone(music, 1000, 20.0, amplitude=0.99)
+        (d / "script.toml").write_text((d / "script.toml").read_text().replace('"MUSIC"', f'"{music}"'))
+        loud = ToneEngine()
+        loud.synthesize = lambda text, out: (out.parent.mkdir(parents=True, exist_ok=True),
+                                             tone(out, 440, len(text) / 20, amplitude=0.99))
+        with contextlib.redirect_stdout(io.StringIO()):
+            movie = build("001-test", loud, draft=True, videos=root, out_root=Path(tempfile.mkdtemp()))
+        err = subprocess.run(["ffmpeg", "-i", str(movie), "-af", "volumedetect", "-f", "null", "-"],
+                             capture_output=True, text=True).stderr
+        self.assertLess(float(re.search(r"max_volume: (-?[\d.]+) dB", err).group(1)), 0.0)
 
     def test_missing_music_fails_before_any_work(self):
         root, d = videos(music='music = "/nowhere/music.wav"')

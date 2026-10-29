@@ -6,7 +6,9 @@ import numpy as np
 import soundfile
 
 from series.script import load_video
-from series.voice import TAKES, take_problems, voices
+from importlib.metadata import version
+
+from series.voice import TAKES, KokoroEngine, take_problems, voices
 
 RATE = 24000
 
@@ -103,6 +105,51 @@ class Voices(unittest.TestCase):
         d = video()
         take(d, "one", "The first line.", 1.0)
         self.assertEqual(take_problems(load_video(d)), [])
+
+    def test_a_crash_mid_synthesis_leaves_nothing_cached(self):
+        v, engine = load_video(video()), FakeEngine()
+        real = engine.synthesize
+
+        def crash(text, out):
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(b"RIFF half a file")
+            raise OSError("disk full")
+
+        engine.synthesize = crash
+        with self.assertRaises(Exception):
+            voices(v, engine, self.out)
+        engine.synthesize = real
+        got, _ = voices(v, engine, self.out)
+        self.assertEqual(len(engine.calls), 2)
+        self.assertAlmostEqual(got["one"].seconds, len("The first line.") / 20, places=3)
+
+    def test_old_synthesis_is_pruned(self):
+        d, engine = video(), FakeEngine()
+        voices(load_video(d), engine, self.out)
+        (d / "script.toml").write_text(SCRIPT.replace("The first line.", "The first line, edited."))
+        voices(load_video(d), engine, self.out)
+        self.assertEqual(len(list((self.out / "tts").glob("*.wav"))), 2)
+
+    def test_a_failed_synthesis_names_the_line(self):
+        engine = FakeEngine()
+
+        def fail(text, out):
+            raise ValueError("no phonemes")
+
+        engine.synthesize = fail
+        with self.assertRaises(RuntimeError) as e:
+            voices(load_video(video()), engine, self.out)
+        self.assertIn("one", str(e.exception))
+
+    def test_kokoro_engine_names_its_version(self):
+        self.assertIn(version("kokoro"), KokoroEngine("af_heart").name)
+
+    def test_kokoro_says_when_there_is_nothing_to_pronounce(self):
+        engine = KokoroEngine("af_heart")
+        engine.pipeline = lambda text, voice: iter([])
+        with self.assertRaises(ValueError) as e:
+            engine.synthesize("...", self.out / "x.wav")
+        self.assertIn("nothing to pronounce", str(e.exception))
 
     def test_swapping_one_take_leaves_other_lines_cached(self):
         d, engine = video(), FakeEngine()

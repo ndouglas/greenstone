@@ -115,5 +115,74 @@ class Narration(unittest.TestCase):
                 render(cls, d / "media")
 
 
+class Placeholders(unittest.TestCase):
+    def test_a_zero_pad_is_allowed(self):
+        video, voices, d = fixtures({"a": 1.0, "b": 0.5})
+
+        class S(NarratedScene):
+            def construct(self):
+                self.say("a", pad=0)
+                self.say("b", pad=0)
+
+        S.video, S.voices = video, voices
+        self.assertAlmostEqual(float(probe(render(S, d / "media"), "format=duration")["format"]["duration"]),
+                               1.5, delta=0.1)
+
+    def test_placeholders_say_their_lines(self):
+        video, voices, d = fixtures({"a": 1.0, "b": 0.5})
+
+        class S(NarratedScene):
+            def construct(self):
+                self.placeholder("a")
+                self.placeholder("b")
+
+        S.video, S.voices = video, voices
+        self.assertAlmostEqual(float(probe(render(S, d / "media"), "format=duration")["format"]["duration"]),
+                               2.0, delta=0.1)
+
+    def test_a_placeholder_for_an_unknown_line_names_it(self):
+        video, voices, d = fixtures({"a": 0.5, "b": 0.5})
+
+        class S(NarratedScene):
+            def construct(self):
+                self.placeholder("zzz")
+
+        S.video, S.voices = video, voices
+        with self.assertRaises(ScriptOrderError) as e:
+            render(S, d / "media")
+        self.assertIn("zzz", str(e.exception))
+
+
+class Credits(unittest.TestCase):
+    def test_credits_are_required_when_asked(self):
+        video, voices, d = fixtures({"a": 0.5, "b": 0.5})
+
+        class S(NarratedScene):
+            require_credits = True
+
+            def construct(self):
+                self.say("a")
+                self.say("b")
+
+        S.video, S.voices = video, voices
+        with self.assertRaises(ScriptOrderError) as e:
+            render(S, d / "media")
+        self.assertIn("credits", str(e.exception))
+
+    def test_credits_come_after_every_line(self):
+        video, voices, d = fixtures({"a": 0.5, "b": 0.5})
+
+        class S(NarratedScene):
+            def construct(self):
+                self.say("a")
+                self.roll_credits()
+                self.say("b")
+
+        S.video, S.voices = video, voices
+        with self.assertRaises(ScriptOrderError) as e:
+            render(S, d / "media")
+        self.assertIn("b", str(e.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

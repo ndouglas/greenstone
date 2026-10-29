@@ -22,6 +22,8 @@ class NarratedScene(Scene):
 
     video: Video
     voices: dict[str, Voice]
+    # The build sets this, so every finished video must end on the credits.
+    require_credits = False
 
     def setup(self):
         self.camera.background_color = style.BACKGROUND
@@ -39,12 +41,15 @@ class NarratedScene(Scene):
             self.play(*animations, run_time=voice.seconds)
         else:
             self.wait(voice.seconds)
-        self.wait(pad)
+        if pad > 0:
+            self.wait(pad)
         self.said.append(line_id)
 
     def placeholder(self, line_id: str) -> None:
         """Say a line over a card standing in for its animation."""
-        line = next(l for l in self.video.lines if l.id == line_id)
+        line = next((l for l in self.video.lines if l.id == line_id), None)
+        if line is None:
+            raise ScriptOrderError(f"placeholder for {line_id!r}, which isn't a line in the script")
         rows = [Text(line.id, font=style.FONT, color=style.INPUT).scale(0.5)]
         rows.append(Text(textwrap.fill(line.text, 48), font=style.FONT, color=style.TEXT).scale(0.6))
         if line.board:
@@ -55,7 +60,12 @@ class NarratedScene(Scene):
         self.remove(card)
 
     def roll_credits(self, seconds: float = CREDITS_SECONDS) -> None:
-        """End on the sources and the disclaimer. Every video must."""
+        """End on the sources and the disclaimer, after every line. Every
+        video must."""
+        unsaid = [line.id for line in self.video.lines[len(self.said):]]
+        if unsaid:
+            raise ScriptOrderError(f"credits rolled before {', '.join(unsaid)} was said")
+        self.clear()
         card = credits(self.video)
         self.play(FadeIn(card), run_time=0.5)
         self.wait(seconds - 0.5)
@@ -65,6 +75,8 @@ class NarratedScene(Scene):
         unsaid = [line.id for line in self.video.lines[len(self.said):]]
         if unsaid:
             raise ScriptOrderError(f"the scene never says {', '.join(unsaid)}")
+        if self.require_credits and not self.credits_rolled:
+            raise ScriptOrderError("the scene never rolls the credits (call self.roll_credits() last)")
 
 
 class StoryboardScene(NarratedScene):

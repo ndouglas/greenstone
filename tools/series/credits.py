@@ -30,10 +30,12 @@ def description(video: Video) -> str:
 
 
 def credits(video: Video) -> VGroup:
-    """The end card: the sources, then the disclaimer, fitted to the frame."""
+    """The end card: the sources, shrunk to fit if there are many, then the
+    disclaimer, always at the same readable size."""
     rows = [Text("Sources", font=style.FONT, color=style.TEXT, weight="BOLD")]
     rows += [Text(textwrap.fill(f"{c.authors} ({c.year}). {c.title}.", 64), font=style.FONT, color=style.TEXT)
              for c in cited(video)]
-    rows.append(Text(textwrap.fill(DISCLAIMER, 64), font=style.FONT, color=style.TEXT, slant="ITALIC"))
-    card = VGroup(*rows).arrange(DOWN, aligned_edge=LEFT, buff=0.35)
-    return card.scale(min(0.6, 12 / card.width, 6.5 / card.height))
+    sources = VGroup(*rows).arrange(DOWN, aligned_edge=LEFT, buff=0.35)
+    sources.scale(min(0.6, 12 / sources.width, 5.0 / sources.height))
+    disclaimer = Text(textwrap.fill(DISCLAIMER, 64), font=style.FONT, color=style.TEXT, slant="ITALIC").scale(0.6)
+    return VGroup(sources, disclaimer).arrange(DOWN, aligned_edge=LEFT, buff=0.5)

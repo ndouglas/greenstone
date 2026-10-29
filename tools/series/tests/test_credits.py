@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from series.credits import DISCLAIMER, description
+from series.credits import DISCLAIMER, credits, description
 from series.script import load_video
 
 CITATIONS = '''
@@ -55,6 +55,19 @@ class Description(unittest.TestCase):
             "I'm not an expert, just a guy learning this stuff, in public. If you spot a mistake, please tell me.",
         )
         self.assertTrue(description(video()).rstrip().endswith(DISCLAIMER))
+
+
+class Card(unittest.TestCase):
+    def test_the_disclaimer_stays_readable_with_many_sources(self):
+        many = "".join(f'[s{i}]\ntitle = "Source {i}"\nauthors = "A. Author"\nyear = 2000\nurl = "https://x/{i}"\n'
+                       for i in range(30))
+        lines = "".join(f'[[line]]\nid = "l{i}"\ntext = "Line."\ncite = ["s{i}"]\n' for i in range(30))
+        d = Path(tempfile.mkdtemp()) / "001-many"
+        d.mkdir()
+        (d / "script.toml").write_text('title = "t"\n' + lines)
+        (d / "citations.toml").write_text(many)
+        crowded, sparse = credits(load_video(d))[-1], credits(video())[-1]
+        self.assertAlmostEqual(crowded.height, sparse.height, delta=sparse.height * 0.01)
 
 
 if __name__ == "__main__":
