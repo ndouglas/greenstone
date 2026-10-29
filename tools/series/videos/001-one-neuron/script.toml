@@ -122,7 +122,7 @@ cite = ["exp001"]
 
 [[section.line]]
 id = "depth"
-text = "Instead, the neuron reads a different number from the game's memory: Mario's depth, meaning how far down the screen he is, counted in the tiny dots the picture is made of. A bigger depth means lower on the screen."
+text = "Instead, the neuron reads a different number from the game's memory: Mario's depth, meaning how far down the screen he is, counted in the tiny dots the picture is made of, from near the top. A bigger depth means lower on the screen."
 board = "Footage: a ruler down the screen whose zero starts 32 dots below the top, so its reading at Mario's feet is the game's depth number; it follows him as he jumps"
 cite = ["datacrystal-smb1", "nesdev-oam", "exp001"]
 
@@ -312,7 +312,7 @@ cite = ["exp001"]
 [[section.line]]
 id = "testing-end"
 role = "conclusion"
-text = "So it goes wrong because all it knows about is the floor. But other questions need two numbers to answer well, and to write a neuron that reads two, we need the recipe."
+text = "So it goes wrong because all it knows about is the floor. A harder question needs two numbers, and for that we need the recipe."
 board = "A new question mark beside the neuron, and an empty second input slot"
 cite = ["exp001"]
 
@@ -414,7 +414,7 @@ pause = 1.0
 [[section.line]]
 id = "why-zero-2b"
 text = "Since one times the bias is just the bias, the bias can be treated as one more weight, on an input that's always one."
-board = "b turns into w₀ × 1: a weight on a new input fixed at 1"
+board = "b becomes a weight on a new input fixed at 1"
 cite = ["bishop2006"]
 
 [[section.line]]
@@ -431,7 +431,7 @@ title = "Drawing it"
 [[section.line]]
 id = "draw-intro"
 role = "intro"
-text = "Soon we'll want to turn a neuron's messy numbers into simple ones. Drawing the neuron as a line shows which changes leave its answers exactly the same."
+text = "Soon we'll want to turn a neuron's messy numbers into simple ones. Drawing the neuron as a line shows a change that leaves its answers exactly the same."
 board = "Empty axes fade in beside the formula"
 framing = true
 
@@ -497,8 +497,16 @@ cite = ["bishop2006"]
 
 [[section.line]]
 id = "one-dot-4b"
-text = "Here, zero matters. Any fixed number gives a neuron the same answers, but only a test against zero survives this tripling: test against 100 instead, and a total of 50, a no, becomes 150, a yes."
-spoken = "Here, zero matters. Any fixed number gives a neuron the same answers, but only a test against zero survives this tripling: test against a hundred instead, and a total of fifty, a no, becomes a hundred and fifty, a yes."
+text = "Here, zero matters. In the last chapter, moving the 100 into the bias gave the same answers as testing against 100."
+spoken = "Here, zero matters. In the last chapter, moving the hundred into the bias gave the same answers as testing against a hundred."
+board = "The last chapter's '> 100' sliding into the bias, small, in a corner"
+cite = ["bishop2006"]
+pause = 1.0
+
+[[section.line]]
+id = "one-dot-4c"
+text = "Tripling is different. Test against 100 instead of zero, and a total of 50, a no, becomes 150, a yes. Only a test against zero survives tripling."
+spoken = "Tripling is different. Test against a hundred instead of zero, and a total of fifty, a no, becomes a hundred and fifty, a yes. Only a test against zero survives tripling."
 board = "'> 100': a total of 50 below the 100 mark, tripled to 150, above it"
 cite = ["bishop2006"]
 pause = 3.0
@@ -523,7 +531,7 @@ title = "Two numbers"
 [[section.line]]
 id = "two-intro"
 role = "intro"
-text = "Here's a new question, one where a single number really isn't enough: will Mario land soon? At the same depth, he might be rising or falling."
+text = "Here's a new question, one where depth alone really isn't enough: will Mario land soon? At the same depth, he might be rising or falling."
 board = "Two Marios at the same depth, one rising, one falling"
 cite = ["exp001"]
 
@@ -568,13 +576,13 @@ cite = ["exp001"]
 [[section.line]]
 id = "the-corner"
 text = "The moments just before a landing on the floor gather toward the top right: deep on the screen, and falling fast."
-board = "The 'lands soon' points on the floor light up in the top right"
+board = "The moments that really did land on the floor soon light up in the top right"
 cite = ["exp001"]
 
 [[section.line]]
 id = "the-corner-2"
 text = "Landings on blocks and pipes sit further left on the map, at smaller depths, because blocks and pipes are higher up the screen."
-board = "The 'lands soon' points on blocks and pipes light up, in a different colour, further left"
+board = "The moments that really did land on blocks and pipes soon light up, in a different colour, further left"
 cite = ["exp001"]
 
 [[section.line]]
@@ -821,7 +829,7 @@ cite = ["exp001"]
 id = "land-results-4"
 text = "The leaning border, using both, gets {smb1_land_whole_accuracy}."
 spoken = "The leaning border, using both, gets {smb1_land_whole_accuracy_spoken}."
-board = "A third bar at {smb1_land_whole_accuracy}"
+board = "A fourth bar at {smb1_land_whole_accuracy}"
 cite = ["exp001"]
 pause = 3.0
 
