@@ -127,5 +127,34 @@ framing = true
         self.assertIsNone(load_video(video('title = "t"\n' + base)).music)
 
 
+class Numbers(unittest.TestCase):
+    def test_numbers_fill_the_script(self):
+        d = video('''
+title = "t"
+[[line]]
+id = "a"
+text = "It was right {accuracy} of the time."
+spoken = "It was right {accuracy_spoken} of the time."
+framing = true
+''')
+        (d / "numbers.json").write_text('{"accuracy": "93%", "accuracy_spoken": "ninety-three percent"}')
+        line = load_video(d).lines[0]
+        self.assertEqual(line.text, "It was right 93% of the time.")
+        self.assertEqual(line.voiced, "It was right ninety-three percent of the time.")
+
+    def test_an_unknown_number_names_the_line(self):
+        d = video('''
+title = "t"
+[[line]]
+id = "result"
+text = "It was right {accuracy} of the time."
+framing = true
+''')
+        with self.assertRaises(ScriptError) as e:
+            load_video(d)
+        self.assertIn("result", str(e.exception))
+        self.assertIn("accuracy", str(e.exception))
+
+
 if __name__ == "__main__":
     unittest.main()
