@@ -17,3 +17,7 @@ roms2/*.nes
 
 # Superpowers plan workspaces
 /.superpowers/
+
+# The series' Python environment, and recorded narration takes
+/tools/series/.venv/
+/tools/series/videos/*/takes/

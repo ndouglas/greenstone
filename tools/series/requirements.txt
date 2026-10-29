@@ -1,0 +1,4 @@
+kokoro==0.9.4
+manim==0.22.1
+numpy==2.5.4
+soundfile==0.14.0
