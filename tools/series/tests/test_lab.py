@@ -95,6 +95,10 @@ class Experiment(unittest.TestCase):
         self.assertGreater(acc, 0.97)
         self.assertGreater(exp001.accuracy(w, b, x, y), 0.97)
 
+    def test_a_setting_counts_as_every_sessions_only_if_all_agree(self):
+        self.assertEqual(exp001.agreed_cut([176.0, 176.0, 176.0]), 176)
+        self.assertIsNone(exp001.agreed_cut([176.0, 170.0, 176.0]))
+
     def test_numbers_have_spoken_forms(self):
         self.assertEqual(exp001.spoken_number(176), "one hundred and seventy-six")
         self.assertEqual(exp001.spoken_number(1300), "one thousand three hundred")

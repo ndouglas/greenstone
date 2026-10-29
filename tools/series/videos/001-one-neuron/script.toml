@@ -114,6 +114,13 @@ board = "A second bar at 94%, beside the first"
 cite = ["exp001"]
 
 [[line]]
+id = "not-a-fluke"
+text = "Testing on a session the setting wasn't chosen on is how we check for a fluke: a lucky fit to the first two sessions would have shown up here. And choosing the setting on any one session by itself lands on {smb1_every_session_cut} every time."
+spoken = "Testing on a session the setting wasn't chosen on is how we check for a fluke: a lucky fit to the first two sessions would have shown up here. And choosing the setting on any one session by itself lands on {smb1_every_session_cut_spoken} every time."
+board = "Three session strips side by side; each one's own best setting lights up, and all three land on 176"
+cite = ["exp001"]
+
+[[line]]
 id = "its-mistakes"
 text = "{smb1_mistakes_on_ground_above_floor} of its mistakes come when Mario is standing on top of something, a block or a pipe. Then he's on the ground, but above the floor, so the neuron says he's in the air."
 spoken = "{smb1_mistakes_on_ground_above_floor_spoken} of its mistakes come when Mario is standing on top of something, a block or a pipe. Then he's on the ground, but above the floor, so the neuron says he's in the air."
@@ -225,9 +232,9 @@ board = "A second memory square lights up, negative as Mario rises, positive as 
 cite = ["datacrystal-smb1", "exp001"]
 
 [[line]]
-id = "the-sheet"
-text = "Picture every moment Mario was in the air as a dot on a sheet of paper, with his depth along the bottom, bigger to the right, and his falling speed up the side, bigger toward the top. Rising moments sit below the middle of the sheet, and falling ones above it."
-board = "The sheet: depth across, bigger to the right; falling speed up, zero in the middle; real dots"
+id = "the-map"
+text = "Picture a map of every moment Mario was in the air, one dot for each moment, with his depth along the bottom, bigger to the right, and his falling speed up the side, bigger toward the top. Rising moments sit below the middle of the map, and falling ones above it."
+board = "The map: depth across, bigger to the right; falling speed up, zero in the middle; real dots"
 cite = ["exp001"]
 
 [[line]]
@@ -238,14 +245,14 @@ cite = ["exp001"]
 
 [[line]]
 id = "the-border"
-text = "A neuron reading both numbers splits that sheet with a straight border. Along the border, its total comes out exactly zero. On the top-right side the total is above zero, and the neuron says \"lands soon\". On the other side it's below zero: \"not yet\"."
-spoken = "A neuron reading both numbers splits that sheet with a straight border. Along the border, its total comes out exactly zero. On the top-right side the total is above zero, and the neuron says lands soon. On the other side it's below zero: not yet."
-board = "The border drawn across the sheet; the top-right side shaded 'lands soon'"
+text = "A neuron reading both numbers splits that map with a straight border. Along the border, its total comes out exactly zero. On the top-right side the total is above zero, and the neuron says \"lands soon\". On the other side it's below zero: \"not yet\"."
+spoken = "A neuron reading both numbers splits that map with a straight border. Along the border, its total comes out exactly zero. On the top-right side the total is above zero, and the neuron says lands soon. On the other side it's below zero: not yet."
+board = "The border drawn across the map; the top-right side shaded 'lands soon'"
 cite = ["bishop2006", "exp001"]
 
 [[line]]
 id = "settings-are-borders"
-text = "Our first neuron had a border too: its setting was one point along the depths, with yes on one side and no on the other. A neuron reading only depth would draw a straight up-and-down border on this sheet. One reading only falling speed would draw a level one. Reading both, the border can lean."
+text = "Our first neuron had a border too: its setting was one point along the depths, with yes on one side and no on the other. A neuron reading only depth would draw a straight up-and-down border on this map. One reading only falling speed would draw a level one. Reading both, the border can lean."
 board = "An up-and-down border, then a level one, then the leaning one between them"
 cite = ["bishop2006"]
 
@@ -253,13 +260,20 @@ cite = ["bishop2006"]
 id = "how-found"
 text = "To find its border, a program tried a great many leaning borders on the first two sessions and kept the one that most often matched whether he really landed within the next {smb1_land_within} frames, the same way as the first setting. A neuron adjusting its own weights, a little after each mistake, is a later video."
 spoken = "To find its border, a program tried a great many leaning borders on the first two sessions and kept the one that most often matched whether he really landed within the next {smb1_land_within_spoken} frames, the same way as the first setting. A neuron adjusting its own weights, a little after each mistake, is a later video."
-board = "Borders sweep and rotate across the sheet from the first two sessions; one stays"
+board = "Borders sweep and rotate across the map from the first two sessions; one stays"
 cite = ["exp001"]
 
 [[line]]
+id = "one-dot"
+text = "Before writing its border down, one useful fact. Go back to the first graph, of the total against the depth, and multiply the weight and the bias by ten. The line gets ten times steeper, but it still crosses zero at {smb1_height_cut}, and that crossing is all the answer depends on. So every answer stays the same. It works for any neuron: multiplying every weight and the bias by the same positive amount never changes an answer."
+spoken = "Before writing its border down, one useful fact. Go back to the first graph, of the total against the depth, and multiply the weight and the bias by ten. The line gets ten times steeper, but it still crosses zero at {smb1_height_cut_spoken}, and that crossing is all the answer depends on. So every answer stays the same. It works for any neuron: multiplying every weight and the bias by the same positive amount never changes an answer."
+board = "The first graph returns; the line steepens tenfold, pivoting about a lit dot at (176, 0) that never moves"
+cite = ["bishop2006"]
+
+[[line]]
 id = "the-tilt"
-text = "Here is the border it found, written with whole numbers. Multiplying every weight and the bias by the same positive amount doesn't move the border, because every total gets multiplied too, so it's above zero in exactly the same places. So we scaled them until the depth's weight was one, then rounded: weights of one for the depth and {smb1_land_speed_weight} for the falling speed, and a bias of minus {smb1_land_threshold}. If the total is above zero, he lands soon."
-spoken = "Here is the border it found, written with whole numbers. Multiplying every weight and the bias by the same positive amount doesn't move the border, because every total gets multiplied too, so it's above zero in exactly the same places. So we scaled them until the depth's weight was one, then rounded: weights of one for the depth and {smb1_land_speed_weight_spoken} for the falling speed, and a bias of minus {smb1_land_threshold_spoken}. If the total is above zero, he lands soon."
+text = "So we were free to scale the border's numbers. We scaled them until the depth's weight was one, then rounded: weights of one for the depth and {smb1_land_speed_weight} for the falling speed, and a bias of minus {smb1_land_threshold}. If the total is above zero, he lands soon."
+spoken = "So we were free to scale the border's numbers. We scaled them until the depth's weight was one, then rounded: weights of one for the depth and {smb1_land_speed_weight_spoken} for the falling speed, and a bias of minus {smb1_land_threshold_spoken}. If the total is above zero, he lands soon."
 board = "1 × depth + 5 × falling speed − 152 > 0, colour-coded, beside the border"
 cite = ["exp001", "bishop2006"]
 
@@ -279,8 +293,8 @@ framing = true
 
 [[line]]
 id = "steady-trade"
-text = "On the sheet, the border drops one step of falling speed for every {smb1_land_speed_weight} steps of depth, at the same rate everywhere. That steady trade is why it's straight. In words: the further above the floor Mario is, the faster he has to be falling to land on it in time."
-spoken = "On the sheet, the border drops one step of falling speed for every {smb1_land_speed_weight_spoken} steps of depth, at the same rate everywhere. That steady trade is why it's straight. In words: the further above the floor Mario is, the faster he has to be falling to land on it in time."
+text = "On the map, the border drops one step of falling speed for every {smb1_land_speed_weight} steps of depth, at the same rate everywhere. That steady trade is why it's straight. In words: the further above the floor Mario is, the faster he has to be falling to land on it in time."
+spoken = "On the map, the border drops one step of falling speed for every {smb1_land_speed_weight_spoken} steps of depth, at the same rate everywhere. That steady trade is why it's straight. In words: the further above the floor Mario is, the faster he has to be falling to land on it in time."
 board = "A dot slides along the border: one step down in speed for five steps right in depth"
 cite = ["exp001"]
 
@@ -308,8 +322,8 @@ cite = ["exp001"]
 
 [[line]]
 id = "the-idea"
-text = "One neuron multiplies each input by a weight, adds them up with a bias, and says yes if the total is above zero. On the sheet of its inputs, that's a straight border: yes on one side, no on the other. That's everything inside it. We can see all of it, and we know exactly what it does."
-board = "The border across the sheet, yes on one side, no on the other"
+text = "One neuron multiplies each input by a weight, adds them up with a bias, and says yes if the total is above zero. On the map of its inputs, that's a straight border: yes on one side, no on the other. That's everything inside it. We can see all of it, and we know exactly what it does."
+board = "The border across the map, yes on one side, no on the other"
 framing = true
 
 [[line]]

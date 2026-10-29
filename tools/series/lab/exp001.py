@@ -113,6 +113,11 @@ def best_cut(v: np.ndarray, y: np.ndarray) -> tuple[float, float]:
     return best[1], best[0]
 
 
+def agreed_cut(cuts: list[float]) -> int | None:
+    """The setting each session chose on its own, if they all chose the same one."""
+    return int(cuts[0]) if len(set(cuts)) == 1 else None
+
+
 def best_line(x: np.ndarray, y: np.ndarray, angles: int = 360) -> tuple[np.ndarray, float, float]:
     """The best straight line through two inputs: every direction tried, and
     for each, every cut along it. Returns w, b (in the inputs' own units)
@@ -150,6 +155,14 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
         put(f"{game}_baseline", max(yt.mean(), 1 - yt.mean()))
         cut, _ = best_cut(x[:, 0], y)
         put_int(f"{game}_height_cut", int(cut))
+        # A fluke of the first two sessions would show up as a session that,
+        # on its own, chooses a different setting. Missing if any does.
+        each = []
+        for r in train + test:
+            xs, ys = features(game, [r])
+            each.append(best_cut(xs[:, 0], ys)[0])
+        if (agreed := agreed_cut(each)) is not None:
+            put_int(f"{game}_every_session_cut", agreed)
         put(f"{game}_height_accuracy", accuracy(np.array([-1.0]), cut, xt[:, :1], yt))
         put(f"{game}_air_rate", yt.mean())
         if x.shape[1] == 2:

@@ -70,3 +70,73 @@ Applied (Nate approved both): new line `why-zero` after `bias-is-setting`;
 `school` moved to after `example-ground` and rewritten around the total-vs-
 depth graph; the old two-number `school` line cut to `bias-slides`. Script
 2,096 → 2,106 words.
+
+### Round 2: claims
+
+**Q4 (scale weights and bias by ten).** Nate: the border becomes steeper
+and moves left. Wrong, and the script states the right answer (line
+`the-tilt`: scaling doesn't move the border) without making it
+stick. His answer is right about the *total's* graph (ten times steeper,
+starting at 1,760) and wrong about the *border* (where it crosses zero:
+still 176). Finding: two different lines (the total's graph and the border)
+are easy to conflate, and the new `school` line introduces the first just
+before the second. Proposed change: show the scaling on the total's graph,
+where it visibly pivots about the zero crossing, and say the two lines apart.
+
+**Q5–Q7 (the 94%).** Nate couldn't place "94%" after one reading. Partly the
+question's fault (no cue), but the script has twelve percentages
+(55, 94, 88, 87, 50, 92, 67, 75, 75, 84, 91, 85). Lay-viewer finding: too
+many numbers to hold; consider fewer, or a persistent on-screen scoreboard.
+Q6 was worded unclearly. All three re-asked with cues.
+
+**Q4 follow-up.** Nate's two ideas: (a) explain the steepening, then point
+out that all we care about is one dot, where the line crosses zero; (b) two
+views, one holding the axes still and moving the line, the other holding
+the border still as a horizon and turning the points around it. Proposed:
+(a) for 001; (b) parked in the bible (it is projection onto the weight
+direction, a later video's picture).
+
+**Q5 (re-asked with cues: why isn't the 94% a fluke?).** Nate: no idea.
+Finding: the script says the test session is new play, but never says that
+is how we check for a fluke, and gives no other evidence. Checked
+(SMB1, cut chosen on sessions 1–2): 93.7% / 94.0% / 94.0% on sessions 1/2/3;
+choosing the cut on any one session alone also gives 176; the rule-teacher
+recording (a different style of play) gets 91.3% with it. SMB3 (128) and
+Castlevania (176) likewise pick the same cut on every session. Proposed: a
+line saying so, with the numbers added to exp001's numbers.json.
+
+**Q6.** Nate: Mario would have to spend more time standing somewhere other
+than the floor. Correct.
+
+**Q7.** Nate: standing on a pipe, block, Goomba. Correct (the script says
+block or pipe).
+
+### Round 3: hearing it
+
+**Q11 (describe the two-number sheet).** Nate: "What two-number sheet?"
+Finding: the script's "sheet of paper" (line `the-sheet`, every in-the-air
+moment as a dot, depth along the bottom, falling speed up the side) didn't
+stick under that name after one reading, though it carries the whole second
+half. His Q12 answer calls something "the graph"; he read the script before
+the `school` change, so that must be the sheet. Risk: the script now has
+two graphs (the total against depth, and the sheet), so each needs a name
+that can't be confused with the other. Follow-up asked.
+
+**Q12 (where did you stop to work something out?).** Nate: picturing the
+graph and what it means, and why a negative weight works the way it does.
+The negative weight is explained once (`our-numbers`: "like the thermostat,
+its yes is below the setting"); the new total-vs-depth graph may carry it
+(a negative weight is a line going down), to be checked with him.
+
+**Q11 follow-up.** Nate: "the sheet isn't in the script" (it is, once, as
+"a sheet of paper" in `the-sheet`, which is the finding). 11a: yes, his
+"graph" was the sheet; unsure of a name (distribution? population? data?).
+Ruling: "the map" (a map of every moment), plain and distinct from "the
+graph" of the total; recorded in the bible's visual language. 12a: the
+negative weight still benefits from the thermostat; kept.
+
+Applied (Nate approved): `not-a-fluke` after `result` (backed by the new
+`{game}_every_session_cut` numbers: each session alone picks 176, 128, 176);
+`one-dot` before `the-tilt`, which now just scales; sheet → map throughout
+(`the-sheet` → `the-map`). Script 2,106 → 2,201 words (~12:35): over the
+12-minute ceiling, to trim.

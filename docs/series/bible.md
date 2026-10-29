@@ -222,6 +222,13 @@ One consistent look per concept, so the eye learns it. The palette and
 fonts live in `tools/series/style.py`, for Nate's review in the pilot:
 input, weight, bias and output each keep their colour in every video.
 
+Two names that must never blur (from Nate's interview on 001): **the
+graph** is the neuron's total plotted against one input, a line whose zero
+crossing is the setting; **the map** is the inputs themselves, one dot per
+moment, which a border splits. Parked for when a video needs it (projection
+onto the weights): Nate's picture of the map turning about a border held
+still as a horizon, so every dot's height above it is its total.
+
 ## Rules
 
 - One narrow idea per video, with total clarity on it by the end.
