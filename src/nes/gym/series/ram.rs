@@ -232,6 +232,25 @@ mod tests {
   }
 
   #[test]
+  fn smb1_small_marios_feet_are_32_dots_below_his_depth() {
+    // The sprite table's copy in RAM: Mario's sprites (up to eight, for big
+    // Mario) start at the offset the game keeps at $06E4; unused ones are
+    // parked offscreen at $F8. Each sprite's first byte is its top row minus
+    // one, so a lower sprite at d + 24 covers rows d + 25..=d + 32.
+    let Some(rom) = rom_or_skip(SMB1.rom) else { return };
+    let mut emu = SMB1.boot(&rom).unwrap();
+    for _ in 0..30 {
+      emu.step_frame(0);
+    }
+    let depth = emu.ram_read(smb1::Y) as u16;
+    let offset = emu.ram_read(0x06E4) as u16;
+    let ys: Vec<u16> = (0..8).map(|k| emu.ram_read(0x0200 + offset + 4 * k) as u16).collect();
+    let lowest = ys.iter().copied().filter(|&y| y < 0xEF).max().unwrap();
+    assert_eq!(depth, 176, "Mario isn't standing on the floor");
+    assert_eq!(lowest + 8, depth + 32);
+  }
+
+  #[test]
   fn smb1_score_digits_read_as_the_score() {
     let Some(rom) = rom_or_skip(SMB1.rom) else { return };
     let mut emu = SMB1.boot(&rom).unwrap();
