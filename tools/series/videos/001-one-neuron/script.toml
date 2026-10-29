@@ -6,7 +6,7 @@ title = "001: One neuron draws a line"
 id = "memory"
 text = "A Nintendo Entertainment System's main working memory holds two thousand and forty-eight numbers, each between zero and two hundred and fifty-five, changing many times a second while a game runs."
 board = "An NES; its 2,048 bytes of work RAM as a grid of numbers, changing as Mario runs"
-cite = ["nesdev-memory"]
+cite = ["nesdev-memory", "exp001"]
 
 [[line]]
 id = "nobody-knows"
@@ -36,13 +36,13 @@ framing = true
 
 [[line]]
 id = "thermostat"
-text = "Begin with something you already know: a thermostat. It reads one number, the temperature, and compares it with its setting. Below the setting, the heat comes on. Above it, the heat goes off."
+text = "Begin with something you already know: picture a simple thermostat. It reads one number, the temperature, and compares it with its setting. Below the setting, the heat comes on. Above it, the heat goes off."
 board = "A thermometer with a marked setting; the heat icon lights below it, goes dark above it"
 framing = true
 
 [[line]]
 id = "simplest-neuron"
-text = "The simplest kind of artificial neuron, called a threshold unit, works the same way: it takes in numbers, adds them up, compares the total with a setting, and answers yes or no. Given just one number, it's a thermostat."
+text = "The simplest kind of artificial neuron does something similar: it takes in numbers, gives each one a weight, adds them up, compares the total with a setting, and answers yes or no. Given just one number, with a weight of one, it's a thermostat."
 board = "The thermometer becomes a number line with one mark; yes on one side, no on the other"
 cite = ["goodfellow2016-ch1", "rosenblatt1958"]
 
@@ -138,7 +138,7 @@ cite = ["datacrystal-cv", "exp001"]
 
 [[line]]
 id = "why-weights"
-text = "A thermostat reads one number. A neuron can read several, and each one gets a multiplier of its own, called a weight, which says how much that number counts, and which way it pushes the answer."
+text = "Those weights are the new part. A thermostat reads one number, but a neuron can read several, and each one's weight is a multiplier that says how much that number counts, and which way it pushes the answer."
 board = "The neuron box: one input, then a second input slot appears, each with a multiplier"
 cite = ["goodfellow2016-ch1"]
 
@@ -146,20 +146,20 @@ cite = ["goodfellow2016-ch1"]
 id = "recipe"
 text = "Here's the full recipe. Take each input, x, and multiply it by its weight, w. Add up the results. Add one more number, called the bias, b. If the total is above zero, the answer is yes."
 board = "x, w and b each appear and are labelled in turn; the total, and a light for yes"
-cite = ["goodfellow2016-ch1", "rosenblatt1958"]
+cite = ["goodfellow2016-ch1", "goodfellow2016", "bishop2006"]
 
 [[line]]
 id = "formula"
 text = "With one input, that's w·x + b > 0."
 spoken = "With one input, that's: w times x, plus b, is above zero."
 board = "w·x + b > 0 assembles, w in orange, x in blue, b in purple"
-cite = ["goodfellow2016-ch1"]
+cite = ["goodfellow2016", "bishop2006"]
 
 [[line]]
 id = "bias-is-setting"
 text = "The bias takes over the job the thermostat's setting did. Instead of comparing with a setting, the neuron adds the bias and compares with zero."
 board = "The thermostat's setting slides over and becomes the b in the formula"
-cite = ["goodfellow2016-ch1"]
+cite = ["goodfellow2016", "bishop2006"]
 
 [[line]]
 id = "our-numbers"
@@ -208,7 +208,7 @@ cite = ["exp001"]
 id = "two-inputs"
 text = "This neuron reads his depth and a second number from the game's memory: his falling speed. It's positive while he falls and negative while he rises."
 board = "A second memory square lights up, negative as Mario rises, positive as he falls"
-cite = ["datacrystal-smb1"]
+cite = ["datacrystal-smb1", "exp001"]
 
 [[line]]
 id = "the-sheet"
@@ -227,18 +227,18 @@ id = "the-border"
 text = "A neuron reading both numbers splits that sheet with a straight border. Along the border, its total comes out exactly zero. On the top-right side the total is above zero, and the neuron says \"lands soon\". On the other side it's below zero: \"not yet\"."
 spoken = "A neuron reading both numbers splits that sheet with a straight border. Along the border, its total comes out exactly zero. On the top-right side the total is above zero, and the neuron says lands soon. On the other side it's below zero: not yet."
 board = "The border drawn across the sheet; the top-right side shaded 'lands soon'"
-cite = ["goodfellow2016-ch1", "rosenblatt1958"]
+cite = ["bishop2006", "exp001"]
 
 [[line]]
 id = "settings-are-borders"
 text = "Our first neuron had a border too: its setting was one point along the depths, with yes on one side and no on the other. A neuron reading only depth would draw a straight up-and-down border on this sheet. One reading only falling speed would draw a level one. Reading both, the border can lean."
 board = "An up-and-down border, then a level one, then the leaning one between them"
-framing = true
+cite = ["bishop2006"]
 
 [[line]]
 id = "the-tilt"
-text = "Here is the border we found, rounded to whole numbers: one times the depth, plus {smb1_land_speed_weight} times the falling speed, minus {smb1_land_threshold}. Weights of one and {smb1_land_speed_weight}, and a bias of minus {smb1_land_threshold}. If that total is above zero, he lands soon."
-spoken = "Here is the border we found, rounded to whole numbers: one times the depth, plus {smb1_land_speed_weight_spoken} times the falling speed, minus {smb1_land_threshold_spoken}. Weights of one and {smb1_land_speed_weight_spoken}, and a bias of minus {smb1_land_threshold_spoken}. If that total is above zero, he lands soon."
+text = "Here is the border we found, written with whole numbers. Multiplying every weight and the bias by the same positive amount doesn't move the border at all, so we scaled them until the depth's weight was one, then rounded: one times the depth, plus {smb1_land_speed_weight} times the falling speed, minus {smb1_land_threshold}. If that total is above zero, he lands soon."
+spoken = "Here is the border we found, written with whole numbers. Multiplying every weight and the bias by the same positive amount doesn't move the border at all, so we scaled them until the depth's weight was one, then rounded: one times the depth, plus {smb1_land_speed_weight_spoken} times the falling speed, minus {smb1_land_threshold_spoken}. If that total is above zero, he lands soon."
 board = "1 × depth + 5 × falling speed − 152 > 0, colour-coded, beside the border"
 cite = ["exp001"]
 
@@ -264,10 +264,10 @@ cite = ["exp001"]
 
 [[line]]
 id = "school"
-text = "If you remember y = mx + b from school, m set how steep a line is, and b where it crossed the side. The border is the same kind of line: its steepness comes from how the two weights compare, and the bias slides it. The letters don't match one for one, but the idea does."
-spoken = "If you remember y equals m x plus b from school, m set how steep a line is, and b where it crossed the side. The border is the same kind of line: its steepness comes from how the two weights compare, and the bias slides it. The letters don't match one for one, but the idea does."
+text = "If you remember y = mx + b from school, m was a line's steepness. Work out our border for the falling speed, and its steepness is minus one fifth: down one step for every five across, the trade you just saw. Changing the bias slides the border up or down without changing its steepness, the way changing b did in school, though the two b's aren't the same number."
+spoken = "If you remember y equals m x plus b from school, m was a line's steepness. Work out our border for the falling speed, and its steepness is minus one fifth: down one step for every five across, the trade you just saw. Changing the bias slides the border up or down without changing its steepness, the way changing b did in school, though the two b's aren't the same number."
 board = "The border's steepness changes as one weight changes; then it slides, keeping its steepness, as the bias changes"
-cite = ["openstax-linear"]
+cite = ["openstax-linear", "exp001"]
 
 [[line]]
 id = "how-found"
@@ -305,7 +305,7 @@ framing = true
 
 [[line]]
 id = "modern"
-text = "Today's artificial neurons are close cousins. They start from the same kind of weighted sum, usually with a bias, but a common kind passes on a number instead of a bare yes or no: bigger the further past the border, and zero on the other side."
+text = "Today's artificial neurons are close cousins. They start from the same kind of weighted sum, usually with a bias, but they pass on a number instead of a bare yes or no. In one common kind, for years the standard choice, that number grows the further past the border the inputs are, and is zero on the other side."
 board = "The yes/no light becomes a dial that rises the further past the border a dot sits, and reads zero on the no side"
 cite = ["goodfellow2016"]
 

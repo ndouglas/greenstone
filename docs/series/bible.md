@@ -115,7 +115,7 @@ up. Numbers are plain whole numbers, never sub-numbered.
 
 | # | The one idea | Games and moments (examples) |
 |---|---|---|
-| 001 | One neuron draws a line (w·x + b, slope and intercept; a balance scale) | "Is Mario in the air?" from two numbers; across several games |
+| 001 | One neuron draws a line (w·x + b, slope and intercept; a balance scale) | "Is Mario in the air?" from his depth, in three games; "will he land soon?" from depth and falling speed |
 | 002 | When the line lies: the assumptions a single neuron makes | ID bytes, BCD scores (Tetris), a wrapping frame counter, the "cheating" byte; place value (moved from 001): Mario's score digits read by weights of a million down to ten, and why Tetris's two-digits-per-byte breaks it |
 | 003 | Learning is nudging the line after each mistake | The same neuron, learning |
 | 004 | Some questions no single line can answer | Mario's speed says "in the air" only when it isn't zero, on either side: two cuts, 97% (from 001's experiments), which no one neuron can draw |
@@ -139,41 +139,40 @@ own reservoir brains. Model organisms are woven through all of it.
 
 ### 001: One neuron draws a line
 
+The script is `tools/series/videos/001-one-neuron/script.toml`; its
+experiments and their results are in `docs/series/games/001.md`.
+
 - **The one idea:** a single neuron multiplies each input by a weight,
-  adds them and a bias, and says yes or no by which side of zero the
-  total lands. With two inputs, that is a line across a picture of all
-  possible inputs (w·x + b, which is school's y = mx + b in disguise).
-- **Prerequisites:** none. Algebra and code are introduced here as they're
-  needed.
-- **Introduces:** input, weight, bias, w·x + b, the decision line, yes/no
-  output; the perceptron as a balance scale; place value as a neuron.
+  adds them and a bias, and says yes if the total is above zero. On a
+  picture of its inputs, that's a straight border (school's y = mx + b is
+  the same kind of line).
+- **Prerequisites:** none. Algebra is introduced as it's needed.
+- **Introduces:** input, weight, bias, w·x + b, the border, yes/no
+  output; the balance scale; depth and falling speed as numbers in a
+  game's memory; the answer key; testing on a session the setting wasn't
+  chosen on.
 - **Callbacks:** none (first video).
-- **Games:** Super Mario Bros. for "is Mario in the air?"; at least two
-  more games asking a question of the same shape (`docs/series/games/001.md`).
-- **The line is chosen by search from outside, not learned** (pass 7, revised: the setting and the landing border are found by trying every value or many borders on recordings 1–2, then tested on 3): learning is 003's
-  idea, and a learned line in 001 would be a handwave. The viewer sees
-  the scatter of two numbers from Mario's memory (conceptually his
-  height and his vertical speed; the addresses are in the games file),
-  coloured by the answer key, and a line placed by eye.
-- **Experiments:** the hand-placed line tested on a recording it has
-  never seen (a behavioural test, unnamed); each input's contribution
-  shown as the blocks on the balance scale (attribution, unnamed); the
-  same question in other games; a score read by place value as "a neuron
-  can read a number"; the thermostat (one input) as the opener.
-- **Said out loud:** this is the only neuron in the series we'll
-  understand completely; every later video falls short of it on
-  purpose.
+- **Games:** Super Mario Bros., Super Mario Bros. 3, Castlevania.
+- **Chosen by search from outside, not learned** (pass 7, revised):
+  every setting tried on recordings 1–2, the best kept and tested on 3;
+  the landing border found the same way among many leaning borders.
+  Learning (a neuron adjusting its own weights) is 003.
+- **Experiments:** "is Mario in the air?" from his depth alone (a
+  setting; 94% against 55%), in three games; "will he land within 10
+  frames?" from depth and falling speed (a leaning border; 91% against
+  75%), written in whole numbers as 1 × depth + 5 × falling speed − 152.
+  A behavioural test and attribution (the balance-scale blocks) appear
+  unnamed.
+- **Said out loud:** we can see all of this neuron and know exactly what
+  it does; networks of many are much harder to see into.
 - **Organisms:** none (the first is 002's cheating byte).
-- **Plants for later:** the distance from the line as confidence (paid
-  off with sigmoid); shuffled inputs change nothing (paid off with
-  convolutional networks); weights over pixels as a picture (007); the
-  widest-gap line (margin).
-- **Citations to find:** Rosenblatt's perceptron (1958); McCulloch and
-  Pitts (1943); a source on the NES's 2KB RAM; the games' RAM maps (for
-  every address used); slope-intercept form (any standard algebra
-  reference); place-value notation; a source for "some researchers doubt
-  the approach" (Hendrycks and Hiscott, 2025, in `sources.md`); the
-  thermostat as a threshold device.
+- **Moved out:** place value (to 002); "speed isn't zero" and its two
+  cuts (to 004); Castlevania's jump counter (to 002, encoding).
+- **Plants for later:** the distance from the border (the modern neuron's
+  graded output, paid off with sigmoid and ReLU); shuffled inputs change
+  nothing (convolutional networks); weights over pixels as a picture
+  (007); the widest-gap border (margin); scaling the weights doesn't
+  move the border (003, where weight size matters).
 
 ### 002: When the line lies
 

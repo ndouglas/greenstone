@@ -81,3 +81,9 @@ title = "Cycle reference chart (NESdev Wiki; accessed 2026)"
 authors = "NESdev Wiki contributors"
 year = 2026
 url = "https://www.nesdev.org/wiki/Cycle_reference_chart"
+
+[bishop2006]
+title = "Pattern Recognition and Machine Learning, section 4.1.1: Two classes (Springer)"
+authors = "C. M. Bishop"
+year = 2006
+url = "https://www.microsoft.com/en-us/research/publication/pattern-recognition-machine-learning/"
