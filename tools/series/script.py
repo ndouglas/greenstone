@@ -11,6 +11,11 @@ VIDEOS = Path(__file__).resolve().parent / "videos"
 ID = re.compile(r"^[a-z0-9-]+$")
 # A number from the video's experiments, filled from numbers.json.
 NUMBER = re.compile(r"\{([a-z0-9_]+)\}")
+# A video opens with an introduction, has numbered chapters, and closes
+# with conclusions; each chapter opens with an intro beat and ends with a
+# conclusion beat.
+SECTION_KINDS = ("introduction", "chapter", "conclusions")
+ROLES = ("intro", "conclusion")
 
 
 class ScriptError(Exception):
@@ -25,11 +30,26 @@ class Line:
     cite: tuple[str, ...]
     framing: bool
     board: str | None = None
+    # "intro" or "conclusion", for a chapter's first and last beats.
+    role: str | None = None
+    # Seconds of stillness after this beat, if not the default.
+    pause: float | None = None
+    # The id of the section the beat is in (None for the closing lines).
+    section: str | None = None
 
     @property
     def voiced(self) -> str:
         """What the narrator says: `spoken` when the text has symbols in it."""
         return self.spoken or self.text
+
+
+@dataclass(frozen=True)
+class Section:
+    id: str
+    kind: str
+    number: int | None
+    title: str
+    lines: tuple[Line, ...]
 
 
 @dataclass(frozen=True)
@@ -49,6 +69,7 @@ class Video:
     music: Path | None
     lines: tuple[Line, ...]
     citations: dict[str, Citation]
+    sections: tuple[Section, ...] = ()
 
 
 def load_video(dir: Path) -> Video:
@@ -69,8 +90,9 @@ def load_video(dir: Path) -> Video:
             raise ScriptError(f"line {line_id} uses {', '.join(missing)}, which numbers.json doesn't have")
         return NUMBER.sub(lambda m: str(numbers[m.group(1)]), text)
 
-    lines, seen = [], set()
-    for raw in script.get("line", []):
+    seen = set()
+
+    def make_line(raw: dict, section: str | None) -> Line:
         line = Line(
             id=raw["id"],
             text=fill(raw["id"], raw["text"]),
@@ -78,6 +100,9 @@ def load_video(dir: Path) -> Video:
             cite=tuple(raw.get("cite", ())),
             framing=raw.get("framing", False),
             board=fill(raw["id"], raw.get("board")),
+            role=raw.get("role"),
+            pause=raw.get("pause"),
+            section=section,
         )
         if not ID.match(line.id):
             raise ScriptError(f"line id {line.id!r} must be lowercase letters, digits and hyphens")
@@ -91,7 +116,41 @@ def load_video(dir: Path) -> Video:
         for key in line.cite:
             if key not in citations:
                 raise ScriptError(f"line {line.id} cites {key!r}, which citations.toml doesn't list")
-        lines.append(line)
+        if line.role is not None and line.role not in ROLES:
+            raise ScriptError(f"line {line.id}'s role is {line.role!r}; it must be one of {', '.join(ROLES)}")
+        return line
+
+    sections, chapters = [], 0
+    raw_sections = script.get("section", [])
+    for i, raw in enumerate(raw_sections):
+        kind = raw.get("kind")
+        if kind not in SECTION_KINDS:
+            raise ScriptError(f"section {i + 1}'s kind is {kind!r}; it must be one of {', '.join(SECTION_KINDS)}")
+        if kind == "chapter":
+            chapters += 1
+            sid, number = f"chapter-{chapters}", chapters
+        else:
+            sid, number = kind, None
+        if kind == "introduction" and i != 0:
+            raise ScriptError("the introduction must be the first section, and there can be only one")
+        if kind == "conclusions" and i != len(raw_sections) - 1:
+            raise ScriptError("the conclusions must be the last section, and there can be only one")
+        if not raw.get("title", "").strip():
+            raise ScriptError(f"{sid} has no title")
+        beats = tuple(make_line(b, sid) for b in raw.get("line", []))
+        if not beats:
+            raise ScriptError(f"{sid} has no beats")
+        roles = [b.role for b in beats]
+        if kind == "chapter":
+            if roles[0] != "intro" or roles[-1] != "conclusion" or len(beats) < 2:
+                raise ScriptError(f"{sid} must open with a role = \"intro\" beat and end with a role = \"conclusion\" beat")
+            if "intro" in roles[1:] or "conclusion" in roles[:-1]:
+                raise ScriptError(f"{sid} has an intro or conclusion beat out of place")
+        elif any(roles):
+            raise ScriptError(f"{sid} isn't a chapter, so its beats don't take intro or conclusion roles")
+        sections.append(Section(id=sid, kind=kind, number=number, title=raw["title"], lines=beats))
+    lines = [l for sec in sections for l in sec.lines]
+    lines += [make_line(raw, None) for raw in script.get("line", [])]
     music = script.get("music")
     return Video(
         name=dir.name,
@@ -100,4 +159,5 @@ def load_video(dir: Path) -> Video:
         music=REPO / music if music else None,
         lines=tuple(lines),
         citations=citations,
+        sections=tuple(sections),
     )

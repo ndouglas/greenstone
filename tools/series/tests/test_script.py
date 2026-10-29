@@ -175,5 +175,80 @@ framing = true
         self.assertIn("accuracy", str(e.exception))
 
 
+
+def beat(id, role=None, extra=""):
+    r = f'role = "{role}"\n' if role else ""
+    return f'[[section.line]]\nid = "{id}"\n{r}text = "{id}."\nframing = true\n{extra}'
+
+
+def chapter(title, *ids):
+    first, *rest = ids
+    body = beat(first, "intro") + "".join(beat(i) for i in rest[:-1]) + beat(rest[-1], "conclusion")
+    return f'[[section]]\nkind = "chapter"\ntitle = "{title}"\n{body}'
+
+
+SECTIONED = (
+    'title = "t"\n'
+    '[[section]]\nkind = "introduction"\ntitle = "Introduction"\n' + beat("hello") +
+    chapter("One", "a1", "a2", "a3") + chapter("Two", "b1", "b2") +
+    '[[section]]\nkind = "conclusions"\ntitle = "Conclusions"\n' + beat("tldr") +
+    '[[line]]\nid = "closing"\ntext = "Bye."\nframing = true\n'
+)
+
+
+class Sections(unittest.TestCase):
+    def test_sections_hold_their_beats_in_order(self):
+        v = load_video(video(SECTIONED))
+        self.assertEqual([s.id for s in v.sections], ["introduction", "chapter-1", "chapter-2", "conclusions"])
+        self.assertEqual([s.number for s in v.sections], [None, 1, 2, None])
+        self.assertEqual([s.title for s in v.sections], ["Introduction", "One", "Two", "Conclusions"])
+        self.assertEqual([l.id for l in v.lines], ["hello", "a1", "a2", "a3", "b1", "b2", "tldr", "closing"])
+        self.assertEqual([l.section for l in v.lines],
+                         ["introduction"] + ["chapter-1"] * 3 + ["chapter-2"] * 2 + ["conclusions", None])
+        self.assertEqual([l.id for l in v.sections[1].lines], ["a1", "a2", "a3"])
+        self.assertEqual(v.sections[1].lines[0].role, "intro")
+        self.assertEqual(v.sections[1].lines[-1].role, "conclusion")
+
+    def test_a_chapter_needs_its_intro_first_and_conclusion_last(self):
+        no_intro = 'title = "t"\n[[section]]\nkind = "chapter"\ntitle = "One"\n' + beat("a") + beat("b", "conclusion")
+        no_end = 'title = "t"\n[[section]]\nkind = "chapter"\ntitle = "One"\n' + beat("a", "intro") + beat("b")
+        for script in (no_intro, no_end):
+            with self.assertRaises(ScriptError) as e:
+                load_video(video(script))
+            self.assertIn("chapter-1", str(e.exception))
+
+    def test_sections_must_be_in_their_places(self):
+        intro = '[[section]]\nkind = "introduction"\ntitle = "I"\n' + beat("i")
+        ends = '[[section]]\nkind = "conclusions"\ntitle = "C"\n' + beat("c")
+        for script in ('title = "t"\n' + ends + chapter("One", "a", "b"),
+                       'title = "t"\n' + intro + intro.replace('"i"', '"j"'),
+                       'title = "t"\n[[section]]\nkind = "appendix"\ntitle = "A"\n' + beat("x"),
+                       'title = "t"\n[[section]]\nkind = "chapter"\n' + beat("a", "intro") + beat("b", "conclusion")):
+            with self.assertRaises(ScriptError):
+                load_video(video(script))
+
+    def test_roles_belong_to_chapters(self):
+        script = 'title = "t"\n[[section]]\nkind = "introduction"\ntitle = "I"\n' + beat("i", "intro")
+        with self.assertRaises(ScriptError):
+            load_video(video(script))
+
+    def test_a_beat_can_set_its_own_pause(self):
+        script = SECTIONED.replace('id = "a2"\ntext = "a2."\nframing = true\n', 'id = "a2"\ntext = "a2."\nframing = true\npause = 0.5\n')
+        v = load_video(video(script))
+        self.assertEqual(next(l for l in v.lines if l.id == "a2").pause, 0.5)
+        self.assertIsNone(next(l for l in v.lines if l.id == "a1").pause)
+
+    def test_a_script_without_sections_still_loads(self):
+        v = load_video(video('title = "t"\n[[line]]\nid = "a"\ntext = "A."\nframing = true\n'))
+        self.assertEqual(v.sections, ())
+        self.assertEqual([l.id for l in v.lines], ["a"])
+        self.assertIsNone(v.lines[0].section)
+
+    def test_numbers_fill_section_beats(self):
+        d = video(SECTIONED.replace('text = "a2."', 'text = "{n}."'))
+        (d / "numbers.json").write_text('{"n": "94%"}')
+        self.assertEqual(next(l for l in load_video(d).lines if l.id == "a2").text, "94%.")
+
+
 if __name__ == "__main__":
     unittest.main()
