@@ -201,24 +201,29 @@ holds:
   learns them;
 - the ideonomy passes run for each idea.
 
-## Calls made by the designer (Claude), for Nate to check
+## Calls made by the designer (Claude), reviewed by Nate
 
 - **Experiments run in Python, on data recorded from Greenstone.**
   Greenstone (Rust) plays the games and records RAM, frames and inputs;
-  the networks are trained and inspected in a Python harness. The Python
-  shown on screen is a simplified but faithful excerpt of the code that
-  produced the numbers, so what the viewer sees is never fiction.
-  Greenstone's Rust is not where the series' networks live.
-- **Gameplay comes from scripted and random input policies per game**,
-  plus a general input recorder and replayer in Greenstone so Nate can
-  play and record sessions when a video needs human play. Datasets never
-  wait on Nate playing.
+  the networks are trained and inspected in a Python harness. Greenstone's
+  Rust is not where the series' networks live.
+- **The code on screen is the working code, stripped down** (Nate's
+  call): the real Python that produced the numbers, with irrelevant code
+  and concepts removed (error handling, optional arguments and the like)
+  and, where it helps, a note on screen that it is simplified to focus on
+  what matters. Type hints stay, so viewers keep that context.
+- **Gameplay is simulated or replayed, never played by Nate** (Nate's
+  call: no controller hooks up cleanly here, and he'd rather not):
+  scripted, random or simulated-human input policies per game, and
+  existing input recordings (for example published input movies) replayed
+  in Greenstone. Replaying a recording format may need building.
 - **Depth wins over coverage.** The pilot is 5 to 10 videos wherever
   that lands in the arc. If pressure tests split ideas so the pilot ends
   before polysemanticity, that is fine; pressure tests are not thinned to
   reach a table row.
-- **Re-voicing assumes per-line takes** read from the script, which drop
-  straight into the line-timed pipeline. Supporting one continuous take
+- **Re-voicing uses one recorded take per script line** (Nate agreed),
+  read from the script, dropping straight into the line-timed pipeline.
+  Any line can be re-recorded any number of times and replaced alone. Supporting one continuous take
   (forced alignment) is deferred until Nate actually records.
 
 ## Left to the builder
