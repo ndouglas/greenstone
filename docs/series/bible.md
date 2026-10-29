@@ -256,6 +256,14 @@ still as a horizon, so every dot's height above it is its total.
 - The field's critics are presented fairly, at full strength, where
   their arguments bite; the series never pretends a method works better
   than the evidence shows.
+- Every video opens with an Introduction, has numbered chapters, and
+  closes with Conclusions that TL;DR it. Each chapter has a silent title
+  screen (its number and title over its own pictures, dimmed and
+  drifting), an introduction beat (the problem it solves) and a
+  conclusion beat (from X to Y, why it mattered, what's next). No section
+  runs over four minutes; a longer one is split (Nate, 2026-10-29).
+- A beat is one thought and one picture; two pictures make two beats.
+  Every beat is followed by about two seconds of stillness.
 - Never: LLM clichés; "we'll see why later" (reorder or break it down
   instead); anything unsupported, incorrect or uncited; clunky animation;
   too much on screen at once; slop.
@@ -264,16 +272,20 @@ still as a horizon, so every dot's height above it is its total.
 
 1. **Ideonomy:** the idea gets 5 to 6 passes, saved in
    `docs/series/ideonomy/NNN-slug.md`.
-2. **Script:** written in `tools/series/videos/NNN-slug/script.toml`, then
-   revised through the council (`docs/series/council.md`), then the two
-   adversarial reviews (`docs/series/review-prompt.md`). Then the
-   interview: the council questions Nate about the concepts, the claims
-   and how each line will be animated, and the script changes until he
-   can answer everything (`council.md`, "The interview").
+2. **Script:** written in `tools/series/videos/NNN-slug/script.toml` as
+   sections of beats (see the Rules).
 3. **Storyboard:** `python -m series.build NNN-slug --storyboard`, with
-   placeholders, real narration, music and credits, to test pacing. Nate
-   reviews.
-4. **Sketches:** each animation explored alone with
+   title screens, placeholders, real narration, music and credits, to
+   test pacing; the build refuses a section over four minutes. Its
+   section lengths go in `docs/series/reviews/NNN/pacing.md`.
+4. **Reviews:** the council (`docs/series/council.md`, including the
+   continuity and pacing lens, which reads the storyboard's lengths),
+   then the two adversarial reviews (`docs/series/review-prompt.md`).
+   Then the interview, with the storyboard in hand: the council questions
+   Nate about the concepts, the claims and how each beat will be
+   animated, and the script changes until he can answer everything
+   (`council.md`, "The interview"). Nate reviews the storyboard.
+5. **Sketches:** each animation explored alone with
    `python -m series.sketch`, judged from its contact sheet and iterated.
    Nate reviews.
-5. **Full render:** `python -m series.build NNN-slug`. Nate reviews.
+6. **Full render:** `python -m series.build NNN-slug`. Nate reviews.

@@ -81,3 +81,14 @@ substantial, say so; don't invent findings.
 - **The cross-examiner.** You question the narrator about the script, as
   in a courtroom or a job interview. Which statements couldn't they
   defend from the script and its sources alone?
+- **Continuity and pacing.** You read the script as sections of beats,
+  with the storyboard's section lengths beside it
+  (`docs/series/reviews/NNN/pacing.md`). Does each beat carry one thought
+  and one picture, short enough to take in? Does the stillness after a
+  beat do its job (none wasted after a bridge, none missing after a dense
+  beat; a beat can set its own `pause`)? Does each chapter's introduction
+  say what problem it solves, and does its conclusion zoom out: from the
+  last chapter's X to this one's Y, why it mattered, what's next? Does
+  the Introduction set the video up and the Conclusions TL;DR it? Is
+  every section under four minutes? Does anything arrive before it's set
+  up, and does each beat lead to the next?
