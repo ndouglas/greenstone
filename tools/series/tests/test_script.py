@@ -142,6 +142,18 @@ framing = true
         self.assertEqual(line.text, "It was right 93% of the time.")
         self.assertEqual(line.voiced, "It was right ninety-three percent of the time.")
 
+    def test_numbers_fill_the_boards(self):
+        d = video('''
+title = "t"
+[[line]]
+id = "a"
+text = "It was right {accuracy} of the time."
+board = "A bar at {accuracy}"
+framing = true
+''')
+        (d / "numbers.json").write_text('{"accuracy": "93%"}')
+        self.assertEqual(load_video(d).lines[0].board, "A bar at 93%")
+
     def test_an_unknown_number_names_the_line(self):
         d = video('''
 title = "t"

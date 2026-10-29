@@ -113,6 +113,34 @@ class Experiment(unittest.TestCase):
         dying = np.array([True, False, False, False, False, True])
         self.assertEqual(exp001.false_alarm_kind(np.ones(6, dtype=bool), rising, depth, dying, [5], 0), "died")
 
+    def test_a_false_alarm_never_looks_into_the_next_life(self):
+        # He neither lands nor falls past the screen before the restart at
+        # frame 3; the next life's pit fall isn't this moment's.
+        air = np.ones(6, dtype=bool)
+        falling = np.array([4, 4, 4, 0, 4, 4])
+        depth = np.array([170, 172, 174, 176, 230, 250])
+        self.assertEqual(exp001.false_alarm_kind(air, falling, depth, np.ones(6, dtype=bool), [3], 0), "died")
+
+    def test_worked_examples_follow_the_found_numbers(self):
+        self.assertEqual(exp001.worked_examples(cut=176, k=5, threshold=152), {
+            "example_air_total": 26, "land_example_speed_yes": 20, "land_example_yes": 8,
+            "land_example_speed_no": 10, "land_example_no": 22, "land_balance_yes_pan": 160})
+
+    def test_worked_examples_refuse_numbers_that_flip_their_answers(self):
+        # 140 + 5 x 4 - 170 isn't above zero, so "lands soon" would be false.
+        with self.assertRaises(ValueError):
+            exp001.worked_examples(cut=176, k=5, threshold=170)
+
+    def test_a_recording_must_match_its_answer_key(self):
+        rec = load(fake_recording(200))
+        rec.meta.update(sha1="ea343f4e445a9050d4b4fbac2c77d0693b1d0922", label_rate=0.25)
+        exp001.check_recording("smb1", rec)
+        for bad in ({"airborne_byte": 0xD8}, {"sha1": "0" * 40}, {"label_rate": 0.5}, {"frames": 199}):
+            wrong = load(fake_recording(200))
+            wrong.meta.update({"sha1": "ea343f4e445a9050d4b4fbac2c77d0693b1d0922", "label_rate": 0.25, **bad})
+            with self.assertRaises(ValueError, msg=str(bad)):
+                exp001.check_recording("smb1", wrong)
+
     def test_numbers_have_spoken_forms(self):
         self.assertEqual(exp001.spoken_number(176), "one hundred and seventy-six")
         self.assertEqual(exp001.spoken_number(1300), "one thousand three hundred")

@@ -65,6 +65,8 @@ def landing(air: np.ndarray, restarts: list[int], within: int) -> tuple[np.ndarr
 def features(game: str, recs) -> tuple[np.ndarray, np.ndarray]:
     addresses = [a for _, a, _ in INPUTS[game]]
     check_inputs(game, addresses)
+    for r in recs:
+        check_recording(game, r)
     x, y = dataset(recs, addresses, label(game))
     for i, (_, _, signed) in enumerate(INPUTS[game]):
         if signed:
@@ -119,17 +121,66 @@ def false_alarm_kind(air: np.ndarray, vy: np.ndarray, depth: np.ndarray, normal:
     rising again before landing ("bounce", off an enemy), fell below the
     screen ("pit") or died some other way ("died") before the next restart,
     or simply landed later ("late"). `normal` is false while the game, not
-    the player, is moving Mario (dying pops him upward)."""
+    the player, is moving Mario (dying pops him upward). Nothing after the
+    next restart counts: that's another life."""
+    restarts = set(restarts)
     for k in range(t + 1, len(air)):
-        if k in restarts:
-            break
-        if not normal[k]:
+        if k in restarts or not normal[k]:
             return "pit" if (depth[t:k] >= 200).any() else "died"
         if not air[k]:
             return "late"
         if vy[k] < 0:
             return "bounce"
     return "pit" if (depth[t:] >= 200).any() else "died"
+
+
+# The worked examples' made-up moments: a depth for the first neuron, and a
+# depth with a falling and a rising speed for the landing neuron.
+EXAMPLE_AIR_DEPTH = 150
+LAND_EXAMPLE_DEPTH, LAND_EXAMPLE_FALLING, LAND_EXAMPLE_RISING = 140, 4, -2
+
+
+def worked_examples(cut: int, k: int, threshold: int) -> dict[str, int]:
+    """The script's worked sums, from the numbers the experiments found.
+    The script says each example's answer (in the air; lands soon; not yet)
+    and writes the negative ones as "minus", so refuse numbers that would
+    change an answer or a sign."""
+    air = cut - EXAMPLE_AIR_DEPTH
+    speed_yes = k * LAND_EXAMPLE_FALLING
+    yes = LAND_EXAMPLE_DEPTH + speed_yes - threshold
+    speed_no = k * LAND_EXAMPLE_RISING
+    no = LAND_EXAMPLE_DEPTH + speed_no - threshold
+    if not (air > 0 and yes > 0 and no < 0 and speed_no < 0):
+        raise ValueError(f"the worked examples' answers no longer hold (air {air}, lands soon {yes}, not yet {no})")
+    return {"example_air_total": air, "land_example_speed_yes": speed_yes, "land_example_yes": yes,
+            "land_example_speed_no": -speed_no, "land_example_no": -no,
+            "land_balance_yes_pan": LAND_EXAMPLE_DEPTH + speed_yes}
+
+
+# Each game's ROM, as the recorder names it (src/nes/gym/series/ram.rs).
+ROM_SHA1 = {
+    "smb1": "ea343f4e445a9050d4b4fbac2c77d0693b1d0922",
+    "smb3": "a03e7e526e79df222e048ae22214bca2bc49c449",
+    "castlevania": "7a20c44f302fb2f1b7adffa6b619e3e1cae7b546",
+}
+
+
+def check_recording(game: str, rec) -> None:
+    """Refuse a recording that doesn't match this game's answer key as the
+    recorder saw it: another ROM, another answer byte, a different labelling,
+    or a truncated file."""
+    meta = rec.meta
+    problems = []
+    if meta.get("sha1") != ROM_SHA1[game]:
+        problems.append(f"ROM {meta.get('sha1')}")
+    if meta.get("airborne_byte") != ANSWER_KEYS[game][0]:
+        problems.append(f"answer byte {meta.get('airborne_byte')}")
+    if not len(rec.ram) == len(rec.buttons) == meta.get("frames"):
+        problems.append(f"{len(rec.ram)} RAM frames, {len(rec.buttons)} button frames, meta says {meta.get('frames')}")
+    elif abs(label(game)(rec.ram).mean() - meta.get("label_rate", -1)) > 1e-9:
+        problems.append(f"labels {label(game)(rec.ram).mean():.4f} here, {meta.get('label_rate')} when recorded")
+    if problems:
+        raise ValueError(f"{game} recording doesn't match: {'; '.join(problems)}")
 
 
 def agreed_cut(cuts: list[float]) -> int | None:
@@ -221,6 +272,7 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
     def land_data(recs):
         xs, ys = [], []
         for r in recs:
+            check_recording("smb1", r)
             air = label("smb1")(r.ram)
             keep, lands = landing(air, r.meta.get("restart_frames", []), LAND_WITHIN)
             h = r.ram[keep, 0x00CE].astype(float)
@@ -269,6 +321,8 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
     threshold = int(round(-b / w[0]))
     put_int("smb1_land_speed_weight", k)
     put_int("smb1_land_threshold", threshold)
+    for name, value in worked_examples(numbers["smb1_height_cut"], k, threshold).items():
+        put_int(f"smb1_{name}", value)
     put("smb1_land_whole_accuracy", accuracy(np.array([1.0, float(k)]), -float(threshold), xt, yt))
     # The same breakdown for the whole-number border the viewer is shown.
     said_whole = (xt @ np.array([1.0, float(k)]) - threshold > 0).astype(int)

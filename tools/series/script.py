@@ -77,7 +77,7 @@ def load_video(dir: Path) -> Video:
             spoken=fill(raw["id"], raw.get("spoken")),
             cite=tuple(raw.get("cite", ())),
             framing=raw.get("framing", False),
-            board=raw.get("board"),
+            board=fill(raw["id"], raw.get("board")),
         )
         if not ID.match(line.id):
             raise ScriptError(f"line id {line.id!r} must be lowercase letters, digits and hyphens")
