@@ -69,7 +69,7 @@ cite = ["exp001"]
 [[line]]
 id = "depth"
 text = "Instead, the neuron reads a different number from the game's memory: Mario's depth, meaning how far down the screen he is, counted in dots from near the top. A bigger depth means lower on the screen."
-board = "A ruler down the left of the screen, zero at the top; a marker follows Mario"
+board = "A ruler down the left of the screen, its zero 32 dots below the top (depth d is screen row d + 32), so the marker at Mario reads his depth"
 cite = ["datacrystal-smb1", "nesdev-oam", "exp001"]
 
 [[line]]
@@ -251,8 +251,8 @@ cite = ["exp001", "bishop2006"]
 
 [[line]]
 id = "why-plus"
-text = "The depth's weight is plus one this time, not minus one, because this question's yes is the other way round: deeper means closer to the floor, so closer to landing. And the bias is minus {smb1_land_threshold} because the test is depth plus {smb1_land_speed_weight} times the falling speed being more than {smb1_land_threshold}; moving that {smb1_land_threshold} to the other side of the comparison turns it into minus {smb1_land_threshold}, just as moving {smb1_height_cut} across turned it into plus {smb1_height_cut} before."
-spoken = "The depth's weight is plus one this time, not minus one, because this question's yes is the other way round: deeper means closer to the floor, so closer to landing. And the bias is minus {smb1_land_threshold_spoken} because the test is depth plus {smb1_land_speed_weight_spoken} times the falling speed being more than {smb1_land_threshold_spoken}; moving that {smb1_land_threshold_spoken} to the other side of the comparison turns it into minus {smb1_land_threshold_spoken}, just as moving {smb1_height_cut_spoken} across turned it into plus {smb1_height_cut_spoken} before."
+text = "The depth's weight is plus one this time, not minus one, because this question's yes is the other way round: deeper means closer to the floor, so closer to landing. And the bias is minus {smb1_land_threshold} because the test is depth plus {smb1_land_speed_weight} times the falling speed being more than {smb1_land_threshold}; moving that {smb1_land_threshold} to the other side of the comparison turns it into minus {smb1_land_threshold}."
+spoken = "The depth's weight is plus one this time, not minus one, because this question's yes is the other way round: deeper means closer to the floor, so closer to landing. And the bias is minus {smb1_land_threshold_spoken} because the test is depth plus {smb1_land_speed_weight_spoken} times the falling speed being more than {smb1_land_threshold_spoken}; moving that {smb1_land_threshold_spoken} to the other side of the comparison turns it into minus {smb1_land_threshold_spoken}."
 board = "The depth weight flips from −1 to +1, with 'closer to the floor' beside it"
 cite = ["exp001"]
 
