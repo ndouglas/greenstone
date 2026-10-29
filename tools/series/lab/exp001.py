@@ -1,5 +1,7 @@
-"""Video 001's experiments: one neuron, placed by hand, answering "is the
-player in the air?" from two numbers in each game's memory.
+"""Video 001's experiments: one neuron, its setting chosen by trying every
+value on recordings 1-2 and tested on recording 3, answering "is the player
+in the air?" from his height number; and a two-number neuron for "will he
+land within 10 frames?".
 
 Usage: cd tools && series/.venv/bin/python -m series.lab.exp001
 """
@@ -221,6 +223,13 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
     land_heights = np.array(land_heights)
     raised = missed & (land_heights >= 0) & (land_heights < numbers["smb1_height_cut"])
     put("smb1_land_misses_on_raised", raised.sum() / max(missed.sum(), 1))
+    put("smb1_land_raised_share_of_all_mistakes", raised.sum() / max((said != yt).sum(), 1))
+    # The same border in whole numbers: height + k × speed against a threshold.
+    k = int(round(w[1] / w[0]))
+    threshold = int(round(-b / w[0]))
+    put_int("smb1_land_speed_weight", k)
+    put_int("smb1_land_threshold", threshold)
+    put("smb1_land_whole_accuracy", accuracy(np.array([1.0, float(k)]), -float(threshold), xt, yt))
 
     # Castlevania keeps where Simon is in his jump, not a speed.
     cv = [load(data_root / "castlevania" / s) for s in ("1", "2", "3")]
