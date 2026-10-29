@@ -260,6 +260,26 @@ class Chapters(unittest.TestCase):
         # Total: two titles, four 1 s voices, stillness 0.5 + 2 + 2 + 2.
         self.assertAlmostEqual(float(probe(movie, "format=duration")["format"]["duration"]), 8.0 + 4.0 + 6.5, delta=0.1)
 
+    def test_a_title_screen_starts_from_a_clear_screen(self):
+        video, voices, d = fixtures({"i1": 0.5, "c1": 0.5, "i2": 0.5, "c2": 0.5}, CHAPTERS)
+        left = []
+
+        class S(NarratedScene):
+            def construct(self):
+                self.show_title("chapter-1")
+                dot = Dot()
+                self.add(dot)
+                self.say("i1")
+                self.say("c1")
+                self.show_title("chapter-2")
+                left.append(dot in self.mobjects)
+                self.say("i2")
+                self.say("c2")
+
+        S.video, S.voices = video, voices
+        render(S, d / "media")
+        self.assertEqual(left, [False])
+
     def test_a_sections_first_beat_needs_its_title_screen(self):
         video, voices, d = fixtures({"i1": 0.5, "c1": 0.5, "i2": 0.5, "c2": 0.5}, CHAPTERS)
 

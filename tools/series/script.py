@@ -150,7 +150,14 @@ def load_video(dir: Path) -> Video:
             raise ScriptError(f"{sid} isn't a chapter, so its beats don't take intro or conclusion roles")
         sections.append(Section(id=sid, kind=kind, number=number, title=raw["title"], lines=beats))
     lines = [l for sec in sections for l in sec.lines]
-    lines += [make_line(raw, None) for raw in script.get("line", [])]
+    for raw in script.get("line", []):
+        # [[line]] is always top-level in TOML, even written inside a
+        # chapter, where it would silently play after the conclusions.
+        if sections and not raw.get("closing", False):
+            raise ScriptError(f"line {raw['id']} is a top-level [[line]] in a script with sections: "
+                              "if it belongs in a section, write [[section.line]]; if it closes the video, "
+                              "add closing = true")
+        lines.append(make_line(raw, None))
     music = script.get("music")
     return Video(
         name=dir.name,

@@ -232,6 +232,8 @@ def check_claims(cut: int, standing: int, smb3_cut: int, smb3_standing: int, tra
         problems.append(f"the new session scored worse ({test:.3f}) than the ones it was chosen on ({train:.3f})")
     if best_line > test + 0.01:
         problems.append(f"adding falling speed helps a straight line ({best_line:.3f} against {test:.3f})")
+    if any(math.isnan(v) for v in (raised_depth, floor_depth, falling_depth, falling_not_yet)):
+        problems.append("a claim's moments are missing from the test session (raised or floor landings, or falling)")
     if raised_depth >= floor_depth:
         problems.append(f"landings on raised things ({raised_depth}) don't sit left of floor landings ({floor_depth})")
     if falling_depth < falling_not_yet + 0.1:

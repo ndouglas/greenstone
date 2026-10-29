@@ -42,6 +42,9 @@ class NarratedScene(Scene):
         if section_id in self.titled:
             raise ScriptOrderError(f"{section_id}'s title screen is shown twice")
         card = title_card(section, board_tiles(section) if tiles is None else tiles)
+        # A section starts from a clear screen; the last beat's picture
+        # mustn't show through the wall's gaps.
+        self.clear()
         self.add(card)
         self.play(card[0].animate.shift(LEFT * 0.22 * config.frame_width), run_time=TITLE_HOLD, rate_func=linear)
         self.remove(card)

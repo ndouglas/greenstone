@@ -192,7 +192,7 @@ SECTIONED = (
     '[[section]]\nkind = "introduction"\ntitle = "Introduction"\n' + beat("hello") +
     chapter("One", "a1", "a2", "a3") + chapter("Two", "b1", "b2") +
     '[[section]]\nkind = "conclusions"\ntitle = "Conclusions"\n' + beat("tldr") +
-    '[[line]]\nid = "closing"\ntext = "Bye."\nframing = true\n'
+    '[[line]]\nid = "closing"\ntext = "Bye."\nframing = true\nclosing = true\n'
 )
 
 
@@ -231,6 +231,14 @@ class Sections(unittest.TestCase):
         script = 'title = "t"\n[[section]]\nkind = "introduction"\ntitle = "I"\n' + beat("i", "intro")
         with self.assertRaises(ScriptError):
             load_video(video(script))
+
+    def test_a_stray_line_among_sections_is_refused(self):
+        # [[line]] is always top-level in TOML: one pasted into a chapter
+        # would silently play after the Conclusions.
+        stray = SECTIONED.replace(beat("a2"), '[[line]]\nid = "a2"\ntext = "a2."\nframing = true\n')
+        with self.assertRaises(ScriptError) as e:
+            load_video(video(stray))
+        self.assertIn("section.line", str(e.exception))
 
     def test_a_beat_can_set_its_own_pause(self):
         script = SECTIONED.replace('id = "a2"\ntext = "a2."\nframing = true\n', 'id = "a2"\ntext = "a2."\nframing = true\npause = 0.5\n')

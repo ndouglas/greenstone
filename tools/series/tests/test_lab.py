@@ -167,7 +167,9 @@ class Experiment(unittest.TestCase):
         # "Adding his falling speed doesn't help a straight line here."
         for bad in ({"cut": 170}, {"smb3_cut": 120}, {"test": 0.90}, {"depth_alone": 0.80}, {"best_line": 0.96},
                     # "Landings on blocks and pipes sit further left"; "it can't tell rising from falling".
-                    {"raised_depth": 160}, {"falling_depth": 0.60}):
+                    {"raised_depth": 160}, {"falling_depth": 0.60},
+                    # A session with no such moments must not pass unchecked.
+                    {"raised_depth": float("nan")}, {"falling_depth": float("nan")}):
             with self.assertRaises(ValueError, msg=str(bad)):
                 exp001.check_claims(**{**good, **bad})
 

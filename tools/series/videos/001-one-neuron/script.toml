@@ -921,3 +921,4 @@ id = "disclaimer"
 text = "I'm not an expert, just someone learning this in public. If you spot a mistake, please tell me."
 board = "Plain card"
 framing = true
+closing = true
