@@ -11,6 +11,7 @@ import numpy as np
 import soundfile
 
 from series.build import CREDITS_SECONDS, build
+from series.pacing import STILLNESS
 from series.voice import TAKES
 
 RATE = 24000
@@ -173,7 +174,7 @@ class Build(unittest.TestCase):
             movie = build("001-test", ToneEngine(), draft=True, storyboard=True, videos=root, out_root=out)
         self.assertEqual(movie.name, "001-test-storyboard.mp4")
         lines = len("The first line.") / 20 + len("The second line.") / 20
-        self.assertAlmostEqual(duration(movie), lines + 2 * 0.25 + CREDITS_SECONDS, delta=0.15)
+        self.assertAlmostEqual(duration(movie), lines + 2 * STILLNESS + CREDITS_SECONDS, delta=0.15)
 
     def test_music_is_mixed_under_the_narration(self):
         root, d = videos(music='music = "MUSIC"')
@@ -183,7 +184,9 @@ class Build(unittest.TestCase):
         out = Path(tempfile.mkdtemp())
         with contextlib.redirect_stdout(io.StringIO()):
             movie = build("001-test", ToneEngine(), draft=True, videos=root, out_root=out)
-        narration, bed = band_level(movie, 440), band_level(movie, 1000)
+        # While the first line is spoken (the stillness after it would dilute the narration's mean).
+        speaking = len("The first line.") / 20
+        narration, bed = band_level(movie, 440, 0, speaking), band_level(movie, 1000, 0, speaking)
         self.assertLess(bed, narration - 10)
         self.assertGreater(bed, narration - 40)
 

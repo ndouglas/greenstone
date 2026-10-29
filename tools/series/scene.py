@@ -2,11 +2,13 @@
 
 import textwrap
 
-from manim import DOWN, FadeIn, Scene, Text, VGroup
+from manim import DOWN, LEFT, FadeIn, Mobject, Scene, Text, VGroup, config, linear
 
 from series import style
 from series.credits import credits
+from series.pacing import STILLNESS, TITLE_HOLD
 from series.script import Video
+from series.title import board_tiles, title_card
 from series.voice import Voice
 
 CREDITS_SECONDS = 6.0
@@ -28,19 +30,41 @@ class NarratedScene(Scene):
     def setup(self):
         self.camera.background_color = style.BACKGROUND
         self.said: list[str] = []
+        self.titled: list[str] = []
         self.credits_rolled = False
 
-    def say(self, line_id: str, *animations, pad: float = 0.25) -> None:
+    def show_title(self, section_id: str, tiles: list[Mobject] | None = None) -> None:
+        """A section's title screen, silent, for TITLE_HOLD seconds: the wall
+        drifts left as it holds. Tiles default to the section's boards."""
+        section = next((s for s in self.video.sections if s.id == section_id), None)
+        if section is None:
+            raise ScriptOrderError(f"title screen for {section_id!r}, which isn't a section in the script")
+        if section_id in self.titled:
+            raise ScriptOrderError(f"{section_id}'s title screen is shown twice")
+        card = title_card(section, board_tiles(section) if tiles is None else tiles)
+        self.add(card)
+        self.play(card[0].animate.shift(LEFT * 0.22 * config.frame_width), run_time=TITLE_HOLD, rate_func=linear)
+        self.remove(card)
+        self.titled.append(section_id)
+
+    def say(self, line_id: str, *animations, pad: float | None = None) -> None:
+        """Say a beat, then hold still: `pad` seconds, else the beat's own
+        pause, else STILLNESS."""
         lines = self.video.lines
         expected = lines[len(self.said)].id if len(self.said) < len(lines) else None
         if line_id != expected:
             raise ScriptOrderError(f"said {line_id!r} where the script has {expected!r} next")
+        line = lines[len(self.said)]
+        first = line.section is not None and (len(self.said) == 0 or lines[len(self.said) - 1].section != line.section)
+        if first and line.section not in self.titled:
+            raise ScriptOrderError(f"said {line_id!r}, the first beat of {line.section}, before its title screen")
         voice = self.voices[line_id]
         self.add_sound(str(voice.path))
         if animations:
             self.play(*animations, run_time=voice.seconds)
         else:
             self.wait(voice.seconds)
+        pad = pad if pad is not None else line.pause if line.pause is not None else STILLNESS
         if pad > 0:
             self.wait(pad)
         self.said.append(line_id)
@@ -50,7 +74,8 @@ class NarratedScene(Scene):
         line = next((l for l in self.video.lines if l.id == line_id), None)
         if line is None:
             raise ScriptOrderError(f"placeholder for {line_id!r}, which isn't a line in the script")
-        rows = [Text(line.id, font=style.FONT, color=style.INPUT).scale(0.5)]
+        section = next((s for s in self.video.sections if s.id == line.section), None)
+        rows = [Text(f"{section.title} · {line.id}" if section else line.id, font=style.FONT, color=style.INPUT).scale(0.5)]
         rows.append(Text(textwrap.fill(line.text, 48), font=style.FONT, color=style.TEXT).scale(0.6))
         if line.board:
             rows.append(Text(textwrap.fill(f"Animation: {line.board}", 56), font=style.FONT, color=style.WEIGHT).scale(0.45))
@@ -84,6 +109,11 @@ class StoryboardScene(NarratedScene):
     video's pacing before any of it is animated."""
 
     def construct(self):
+        for section in self.video.sections:
+            self.show_title(section.id)
+            for line in section.lines:
+                self.placeholder(line.id)
         for line in self.video.lines:
-            self.placeholder(line.id)
+            if line.section is None:
+                self.placeholder(line.id)
         self.roll_credits()

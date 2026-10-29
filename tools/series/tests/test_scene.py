@@ -6,10 +6,11 @@ from pathlib import Path
 
 import numpy as np
 import soundfile
-from manim import Dot, FadeIn, tempconfig
+from manim import Dot, FadeIn, Text, tempconfig
 
-from series.scene import NarratedScene, ScriptOrderError
-from series.script import load_video
+from series.scene import CREDITS_SECONDS, NarratedScene, ScriptOrderError, StoryboardScene
+from series.title import title_card
+from series.script import Section, load_video
 from series.voice import Voice
 
 RATE = 24000
@@ -26,10 +27,10 @@ framing = true
 '''
 
 
-def fixtures(lengths):
+def fixtures(lengths, script=SCRIPT):
     d = Path(tempfile.mkdtemp())
     (d / "001-test").mkdir()
-    (d / "001-test" / "script.toml").write_text(SCRIPT)
+    (d / "001-test" / "script.toml").write_text(script)
     voices = {}
     for line_id, seconds in lengths.items():
         path = d / f"{line_id}.wav"
@@ -66,7 +67,8 @@ class Narration(unittest.TestCase):
         S.video, S.voices = video, voices
         movie = render(S, d / "media")
         info = probe(movie, "format=duration:stream=codec_type")
-        self.assertAlmostEqual(float(info["format"]["duration"]), 3.5, delta=0.1)
+        # Each line is followed by 2 s of stillness.
+        self.assertAlmostEqual(float(info["format"]["duration"]), 7.0, delta=0.1)
         self.assertIn("audio", [s["codec_type"] for s in info["streams"]])
 
     def test_animations_are_stretched_to_the_line(self):
@@ -81,7 +83,7 @@ class Narration(unittest.TestCase):
 
         S.video, S.voices = video, voices
         render(S, d / "media")
-        self.assertAlmostEqual(times[0], 2.25, delta=0.1)
+        self.assertAlmostEqual(times[0], 4.0, delta=0.1)
 
     def test_an_unsaid_line_fails_the_render(self):
         video, voices, d = fixtures({"a": 0.5, "b": 0.5})
@@ -138,7 +140,7 @@ class Placeholders(unittest.TestCase):
 
         S.video, S.voices = video, voices
         self.assertAlmostEqual(float(probe(render(S, d / "media"), "format=duration")["format"]["duration"]),
-                               2.0, delta=0.1)
+                               5.5, delta=0.1)
 
     def test_a_placeholder_for_an_unknown_line_names_it(self):
         video, voices, d = fixtures({"a": 0.5, "b": 0.5})
@@ -182,6 +184,123 @@ class Credits(unittest.TestCase):
         with self.assertRaises(ScriptOrderError) as e:
             render(S, d / "media")
         self.assertIn("b", str(e.exception))
+
+
+
+CHAPTERS = '''
+title = "t"
+[[section]]
+kind = "chapter"
+title = "One"
+[[section.line]]
+id = "i1"
+role = "intro"
+text = "In."
+framing = true
+pause = 0.5
+[[section.line]]
+id = "c1"
+role = "conclusion"
+text = "Out."
+framing = true
+[[section]]
+kind = "chapter"
+title = "Two"
+[[section.line]]
+id = "i2"
+role = "intro"
+text = "In again."
+framing = true
+[[section.line]]
+id = "c2"
+role = "conclusion"
+text = "Out again."
+framing = true
+'''
+
+
+class Chapters(unittest.TestCase):
+    def test_a_beat_can_shorten_its_stillness(self):
+        video, voices, d = fixtures({"i1": 1.0, "c1": 1.0, "i2": 1.0, "c2": 1.0}, CHAPTERS)
+        times = []
+
+        class S(NarratedScene):
+            def construct(self):
+                self.show_title("chapter-1")
+                self.say("i1")
+                times.append(self.time)
+                self.say("c1")
+                self.show_title("chapter-2")
+                self.say("i2")
+                self.say("c2")
+
+        S.video, S.voices = video, voices
+        render(S, d / "media")
+        self.assertAlmostEqual(times[0], 4.0 + 1.0 + 0.5, delta=0.1)
+
+    def test_a_title_screen_is_silent_and_holds(self):
+        video, voices, d = fixtures({"i1": 1.0, "c1": 1.0, "i2": 1.0, "c2": 1.0}, CHAPTERS)
+        times = []
+
+        class S(NarratedScene):
+            def construct(self):
+                self.show_title("chapter-1")
+                # Nothing is said during it: no sound was added yet.
+                times.append((self.time, len(self.said)))
+                for line_id in ("i1", "c1"):
+                    self.say(line_id)
+                self.show_title("chapter-2")
+                for line_id in ("i2", "c2"):
+                    self.say(line_id)
+
+        S.video, S.voices = video, voices
+        movie = render(S, d / "media")
+        self.assertAlmostEqual(times[0][0], 4.0, delta=0.05)
+        self.assertEqual(times[0][1], 0)
+        # Total: two titles, four 1 s voices, stillness 0.5 + 2 + 2 + 2.
+        self.assertAlmostEqual(float(probe(movie, "format=duration")["format"]["duration"]), 8.0 + 4.0 + 6.5, delta=0.1)
+
+    def test_a_sections_first_beat_needs_its_title_screen(self):
+        video, voices, d = fixtures({"i1": 0.5, "c1": 0.5, "i2": 0.5, "c2": 0.5}, CHAPTERS)
+
+        class NoTitle(NarratedScene):
+            def construct(self):
+                self.say("i1")
+
+        class TwoTitles(NarratedScene):
+            def construct(self):
+                self.show_title("chapter-1")
+                self.show_title("chapter-1")
+
+        class Unknown(NarratedScene):
+            def construct(self):
+                self.show_title("chapter-9")
+
+        for cls in (NoTitle, TwoTitles, Unknown):
+            cls.video, cls.voices = video, voices
+            with self.assertRaises(ScriptOrderError) as e:
+                render(cls, d / "media")
+            self.assertIn("chapter-", str(e.exception))
+
+    def test_the_storyboard_shows_every_title(self):
+        video, voices, d = fixtures({"i1": 0.5, "c1": 0.5, "i2": 0.5, "c2": 0.5}, CHAPTERS)
+
+        class S(StoryboardScene):
+            pass
+
+        S.video, S.voices = video, voices
+        expected = 2 * 4.0 + 4 * 0.5 + (0.5 + 2.0 + 2.0 + 2.0) + CREDITS_SECONDS
+        self.assertAlmostEqual(float(probe(render(S, d / "media"), "format=duration")["format"]["duration"]),
+                               expected, delta=0.2)
+
+    def test_title_card_numbers_only_chapters(self):
+        video = load_video(fixtures({}, CHAPTERS)[2] / "001-test")
+        # Manim's Text keeps its words without their spaces.
+        texts = lambda card: [m.text for m in card.get_family() if isinstance(m, Text)]
+        chapter = title_card(video.sections[0], [])
+        self.assertIn("Chapter1", texts(chapter))
+        intro = Section(id="introduction", kind="introduction", number=None, title="Introduction", lines=())
+        self.assertFalse(any("Chapter" in t for t in texts(title_card(intro, []))))
 
 
 if __name__ == "__main__":
