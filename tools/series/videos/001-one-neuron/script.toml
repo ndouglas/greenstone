@@ -82,7 +82,7 @@ cite = ["exp001"]
 
 [[line]]
 id = "frames"
-text = "The NES draws about sixty pictures a second, called frames. We recorded three five-minute sessions and kept the game's memory from every frame."
+text = "The NES draws about sixty pictures a second, called frames. We recorded three five-minute sessions and kept the game's memory from every frame, leaving out the moments when the game moves Mario by itself, like when he dies or slides down the flagpole."
 board = "Three tapes labelled 1, 2, 3; a counter of frames ticking up"
 cite = ["nesdev-timing", "exp001"]
 
@@ -151,7 +151,7 @@ cite = ["datacrystal-cv", "exp001"]
 
 [[line]]
 id = "why-weights"
-text = "So far ours has read just one number. What makes a neuron more than a thermostat is that it can read several at once, each with its own weight."
+text = "So far ours has read just one number. But the recipe works for any number of inputs, each with its own weight, and soon we'll need two."
 board = "The neuron box: one input, then a second input slot appears, each with a multiplier"
 cite = ["goodfellow2016-ch1"]
 
@@ -190,8 +190,8 @@ cite = ["exp001"]
 
 [[line]]
 id = "example-air"
-text = "If Mario's depth is 150: minus 150, plus {smb1_height_cut}, makes {smb1_example_air_total}. That's above zero, so: in the air."
-spoken = "If Mario's depth is a hundred and fifty: minus a hundred and fifty, plus {smb1_height_cut_spoken}, makes {smb1_example_air_total_spoken}. That's above zero, so: in the air."
+text = "If Mario's depth is {smb1_example_air_depth}: minus {smb1_example_air_depth}, plus {smb1_height_cut}, makes {smb1_example_air_total}. That's above zero, so: in the air."
+spoken = "If Mario's depth is {smb1_example_air_depth_spoken}: minus {smb1_example_air_depth_spoken}, plus {smb1_height_cut_spoken}, makes {smb1_example_air_total_spoken}. That's above zero, so: in the air."
 board = "Mario above the floor; the sum worked through, landing on {smb1_example_air_total} and a yes"
 framing = true
 
@@ -284,10 +284,17 @@ board = "The depth weight flips from −1 to +1, with 'closer to the floor' besi
 cite = ["exp001"]
 
 [[line]]
+id = "steady-trade"
+text = "Moving left along the border, toward smaller depths, where Mario is higher up, the falling speed on the border goes up one step for every {smb1_land_speed_weight} steps of depth, at the same rate everywhere: {smb1_land_speed_weight} less depth takes {smb1_land_speed_weight} off the total, and one step more falling speed, times its weight of {smb1_land_speed_weight}, puts {smb1_land_speed_weight} back. That steady trade is why it's straight. In words, the border says: the further above the floor Mario is, the faster he has to be falling to land on it in time."
+spoken = "Moving left along the border, toward smaller depths, where Mario is higher up, the falling speed on the border goes up one step for every {smb1_land_speed_weight_spoken} steps of depth, at the same rate everywhere: {smb1_land_speed_weight_spoken} less depth takes {smb1_land_speed_weight_spoken} off the total, and one step more falling speed, times its weight of {smb1_land_speed_weight_spoken}, puts {smb1_land_speed_weight_spoken} back. That steady trade is why it's straight. In words, the border says: the further above the floor Mario is, the faster he has to be falling to land on it in time."
+board = "A marker slides left and up along the border: one step up in speed for {smb1_land_speed_weight} steps left in depth, with '−{smb1_land_speed_weight}' and '+{smb1_land_speed_weight}' adding to zero beside it"
+cite = ["exp001"]
+
+[[line]]
 id = "land-example"
-text = "Say Mario's depth is 140 and his falling speed is 4: 140, plus {smb1_land_speed_weight} times 4, minus {smb1_land_threshold}, is {smb1_land_example_yes}. Above zero: lands soon. At the same depth but rising, at a falling speed of minus 2: 140, plus {smb1_land_speed_weight} times minus 2, which is minus {smb1_land_example_speed_no}, minus {smb1_land_threshold}, is minus {smb1_land_example_no}. Not yet."
-spoken = "Say Mario's depth is a hundred and forty and his falling speed is four: a hundred and forty, plus {smb1_land_speed_weight_spoken} times four, minus {smb1_land_threshold_spoken}, is {smb1_land_example_yes_spoken}. Above zero: lands soon. At the same depth but rising, at a falling speed of minus two: a hundred and forty, plus {smb1_land_speed_weight_spoken} times minus two, which is minus {smb1_land_example_speed_no_spoken}, minus {smb1_land_threshold_spoken}, is minus {smb1_land_example_no_spoken}. Not yet."
-board = "Two dots at depth 140, one above the border and one below, each with its sum"
+text = "Say Mario's depth is {smb1_land_example_depth} and his falling speed is {smb1_land_example_falling}: {smb1_land_example_depth}, plus {smb1_land_speed_weight} times {smb1_land_example_falling}, minus {smb1_land_threshold}, is {smb1_land_example_yes}. Above zero: lands soon. At the same depth but rising, at a falling speed of minus {smb1_land_example_rising}: {smb1_land_example_depth}, plus {smb1_land_speed_weight} times minus {smb1_land_example_rising}, which is minus {smb1_land_example_speed_no}, minus {smb1_land_threshold}, is minus {smb1_land_example_no}. Not yet."
+spoken = "Say Mario's depth is {smb1_land_example_depth_spoken} and his falling speed is {smb1_land_example_falling_spoken}: {smb1_land_example_depth_spoken}, plus {smb1_land_speed_weight_spoken} times {smb1_land_example_falling_spoken}, minus {smb1_land_threshold_spoken}, is {smb1_land_example_yes_spoken}. Above zero: lands soon. At the same depth but rising, at a falling speed of minus {smb1_land_example_rising_spoken}: {smb1_land_example_depth_spoken}, plus {smb1_land_speed_weight_spoken} times minus {smb1_land_example_rising_spoken}, which is minus {smb1_land_example_speed_no_spoken}, minus {smb1_land_threshold_spoken}, is minus {smb1_land_example_no_spoken}. Not yet."
+board = "Two dots at depth {smb1_land_example_depth}, one above the border and one below, each with its sum"
 framing = true
 
 [[line]]
@@ -298,17 +305,10 @@ framing = true
 
 [[line]]
 id = "land-balance"
-text = "For our example: the depth, 140, and {smb1_land_speed_weight} times the falling speed, {smb1_land_example_speed_yes}, go in the yes pan, and the bias's {smb1_land_threshold} in the no pan. The yes pan holds {smb1_land_balance_yes_pan}, more than {smb1_land_threshold}, so it tips to yes: lands soon."
-spoken = "For our example: the depth, a hundred and forty, and {smb1_land_speed_weight_spoken} times the falling speed, {smb1_land_example_speed_yes_spoken}, go in the yes pan, and the bias's {smb1_land_threshold_spoken} in the no pan. The yes pan holds {smb1_land_balance_yes_pan_spoken}, more than {smb1_land_threshold_spoken}, so it tips to yes: lands soon."
-board = "Blocks of 140 and {smb1_land_example_speed_yes} drop into the yes pan, a {smb1_land_threshold} block into the no pan; the scale tips to yes"
+text = "For our example: the depth, {smb1_land_example_depth}, and {smb1_land_speed_weight} times the falling speed, {smb1_land_example_speed_yes}, go in the yes pan, and the bias's {smb1_land_threshold} in the no pan. The yes pan holds {smb1_land_balance_yes_pan}, more than {smb1_land_threshold}, so it tips to yes: lands soon."
+spoken = "For our example: the depth, {smb1_land_example_depth_spoken}, and {smb1_land_speed_weight_spoken} times the falling speed, {smb1_land_example_speed_yes_spoken}, go in the yes pan, and the bias's {smb1_land_threshold_spoken} in the no pan. The yes pan holds {smb1_land_balance_yes_pan_spoken}, more than {smb1_land_threshold_spoken}, so it tips to yes: lands soon."
+board = "Blocks of {smb1_land_example_depth} and {smb1_land_example_speed_yes} drop into the yes pan, a {smb1_land_threshold} block into the no pan; the scale tips to yes"
 framing = true
-
-[[line]]
-id = "steady-trade"
-text = "Moving left along the border, toward smaller depths, where Mario is higher up, the falling speed on the border goes up one step for every {smb1_land_speed_weight} steps of depth, at the same rate everywhere: {smb1_land_speed_weight} less depth takes {smb1_land_speed_weight} off the total, and one step more falling speed, times its weight of {smb1_land_speed_weight}, puts {smb1_land_speed_weight} back. That steady trade is why it's straight. In words: the further above the floor Mario is, the faster he has to be falling to land on it in time."
-spoken = "Moving left along the border, toward smaller depths, where Mario is higher up, the falling speed on the border goes up one step for every {smb1_land_speed_weight_spoken} steps of depth, at the same rate everywhere: {smb1_land_speed_weight_spoken} less depth takes {smb1_land_speed_weight_spoken} off the total, and one step more falling speed, times its weight of {smb1_land_speed_weight_spoken}, puts {smb1_land_speed_weight_spoken} back. That steady trade is why it's straight. In words: the further above the floor Mario is, the faster he has to be falling to land on it in time."
-board = "A marker slides left and up along the border: one step up in speed for {smb1_land_speed_weight} steps left in depth, with '−{smb1_land_speed_weight}' and '+{smb1_land_speed_weight}' adding to zero beside it"
-cite = ["exp001"]
 
 [[line]]
 id = "land-results"

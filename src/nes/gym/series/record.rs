@@ -2,7 +2,7 @@
 //! screen, for the series' experiments. See `docs/series/games/001.md`.
 
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde_json::json;
 
@@ -44,7 +44,7 @@ pub struct HumanLike {
 
 /// Mario games: mostly running right, often jumping, sometimes idling or
 /// turning back. Tuned so a few minutes of play jump often but not always.
-const MARIO: &[(u8, f64)] = &[
+pub const MARIO_BUTTONS: &[(u8, f64)] = &[
   (BUTTON_RIGHT, 0.30),
   (BUTTON_RIGHT | BUTTON_A, 0.25),
   (BUTTON_RIGHT | BUTTON_B, 0.10),
@@ -55,7 +55,7 @@ const MARIO: &[(u8, f64)] = &[
 ];
 
 /// Castlevania: walking, jumping and whipping (B).
-const CASTLEVANIA: &[(u8, f64)] = &[
+pub const CASTLEVANIA_BUTTONS: &[(u8, f64)] = &[
   (BUTTON_RIGHT, 0.30),
   (BUTTON_RIGHT | BUTTON_A, 0.15),
   (BUTTON_A, 0.15),
@@ -69,11 +69,10 @@ const MEAN_EXTRA_HOLD: f64 = 16.0;
 
 impl HumanLike {
   pub fn new(game: &Game, seed: u64) -> HumanLike {
-    let choices = if game.name.contains("Mario") { MARIO } else { CASTLEVANIA };
     HumanLike {
       seed,
       rng: Lcg::new(seed),
-      choices,
+      choices: game.buttons,
       held: 0,
       left: 0,
     }
@@ -214,6 +213,7 @@ mod tests {
   use super::*;
   use crate::nes::gym::reservoir::rom_or_skip;
   use crate::nes::gym::series::ram::{SMB1, SMB3};
+  use std::path::PathBuf;
 
   fn tmp(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("series-record-{}-{}", name, std::process::id()));

@@ -36,7 +36,12 @@ def dataset(recs: list[Recording], inputs: list[int], label: Callable[[np.ndarra
     ram = np.concatenate([r.ram for r in recs])
     x = ram[:, inputs].astype(float)
     y = label(ram).astype(int)
-    rate = y.mean()
+    check_rate(y, min_rate)
+    return x, y
+
+
+def check_rate(y: np.ndarray, min_rate: float = 0.05) -> None:
+    """Refuse labels where either answer is rarer than `min_rate`."""
+    rate = np.mean(y)
     if not min_rate <= rate <= 1 - min_rate:
         raise ValueError(f"the label is true on {rate:.1%} of frames; need between {min_rate:.0%} and {1 - min_rate:.0%}")
-    return x, y

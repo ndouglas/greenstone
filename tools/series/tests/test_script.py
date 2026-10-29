@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from series.script import REPO, ScriptError, load_video
+from series.script import REPO, VIDEOS, ScriptError, load_video
 
 CITATIONS = """
 [rosenblatt1958]
@@ -153,6 +153,13 @@ framing = true
 ''')
         (d / "numbers.json").write_text('{"accuracy": "93%"}')
         self.assertEqual(load_video(d).lines[0].board, "A bar at 93%")
+
+    def test_every_video_loads(self):
+        dirs = [d for d in VIDEOS.iterdir() if (d / "script.toml").exists()]
+        self.assertTrue(dirs)
+        for d in dirs:
+            with self.subTest(video=d.name):
+                load_video(d)
 
     def test_an_unknown_number_names_the_line(self):
         d = video('''

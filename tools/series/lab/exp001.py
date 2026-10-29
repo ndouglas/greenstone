@@ -7,11 +7,12 @@ Usage: cd tools && series/.venv/bin/python -m series.lab.exp001
 """
 
 import json
+import math
 from pathlib import Path
 
 import numpy as np
 
-from series.lab.data import dataset, load
+from series.lab.data import check_rate, dataset, load
 from series.lab.perceptron import Perceptron
 from series.script import REPO, VIDEOS
 
@@ -68,6 +69,9 @@ def features(game: str, recs) -> tuple[np.ndarray, np.ndarray]:
     for r in recs:
         check_recording(game, r)
     x, y = dataset(recs, addresses, label(game))
+    play = np.concatenate([in_play(game, r.ram) for r in recs])
+    x, y = x[play], y[play]
+    check_rate(y)
     for i, (_, _, signed) in enumerate(INPUTS[game]):
         if signed:
             x[:, i] = np.where(x[:, i] > 127, x[:, i] - 256, x[:, i])
@@ -81,7 +85,7 @@ def accuracy(w: np.ndarray, b: float, x: np.ndarray, y: np.ndarray) -> float:
 
 def percent(a: float) -> tuple[str, str]:
     """93% and "ninety-three percent", for the screen and the narrator."""
-    n = round(a * 100)
+    n = math.floor(a * 100 + 0.5)
     return f"{n}%", f"{spoken_number(n)} percent"
 
 
@@ -154,7 +158,9 @@ def worked_examples(cut: int, k: int, threshold: int) -> dict[str, int]:
         raise ValueError(f"the worked examples' answers no longer hold (air {air}, lands soon {yes}, not yet {no})")
     return {"example_air_total": air, "land_example_speed_yes": speed_yes, "land_example_yes": yes,
             "land_example_speed_no": -speed_no, "land_example_no": -no,
-            "land_balance_yes_pan": LAND_EXAMPLE_DEPTH + speed_yes}
+            "land_balance_yes_pan": LAND_EXAMPLE_DEPTH + speed_yes,
+            "example_air_depth": EXAMPLE_AIR_DEPTH, "land_example_depth": LAND_EXAMPLE_DEPTH,
+            "land_example_falling": LAND_EXAMPLE_FALLING, "land_example_rising": -LAND_EXAMPLE_RISING}
 
 
 # Each game's ROM, as the recorder names it (src/nes/gym/series/ram.rs).
@@ -183,6 +189,52 @@ def check_recording(game: str, rec) -> None:
         raise ValueError(f"{game} recording doesn't match: {'; '.join(problems)}")
 
 
+def in_play(game: str, ram: np.ndarray) -> np.ndarray:
+    """Frames where the player is playing. Super Mario Bros. says so in its
+    player state ($000E): 08 is play. The rest are the game moving Mario:
+    dying, growing or shrinking (a freeze), the flagpole, walking into the
+    castle, pipes; there the answer key can mislead (dying sets the
+    in-the-air byte while he stands on the floor). The other games' frames
+    all count."""
+    if game == "smb1":
+        return ram[:, 0x000E] == 0x08
+    return np.ones(len(ram), dtype=bool)
+
+
+def seconds_between_deaths(frames: list[int], restarts: list[int]) -> int:
+    """How often the player died, from the recordings' lengths (60 frames a second)."""
+    return int(round(np.mean(frames) / 60 / max(round(np.mean(restarts)), 1)))
+
+
+def recording_minutes(frames: list[int]) -> int:
+    return int(round(np.mean(frames) / 3600))
+
+
+def whole_number_border(w: np.ndarray, b: float) -> tuple[int, int]:
+    """The border as depth + k × speed > threshold: everything divided by the
+    depth's weight, which must be positive or the comparison would flip."""
+    if w[0] <= 0:
+        raise ValueError(f"the depth's weight is {w[0]}; dividing by it would flip the border")
+    return int(round(w[1] / w[0])), int(round(-b / w[0]))
+
+
+def check_claims(cut: int, standing: int, smb3_cut: int, smb3_standing: int, train: float, test: float,
+                 depth_alone: float, not_yet: float) -> None:
+    """The script's plain-word claims about the numbers: refuse a run that
+    makes any of them false."""
+    problems = []
+    if cut != standing:
+        problems.append(f"the setting ({cut}) isn't Mario's standing depth ({standing})")
+    if smb3_cut != smb3_standing:
+        problems.append(f"Super Mario Bros. 3's setting ({smb3_cut}) isn't its floor ({smb3_standing})")
+    if test < train:
+        problems.append(f"the new session scored worse ({test:.3f}) than the ones it was chosen on ({train:.3f})")
+    if abs(depth_alone - not_yet) >= 0.01:
+        problems.append(f"depth alone ({depth_alone:.3f}) isn't about as good as always 'not yet' ({not_yet:.3f})")
+    if problems:
+        raise ValueError("; ".join(problems))
+
+
 def agreed_cut(cuts: list[float]) -> int | None:
     """The setting each session chose on its own, if they all chose the same one."""
     return int(cuts[0]) if len(set(cuts)) == 1 else None
@@ -209,6 +261,7 @@ def best_line(x: np.ndarray, y: np.ndarray, angles: int = 360) -> tuple[np.ndarr
 
 def run(data_root: Path = DATA, out: Path = OUT) -> dict:
     numbers: dict[str, str | int | float] = {}
+    raw: dict[str, dict[str, float]] = {}
 
     def put(name: str, value: float) -> None:
         numbers[name], numbers[name + "_spoken"] = percent(value)
@@ -239,9 +292,11 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
             xs, ys = features(game, [load(steady)])
             if (agreed := agreed_cut([cut, best_cut(xs[:, 0], ys)[0]])) is not None:
                 put_int(f"{game}_steady_player_cut", agreed)
-        put(f"{game}_height_accuracy", accuracy(np.array([-1.0]), cut, xt[:, :1], yt))
+        raw[game] = {"test": accuracy(np.array([-1.0]), cut, xt[:, :1], yt),
+                     "train": accuracy(np.array([-1.0]), cut, x[:, :1], y)}
+        put(f"{game}_height_accuracy", raw[game]["test"])
         # On the sessions it was chosen on: a lucky fit would score worse on the new one.
-        put(f"{game}_height_train_accuracy", accuracy(np.array([-1.0]), cut, x[:, :1], y))
+        put(f"{game}_height_train_accuracy", raw[game]["train"])
         put(f"{game}_air_rate", yt.mean())
         if x.shape[1] == 2:
             # The second number, and whether a tilted line does better.
@@ -256,7 +311,8 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
             put(f"{game}_best_line_accuracy", accuracy(w, b, xt, yt))
         numbers[f"{game}_test_frames"] = int(len(yt))
         numbers[f"{game}_restarts_per_recording"] = int(round(np.mean([r.meta["restarts"] for r in train + test])))
-        put_int(f"{game}_seconds_between_deaths", int(round(18000 / 60 / max(numbers[f"{game}_restarts_per_recording"], 1))))
+        put_int(f"{game}_seconds_between_deaths", seconds_between_deaths(
+            [r.meta["frames"] for r in train + test], [r.meta["restarts"] for r in train + test]))
         # Where the one-cut neuron goes wrong, on the test frames.
         wrong = (xt[:, 0] < cut).astype(int) != yt
         on_something = wrong & (yt == 0)
@@ -265,20 +321,27 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
         put_int(f"{game}_standing_height", int(np.median(ground)))
         put_int(f"{game}_standing_height_low", int(np.percentile(ground, 1)))
         put_int(f"{game}_standing_height_high", int(np.percentile(ground, 99)))
-    numbers["test_minutes"] = 5
+    numbers["test_minutes"] = recording_minutes([r.meta["frames"] for r in test])
 
     # Two numbers that both matter: Mario is in the air; will he land in
     # the next LAND_WITHIN frames? (Low and falling fast means soon.)
+    def land_moments(r):
+        """The moments in the air, during play, and whether each lands soon."""
+        air = label("smb1")(r.ram)
+        keep, lands = landing(air, r.meta.get("restart_frames", []), LAND_WITHIN)
+        play = in_play("smb1", r.ram)[keep]
+        return air, keep[play], lands[play]
+
     def land_data(recs):
         xs, ys = [], []
         for r in recs:
             check_recording("smb1", r)
-            air = label("smb1")(r.ram)
-            keep, lands = landing(air, r.meta.get("restart_frames", []), LAND_WITHIN)
+            air, keep, lands = land_moments(r)
             h = r.ram[keep, 0x00CE].astype(float)
             vy = r.ram[keep, 0x009F].astype(float)
             xs.append(np.stack([h, np.where(vy > 127, vy - 256, vy)], 1))
             ys.append(lands)
+        check_rate(np.concatenate(ys))
         return np.concatenate(xs), np.concatenate(ys)
 
     train = [load(data_root / "smb1" / s) for s in ("1", "2")]
@@ -286,12 +349,14 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
     x, y = land_data(train)
     xt, yt = land_data(test)
     put("smb1_land_rate", yt.mean())
-    put("smb1_land_baseline", max(yt.mean(), 1 - yt.mean()))
+    raw["land_baseline"] = max(yt.mean(), 1 - yt.mean())
+    put("smb1_land_baseline", raw["land_baseline"])
     for i, name in ((0, "height"), (1, "speed")):
         best = max(((side * (x[:, i] - t) > 0).astype(int) == y).mean().item() for t in np.unique(x[:, i]) for side in (1, -1))
         t, side = next((t, side) for t in np.unique(x[:, i]) for side in (1, -1)
                        if ((side * (x[:, i] - t) > 0).astype(int) == y).mean() == best)
-        put(f"smb1_land_{name}_cut_accuracy", ((side * (xt[:, i] - t) > 0).astype(int) == yt).mean())
+        raw[f"land_{name}"] = ((side * (xt[:, i] - t) > 0).astype(int) == yt).mean()
+        put(f"smb1_land_{name}_cut_accuracy", raw[f"land_{name}"])
     w, b, _ = best_line(x, y)
     put("smb1_land_line_accuracy", accuracy(w, b, xt, yt))
     numbers["smb1_land_within"] = LAND_WITHIN
@@ -304,8 +369,7 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
     missed = (said == 0) & (yt == 1)
     land_heights = []
     for r in test:
-        air = label("smb1")(r.ram)
-        keep, lands = landing(air, r.meta.get("restart_frames", []), LAND_WITHIN)
+        air, keep, lands = land_moments(r)
         for t, l in zip(keep, lands):
             if l:
                 first = next(k for k in range(1, LAND_WITHIN + 1) if not air[t + k])
@@ -317,8 +381,7 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
     put("smb1_land_misses_on_raised", raised.sum() / max(missed.sum(), 1))
     put("smb1_land_raised_share_of_all_mistakes", raised.sum() / max((said != yt).sum(), 1))
     # The same border in whole numbers: height + k × speed against a threshold.
-    k = int(round(w[1] / w[0]))
-    threshold = int(round(-b / w[0]))
+    k, threshold = whole_number_border(w, b)
     put_int("smb1_land_speed_weight", k)
     put_int("smb1_land_threshold", threshold)
     for name, value in worked_examples(numbers["smb1_height_cut"], k, threshold).items():
@@ -332,13 +395,13 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
     # And its false alarms: "lands soon" when he didn't, by why.
     kinds = []
     for r in test:
-        air = label("smb1")(r.ram)
+        air, keep, _ = land_moments(r)
         restarts = r.meta.get("restart_frames", [])
         vy = r.ram[:, 0x009F].astype(int)
         vy = np.where(vy > 127, vy - 256, vy)
-        # Normal play, or the blink after being hit (0x0A), which isn't a death.
+        # Whether he lands: the freeze while the game shrinks a hurt Mario
+        # (0x0A) doesn't end his life, so it doesn't end the look-ahead.
         normal = np.isin(r.ram[:, 0x000E], (0x08, 0x0A))
-        keep, _ = landing(air, restarts, LAND_WITHIN)
         kinds += [false_alarm_kind(air, vy, r.ram[:, 0x00CE].astype(int), normal, restarts, t) for t in keep]
     kinds = np.array(kinds)
     alarms = (said_whole == 1) & (yt == 0)
@@ -357,6 +420,10 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
     s1 = np.concatenate([r.ram for r in train + test])
     digits = (s1[:, 0x07DD:0x07E3] & 0x0F).astype(int)
     put_int("smb1_top_score", int((digits * np.array([100000, 10000, 1000, 100, 10, 1])).sum(1).max() * 10))
+    check_claims(cut=numbers["smb1_height_cut"], standing=numbers["smb1_standing_height"],
+                 smb3_cut=numbers["smb3_height_cut"], smb3_standing=numbers["smb3_standing_height"],
+                 train=raw["smb1"]["train"], test=raw["smb1"]["test"],
+                 depth_alone=raw["land_height"], not_yet=raw["land_baseline"])
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(numbers, indent=2, sort_keys=True) + "\n")
     return numbers

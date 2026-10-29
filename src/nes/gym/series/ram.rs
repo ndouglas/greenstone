@@ -4,6 +4,7 @@
 
 use crate::nes::bus::{BUTTON_A, BUTTON_RIGHT, BUTTON_START, BUTTON_UP};
 use crate::nes::gym::reservoir::demo::{smb_dead, smb_start_state};
+use crate::nes::gym::series::record::{CASTLEVANIA_BUTTONS, MARIO_BUTTONS};
 use crate::nes::gym::NesEmulator;
 
 /// A game, the ROM its addresses were checked on, and where it keeps the
@@ -19,7 +20,9 @@ pub struct Game {
   /// The player's vertical speed, if the game keeps one.
   pub vy: Option<u16>,
   pub(crate) is_airborne: fn(u8) -> bool,
-  start: fn(&[u8]) -> NesEmulator,
+  /// The button combinations a simulated player picks from, with weights.
+  pub buttons: &'static [(u8, f64)],
+  start: fn(&[u8]) -> Result<NesEmulator, String>,
   died: fn(&mut NesEmulator) -> bool,
 }
 
@@ -27,7 +30,7 @@ impl Game {
   /// An emulator at the first frame of play, after checking the ROM.
   pub fn boot(&self, rom: &[u8]) -> Result<NesEmulator, String> {
     verify_rom(self, rom)?;
-    Ok((self.start)(rom))
+    (self.start)(rom)
   }
 
   /// Whether the player has just died (so a recorder should start over).
@@ -51,6 +54,22 @@ pub fn verify_rom(game: &Game, rom: &[u8]) -> Result<(), String> {
       "{} is SHA-1 {}, but {}'s addresses were verified on {}",
       game.rom, digest, game.name, game.sha1
     ))
+  }
+}
+
+/// Step Super Mario Bros. until the player state ($000E) reads 08, normal
+/// play, giving up after `frames` frames.
+fn wait_for_play(emu: &mut NesEmulator, frames: usize) -> Result<(), String> {
+  for _ in 0..frames {
+    if emu.ram_read(0x000E) == 0x08 {
+      return Ok(());
+    }
+    emu.step_frame(0);
+  }
+  if emu.ram_read(0x000E) == 0x08 {
+    Ok(())
+  } else {
+    Err(format!("Super Mario Bros. didn't reach play within {} frames", frames))
   }
 }
 
@@ -105,19 +124,14 @@ pub const SMB1: Game = Game {
   vy: Some(smb1::VY),
   is_airborne: |v| matches!(v, 1 | 2),
   died: smb_dead,
+  buttons: MARIO_BUTTONS,
   start: |rom| {
     let mut emu = NesEmulator::new(rom);
     emu.load_state(&smb_start_state(rom));
-    // That state is a few frames before play: wait for the player state
-    // ($000E) to read 08, normal play.
-    for _ in 0..120 {
-      if emu.ram_read(0x000E) == 0x08 {
-        break;
-      }
-      emu.step_frame(0);
-    }
+    // That state is a few frames before play.
+    wait_for_play(&mut emu, 120)?;
     emu.step_frame(0);
-    emu
+    Ok(emu)
   },
 };
 
@@ -133,6 +147,7 @@ pub const SMB3: Game = Game {
   // death begins and stays on through the death animation (about 200 frames),
   // until the lives counter drops.
   died: |emu| emu.ram_read(smb3::DYING) != 0,
+  buttons: MARIO_BUTTONS,
   // Title, one player, then on the map: Right one square, Up to level 1, A.
   start: |rom| {
     let mut emu = NesEmulator::new(rom);
@@ -144,7 +159,7 @@ pub const SMB3: Game = Game {
       (1900, 6, BUTTON_A),
     ];
     play_script(&mut emu, 1990, &script);
-    emu
+    Ok(emu)
   },
 };
 
@@ -158,11 +173,12 @@ pub const CASTLEVANIA: Game = Game {
   // Jumping, knocked back (he flies backwards through the air), dropping.
   is_airborne: |v| matches!(v, 0x01 | 0x05 | 0x07),
   died: |emu| emu.ram_read(castlevania::STATE) == 0x08,
+  buttons: CASTLEVANIA_BUTTONS,
   // Start at the title, Start again; a third Start would pause the game.
   start: |rom| {
     let mut emu = NesEmulator::new(rom);
     play_script(&mut emu, 800, &[(200, 4, BUTTON_START), (500, 4, BUTTON_START)]);
-    emu
+    Ok(emu)
   },
 };
 
@@ -185,7 +201,7 @@ mod tests {
     assert!(!game.airborne(&mut emu), "{} starts in the air", game.name);
     let ground_y = emu.ram_read(game.y);
     let mut rose = false;
-    for _ in 0..12 {
+    for _ in 0..10 {
       emu.step_frame(BUTTON_A);
       rose |= game.airborne(&mut emu);
     }
@@ -229,6 +245,25 @@ mod tests {
     assert!((CASTLEVANIA.is_airborne)(emu_state), "knocked back (05) is in the air");
     emu_state = 0x00;
     assert!(!(CASTLEVANIA.is_airborne)(emu_state));
+  }
+
+  #[test]
+  fn smb1_boot_refuses_a_game_that_never_starts() {
+    let Some(rom) = rom_or_skip(SMB1.rom) else { return };
+    // At power-on the player state isn't 08, and no frames are allowed to pass.
+    let mut emu = NesEmulator::new(&rom);
+    assert!(wait_for_play(&mut emu, 0).is_err());
+    let mut emu = NesEmulator::new(&rom);
+    emu.load_state(&smb_start_state(&rom));
+    assert!(wait_for_play(&mut emu, 120).is_ok());
+  }
+
+  #[test]
+  fn each_game_names_its_own_buttons() {
+    use crate::nes::gym::series::record::{CASTLEVANIA_BUTTONS, MARIO_BUTTONS};
+    assert!(std::ptr::eq(SMB1.buttons, MARIO_BUTTONS));
+    assert!(std::ptr::eq(SMB3.buttons, MARIO_BUTTONS));
+    assert!(std::ptr::eq(CASTLEVANIA.buttons, CASTLEVANIA_BUTTONS));
   }
 
   #[test]

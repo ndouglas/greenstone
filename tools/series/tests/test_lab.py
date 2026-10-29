@@ -28,6 +28,12 @@ class Data(unittest.TestCase):
         self.assertEqual(rec.buttons.shape, (200,))
         self.assertEqual(rec.meta["game"], "Super Mario Bros.")
 
+    def test_a_one_sided_label_is_refused_wherever_it_comes_from(self):
+        from series.lab.data import check_rate
+        with self.assertRaises(ValueError):
+            check_rate(np.array([0] * 199 + [1]))
+        check_rate(np.array([0, 1] * 100))
+
     def test_a_one_sided_dataset_is_refused(self):
         rec = load(fake_recording(200, airborne_every=1000))  # airborne on 1 frame of 200
         with self.assertRaises(ValueError):
@@ -124,7 +130,8 @@ class Experiment(unittest.TestCase):
     def test_worked_examples_follow_the_found_numbers(self):
         self.assertEqual(exp001.worked_examples(cut=176, k=5, threshold=152), {
             "example_air_total": 26, "land_example_speed_yes": 20, "land_example_yes": 8,
-            "land_example_speed_no": 10, "land_example_no": 22, "land_balance_yes_pan": 160})
+            "land_example_speed_no": 10, "land_example_no": 22, "land_balance_yes_pan": 160,
+            "example_air_depth": 150, "land_example_depth": 140, "land_example_falling": 4, "land_example_rising": 2})
 
     def test_worked_examples_refuse_numbers_that_flip_their_answers(self):
         # 140 + 5 x 4 - 170 isn't above zero, so "lands soon" would be false.
@@ -140,6 +147,33 @@ class Experiment(unittest.TestCase):
             wrong.meta.update({"sha1": "ea343f4e445a9050d4b4fbac2c77d0693b1d0922", "label_rate": 0.25, **bad})
             with self.assertRaises(ValueError, msg=str(bad)):
                 exp001.check_recording("smb1", wrong)
+
+    def test_time_between_deaths_comes_from_the_recordings(self):
+        self.assertEqual(exp001.seconds_between_deaths(frames=[36000], restarts=[30]), 20)
+        self.assertEqual(exp001.recording_minutes(frames=[36000]), 10)
+
+    def test_the_whole_number_border_keeps_its_direction(self):
+        self.assertEqual(exp001.whole_number_border(np.array([0.0335, 0.1683]), -5.084), (5, 152))
+        with self.assertRaises(ValueError):
+            exp001.whole_number_border(np.array([-0.0335, 0.1683]), -5.084)
+
+    def test_the_scripts_plain_words_are_checked(self):
+        good = dict(cut=176, standing=176, smb3_cut=128, smb3_standing=128, train=0.938, test=0.940,
+                    depth_alone=0.748, not_yet=0.745)
+        exp001.check_claims(**good)
+        for bad in ({"cut": 170}, {"smb3_cut": 120}, {"test": 0.90}, {"depth_alone": 0.80}):
+            with self.assertRaises(ValueError, msg=str(bad)):
+                exp001.check_claims(**{**good, **bad})
+
+    def test_only_frames_of_play_count_in_super_mario_bros(self):
+        ram = np.zeros((3, 2048), dtype=np.uint8)
+        # Play; dying; the freeze while the game shrinks a hurt Mario.
+        ram[:, 0x0E] = [0x08, 0x0B, 0x0A]
+        self.assertEqual(exp001.in_play("smb1", ram).tolist(), [True, False, False])
+        self.assertEqual(exp001.in_play("castlevania", ram).tolist(), [True, True, True])
+
+    def test_halves_round_up(self):
+        self.assertEqual(exp001.percent(0.125), ("13%", "thirteen percent"))
 
     def test_numbers_have_spoken_forms(self):
         self.assertEqual(exp001.spoken_number(176), "one hundred and seventy-six")
