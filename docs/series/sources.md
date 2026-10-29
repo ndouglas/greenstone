@@ -337,6 +337,64 @@ learning rate live in the paper's notebooks, not the text).
 | Open questions | A test for superposition; controlling it; realism of toy models; scaling; how many features fit; links to compressed sensing phase changes and non-robust features | superposition video (pressure test) |
 | Replications (comments) | Redwood, DeepMind, OpenAI and others replicated it; a sparse autoencoder recovered toy features almost exactly (Sharkey, Braun, Millidge) | SAE video |
 
+## 11. A Longlist of Theories of Impact for Interpretability
+
+Neel Nanda. AI Alignment Forum, 2022-03-11.
+https://www.alignmentforum.org/posts/uK6sQCNMw8WKzJeCQ/a-longlist-of-theories-of-impact-for-interpretability
+
+The case for why interpretability might matter, as a list of separate
+arguments ("theories of impact"); read in full. The post says it covers
+19 arguments, but its rendered numbering is inconsistent, so items are
+named here, not numbered.
+
+| Theory of impact | What it says | Series |
+|---|---|---|
+| Force multiplier for alignment research | Seeing why a model misbehaves gives richer data | the critique video; failures throughout |
+| Predicting future systems | Mechanistic principles that extrapolate with scale (induction heads and sudden capability gains) | later |
+| Auditing | Check a trained model before deploying it | the critique video; auditing games |
+| Auditing for deception | A lower bar: spot-check parts of a model for deception | the critique video; organisms |
+| Coordination | Actors who can inspect each other's systems can trust each other | the critique video |
+| Evidence for or against threat models | Real examples of theorised failures; convincing skeptics; supporting a slowdown | model organisms |
+| Better human feedback | Train models to do the right thing for the right reasons | later |
+| Informed oversight | Check each step of a recursive alignment scheme | later |
+| Interpretability in the loss | Train against an interpretability tool (it may be Goodharted) | the probe-evasion organism |
+| Norms and regulation | Interpreting a system becomes due diligence; regulators can audit | the critique video |
+| Cultural shifts | A field that expects understanding notices how little it has (Olah's bridge analogy) | the series' framing |
+| Microscope AI | Learn from how a model does a task instead of deploying it | the critique video |
+| AIs interpreting AIs | Near-human-level AIs interpret stronger ones | later |
+| Forecasting discontinuities; intervening on and auditing training runs | Catch problems during training, before a model can hide them | learning-dynamics videos |
+| ELK via shortest explanation | Use explanation length as a training loss (credited to Tao Lin) | later |
+| The disagreement | Auditing a finished model vs. using tools in training, where optimization pressure may break them | the probe-evasion organism |
+
+## 12. Against Almost Every Theory of Impact of Interpretability
+
+Charbel-Raphaël. AI Alignment Forum, 2023-08-17.
+https://www.alignmentforum.org/posts/LNA8mubrByG7SFacm/against-almost-every-theory-of-impact-of-interpretability-1
+
+A deliberately adversarial reply to Nanda's longlist, read in full
+(comments not included). Its scope matters to this series: it targets
+deep, GPT-like models and explicitly sets aside the explainability of
+small models.
+
+| Argument | What it says | Series |
+|---|---|---|
+| Not a predictor | Interpretation came after phenomena were found (induction heads, grokking); behavioural tests found them first | the critique video |
+| Deception auditing is out of reach | Spot-checking circuits doesn't obviously find deception; the field is far down Hubinger's "tech tree"; deception may not need internal planning; other routes exist (adversarial testing, consistency checks, model organisms, monitoring chains of thought) | the critique video; the toolkit (behavioural tools) |
+| No clear end story | Interpretability relies on serendipity and lacks a target | the critique video |
+| Enumerative safety is doomed | A "gun" feature may just recognise guns; superposition makes enumeration intractable; dangers are high-level behaviours, not features | superposition and SAE videos (pressure tests) |
+| Reverse engineering doesn't arrive | Code-like, plain-language, connectome and circuit-graph endpoints all fall short (the IOI circuit covers one token of GPT-2 small) | circuits video (pressure test) |
+| Olah's dream is enumeration restated | Solving superposition for safety is enumerative safety again | SAE video |
+| Retargeting the search: promising | Finding and redirecting a model's goal (maze-solving agents) | an NES organism (an agent's goal) |
+| Relaxed / latent adversarial training: valid but hard | Adversarial perturbations of internals rather than inputs | later |
+| Microscope AI: not promising | Economics favour agents; probing AlphaZero taught no new chess | the critique video |
+| Best theory of impact: outreach | A gateway to the field, showing strange failures, showing models aren't parrots (Othello-GPT) | the series itself, which the critique says is interpretability's best use |
+| Prevention over cure | Aim for systems whose reasoning is legible (chains of thought, process-based training, cognitive emulation) | later |
+| Interpretability may be harmful | False sense of control, overinterpretation (saliency maps, feature visualization, ROME), safety-washing, dual use for capabilities | the series' honesty rule |
+| Too many juniors in interp | E.g. 14 of 16 ARENA projects; the field needs diversity | the critique video |
+| Solved interp still isn't safety | Many risks involve no deception; coordination matters more | the critique video |
+| Better agendas | Technical governance, evals, adversarial robustness, characterizing alignment difficulty, technical outreach | the critique video |
+| Concessions | Interp is more feasible than neuroscience; causal methods, activation patching and probes are more rigorous; some researchers should work on it | the critique video |
+
 ## Gaps
 
 - The middle and end of the podcast transcript are summary-only (†).

@@ -38,6 +38,15 @@ The series' answer:
   The viewer should be able to read an interpretability claim and judge
   it, which needs both the methods and their criticism.
 
+The debate over what interpretability is *for* runs the same way.
+Nanda's longlist of theories of impact (2022) and Charbel-Raphaël's
+reply (2023) are taught as a pair: each theory, and the case against
+it. The reply's own conclusions shape the series: its best theory of
+impact is outreach and education, which is what this series is; it
+exempts small models from its critique, which is all this series uses;
+and it praises causal methods, probes, model organisms and adversarial
+testing, which the toolkit teaches alongside circuits.
+
 Where it lands in the videos:
 
 - **001** says briefly why anyone would look inside a network, and that
