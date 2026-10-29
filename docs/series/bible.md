@@ -149,14 +149,31 @@ own reservoir brains. Model organisms are woven through all of it.
   output; the perceptron as a balance scale; place value as a neuron.
 - **Callbacks:** none (first video).
 - **Games:** Super Mario Bros. for "is Mario in the air?"; at least two
-  more games asking a question of the same shape (to research).
+  more games asking a question of the same shape (`docs/series/games/001.md`).
+- **The line is placed by hand, not learned** (pass 7): learning is 003's
+  idea, and a learned line in 001 would be a handwave. The viewer sees
+  the scatter of two numbers from Mario's memory (conceptually his
+  height and his vertical speed; the addresses are in the games file),
+  coloured by the answer key, and a line placed by eye.
+- **Experiments:** the hand-placed line tested on a recording it has
+  never seen (a behavioural test, unnamed); each input's contribution
+  shown as the blocks on the balance scale (attribution, unnamed); the
+  same question in other games; a score read by place value as "a neuron
+  can read a number"; the thermostat (one input) as the opener.
+- **Said out loud:** this is the only neuron in the series we'll
+  understand completely; every later video falls short of it on
+  purpose.
+- **Organisms:** none (the first is 002's cheating byte).
 - **Plants for later:** the distance from the line as confidence (paid
   off with sigmoid); shuffled inputs change nothing (paid off with
   convolutional networks); weights over pixels as a picture (007); the
   widest-gap line (margin).
 - **Citations to find:** Rosenblatt's perceptron (1958); McCulloch and
-  Pitts (1943); a source on the NES's 2KB RAM and the games' RAM maps
-  (for every address used).
+  Pitts (1943); a source on the NES's 2KB RAM; the games' RAM maps (for
+  every address used); slope-intercept form (any standard algebra
+  reference); place-value notation; a source for "some researchers doubt
+  the approach" (Hendrycks and Hiscott, 2025, in `sources.md`); the
+  thermostat as a threshold device.
 
 ### 002: When the line lies
 

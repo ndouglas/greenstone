@@ -149,6 +149,56 @@ rewind and change the game <- predict what it'll say <- look at the weights
   alike (positions, flags, timers, IDs); pixels are. Memory inputs vs.
   pixel inputs, across games, is a ready experiment.
 
+## Pass 7: an atlas of one neuron, page by tool
+
+Tuple: operators negation, substitution; organon atlas; dimension
+prompts source, size, side-effect. Run after the series became a toolkit
+(see the bible), asking what each approach says about a single neuron
+answering "is Mario in the air?", and which can be shown in 001 without
+crowding it.
+
+- **Behavioural page.** Test it on a recording it has never seen: how
+  often is it right, and when is it wrong (probably the frames around
+  take-off and landing)? *In 001:* yes; this is how we know the line
+  works at all.
+- **Attributional page.** For one neuron, each input's contribution is
+  just weight × input: exactly the blocks on the balance scale. *In 001:*
+  shown, not named; named when attribution arrives.
+- **Probing page.** The neuron reading Mario's memory *is* a probe, of the
+  game. *In 001:* one sentence at most; it pays off in 008, when we probe
+  a network the same way.
+- **Mechanistic page.** Everything about it is visible: two weights and a
+  bias are the whole mechanism. The only time in the series we'll have
+  total mechanistic understanding. *In 001:* yes, said out loud, as the
+  baseline every later video falls short of.
+- **Concept page.** The weights are a direction, and "in the air" is the
+  side of the line it points to: a representation-engineering reading
+  vector is a learned version of this. *In 001:* no; plant only.
+- **Causal-intervention page.** Rewind the game, nudge Mario's height in
+  memory, watch the answer flip. *In 001:* tempting but crowding; it
+  belongs to the causal-intervention video.
+- **Model-organism page.** The first organism is 002's cheating byte.
+  *In 001:* none.
+
+Negation and substitution on the **source** of the line:
+- Hand-placed (we pick w and b by eye on the scatter) is 001.
+- Learned by nudging after mistakes is 003. **So 001 shouldn't train the
+  neuron at all**: showing a learned line in 001 would be "it learned
+  somehow", the handwave the bible forbids. The lab still trains one, for
+  003, but 001's numbers come from the hand-placed line.
+- Found by random search or evolution; copied from another game (002's
+  transplant): later, as pressure tests.
+
+**Size:** one input is a threshold (a thermostat), two a line, three a
+sheet; 2,048 inputs (all of RAM) can't be drawn, and a neuron reading all
+of RAM would put most of its weight on the answer-key byte, which is
+002's discovery.
+
+**Side-effect:** drawing a line *defines* "in the air" as a half of the
+picture, and every frame near the line is a near-miss. Treating the
+mistakes as the main effect turns them into 002's subject: they're
+where the neuron's assumptions break.
+
 ## What it adds up to
 
 - Assumptions (in the bible's ledger): a human picked the inputs; bigger
