@@ -21,3 +21,20 @@ Total with credits: 23:13 (115 beats). Every section is under the 4:00
 limit; the longest are chapter-6 (3:33) and chapter-1 (3:27). Measured on
 the last build at speed 1.0, the narrator ran about 3.4 words a second;
 at 0.9, about 3.0.
+
+## After the reviews (commit fbb2f00)
+
+| Section | Title | Beats | Length |
+|---|---|---|---|
+| introduction | Introduction | 9 | 1:46 |
+| chapter-1 | Building one neuron | 19 | 3:22 |
+| chapter-2 | Is it any good? | 19 | 3:15 |
+| chapter-3 | The recipe | 15 | 3:10 |
+| chapter-4 | Drawing it | 14 | 2:42 |
+| chapter-5 | Two numbers | 18 | 3:22 |
+| chapter-6 | The border it found | 12 | 2:43 |
+| chapter-7 | Weighing it | 9 | 1:44 |
+| chapter-8 | Does it work? | 9 | 1:32 |
+| conclusions | Conclusions | 8 | 1:59 |
+
+Total with credits: 25:55 (133 beats). Every section is under 4:00.
