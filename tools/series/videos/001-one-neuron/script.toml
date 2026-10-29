@@ -312,7 +312,7 @@ cite = ["exp001"]
 [[section.line]]
 id = "testing-end"
 role = "conclusion"
-text = "So it goes wrong because all it knows about is the floor. A harder question needs two numbers, and for that we need the recipe."
+text = "So it goes wrong because all it knows about is the floor. Some questions depth can't answer well at all, and for those we'll want a neuron that reads two numbers."
 board = "A new question mark beside the neuron, and an empty second input slot"
 cite = ["exp001"]
 
@@ -433,7 +433,7 @@ id = "draw-intro"
 role = "intro"
 text = "Soon we'll want to turn a neuron's messy numbers into simple ones. Drawing the neuron as a line shows a change that leaves its answers exactly the same."
 board = "Empty axes fade in beside the formula"
-framing = true
+cite = ["bishop2006"]
 
 [[section.line]]
 id = "school"
@@ -497,8 +497,8 @@ cite = ["bishop2006"]
 
 [[section.line]]
 id = "one-dot-4b"
-text = "Here, zero matters. In the last chapter, moving the 100 into the bias gave the same answers as testing against 100."
-spoken = "Here, zero matters. In the last chapter, moving the hundred into the bias gave the same answers as testing against a hundred."
+text = "Here, zero matters. In the last chapter, any number worked: moving the 100 into the bias gave the same answers as testing against 100."
+spoken = "Here, zero matters. In the last chapter, any number worked: moving the hundred into the bias gave the same answers as testing against a hundred."
 board = "The last chapter's '> 100' sliding into the bias, small, in a corner"
 cite = ["bishop2006"]
 pause = 1.0
