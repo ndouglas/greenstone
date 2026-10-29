@@ -43,6 +43,14 @@
   "smb1_height_train_accuracy_spoken": "ninety-four percent",
   "smb1_land_baseline": "75%",
   "smb1_land_baseline_spoken": "seventy-five percent",
+  "smb1_land_false_alarm_kinds": {
+    "bounce": 125,
+    "died": 6,
+    "late": 13,
+    "pit": 78
+  },
+  "smb1_land_false_alarms_bounce_or_pit": "91%",
+  "smb1_land_false_alarms_bounce_or_pit_spoken": "ninety-one percent",
   "smb1_land_height_cut_accuracy": "75%",
   "smb1_land_height_cut_accuracy_spoken": "seventy-five percent",
   "smb1_land_line_accuracy": "91%",
@@ -68,6 +76,8 @@
   "smb1_land_whole_accuracy_spoken": "ninety-one percent",
   "smb1_land_whole_misses_on_raised": "85%",
   "smb1_land_whole_misses_on_raised_spoken": "eighty-five percent",
+  "smb1_land_whole_raised_share_of_all_mistakes": "60%",
+  "smb1_land_whole_raised_share_of_all_mistakes_spoken": "sixty percent",
   "smb1_land_within": 10,
   "smb1_land_within_spoken": "ten",
   "smb1_learned_line_accuracy": "84%",

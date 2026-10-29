@@ -113,6 +113,25 @@ def best_cut(v: np.ndarray, y: np.ndarray) -> tuple[float, float]:
     return best[1], best[0]
 
 
+def false_alarm_kind(air: np.ndarray, vy: np.ndarray, depth: np.ndarray, normal: np.ndarray,
+                     restarts: list[int], t: int) -> str:
+    """Why the border said "lands soon" at frame t and he didn't: he started
+    rising again before landing ("bounce", off an enemy), fell below the
+    screen ("pit") or died some other way ("died") before the next restart,
+    or simply landed later ("late"). `normal` is false while the game, not
+    the player, is moving Mario (dying pops him upward)."""
+    for k in range(t + 1, len(air)):
+        if k in restarts:
+            break
+        if not normal[k]:
+            return "pit" if (depth[t:k] >= 200).any() else "died"
+        if not air[k]:
+            return "late"
+        if vy[k] < 0:
+            return "bounce"
+    return "pit" if (depth[t:] >= 200).any() else "died"
+
+
 def agreed_cut(cuts: list[float]) -> int | None:
     """The setting each session chose on its own, if they all chose the same one."""
     return int(cuts[0]) if len(set(cuts)) == 1 else None
@@ -256,6 +275,21 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
     missed_whole = (said_whole == 0) & (yt == 1)
     raised_whole = missed_whole & (land_heights >= 0) & (land_heights < numbers["smb1_height_cut"])
     put("smb1_land_whole_misses_on_raised", raised_whole.sum() / max(missed_whole.sum(), 1))
+    # And its false alarms: "lands soon" when he didn't, by why.
+    kinds = []
+    for r in test:
+        air = label("smb1")(r.ram)
+        restarts = r.meta.get("restart_frames", [])
+        vy = r.ram[:, 0x009F].astype(int)
+        vy = np.where(vy > 127, vy - 256, vy)
+        normal = r.ram[:, 0x000E] == 0x08
+        keep, _ = landing(air, restarts, LAND_WITHIN)
+        kinds += [false_alarm_kind(air, vy, r.ram[:, 0x00CE].astype(int), normal, restarts, t) for t in keep]
+    kinds = np.array(kinds)
+    alarms = (said_whole == 1) & (yt == 0)
+    put("smb1_land_false_alarms_bounce_or_pit", np.isin(kinds[alarms], ("bounce", "pit")).mean())
+    numbers["smb1_land_false_alarm_kinds"] = {k: int((kinds[alarms] == k).sum()) for k in ("bounce", "pit", "died", "late")}
+    put("smb1_land_whole_raised_share_of_all_mistakes", (missed_whole & (land_heights >= 0) & (land_heights < numbers["smb1_height_cut"])).sum() / max((said_whole != yt).sum(), 1))
 
     # Castlevania keeps where Simon is in his jump, not a speed.
     cv = [load(data_root / "castlevania" / s) for s in ("1", "2", "3")]

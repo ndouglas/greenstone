@@ -99,6 +99,20 @@ class Experiment(unittest.TestCase):
         self.assertEqual(exp001.agreed_cut([176.0, 176.0, 176.0]), 176)
         self.assertIsNone(exp001.agreed_cut([176.0, 170.0, 176.0]))
 
+    def test_a_false_alarm_is_a_bounce_a_pit_or_late(self):
+        air = np.array([1, 1, 1, 1, 0, 1], dtype=bool)
+        normal = np.ones(6, dtype=bool)
+        depth = np.array([170, 172, 174, 170, 176, 150])
+        rising = np.array([4, 4, -4, -4, 0, 0])
+        self.assertEqual(exp001.false_alarm_kind(air, rising, depth, normal, [], 0), "bounce")
+        falling = np.array([4, 4, 4, 4, 0, 0])
+        self.assertEqual(exp001.false_alarm_kind(air, falling, depth, normal, [], 0), "late")
+        pit = np.array([180, 200, 230, 250, 255, 176])
+        self.assertEqual(exp001.false_alarm_kind(np.ones(6, dtype=bool), falling, pit, normal, [5], 0), "pit")
+        # Dying pops Mario upward; that isn't a bounce.
+        dying = np.array([True, False, False, False, False, True])
+        self.assertEqual(exp001.false_alarm_kind(np.ones(6, dtype=bool), rising, depth, dying, [5], 0), "died")
+
     def test_numbers_have_spoken_forms(self):
         self.assertEqual(exp001.spoken_number(176), "one hundred and seventy-six")
         self.assertEqual(exp001.spoken_number(1300), "one thousand three hundred")
