@@ -15,11 +15,13 @@
 //! - $4015: Status (channel enable/status)
 //! - $4017: Frame counter
 
+pub mod dmc;
 pub mod noise;
 pub mod pulse;
 pub mod render;
 pub mod triangle;
 
+use dmc::Dmc;
 use noise::Noise;
 use pulse::Pulse;
 use triangle::Triangle;
@@ -48,13 +50,7 @@ pub struct APU {
   pulse2: Pulse,
   triangle: Triangle,
   noise: Noise,
-
-  // DMC registers ($4010-$4013) - stub for now
-  dmc_flags_rate: u8,
-  dmc_direct_load: u8,
-  dmc_sample_address: u8,
-  dmc_sample_length: u8,
-  dmc_enabled: bool,
+  dmc: Dmc,
 
   // Frame counter register ($4017)
   frame_counter: u8,
@@ -66,8 +62,6 @@ pub struct APU {
   frame_step: u8,
   /// Frame IRQ flag
   frame_irq_flag: bool,
-  /// DMC IRQ flag
-  dmc_irq_flag: bool,
   /// Pending frame counter reset (cycles until reset, 0 = no pending)
   reset_pending: u8,
 
@@ -99,19 +93,13 @@ impl APU {
       pulse2: Pulse::new(2),
       triangle: Triangle::new(),
       noise: Noise::new(),
-
-      dmc_flags_rate: 0,
-      dmc_direct_load: 0,
-      dmc_sample_address: 0,
-      dmc_sample_length: 0,
-      dmc_enabled: false,
+      dmc: Dmc::new(),
 
       frame_counter: 0,
 
       cycle_count: 0,
       frame_step: 0,
       frame_irq_flag: false,
-      dmc_irq_flag: false,
       reset_pending: 0,
 
       sample_buffer: Vec::with_capacity(1024),
@@ -144,11 +132,13 @@ impl APU {
         if self.noise.length_counter > 0 {
           status |= 0x08;
         }
-        // TODO: DMC bytes remaining (bit 4)
+        if self.dmc.bytes_remaining > 0 {
+          status |= 0x10;
+        }
         if self.frame_irq_flag {
           status |= 0x40;
         }
-        if self.dmc_irq_flag {
+        if self.dmc.irq_flag {
           status |= 0x80;
         }
         // Reading $4015 clears the frame IRQ flag
@@ -194,10 +184,10 @@ impl APU {
       0x400F => self.noise.write_length(value, &LENGTH_TABLE),
 
       // DMC ($4010-$4013)
-      0x4010 => self.dmc_flags_rate = value,
-      0x4011 => self.dmc_direct_load = value,
-      0x4012 => self.dmc_sample_address = value,
-      0x4013 => self.dmc_sample_length = value,
+      0x4010 => self.dmc.write_flags_rate(value),
+      0x4011 => self.dmc.write_direct_load(value),
+      0x4012 => self.dmc.write_address(value),
+      0x4013 => self.dmc.write_length(value),
 
       // Status ($4015)
       0x4015 => {
@@ -205,10 +195,10 @@ impl APU {
         self.pulse2.set_enabled((value & 0x02) != 0);
         self.triangle.set_enabled((value & 0x04) != 0);
         self.noise.set_enabled((value & 0x08) != 0);
-        self.dmc_enabled = (value & 0x10) != 0;
+        self.dmc.set_enabled((value & 0x10) != 0);
 
         // Writing to $4015 clears the DMC IRQ flag
-        self.dmc_irq_flag = false;
+        self.dmc.irq_flag = false;
       }
 
       // Frame counter ($4017)
@@ -253,8 +243,9 @@ impl APU {
     // Increment cycle counter
     self.cycle_count += 1;
 
-    // Triangle timer runs at CPU rate
+    // Triangle and DMC timers run at CPU rate
     self.triangle.tick_timer();
+    self.dmc.tick_timer();
 
     // Pulse and noise timers run at half CPU rate (every 2 cycles)
     if self.cycle_count % 2 == 0 {
@@ -386,7 +377,7 @@ impl APU {
     let pulse2 = self.pulse2.output() as f32;
     let triangle = self.triangle.output() as f32;
     let noise = self.noise.output() as f32;
-    let dmc = self.dmc_direct_load as f32; // Stub: just use direct load value
+    let dmc = self.dmc.output() as f32;
 
     // NES APU mixer formulas (from nesdev wiki)
     // These produce a value roughly in the range 0.0 to 1.0
@@ -418,7 +409,17 @@ impl APU {
 
   /// Check if APU is requesting an IRQ.
   pub fn irq_pending(&self) -> bool {
-    self.frame_irq_flag || self.dmc_irq_flag
+    self.frame_irq_flag || self.dmc.irq_flag
+  }
+
+  /// The address the DMC wants read from CPU memory, if any.
+  pub fn dmc_fetch_address(&self) -> Option<u16> {
+    self.dmc.fetch_address()
+  }
+
+  /// Hand the DMC the byte read from `dmc_fetch_address`.
+  pub fn dmc_supply(&mut self, byte: u8) {
+    self.dmc.supply(byte);
   }
 }
 
@@ -439,7 +440,7 @@ mod tests {
     assert!(!apu.pulse2.enabled);
     assert!(!apu.triangle.enabled);
     assert!(!apu.noise.enabled);
-    assert!(!apu.dmc_enabled);
+    assert_eq!(apu.dmc.bytes_remaining, 0);
   }
 
   #[test]
@@ -452,7 +453,7 @@ mod tests {
     assert!(apu.pulse2.enabled);
     assert!(apu.triangle.enabled);
     assert!(apu.noise.enabled);
-    assert!(apu.dmc_enabled);
+    assert!(apu.dmc.bytes_remaining > 0);
 
     // Disable all channels
     apu.write_register(0x4015, 0x00);
@@ -460,7 +461,7 @@ mod tests {
     assert!(!apu.pulse2.enabled);
     assert!(!apu.triangle.enabled);
     assert!(!apu.noise.enabled);
-    assert!(!apu.dmc_enabled);
+    assert_eq!(apu.dmc.bytes_remaining, 0);
   }
 
   #[test]
@@ -534,5 +535,31 @@ mod tests {
 
     // Check that we have samples
     assert!(!apu.sample_buffer.is_empty());
+  }
+
+  #[test]
+  fn status_reports_a_playing_sample_and_the_dmc_irq() {
+    let mut apu = APU::new();
+    apu.write_register(0x4010, 0x80);
+    apu.write_register(0x4013, 0x00);
+    apu.write_register(0x4015, 0x10);
+    assert_eq!(apu.read_register(0x4015) & 0x10, 0x10);
+    assert_eq!(apu.dmc_fetch_address(), Some(0xC000));
+    apu.dmc_supply(0x00);
+    let status = apu.read_register(0x4015);
+    assert_eq!(status & 0x10, 0);
+    assert_eq!(status & 0x80, 0x80);
+    assert!(apu.irq_pending());
+    // Writing $4015 clears the DMC IRQ.
+    apu.write_register(0x4015, 0x00);
+    assert!(!apu.irq_pending());
+  }
+
+  #[test]
+  fn the_dmc_level_reaches_the_mix() {
+    let mut apu = APU::new();
+    let quiet = apu.mix_output();
+    apu.write_register(0x4011, 0x7F);
+    assert!(apu.mix_output() > quiet);
   }
 }

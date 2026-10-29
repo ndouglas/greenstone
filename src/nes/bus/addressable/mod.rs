@@ -1,6 +1,10 @@
 use super::*;
 use crate::traits::Addressable;
 
+/// CPU cycles a DMC sample fetch halts the CPU for (1-4 on hardware; the
+/// common case is 4).
+const DMC_STALL_CYCLES: u64 = 4;
+
 impl Addressable for Bus {
   #[named]
   #[inline]
@@ -57,6 +61,15 @@ impl Addressable for Bus {
     }
     // Tick APU once per CPU cycle
     self.apu.tick();
+    // The DMC reads its samples from CPU memory, halting the CPU meanwhile;
+    // the stalled cycles still clock the PPU and APU.
+    if let Some(address) = self.apu.dmc_fetch_address() {
+      let byte = self.inner_read_u8(address);
+      self.apu.dmc_supply(byte);
+      for _ in 0..DMC_STALL_CYCLES {
+        self.tick();
+      }
+    }
     trace_exit!();
   }
 
@@ -70,5 +83,41 @@ impl Addressable for Bus {
 
   fn take_audio_samples(&mut self) -> Vec<f32> {
     self.apu.take_samples()
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  /// An NROM cartridge whose 16KB of PRG (mirrored at $C000) is all `fill`.
+  fn nrom(fill: u8) -> Vec<u8> {
+    let mut rom = b"NES\x1a\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00".to_vec();
+    rom.extend(vec![fill; 16 * 1024]);
+    rom.extend(vec![0; 8 * 1024]);
+    rom
+  }
+
+  #[test]
+  fn a_dmc_fetch_reads_the_cartridge_and_stalls_the_cpu() {
+    let mut bus = Bus::new();
+    bus.load_cartridge_data(&nrom(0xFF));
+    bus.unclocked_write_u8(0x4013, 0x00);
+    bus.unclocked_write_u8(0x4015, 0x10);
+    assert_eq!(bus.unclocked_read_u8(0x4015) & 0x10, 0x10);
+    let before = bus.clock_counter;
+    bus.tick();
+    // The one-byte sample is fetched, and the fetch took four more cycles.
+    assert_eq!(bus.unclocked_read_u8(0x4015) & 0x10, 0);
+    assert_eq!(bus.clock_counter - before, 1 + DMC_STALL_CYCLES);
+  }
+
+  #[test]
+  fn without_a_sample_a_tick_is_one_cycle() {
+    let mut bus = Bus::new();
+    bus.load_cartridge_data(&nrom(0xFF));
+    let before = bus.clock_counter;
+    bus.tick();
+    assert_eq!(bus.clock_counter - before, 1);
   }
 }
