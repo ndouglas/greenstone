@@ -1,10 +1,15 @@
 """A Manim scene narrated line by line from a video's script."""
 
-from manim import Scene
+import textwrap
+
+from manim import DOWN, FadeIn, Scene, Text, VGroup
 
 from series import style
+from series.credits import credits
 from series.script import Video
 from series.voice import Voice
+
+CREDITS_SECONDS = 6.0
 
 
 class ScriptOrderError(Exception):
@@ -21,6 +26,7 @@ class NarratedScene(Scene):
     def setup(self):
         self.camera.background_color = style.BACKGROUND
         self.said: list[str] = []
+        self.credits_rolled = False
 
     def say(self, line_id: str, *animations, pad: float = 0.25) -> None:
         lines = self.video.lines
@@ -36,7 +42,36 @@ class NarratedScene(Scene):
         self.wait(pad)
         self.said.append(line_id)
 
+    def placeholder(self, line_id: str) -> None:
+        """Say a line over a card standing in for its animation."""
+        line = next(l for l in self.video.lines if l.id == line_id)
+        rows = [Text(line.id, font=style.FONT, color=style.INPUT).scale(0.5)]
+        rows.append(Text(textwrap.fill(line.text, 48), font=style.FONT, color=style.TEXT).scale(0.6))
+        if line.board:
+            rows.append(Text(textwrap.fill(f"Animation: {line.board}", 56), font=style.FONT, color=style.WEIGHT).scale(0.45))
+        card = VGroup(*rows).arrange(DOWN, buff=0.4)
+        self.add(card)
+        self.say(line_id)
+        self.remove(card)
+
+    def roll_credits(self, seconds: float = CREDITS_SECONDS) -> None:
+        """End on the sources and the disclaimer. Every video must."""
+        card = credits(self.video)
+        self.play(FadeIn(card), run_time=0.5)
+        self.wait(seconds - 0.5)
+        self.credits_rolled = True
+
     def tear_down(self):
         unsaid = [line.id for line in self.video.lines[len(self.said):]]
         if unsaid:
             raise ScriptOrderError(f"the scene never says {', '.join(unsaid)}")
+
+
+class StoryboardScene(NarratedScene):
+    """Every line over its placeholder card, then the credits: the whole
+    video's pacing before any of it is animated."""
+
+    def construct(self):
+        for line in self.video.lines:
+            self.placeholder(line.id)
+        self.roll_credits()

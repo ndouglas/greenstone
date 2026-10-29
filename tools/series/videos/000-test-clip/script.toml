@@ -1,0 +1,26 @@
+title = "000: Testing the pipeline"
+music = "target/punchout-film/music/ring_entrance.wav"
+
+[[line]]
+id = "opening"
+text = "This is a test of the pipeline that makes the series: a narrated line, an animation, some game footage, and the credits."
+board = "the series' title"
+framing = true
+
+[[line]]
+id = "neuron"
+text = "A perceptron multiplies its input by a weight, adds a bias, and checks whether the total is above zero: w·x + b."
+spoken = "A perceptron multiplies its input by a weight, adds a bias, and checks whether the total is above zero: w times x, plus b."
+board = "w·x + b assembles, each part in its colour"
+cite = ["rosenblatt1958"]
+
+[[line]]
+id = "footage"
+text = "In this series, the games are the subject, and the game's memory holds the answer to every question we ask about it."
+board = "Punch-Out!! footage"
+framing = true
+
+[[line]]
+id = "closing"
+text = "That's the whole pipeline, end to end."
+framing = true
