@@ -150,7 +150,7 @@ own reservoir brains. Model organisms are woven through all of it.
 - **Callbacks:** none (first video).
 - **Games:** Super Mario Bros. for "is Mario in the air?"; at least two
   more games asking a question of the same shape (`docs/series/games/001.md`).
-- **The line is placed by hand, not learned** (pass 7): learning is 003's
+- **The line is chosen by search from outside, not learned** (pass 7, revised: the setting and the landing border are found by trying every value or many borders on recordings 1–2, then tested on 3): learning is 003's
   idea, and a learned line in 001 would be a handwave. The viewer sees
   the scatter of two numbers from Mario's memory (conceptually his
   height and his vertical speed; the addresses are in the games file),

@@ -58,6 +58,8 @@
   ],
   "smb1_land_whole_accuracy": "91%",
   "smb1_land_whole_accuracy_spoken": "ninety-one percent",
+  "smb1_land_whole_misses_on_raised": "85%",
+  "smb1_land_whole_misses_on_raised_spoken": "eighty-five percent",
   "smb1_land_within": 10,
   "smb1_land_within_spoken": "ten",
   "smb1_learned_line_accuracy": "84%",

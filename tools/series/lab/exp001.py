@@ -230,6 +230,11 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
     put_int("smb1_land_speed_weight", k)
     put_int("smb1_land_threshold", threshold)
     put("smb1_land_whole_accuracy", accuracy(np.array([1.0, float(k)]), -float(threshold), xt, yt))
+    # The same breakdown for the whole-number border the viewer is shown.
+    said_whole = (xt @ np.array([1.0, float(k)]) - threshold > 0).astype(int)
+    missed_whole = (said_whole == 0) & (yt == 1)
+    raised_whole = missed_whole & (land_heights >= 0) & (land_heights < numbers["smb1_height_cut"])
+    put("smb1_land_whole_misses_on_raised", raised_whole.sum() / max(missed_whole.sum(), 1))
 
     # Castlevania keeps where Simon is in his jump, not a speed.
     cv = [load(data_root / "castlevania" / s) for s in ("1", "2", "3")]

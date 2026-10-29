@@ -69,3 +69,15 @@ title = "Deep Learning, chapter 6: Deep Feedforward Networks (MIT Press)"
 authors = "I. Goodfellow, Y. Bengio and A. Courville"
 year = 2016
 url = "https://www.deeplearningbook.org/contents/mlp.html"
+
+[goodfellow2016-ch1]
+title = "Deep Learning, chapter 1: Introduction, section 1.2.1 (MIT Press)"
+authors = "I. Goodfellow, Y. Bengio and A. Courville"
+year = 2016
+url = "https://www.deeplearningbook.org/contents/intro.html"
+
+[nesdev-timing]
+title = "Cycle reference chart (NESdev Wiki; accessed 2026)"
+authors = "NESdev Wiki contributors"
+year = 2026
+url = "https://www.nesdev.org/wiki/Cycle_reference_chart"
