@@ -54,7 +54,7 @@ Where it lands in the videos:
   will take up properly.
 - **Each pressure test** cites the critique's specific arguments where
   they apply (feature visualization in 009, fragile single-neuron
-  stories in 008 and 010, the long tail in 002).
+  stories in 008 and 010, the long tail in 003).
 - **A dedicated video** (after the series has covered features,
   superposition and sparse autoencoders, so the viewer can weigh it)
   makes the critique's full case, with the disclosure that its lead
@@ -101,7 +101,7 @@ probe evaders, and agents with planted hidden goals (auditing games).
 
 Rule (Nate's): organisms are woven in from early on. A concept is
 explored with an organism whenever it first can be, in a sensible order,
-without crowding the video's one idea. 002's "cheating byte" is the
+without crowding the video's one idea. 003's "cheating byte" is the
 first: a shortcut the neuron takes when we let it.
 
 Real failures we already have to dissect: the Punch-Out!! brains that
@@ -116,8 +116,8 @@ up. Numbers are plain whole numbers, never sub-numbered.
 | # | The one idea | Games and moments (examples) |
 |---|---|---|
 | 001 | One neuron draws a line (w·x + b, slope and intercept; a balance scale) | "Is Mario in the air?" from his depth, in three games; "will he land soon?" from depth and falling speed |
-| 002 | When the line lies: the assumptions a single neuron makes | ID bytes, BCD scores (Tetris), a wrapping frame counter, the "cheating" byte; place value (moved from 001): Mario's score digits read by weights of a million down to ten, and why Tetris's two-digits-per-byte breaks it |
-| 003 | Learning is nudging the line after each mistake | The same neuron, learning |
+| 002 | Learning is nudging the line after each mistake | The same neuron, learning, watched over a whole playthrough of Super Mario Bros. (Nate, 001 interview); why the learning rule reaches 84% where search reached 94%, and never settles (from 001's experiments) |
+| 003 | When the line lies: the assumptions a single neuron makes | ID bytes, BCD scores (Tetris), a wrapping frame counter, the "cheating" byte; place value (moved from 001): Mario's score digits read by weights of a million down to ten, and why Tetris's two-digits-per-byte breaks it |
 | 004 | Some questions no single line can answer | Mario's speed says "in the air" only when it isn't zero, on either side: two cuts, 97% (from 001's experiments), which no one neuron can draw |
 | 005 | Bends and layers: hidden neurons redraw the space | Solving 004's question |
 | 006 | Learning is rolling downhill (loss and gradients) | The landscape of 005's network |
@@ -156,12 +156,12 @@ experiments and their results are in `docs/series/games/001.md`.
 - **Chosen by search from outside, not learned** (pass 7, revised):
   every setting tried on recordings 1–2, the best kept and tested on 3;
   the landing border found the same way among many leaning borders.
-  Learning (a neuron adjusting its own weights) is 003. For 003 (Nate,
+  Learning (a neuron adjusting its own weights) is 002. For 002 (Nate,
   001 interview): a learner never knows what "best" is, only "a little
   better in this direction"; consider linear regression and the update
   methods Nate has built in `ndouglas/linear-regression` and
   `bitterbridge/p5js-sketches` (GitHub). The series is about
-  interpretability, so 003 teaches learning only as far as later videos
+  interpretability, so 002 teaches learning only as far as later videos
   need it.
 - **Experiments:** "is Mario in the air?" from his depth alone (a
   setting; 94% against 55%), in three games; "will he land within 10
@@ -172,22 +172,22 @@ experiments and their results are in `docs/series/games/001.md`.
 - **Said out loud:** we can see all of this neuron and know exactly what
   it does; networks of many are much harder to see into; scaling every
   weight and the bias by the same positive amount doesn't move the border
-  (called back in 003, where weight size matters).
-- **Organisms:** none (the first is 002's cheating byte).
-- **Moved out:** place value (to 002); "speed isn't zero" and its two
-  cuts (to 004); Castlevania's jump counter (to 002, encoding).
+  (called back in 002, where weight size matters).
+- **Organisms:** none (the first is 003's cheating byte).
+- **Moved out:** place value (to 003); "speed isn't zero" and its two
+  cuts (to 004); Castlevania's jump counter (to 003, encoding).
 - **Plants for later:** the distance from the border (the modern neuron's
   graded output, paid off with sigmoid and ReLU).
 - **Ideas from the passes not used in 001** (for later videos): shuffled
   inputs change nothing (convolutional networks); weights over pixels as
   a picture (007); the widest-gap border (margin).
 
-### 002: When the line lies
+### 003: When the line lies
 
 - **The one idea:** a single neuron quietly assumes things about its
   inputs, and when the game's data breaks those assumptions, the line
   fails, in ways that teach how data is shaped.
-- **Prerequisites:** 001.
+- **Prerequisites:** 001 and 002.
 - **Introduces:** the first five entries of the assumptions ledger below;
   encoding (the same fact stored as a magnitude, an ID, BCD digits or a
   wrapping counter); sine and cosine as a way to unroll a circle.
@@ -216,11 +216,11 @@ it, so later videos can call back to it.
 
 | Assumption | Named in | Broken by |
 |---|---|---|
-| A human picked the inputs | 002 | Learned features (the series' spine) |
-| A bigger byte means "more" | 002 | ID bytes, bit flags, BCD digits |
-| The evidence adds up | 002 | Effects that only work together (→ 004) |
-| A hard cut is fine | 002 | Inputs near the line (→ sigmoid) |
-| One frame is enough | 002 | Questions about motion ("rising or falling?") |
+| A human picked the inputs | 003 | Learned features (the series' spine) |
+| A bigger byte means "more" | 003 | ID bytes, bit flags, BCD digits |
+| The evidence adds up | 003 | Effects that only work together (→ 004) |
+| A hard cut is fine | 003 | Inputs near the line (→ sigmoid) |
+| One frame is enough | 003 | Questions about motion ("rising or falling?") |
 
 ## Visual language
 

@@ -163,6 +163,12 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
             each.append(best_cut(xs[:, 0], ys)[0])
         if (agreed := agreed_cut(each)) is not None:
             put_int(f"{game}_every_session_cut", agreed)
+        # A steadier player, playing by fixed rules: does it pick the same setting?
+        steady = data_root / game / "rule"
+        if steady.exists():
+            xs, ys = features(game, [load(steady)])
+            if (agreed := agreed_cut([cut, best_cut(xs[:, 0], ys)[0]])) is not None:
+                put_int(f"{game}_steady_player_cut", agreed)
         put(f"{game}_height_accuracy", accuracy(np.array([-1.0]), cut, xt[:, :1], yt))
         put(f"{game}_air_rate", yt.mean())
         if x.shape[1] == 2:

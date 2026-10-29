@@ -121,6 +121,13 @@ board = "Three session strips side by side; each one's own best setting lights u
 cite = ["exp001"]
 
 [[line]]
+id = "steady-player"
+text = "A program that plays more steadily, by fixed rules, picks the same setting too: {smb1_steady_player_cut}. How often each situation comes up depends on the player, but where the floor is doesn't."
+spoken = "A program that plays more steadily, by fixed rules, picks the same setting too: {smb1_steady_player_cut_spoken}. How often each situation comes up depends on the player, but where the floor is doesn't."
+board = "Footage of the steady player beside the random one; a fourth strip joins the three, its best setting also landing on 176"
+cite = ["exp001"]
+
+[[line]]
 id = "its-mistakes"
 text = "{smb1_mistakes_on_ground_above_floor} of its mistakes come when Mario is standing on top of something, a block or a pipe. Then he's on the ground, but above the floor, so the neuron says he's in the air."
 spoken = "{smb1_mistakes_on_ground_above_floor_spoken} of its mistakes come when Mario is standing on top of something, a block or a pipe. Then he's on the ground, but above the floor, so the neuron says he's in the air."

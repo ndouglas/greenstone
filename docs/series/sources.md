@@ -93,7 +93,7 @@ checked against the transcript before use.
 | Causal intervention / activation patching | Change one part, watch the output; easy in networks, impossible in brains | later (our save-state edits) |
 | Interpretability won't reliably find deception | Nothing can; interpretability belongs in a portfolio | later |
 | ROME and factual recall | Facts stored like a database in early layers; edits can make "the Eiffel Tower is in Rome" | later |
-| Competing explanations | The same behaviour can come from different mechanisms; easy to be overconfident | 002 onward (pressure tests) |
+| Competing explanations | The same behaviour can come from different mechanisms; easy to be overconfident | 003 onward (pressure tests) |
 | Unlearning as suppression | Unlearning adds a suppressor rather than removing knowledge | later |
 | Start with the simplest technique | E.g. shutdown resistance explained by reading the chain of thought | throughout (method) |
 | Chain-of-thought faithfulness and monitorability | Stated reasoning may not drive the answer; can a model scheme without showing it? | later |
@@ -136,8 +136,8 @@ priority.
 | Complex systems resist reduction | Meteorology, biology and psychology work with higher-level patterns, not every molecule or neuron | the critique video; the NES as a two-level system |
 | Emergence | Many weak nonlinear connections make the whole more than its parts; bigger is more capable and less transparent | the critique video |
 | We can't explain ourselves | Polanyi's paradox: we know more than we can tell (choosing a parking spot) | the critique video |
-| Brevity vs. faithfulness | Terabytes of weights won't fit a paragraph-long explanation; if they did, the model could be far simpler (Hinton, 2018) | 002 onward (what a line can't say) |
-| Compression loses the long tail | Simplified explanations drop the exceptions that matter for safety (Rehder) | 002 (when the line lies) |
+| Brevity vs. faithfulness | Terabytes of weights won't fit a paragraph-long explanation; if they did, the model could be far simpler (Hinton, 2018) | 003 onward (what a line can't say) |
+| Compression loses the long tail | Simplified explanations drop the exceptions that matter for safety (Rehder) | 003 (when the line lies) |
 | Feature visualization is unreliable | Visualizations are abstract and selected; natural examples explain activations better (arXiv 2010.12606) | 009 |
 | Saliency maps fail sanity checks | Explanations barely change when the model's weights are randomized (arXiv 1810.03292) | later (saliency) |
 | Single-neuron stories are fragile | A BERT neuron's apparent role vanished on another dataset (arXiv 2104.07143) | 008, 010 |
@@ -219,7 +219,7 @@ Read in full. Its second half ("live theory") is explicitly speculative.
 | Multiple realizability | The same behaviour can be realized by many internal patterns | 010 onward |
 | Two assumptions | Fixity of structure; reliability of extrapolation | the critique videos |
 | Substrate | The layered environment a system runs on (weights, architecture, OS, hardware, paradigm, economy), after Brand's pace layering | the NES as a stack of substrates |
-| Marr's three levels | Computational, algorithmic, implementation (a cash register's base-10 arithmetic) | 002 (BCD is the algorithmic level) |
+| Marr's three levels | Computational, algorithmic, implementation (a cash register's base-10 arithmetic) | 003 (BCD is the algorithmic level) |
 | Substrate examples | Game of Life vs. von Neumann machines; quantum vs. classical; GPUs and the hardware lottery | decide |
 | Scaffolding shift | Tools and agent frameworks move capabilities outside the model | later |
 | Architecture shifts | RNNs → transformers → Mamba; tools need reworking | the series' own architecture ladder |
