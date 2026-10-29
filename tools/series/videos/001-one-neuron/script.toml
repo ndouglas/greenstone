@@ -162,6 +162,13 @@ board = "The thermostat's setting slides over and becomes the b in the formula"
 cite = ["goodfellow2016", "bishop2006"]
 
 [[line]]
+id = "why-zero"
+text = "Why zero? Any fixed number would work. Comparing with 100 would just mean a bias 100 lower. Zero is the custom, so the bias carries the whole setting by itself."
+spoken = "Why zero? Any fixed number would work. Comparing with a hundred would just mean a bias a hundred lower. Zero is the custom, so the bias carries the whole setting by itself."
+board = "'> 100' on the right of the formula slides across and joins the bias as '- 100', leaving '> 0'"
+cite = ["bishop2006"]
+
+[[line]]
 id = "our-numbers"
 text = "For our Mario neuron, the weight is minus one and the bias is {smb1_height_cut}. The weight is negative because, like the thermostat, its yes is below the setting: at smaller depths. Minus the depth, plus {smb1_height_cut}, is above zero exactly when the depth is less than {smb1_height_cut}: the same test as before, written the neuron's way."
 spoken = "For our Mario neuron, the weight is minus one and the bias is {smb1_height_cut_spoken}. The weight is negative because, like the thermostat, its yes is below the setting: at smaller depths. Minus the depth, plus {smb1_height_cut_spoken}, is above zero exactly when the depth is less than {smb1_height_cut_spoken}: the same test as before, written the neuron's way."
@@ -181,6 +188,13 @@ text = "If it's {smb1_height_cut}, standing on the floor: minus {smb1_height_cut
 spoken = "If it's {smb1_height_cut_spoken}, standing on the floor: minus {smb1_height_cut_spoken}, plus {smb1_height_cut_spoken}, makes zero. That's not above zero, so: on the ground."
 board = "Mario on the floor; the sum worked through, landing on 0 and a no"
 framing = true
+
+[[line]]
+id = "school"
+text = "If you remember y = mx + b from school, the total is exactly that, with the weight as m and the bias as b. Draw the total against the depth: a straight line that starts at {smb1_height_cut} and drops one for every step of depth. It crosses zero at {smb1_height_cut}, the setting. Where the line is above zero, the answer is \"in the air\". Where it's below, \"on the ground\"."
+spoken = "If you remember y equals m x plus b from school, the total is exactly that, with the weight as m and the bias as b. Draw the total against the depth: a straight line that starts at {smb1_height_cut_spoken} and drops one for every step of depth. It crosses zero at {smb1_height_cut_spoken}, the setting. Where the line is above zero, the answer is \"in the air\". Where it's below, \"on the ground\"."
+board = "Axes: depth along the bottom, the total up the side. The line from (0, 176) falls to cross zero at 176; left of the crossing shaded 'in the air', right of it 'on the ground'"
+cite = ["openstax-linear", "exp001"]
 
 [[line]]
 id = "balance"
@@ -271,11 +285,10 @@ board = "A dot slides along the border: one step down in speed for five steps ri
 cite = ["exp001"]
 
 [[line]]
-id = "school"
-text = "If you remember y = mx + b from school, put the depth in the place of x and the falling speed in the place of y. Along our border, the falling speed is {smb1_land_threshold} minus the depth, divided by {smb1_land_speed_weight}. So m, the steepness, is minus one fifth, counted in the sheet's own steps: one step of speed for five of depth. School's b would be where the line crosses depth zero, far off our sheet, and it's a different number from the neuron's bias. Changing the neuron's bias slides the border without changing its steepness, just as changing b did in school."
-spoken = "If you remember y equals m x plus b from school, put the depth in the place of x and the falling speed in the place of y. Along our border, the falling speed is {smb1_land_threshold_spoken} minus the depth, divided by {smb1_land_speed_weight_spoken}. So m, the steepness, is minus one fifth, counted in the sheet's own steps: one step of speed for five of depth. School's b would be where the line crosses depth zero, far off our sheet, and it's a different number from the neuron's bias. Changing the neuron's bias slides the border without changing its steepness, just as changing b did in school."
-board = "The border's steepness changes as one weight changes; then it slides, keeping its steepness, as the bias changes"
-cite = ["openstax-linear", "exp001"]
+id = "bias-slides"
+text = "And just as changing b slides a line in school without changing its steepness, changing the neuron's bias slides its border without changing its lean."
+board = "The border's lean changes as one weight changes; then it slides, keeping its lean, as the bias changes"
+cite = ["openstax-linear", "bishop2006"]
 
 [[line]]
 id = "land-results"

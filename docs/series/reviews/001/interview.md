@@ -36,4 +36,37 @@ The series (clarity, skepticism):
 
 ## Answers and changes
 
-(Filled in during the interview.)
+Nate read the script once, straight through, before answering.
+
+### Round 1: concepts
+
+**Q1 (weight, input, bias).** Nate: the weight changes the slope (multiplies),
+the bias is an additive offset, and together they form a line from which an
+input gives "the other coordinate". Finding: the slope-intercept picture is
+the one the y = mx + b line evokes, but in the script nothing *outputs* a
+coordinate; the total is compared with zero. "Bias = intercept" also clashes
+with that line's own warning that school's b is a different number from the
+bias. The script never shows the one graph where Nate's picture is exactly
+right: the total plotted against depth, a line of slope w that starts at b
+and crosses zero at the setting. Follow-up asked.
+
+**Q2 (why zero).** Nate: not explained. Confirmed: why-plus says *that* the
+bias replaces the setting and the comparison is with zero, never *why* zero
+(any fixed number would do; it can be folded into the bias, and zero is the
+convention). Gap → script change.
+
+**Q3 (sign of the weight).** Nate: in the air when depth − floor < 0; lands
+soon when depth plus falling speed is high. Correct; the script carried it.
+
+**Q1a (follow-up: the total plotted against depth).** Nate: a straight line,
+slope −1, y-intercept (0, 176), x-intercept (176, 0). Correct and immediate,
+so this graph is the bridge from school algebra. He didn't say what the
+crossing means (it is the setting: the border between yes and no). Proposed
+change: show this graph in the recipe section and move the y = mx + b link
+there (where m = w and b = bias exactly), shrinking the two-number
+y = mx + b paragraph to the bias-slides-the-border point.
+
+Applied (Nate approved both): new line `why-zero` after `bias-is-setting`;
+`school` moved to after `example-ground` and rewritten around the total-vs-
+depth graph; the old two-number `school` line cut to `bias-slides`. Script
+2,096 → 2,106 words.
