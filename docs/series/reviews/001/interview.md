@@ -141,10 +141,10 @@ Applied (Nate approved): `not-a-fluke` after `result` (backed by the new
 (`the-sheet` → `the-map`). Script 2,106 → 2,201 words (~12:35): over the
 12-minute ceiling, to trim.
 
-Correction to Q11: Nate meant the map isn't *visualized* in a text script.
-He has aphantasia, so words alone can't show him a picture; reviewing a
-board means showing it. (Also a viewer lens: anything the narration asks
-the viewer to "picture" must be on screen.) On length: 12 minutes isn't a
+Correction to Q11: Nate meant the map isn't *visualized* in a text script
+(he raised aphantasia as a possible viewer lens, then clarified he can
+picture it himself and had misread the question). Lens kept: anything the
+narration asks a viewer to "picture" must be on screen. On length: 12 minutes isn't a
 ceiling; 20 or 30 is fine. Spec updated.
 
 ### Round 4: animation
@@ -162,3 +162,23 @@ without changing its lean. One slider, both views.)
 **Q15 (footage vs diagrams).** As much game footage as possible: its
 physical feel balances the abstract views. Storyboard note: put footage
 under, or beside, every line that's about Mario, not only the opening.
+
+### Round 5: claims
+
+**Q8 (what the landing neuron doesn't know).** Nate: whether there's floor
+beneath him, an enemy, or something else. Correct; `land-mistakes` carries
+it (most misses are landings onto raised things).
+
+**Q9 (the random player).** Nate: nobody plays like that, but what's
+recorded (jumping, falling, running) is the same information we use to
+understand Mario. Fair. Unsaid in the script: a different player changes
+how often each situation comes up, so the percentages would move, though
+the setting needn't (the rule-teacher recording, steadier play, also picks
+176 and scores 91%). Offered as an optional line.
+
+**Q10 (search vs learning).** Nate: a learner adjusts from each example
+and never knows what "best" means, only "a little better in this
+direction". Correct; `how-found` defers learning to a later video. Nate's
+note for 003 recorded in the bible: linear regression and his update
+methods (`ndouglas/linear-regression`, `bitterbridge/p5js-sketches`);
+basic network material only as far as the interpretability thread needs.

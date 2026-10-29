@@ -156,7 +156,13 @@ experiments and their results are in `docs/series/games/001.md`.
 - **Chosen by search from outside, not learned** (pass 7, revised):
   every setting tried on recordings 1–2, the best kept and tested on 3;
   the landing border found the same way among many leaning borders.
-  Learning (a neuron adjusting its own weights) is 003.
+  Learning (a neuron adjusting its own weights) is 003. For 003 (Nate,
+  001 interview): a learner never knows what "best" is, only "a little
+  better in this direction"; consider linear regression and the update
+  methods Nate has built in `ndouglas/linear-regression` and
+  `bitterbridge/p5js-sketches` (GitHub). The series is about
+  interpretability, so 003 teaches learning only as far as later videos
+  need it.
 - **Experiments:** "is Mario in the air?" from his depth alone (a
   setting; 94% against 55%), in three games; "will he land within 10
   frames?" from depth and falling speed (a leaning border; 91% against
