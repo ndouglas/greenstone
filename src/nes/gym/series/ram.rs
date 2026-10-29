@@ -3,7 +3,7 @@
 //! See `docs/series/games/001.md`.
 
 use crate::nes::bus::{BUTTON_A, BUTTON_RIGHT, BUTTON_START, BUTTON_UP};
-use crate::nes::gym::reservoir::demo::smb_start_state;
+use crate::nes::gym::reservoir::demo::{smb_dead, smb_start_state};
 use crate::nes::gym::NesEmulator;
 
 /// A game, the ROM its addresses were checked on, and where it keeps the
@@ -20,6 +20,7 @@ pub struct Game {
   pub vy: Option<u16>,
   is_airborne: fn(u8) -> bool,
   start: fn(&[u8]) -> NesEmulator,
+  died: fn(&mut NesEmulator) -> bool,
 }
 
 impl Game {
@@ -27,6 +28,11 @@ impl Game {
   pub fn boot(&self, rom: &[u8]) -> Result<NesEmulator, String> {
     verify_rom(self, rom)?;
     Ok((self.start)(rom))
+  }
+
+  /// Whether the player has just died (so a recorder should start over).
+  pub fn died(&self, emu: &mut NesEmulator) -> bool {
+    (self.died)(emu)
   }
 
   /// What the answer key says this frame.
@@ -76,6 +82,8 @@ pub mod smb3 {
   pub const Y: u16 = 0x00A2;
   /// Vertical velocity, signed.
   pub const VY: u16 = 0x00CF;
+  /// Mario's lives.
+  pub const LIVES: u16 = 0x0736;
 }
 
 /// Castlevania, per Data Crystal's "Castlevania (NES, Famicom Disk System)/RAM map".
@@ -94,6 +102,7 @@ pub const SMB1: Game = Game {
   y: smb1::Y,
   vy: Some(smb1::VY),
   is_airborne: |v| matches!(v, 1 | 2),
+  died: smb_dead,
   start: |rom| {
     let mut emu = NesEmulator::new(rom);
     emu.load_state(&smb_start_state(rom));
@@ -118,6 +127,8 @@ pub const SMB3: Game = Game {
   y: smb3::Y,
   vy: Some(smb3::VY),
   is_airborne: |v| v != 0,
+  // Lives ($0736) start at 4 and drop once the death animation ends.
+  died: |emu| emu.ram_read(smb3::LIVES) < 4,
   // Title, one player, then on the map: Right one square, Up to level 1, A.
   start: |rom| {
     let mut emu = NesEmulator::new(rom);
@@ -141,6 +152,7 @@ pub const CASTLEVANIA: Game = Game {
   y: castlevania::Y,
   vy: None,
   is_airborne: |v| matches!(v, 0x01 | 0x07),
+  died: |emu| emu.ram_read(castlevania::STATE) == 0x08,
   // Start at the title, Start again; a third Start would pause the game.
   start: |rom| {
     let mut emu = NesEmulator::new(rom);

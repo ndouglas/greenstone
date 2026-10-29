@@ -4,3 +4,5 @@
 //! See `docs/superpowers/specs/2026-10-29-interpretability-series-design.md`.
 
 pub mod ram;
+
+pub mod record;
