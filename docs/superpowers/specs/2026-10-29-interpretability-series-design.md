@@ -143,6 +143,16 @@ explanation and animation and feel comfortable discussing all of it.
   handwaved or out of order, read the script against its sources. A
   script passes when neither turns up anything substantial. There is no
   outside expert; these reviews stand in for one.
+- **Nate's review is an interview.** The council questions him from each
+  lens: about the concepts ("what is a sparse autoencoder?"), the
+  script's claims, and how each idea will be animated. It isn't
+  adversarial; it surfaces problems at the script stage, not in animation
+  and never after a video is live. The script changes until he can
+  answer everything.
+- **Core sources.** Every concept in the works Nate named as core
+  (BlueDot's introduction to mechanistic interpretability; Olah et al.,
+  "Zoom In"; Neel Nanda on the 80,000 Hours podcast) is inventoried in
+  `docs/series/sources.md` and must be taken up by the curriculum.
 - **A disclaimer in every video**: Nate is not an expert, just a guy
   learning this stuff, and the series is him learning in public.
 

@@ -15,6 +15,35 @@ substantial".
 3. Repeat, up to three rounds, until no lens reports anything
    substantial.
 4. Then the two adversarial reviews.
+5. Then the interview (below): Nate's review of the script.
+
+## The interview
+
+Nate's review is not reading the script over. The council questions him,
+lens by lens, to find problems while the script is still cheap to change.
+It is not adversarial; it is how gaps surface at the script stage rather
+than in animation, or after the video is live.
+
+- Each lens asks Nate its own questions, a few at a time, and follows up
+  on his answers. Examples:
+  - *Pedagogy:* "In your own words, what is a sparse autoencoder?" "Why
+    does the bias move the line but not tilt it?"
+  - *The cross-examiner:* "Line `neuron` says a perceptron checks whether
+    the total is above zero. Why zero?"
+  - *The blind listener:* "Line `footage` shows the game. What would a
+    listener who can't see it be missing?"
+  - *Animation:* "How will we show w·x + b sliding the line? What's on
+    screen, and what isn't?" "Which frames of which game prove this?"
+  - *Skepticism and empiricism:* "What would make this claim false? Which
+    experiment would show it?"
+- Questions cover the concepts (so Nate can discuss everything in the
+  video), the script's claims, and how each idea will be animated.
+- An answer Nate can't give, or that needs the video to make sense, is a
+  finding: the script (or the plan for its animation) changes, and the
+  question is asked again.
+- The interview ends when Nate can answer every lens's questions from the
+  script and its sources, and the animation of every line has a plan he
+  agrees with.
 
 ## Shared preamble
 

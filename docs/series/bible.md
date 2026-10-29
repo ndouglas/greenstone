@@ -71,6 +71,13 @@ transformer; Greenstone's own reservoir brains.
   every address used; a source for encoding cyclic features with sine and
   cosine.
 
+## Core sources
+
+`docs/series/sources.md` inventories every concept in the works Nate
+chose as core: BlueDot's introduction, "Zoom In", and Neel Nanda on
+80,000 Hours. The curriculum must take up each one; the inventory says
+where.
+
 ## Assumptions ledger
 
 Each assumption a new idea quietly adds, tagged with the video that names
@@ -118,7 +125,10 @@ input, weight, bias and output each keep their colour in every video.
    `docs/series/ideonomy/NNN-slug.md`.
 2. **Script:** written in `tools/series/videos/NNN-slug/script.toml`, then
    revised through the council (`docs/series/council.md`), then the two
-   adversarial reviews (`docs/series/review-prompt.md`). Nate reviews.
+   adversarial reviews (`docs/series/review-prompt.md`). Then the
+   interview: the council questions Nate about the concepts, the claims
+   and how each line will be animated, and the script changes until he
+   can answer everything (`council.md`, "The interview").
 3. **Storyboard:** `python -m series.build NNN-slug --storyboard`, with
    placeholders, real narration, music and credits, to test pacing. Nate
    reviews.
