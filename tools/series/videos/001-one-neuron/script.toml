@@ -18,8 +18,8 @@ cite = ["bluedot2024"]
 
 [[section.line]]
 id = "nobody-knows-3"
-text = "Looking inside is how we'd check what they've really learned, instead of trusting what they seem to do."
-board = "A neuron's lit dots beside its outward answer; a magnifying glass over the dots"
+text = "Looking inside is one way we'd check what they've really learned, instead of trusting what they seem to do."
+board = "The network's lit dots beside its answer; a magnifying glass over the dots"
 cite = ["bluedot2024"]
 
 [[section.line]]
@@ -123,7 +123,7 @@ cite = ["exp001"]
 [[section.line]]
 id = "depth"
 text = "Instead, the neuron reads a different number from the game's memory: Mario's depth, meaning how far down the screen he is, counted in the tiny dots the picture is made of. A bigger depth means lower on the screen."
-board = "Footage: a ruler down the screen, its number following Mario's feet as he jumps; a small note shows the game's own mark, 32 dots above them"
+board = "Footage: a ruler down the screen whose zero starts 32 dots below the top, so its reading at Mario's feet is the game's depth number; it follows him as he jumps"
 cite = ["datacrystal-smb1", "nesdev-oam", "exp001"]
 
 [[section.line]]
@@ -153,7 +153,7 @@ cite = ["exp001"]
 
 [[section.line]]
 id = "frames-3"
-text = "We left out the moments when the game moves Mario by itself, like when he dies, or freezes while he grows or shrinks."
+text = "We left out the moments when the game takes Mario out of the player's hands, like when he dies, or freezes while he grows or shrinks."
 board = "On a tape, the dying and freezing stretches grey out"
 cite = ["exp001"]
 
@@ -281,12 +281,12 @@ cite = ["datacrystal-cv"]
 id = "castlevania-2"
 text = "A neuron reading his depth is right {castlevania_height_accuracy} of the time, again well above always saying \"on the ground\"."
 spoken = "A neuron reading his depth is right {castlevania_height_accuracy_spoken} of the time, again well above always saying on the ground."
-board = "Castlevania: the setting across the screen at depth {castlevania_height_cut}, a little above where Simon stands ({castlevania_standing_height}); its bar at {castlevania_height_accuracy}, the score-to-beat bar faint beside it"
+board = "Castlevania: the setting across the screen, drawn where it really is, a little above where Simon usually stands; its bar at {castlevania_height_accuracy}, the score-to-beat bar faint beside it"
 cite = ["exp001"]
 
 [[section.line]]
 id = "every-session-games"
-text = "And in each game, every session, chosen on alone, picks the same setting."
+text = "And in each game, choosing the setting on any one session by itself gives the same setting every time."
 board = "Three session strips per game, each game's three settings landing together"
 cite = ["exp001"]
 
@@ -312,8 +312,8 @@ cite = ["exp001"]
 [[section.line]]
 id = "testing-end"
 role = "conclusion"
-text = "So it goes wrong because all it knows about is the floor, and a second number won't fix that for a neuron like this one. But other questions need two numbers to answer well, and to write a neuron that reads two, we need the recipe."
-board = "Mario on a pipe; then, apart from him, a new question mark and an empty second input slot"
+text = "So it goes wrong because all it knows about is the floor. But other questions need two numbers to answer well, and to write a neuron that reads two, we need the recipe."
+board = "A new question mark beside the neuron, and an empty second input slot"
 cite = ["exp001"]
 
 [[section]]
@@ -394,7 +394,7 @@ pause = 3.0
 id = "why-zero-b"
 text = "So we can always take the 100 off the total, by taking it off the bias, and compare with zero instead."
 spoken = "So we can always take the hundred off the total, by taking it off the bias, and compare with zero instead."
-board = "'> 100' on the right of the formula slides across and joins the bias as '- 100', leaving '> 0'"
+board = "The formula shown with '> 100'; the 100 slides across and joins the bias as '- 100', leaving '> 0'"
 cite = ["bishop2006"]
 
 [[section.line]]
@@ -420,7 +420,7 @@ cite = ["bishop2006"]
 [[section.line]]
 id = "recipe-end"
 role = "conclusion"
-text = "So we've gone from a setting to the recipe neurons like ours follow: a weight on each input, a bias, and a test against zero. Next, we draw it as a line, which shows we can multiply all its numbers by the same plus number without changing a single answer."
+text = "So we've gone from a setting to the recipe neurons like ours follow: a weight on each input, a bias, and a test against zero. Next, we draw it as a line."
 board = "The formula, with the thermostat's number line fading behind it"
 framing = true
 
@@ -431,7 +431,7 @@ title = "Drawing it"
 [[section.line]]
 id = "draw-intro"
 role = "intro"
-text = "Soon we'll want to turn a neuron's messy numbers into simple ones. Drawing the neuron as a line shows the first step: which changes leave its answers exactly the same."
+text = "Soon we'll want to turn a neuron's messy numbers into simple ones. Drawing the neuron as a line shows which changes leave its answers exactly the same."
 board = "Empty axes fade in beside the formula"
 framing = true
 
@@ -497,9 +497,9 @@ cite = ["bishop2006"]
 
 [[section.line]]
 id = "one-dot-4b"
-text = "That works only because the test is against zero. Test against 100 instead, and a total of 50, a no, becomes 150, a yes."
-spoken = "That works only because the test is against zero. Test against a hundred instead, and a total of fifty, a no, becomes a hundred and fifty, a yes."
-board = "'> 100': a total of 50 below the line, tripled to 150, above it"
+text = "Here, zero matters. Any fixed number gives a neuron the same answers, but only a test against zero survives this tripling: test against 100 instead, and a total of 50, a no, becomes 150, a yes."
+spoken = "Here, zero matters. Any fixed number gives a neuron the same answers, but only a test against zero survives this tripling: test against a hundred instead, and a total of fifty, a no, becomes a hundred and fifty, a yes."
+board = "'> 100': a total of 50 below the 100 mark, tripled to 150, above it"
 cite = ["bishop2006"]
 pause = 3.0
 
@@ -641,7 +641,7 @@ title = "The border it found"
 [[section.line]]
 id = "found-intro"
 role = "intro"
-text = "A border on a map is hard to check by eye. Written as arithmetic, we can check any moment by hand and see why the border is straight."
+text = "A border on a map is hard to check by eye. Written as arithmetic, it lets us check any moment by hand and see why it's straight."
 board = "The border on the map, with two small cards fanning out beside it"
 framing = true
 
@@ -892,7 +892,7 @@ cite = ["goodfellow2016"]
 
 [[section.line]]
 id = "modern-2"
-text = "In one common kind, that number grows the further onto the yes side of the border the inputs are, and is zero on the other side; a widely used textbook recommended it as the default."
+text = "In one common kind, that number grows the further onto the yes side of the border the inputs are, and is zero on the other side."
 board = "The dial rises the further past the border a point sits, and reads zero on the no side"
 cite = ["goodfellow2016"]
 
