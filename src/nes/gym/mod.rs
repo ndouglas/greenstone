@@ -26,6 +26,7 @@ pub mod prospector;
 pub mod punchout;
 pub mod reservoir;
 pub mod reward;
+pub mod series;
 
 pub use action::ActionSpace;
 pub use env::{NesEnv, NesEnvConfig, StepInfo};
