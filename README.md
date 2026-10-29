@@ -2,6 +2,10 @@
 
 An NES emulator written in Rust, with a focus on cycle accuracy and understanding the hardware at a deep level.
 
+Initial development (cycle-accurate CPU implementation, PPU implementation, and basic mapper support) was done without AI.
+
+In 2026 I started incorporating AI assistance to expand mapper support and use this for experiments with machine learning.
+
 ## Why an NES Emulator?
 
 The NES is a fascinating machine to emulate. It's simple enough to be tractable (the 6502 has only 56 instructions, though with addressing modes that expands to 151 official opcodes plus dozens of "illegal" ones), but complex enough to be interesting. The real challenge isn't the CPU—it's the PPU.
