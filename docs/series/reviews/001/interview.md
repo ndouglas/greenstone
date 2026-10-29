@@ -140,3 +140,25 @@ Applied (Nate approved): `not-a-fluke` after `result` (backed by the new
 `one-dot` before `the-tilt`, which now just scales; sheet → map throughout
 (`the-sheet` → `the-map`). Script 2,106 → 2,201 words (~12:35): over the
 12-minute ceiling, to trim.
+
+Correction to Q11: Nate meant the map isn't *visualized* in a text script.
+He has aphantasia, so words alone can't show him a picture; reviewing a
+board means showing it. (Also a viewer lens: anything the narration asks
+the viewer to "picture" must be on screen.) On length: 12 minutes isn't a
+ceiling; 20 or 30 is fine. Spec updated.
+
+### Round 4: animation
+
+**Q13 (balance scale).** Simple shapes. Show the graph beside it, so each
+change visibly moves both: things varying together help. Mario on screen,
+moving and jumping, helps. Not every view at once; split into subsets that
+focus on one aspect.
+
+**Q14 (bias slides the border).** Move the line straight up or down, linked
+to the other views as in Q13. (On the graph, the bias raises or lowers the
+total's line, so its zero crossing slides; on the map, the border slides
+without changing its lean. One slider, both views.)
+
+**Q15 (footage vs diagrams).** As much game footage as possible: its
+physical feel balances the abstract views. Storyboard note: put footage
+under, or beside, every line that's about Mario, not only the opening.

@@ -120,7 +120,8 @@ explanation and animation and feel comfortable discussing all of it.
   re-editing. Plan for re-rendering the whole pilot batch after the swap.
 - **The narrator runs on this machine** with a good free voice, not a
   paid service (builder's choice of engine).
-- **Videos are short: about 5 to 12 minutes.**
+- **Videos are about 5 to 12 minutes**, a comfortable chunk rather than a
+  ceiling: Nate (001 interview) is fine with 20 or 30 when an idea needs it.
 - Game footage and any score come from Greenstone, composited as the
   reservoir films are (`tools/reservoir_film/`). The APU-rendered music
   approach carries over.
