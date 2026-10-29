@@ -3,9 +3,7 @@ from manim import DOWN, UP, FadeIn, FadeOut, MathTex, Text, Write
 from series import style
 from series.footage import GameFootage
 from series.scene import NarratedScene
-from reservoir_film.model import REPO
-
-TAKES = REPO / "target" / "punchout-film" / "takes"
+from punchout_film.film import PUNCHOUT
 
 
 class VideoScene(NarratedScene):
@@ -21,7 +19,8 @@ class VideoScene(NarratedScene):
         self.say("neuron", Write(formula))
         self.play(FadeOut(formula), run_time=0.5)
 
-        game = GameFootage("p3-teacher-von-kaiser", "punchout", start_frame=600, root=TAKES).scale_to_fit_height(6)
+        game = GameFootage("p3-teacher-von-kaiser", "punchout", start_frame=600,
+                           root=PUNCHOUT.takes_dir, hint=PUNCHOUT.record_hint).scale_to_fit_height(6)
         self.add(game)
         self.say("footage")
         self.remove(game)

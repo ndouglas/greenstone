@@ -6,7 +6,7 @@ import numpy as np
 import soundfile
 
 from series.script import load_video
-from series.voice import TAKES, voices
+from series.voice import TAKES, take_problems, voices
 
 RATE = 24000
 
@@ -89,6 +89,20 @@ class Voices(unittest.TestCase):
         got, stale = voices(load_video(d), FakeEngine(), self.out)
         self.assertEqual(got["one"].source, "synth")
         self.assertEqual(stale, ["one"])
+
+    def test_half_registered_takes_are_reported(self):
+        d = video()
+        silence(d / TAKES / "one.wav", 1.0)  # recorded, never listed
+        (d / TAKES / "takes.toml").write_text('two = "w·x + b"\nghost = "Gone."\n')  # listed, no wav; unknown id
+        problems = take_problems(load_video(d))
+        self.assertEqual(len(problems), 3)
+        for line_id in ("one", "two", "ghost"):
+            self.assertTrue(any(line_id in p for p in problems), line_id)
+
+    def test_a_clean_takes_folder_has_no_problems(self):
+        d = video()
+        take(d, "one", "The first line.", 1.0)
+        self.assertEqual(take_problems(load_video(d)), [])
 
     def test_swapping_one_take_leaves_other_lines_cached(self):
         d, engine = video(), FakeEngine()

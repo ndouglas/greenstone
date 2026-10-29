@@ -14,7 +14,7 @@ from manim import tempconfig
 from series.credits import description
 from series.scene import CREDITS_SECONDS, NarratedScene, ScriptOrderError, StoryboardScene
 from series.script import REPO, VIDEOS, load_video
-from series.voice import Engine, KokoroEngine, voices
+from series.voice import Engine, KokoroEngine, take_problems, voices
 
 OUT = REPO / "target" / "series"
 # The music bed sits this far under the narration.
@@ -54,7 +54,12 @@ def mix(movie: Path, music: Path | None, out: Path) -> None:
 def build(name: str, engine: Engine, draft: bool = False, storyboard: bool = False,
           videos: Path = VIDEOS, out_root: Path = OUT) -> Path:
     video = load_video(Path(videos) / name)
+    if video.music is not None and not video.music.exists():
+        raise FileNotFoundError(f"{name}'s music, {video.music}, doesn't exist; render it, or remove music from script.toml")
     out = Path(out_root) / name
+    problems = take_problems(video)
+    for problem in problems:
+        print(f"TAKE: {problem}")
     found, stale = voices(video, engine, out)
     base = StoryboardScene if storyboard else scene_class(video.dir)
     cls = type(base.__name__, (base,), {"video": video, "voices": found})

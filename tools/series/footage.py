@@ -6,17 +6,20 @@ from manim import ImageMobject
 from manim.constants import RESAMPLING_ALGORITHMS
 from manim.utils.images import change_to_rgba_array
 
-from reservoir_film.model import TAKES_DIR, Takes
+from reservoir_film.model import RECORD_HINT, TAKES_DIR, Takes
 
 NES_FPS = 60
 
 
 class GameFootage(ImageMobject):
     """A take's frames: frame `start_frame + round(t * 60)` at time `t` after
-    it is added, with crisp, unsmoothed pixels."""
+    it is added, with crisp, unsmoothed pixels. `root` and `hint` say where
+    the take lives and how to record it if it's missing (each film has its
+    own)."""
 
-    def __init__(self, take: str, stream: str, start_frame: int = 0, root: Path = TAKES_DIR, **kwargs):
-        self.frames = Takes(root)[take].frames(stream)
+    def __init__(self, take: str, stream: str, start_frame: int = 0, root: Path = TAKES_DIR,
+                 hint: str = RECORD_HINT, **kwargs):
+        self.frames = Takes(root, hint)[take].frames(stream)
         self.start_frame = start_frame
         self.elapsed = 0.0
         super().__init__(self.frames[start_frame], **kwargs)

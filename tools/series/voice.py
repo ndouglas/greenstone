@@ -55,6 +55,23 @@ def seconds(path: Path) -> float:
     return info.frames / info.samplerate
 
 
+def take_problems(video: Video) -> list[str]:
+    """Takes that can't be used for a reason other than being stale: a wav
+    with no takes.toml entry, an entry with no wav, or an id the script
+    doesn't have."""
+    takes_dir = video.dir / TAKES
+    if not takes_dir.exists():
+        return []
+    toml = takes_dir / "takes.toml"
+    recorded = tomllib.loads(toml.read_text()) if toml.exists() else {}
+    ids = {line.id for line in video.lines}
+    wavs = {p.stem for p in takes_dir.glob("*.wav")}
+    problems = [f"{TAKES}/{w}.wav isn't listed in takes.toml (narrator used)" for w in sorted(wavs - recorded.keys())]
+    problems += [f"takes.toml lists {i}, but {TAKES}/{i}.wav doesn't exist" for i in sorted((recorded.keys() & ids) - wavs)]
+    problems += [f"takes.toml lists {i}, which isn't a line in the script" for i in sorted(recorded.keys() - ids)]
+    return problems
+
+
 def voices(video: Video, engine: Engine, out: Path) -> tuple[dict[str, Voice], list[str]]:
     """Every line's voice, and the ids of takes recorded from other text."""
     takes_dir = video.dir / TAKES

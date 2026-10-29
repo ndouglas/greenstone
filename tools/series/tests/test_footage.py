@@ -28,6 +28,12 @@ class Footage(unittest.TestCase):
         footage.update(1 / 60)
         self.assertEqual(int(footage.pixel_array[0, 0, 0]), 200)
 
+    def test_missing_take_names_its_own_films_record_hint(self):
+        with self.assertRaises(FileNotFoundError) as e:
+            GameFootage("p9-missing", "punchout", root=Path(tempfile.mkdtemp()),
+                        hint="cargo run --example punchout -- film-takes --only {name}")
+        self.assertIn("--example punchout -- film-takes --only p9-missing", str(e.exception))
+
     def test_missing_take_names_the_record_hint(self):
         with self.assertRaises(FileNotFoundError) as e:
             GameFootage("nope", "game", root=Path(tempfile.mkdtemp()))

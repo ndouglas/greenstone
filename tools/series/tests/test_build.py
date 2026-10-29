@@ -91,6 +91,23 @@ class Build(unittest.TestCase):
         self.assertIn("stale", report.getvalue().lower())
         self.assertTrue((movie.parent / "description.txt").exists())
 
+    def test_missing_music_fails_before_any_work(self):
+        root, d = videos(music='music = "/nowhere/music.wav"')
+        engine = ToneEngine()
+        engine.synthesize = lambda text, out: self.fail("synthesized before checking the music")
+        with self.assertRaises(FileNotFoundError) as e:
+            build("001-test", engine, draft=True, videos=root, out_root=Path(tempfile.mkdtemp()))
+        self.assertIn("/nowhere/music.wav", str(e.exception))
+
+    def test_half_registered_takes_are_printed(self):
+        root, d = videos()
+        (d / TAKES).mkdir()
+        tone(d / TAKES / "one.wav", 440, 1.0)
+        report = io.StringIO()
+        with contextlib.redirect_stdout(report):
+            build("001-test", ToneEngine(), draft=True, videos=root, out_root=Path(tempfile.mkdtemp()))
+        self.assertIn("one.wav", report.getvalue())
+
     def test_storyboard_needs_no_scene_file(self):
         root, d = videos(music='music = "MUSIC"', scene=False)
         music = d / "music.wav"
