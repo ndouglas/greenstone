@@ -170,6 +170,8 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
             if (agreed := agreed_cut([cut, best_cut(xs[:, 0], ys)[0]])) is not None:
                 put_int(f"{game}_steady_player_cut", agreed)
         put(f"{game}_height_accuracy", accuracy(np.array([-1.0]), cut, xt[:, :1], yt))
+        # On the sessions it was chosen on: a lucky fit would score worse on the new one.
+        put(f"{game}_height_train_accuracy", accuracy(np.array([-1.0]), cut, x[:, :1], y))
         put(f"{game}_air_rate", yt.mean())
         if x.shape[1] == 2:
             # The second number, and whether a tilted line does better.

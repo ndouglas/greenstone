@@ -68,17 +68,16 @@ cite = ["exp001"]
 
 [[line]]
 id = "depth"
-text = "Instead, the neuron reads a different number from the game's memory: Mario's depth, meaning how far down the screen he is. The game counts it in dots, starting from a line a little below the top of the screen, so a bigger depth means lower on the screen."
-board = "Footage: a line drawn across the screen 32 dots below the top, labelled 0, and a ruler counting down from it to Mario's feet (depth d is screen row d + 32); the ruler's number follows him as he jumps"
+text = "Instead, the neuron reads a different number from the game's memory: Mario's depth, meaning how far down the screen he is, counted in dots. The game measures it to a point a little above his head, so his feet are always the same 32 dots lower. A bigger depth means lower on the screen."
+spoken = "Instead, the neuron reads a different number from the game's memory: Mario's depth, meaning how far down the screen he is, counted in dots. The game measures it to a point a little above his head, so his feet are always the same thirty-two dots lower. A bigger depth means lower on the screen."
+board = "Footage: a ruler counting down the screen to a mark just above Mario's head, with his feet 32 dots below the mark (depth d puts his feet at screen row d + 32); the ruler's number follows him as he jumps"
 cite = ["datacrystal-smb1", "nesdev-oam", "exp001"]
-
 [[line]]
 id = "recording"
-text = "To get examples, we wrote a program that plays the game by picking buttons at random, mostly running right and often jumping, and starts over at the beginning of the first level every time Mario dies. That was about every {smb1_seconds_between_deaths} seconds, so everything we recorded comes from the start of the first level."
-spoken = "To get examples, we wrote a program that plays the game by picking buttons at random, mostly running right and often jumping, and starts over at the beginning of the first level every time Mario dies. That was about every {smb1_seconds_between_deaths_spoken} seconds, so everything we recorded comes from the start of the first level."
+text = "To get examples, we wrote a program that plays the game by picking buttons at random, mostly running right and often jumping, and starts over at the beginning of the first level every time Mario dies. That was about every {smb1_seconds_between_deaths} seconds, so everything it recorded comes from the start of the first level."
+spoken = "To get examples, we wrote a program that plays the game by picking buttons at random, mostly running right and often jumping, and starts over at the beginning of the first level every time Mario dies. That was about every {smb1_seconds_between_deaths_spoken} seconds, so everything it recorded comes from the start of the first level."
 board = "Fast-forwarded footage of the random player, dying and restarting"
 cite = ["exp001"]
-
 [[line]]
 id = "frames"
 text = "The NES draws about sixty pictures a second, called frames. We recorded three five-minute sessions and kept the game's memory from every frame."
@@ -115,25 +114,22 @@ cite = ["exp001"]
 
 [[line]]
 id = "not-a-fluke"
-text = "Testing on a session the setting wasn't chosen on is how we check for a fluke: a lucky fit to the first two sessions would have shown up here. And choosing the setting on any one session by itself lands on {smb1_every_session_cut} every time."
-spoken = "Testing on a session the setting wasn't chosen on is how we check for a fluke: a lucky fit to the first two sessions would have shown up here. And choosing the setting on any one session by itself lands on {smb1_every_session_cut_spoken} every time."
-board = "Three session strips side by side; each one's own best setting lights up, and all three land on 176"
+text = "Testing on new play is one way to check for a fluke. On the two sessions it was chosen on, the setting scored {smb1_height_train_accuracy}; a lucky fit to those would have scored worse on the new one, and it didn't. And choosing the setting on any one session by itself lands on {smb1_every_session_cut} every time."
+spoken = "Testing on new play is one way to check for a fluke. On the two sessions it was chosen on, the setting scored {smb1_height_train_accuracy_spoken}; a lucky fit to those would have scored worse on the new one, and it didn't. And choosing the setting on any one session by itself lands on {smb1_every_session_cut_spoken} every time."
+board = "Two bars side by side, 94% on the first two sessions and 94% on the third; then three session strips, each one's own best setting landing on 176"
 cite = ["exp001"]
-
 [[line]]
 id = "steady-player"
-text = "A program that plays more steadily, by fixed rules, picks the same setting too: {smb1_steady_player_cut}. How often each situation comes up depends on the player, but where the floor is doesn't."
-spoken = "A program that plays more steadily, by fixed rules, picks the same setting too: {smb1_steady_player_cut_spoken}. How often each situation comes up depends on the player, but where the floor is doesn't."
-board = "Footage of the steady player beside the random one; a fourth strip joins the three, its best setting also landing on 176"
+text = "A program that plays more steadily, by fixed rules, gets through the whole first level and into the second. It picks the same setting too: {smb1_steady_player_cut}. How often each situation comes up depends on the player, but where the floor is doesn't."
+spoken = "A program that plays more steadily, by fixed rules, gets through the whole first level and into the second. It picks the same setting too: {smb1_steady_player_cut_spoken}. How often each situation comes up depends on the player, but where the floor is doesn't."
+board = "Footage of the steady player clearing 1-1 and entering 1-2; a fourth strip joins the three, its best setting also landing on 176"
 cite = ["exp001"]
-
 [[line]]
 id = "its-mistakes"
-text = "{smb1_mistakes_on_ground_above_floor} of its mistakes come when Mario is standing on top of something, a block or a pipe. Then he's on the ground, but above the floor, so the neuron says he's in the air."
-spoken = "{smb1_mistakes_on_ground_above_floor_spoken} of its mistakes come when Mario is standing on top of something, a block or a pipe. Then he's on the ground, but above the floor, so the neuron says he's in the air."
+text = "{smb1_mistakes_on_ground_above_floor} of the neuron's mistakes on the third session come when Mario is standing on top of something, a block or a pipe. Then he's on the ground, but above the floor, so the neuron says he's in the air."
+spoken = "{smb1_mistakes_on_ground_above_floor_spoken} of the neuron's mistakes on the third session come when Mario is standing on top of something, a block or a pipe. Then he's on the ground, but above the floor, so the neuron says he's in the air."
 board = "Mario standing on a pipe; the setting line is below his feet; the neuron's answer flashes 'in the air' in error"
 cite = ["exp001"]
-
 [[line]]
 id = "other-games"
 text = "The same kind of neuron works in other games, each with its own setting, recorded, chosen and tested the same way. In Super Mario Bros. 3, the best setting comes out at that game's floor, and it's right {smb3_height_accuracy} of the time, where always guessing \"on the ground\" gets {smb3_baseline}."
@@ -177,11 +173,10 @@ cite = ["goodfellow2016", "bishop2006"]
 
 [[line]]
 id = "why-zero"
-text = "Why zero? Any fixed number would work. Comparing with 100 would just mean a bias 100 lower. Zero is the custom, so the bias carries the whole setting by itself."
-spoken = "Why zero? Any fixed number would work. Comparing with a hundred would just mean a bias a hundred lower. Zero is the custom, so the bias carries the whole setting by itself."
+text = "Why zero? Any fixed number would work. Asking whether the total is above 100 is the same as taking 100 off the bias and asking whether it's above zero. Zero is the custom, so there's no separate setting to keep: it's folded into the bias."
+spoken = "Why zero? Any fixed number would work. Asking whether the total is above a hundred is the same as taking a hundred off the bias and asking whether it's above zero. Zero is the custom, so there's no separate setting to keep: it's folded into the bias."
 board = "'> 100' on the right of the formula slides across and joins the bias as '- 100', leaving '> 0'"
 cite = ["bishop2006"]
-
 [[line]]
 id = "our-numbers"
 text = "For our Mario neuron, the weight is minus one and the bias is {smb1_height_cut}. The weight is negative because, like the thermostat, its yes is below the setting: at smaller depths. Minus the depth, plus {smb1_height_cut}, is above zero exactly when the depth is less than {smb1_height_cut}: the same test as before, written the neuron's way."
@@ -205,11 +200,17 @@ framing = true
 
 [[line]]
 id = "school"
-text = "If you remember y = mx + b from school, the total is exactly that, with the weight as m and the bias as b. Draw the total against the depth: a straight line that starts at {smb1_height_cut} and drops one for every step of depth. It crosses zero at {smb1_height_cut}, the setting. Where the line is above zero, the answer is \"in the air\". Where it's below, \"on the ground\"."
-spoken = "If you remember y equals m x plus b from school, the total is exactly that, with the weight as m and the bias as b. Draw the total against the depth: a straight line that starts at {smb1_height_cut_spoken} and drops one for every step of depth. It crosses zero at {smb1_height_cut_spoken}, the setting. Where the line is above zero, the answer is \"in the air\". Where it's below, \"on the ground\"."
-board = "Axes: depth along the bottom, the total up the side. The line from (0, 176) falls to cross zero at 176; left of the crossing shaded 'in the air', right of it 'on the ground'"
+text = "If you remember y = mx + b from school, the total is exactly that, with the weight as m and the bias as b. Draw the total against the depth, and call this the graph: a straight line that starts at {smb1_height_cut} and drops one for every step of depth. It crosses zero at {smb1_height_cut}, the setting. Where the line is above zero, the answer is \"in the air\". Where it's below, \"on the ground\"."
+spoken = "If you remember y equals m x plus b from school, the total is exactly that, with the weight as m and the bias as b. Draw the total against the depth, and call this the graph: a straight line that starts at {smb1_height_cut_spoken} and drops one for every step of depth. It crosses zero at {smb1_height_cut_spoken}, the setting. Where the line is above zero, the answer is \"in the air\". Where it's below, \"on the ground\"."
+board = "Axes labelled 'the graph': depth along the bottom, the total up the side. The line from (0, 176) falls to cross zero at 176; left of the crossing shaded 'in the air', right of it 'on the ground'"
 cite = ["openstax-linear", "exp001"]
 
+[[line]]
+id = "one-dot"
+text = "Now multiply the weight and the bias by three. On the graph, the line gets three times steeper, and the bias is three times bigger, but the line still crosses zero at {smb1_height_cut} and still slopes down. Every total is three times what it was, and three times a plus number is still plus, three times a minus number still minus. So every answer stays the same. That's true of any neuron: multiplying all its weights and its bias by the same plus number never changes an answer."
+spoken = "Now multiply the weight and the bias by three. On the graph, the line gets three times steeper, and the bias is three times bigger, but the line still crosses zero at {smb1_height_cut_spoken} and still slopes down. Every total is three times what it was, and three times a plus number is still plus, three times a minus number still minus. So every answer stays the same. That's true of any neuron: multiplying all its weights and its bias by the same plus number never changes an answer."
+board = "The graph's line steepens threefold, pivoting about a pin at (176, 0) that never moves; the shading stays put"
+cite = ["bishop2006"]
 [[line]]
 id = "balance"
 text = "You can picture it as a balance scale with a yes pan and a no pan. Each input times its weight gives a number, and that number becomes a block as big as the number itself. A plus number goes in the yes pan, a minus number in the no pan. The bias is one more block, in the pan its own sign says. The neuron says yes when the yes pan holds more."
@@ -265,32 +266,22 @@ cite = ["bishop2006"]
 
 [[line]]
 id = "how-found"
-text = "To find its border, a program tried a great many leaning borders on the first two sessions and kept the one that most often matched whether he really landed within the next {smb1_land_within} frames, the same way as the first setting. A neuron adjusting its own weights, a little after each mistake, is a later video."
-spoken = "To find its border, a program tried a great many leaning borders on the first two sessions and kept the one that most often matched whether he really landed within the next {smb1_land_within_spoken} frames, the same way as the first setting. A neuron adjusting its own weights, a little after each mistake, is a later video."
+text = "To find its border, a program tried a great many leaning borders on the first two sessions and kept the one that most often matched whether he really landed within the next {smb1_land_within} frames, the same way as the first setting. A neuron adjusting its own weights, a little after each mistake, is the next video."
+spoken = "To find its border, a program tried a great many leaning borders on the first two sessions and kept the one that most often matched whether he really landed within the next {smb1_land_within_spoken} frames, the same way as the first setting. A neuron adjusting its own weights, a little after each mistake, is the next video."
 board = "Borders sweep and rotate across the map from the first two sessions; one stays"
 cite = ["exp001"]
-
-[[line]]
-id = "one-dot"
-text = "Before writing its border down, one useful fact. Go back to the first graph, of the total against the depth, and multiply the weight and the bias by ten. The line gets ten times steeper, but it still crosses zero at {smb1_height_cut}, and that crossing is all the answer depends on. So every answer stays the same. It works for any neuron: multiplying every weight and the bias by the same positive amount never changes an answer."
-spoken = "Before writing its border down, one useful fact. Go back to the first graph, of the total against the depth, and multiply the weight and the bias by ten. The line gets ten times steeper, but it still crosses zero at {smb1_height_cut_spoken}, and that crossing is all the answer depends on. So every answer stays the same. It works for any neuron: multiplying every weight and the bias by the same positive amount never changes an answer."
-board = "The first graph returns; the line steepens tenfold, pivoting about a lit dot at (176, 0) that never moves"
-cite = ["bishop2006"]
-
 [[line]]
 id = "the-tilt"
-text = "So we were free to scale the border's numbers. We scaled them until the depth's weight was one, then rounded: weights of one for the depth and {smb1_land_speed_weight} for the falling speed, and a bias of minus {smb1_land_threshold}. If the total is above zero, he lands soon."
-spoken = "So we were free to scale the border's numbers. We scaled them until the depth's weight was one, then rounded: weights of one for the depth and {smb1_land_speed_weight_spoken} for the falling speed, and a bias of minus {smb1_land_threshold_spoken}. If the total is above zero, he lands soon."
+text = "Here is the border it found, written with whole numbers. Scaling a neuron's weights and bias, as we did on the graph, doesn't move its border on the map at all, so we scaled them until the depth's weight was one, then rounded: weights of one for the depth and {smb1_land_speed_weight} for the falling speed, and a bias of minus {smb1_land_threshold}. If the total is above zero, he lands soon."
+spoken = "Here is the border it found, written with whole numbers. Scaling a neuron's weights and bias, as we did on the graph, doesn't move its border on the map at all, so we scaled them until the depth's weight was one, then rounded: weights of one for the depth and {smb1_land_speed_weight_spoken} for the falling speed, and a bias of minus {smb1_land_threshold_spoken}. If the total is above zero, he lands soon."
 board = "1 × depth + 5 × falling speed − 152 > 0, colour-coded, beside the border"
 cite = ["exp001", "bishop2006"]
-
 [[line]]
 id = "why-plus"
-text = "The depth's weight is plus one this time, not minus one, because this question's yes is the other way round: deeper means closer to the floor, so closer to landing. And the bias is minus {smb1_land_threshold} because the test is depth plus {smb1_land_speed_weight} times the falling speed being more than {smb1_land_threshold}; moving that {smb1_land_threshold} to the other side of the comparison turns it into minus {smb1_land_threshold}."
-spoken = "The depth's weight is plus one this time, not minus one, because this question's yes is the other way round: deeper means closer to the floor, so closer to landing. And the bias is minus {smb1_land_threshold_spoken} because the test is depth plus {smb1_land_speed_weight_spoken} times the falling speed being more than {smb1_land_threshold_spoken}; moving that {smb1_land_threshold_spoken} to the other side of the comparison turns it into minus {smb1_land_threshold_spoken}."
+text = "The depth's weight is plus one this time, not minus one, because this question's yes is the other way round: deeper means closer to the floor, so closer to landing. And the bias is minus {smb1_land_threshold} for the reason we saw with 100: a test of \"more than {smb1_land_threshold}\" becomes a bias of minus {smb1_land_threshold}, compared with zero."
+spoken = "The depth's weight is plus one this time, not minus one, because this question's yes is the other way round: deeper means closer to the floor, so closer to landing. And the bias is minus {smb1_land_threshold_spoken} for the reason we saw with a hundred: a test of \"more than {smb1_land_threshold_spoken}\" becomes a bias of minus {smb1_land_threshold_spoken}, compared with zero."
 board = "The depth weight flips from −1 to +1, with 'closer to the floor' beside it"
 cite = ["exp001"]
-
 [[line]]
 id = "land-example"
 text = "Say Mario's depth is 140 and his falling speed is 4: 140, plus 5 times 4, minus {smb1_land_threshold}, is 8. Above zero: lands soon. At the same depth but rising, at a falling speed of minus 2: 140, minus 10, minus {smb1_land_threshold}, is minus 22. Not yet."
@@ -300,17 +291,16 @@ framing = true
 
 [[line]]
 id = "steady-trade"
-text = "On the map, the border drops one step of falling speed for every {smb1_land_speed_weight} steps of depth, at the same rate everywhere. That steady trade is why it's straight. In words: the further above the floor Mario is, the faster he has to be falling to land on it in time."
-spoken = "On the map, the border drops one step of falling speed for every {smb1_land_speed_weight_spoken} steps of depth, at the same rate everywhere. That steady trade is why it's straight. In words: the further above the floor Mario is, the faster he has to be falling to land on it in time."
-board = "A dot slides along the border: one step down in speed for five steps right in depth"
+text = "On the map, going right, the border drops one step of falling speed for every {smb1_land_speed_weight} steps of depth, at the same rate everywhere: {smb1_land_speed_weight} more depth adds {smb1_land_speed_weight} to the total, and one step less falling speed, times its weight of {smb1_land_speed_weight}, takes {smb1_land_speed_weight} away. That steady trade is why it's straight. In words: the further above the floor Mario is, the faster he has to be falling to land on it in time."
+spoken = "On the map, going right, the border drops one step of falling speed for every {smb1_land_speed_weight_spoken} steps of depth, at the same rate everywhere: {smb1_land_speed_weight_spoken} more depth adds {smb1_land_speed_weight_spoken} to the total, and one step less falling speed, times its weight of {smb1_land_speed_weight_spoken}, takes {smb1_land_speed_weight_spoken} away. That steady trade is why it's straight. In words: the further above the floor Mario is, the faster he has to be falling to land on it in time."
+board = "A marker slides along the border: one step down in speed for five steps right in depth, with '+5' and '−5' adding to zero beside it"
 cite = ["exp001"]
-
 [[line]]
 id = "bias-slides"
-text = "And just as changing b slides a line in school without changing its steepness, changing the neuron's bias slides its border without changing its lean."
-board = "The border's lean changes as one weight changes; then it slides, keeping its lean, as the bias changes"
-cite = ["openstax-linear", "bishop2006"]
-
+text = "On the graph, changing the bias raises or lowers the line, so the place where it crosses zero slides along. On the map, the same change slides the border without changing its lean. Changing a weight is what changes the lean."
+spoken = "On the graph, changing the bias raises or lowers the line, so the place where it crosses zero slides along. On the map, the same change slides the border without changing its lean. Changing a weight is what changes the lean."
+board = "Side by side: the graph's line rising as the bias grows, its crossing sliding; the map's border sliding with it, keeping its lean. Then a weight changes and only the border's lean changes"
+cite = ["bishop2006"]
 [[line]]
 id = "land-results"
 text = "On the third session, most moments in the air are more than a sixth of a second from landing, so always answering \"not yet\" is right {smb1_land_baseline} of the time. A setting on depth alone does no better than that, {smb1_land_height_cut_accuracy}. A setting on falling speed alone gets {smb1_land_speed_cut_accuracy}. The leaning border, using both, gets {smb1_land_whole_accuracy}."
