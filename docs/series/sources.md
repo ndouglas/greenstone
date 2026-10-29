@@ -227,6 +227,116 @@ Read in full. Its second half ("live theory") is explicitly speculative.
 | Self-modification; deep deceptiveness; diffuse deception | Systems that reshape themselves, hide from monitors, or spread a harm across components | later |
 | Substrate-independent vs. live theory | Generalizing by abstraction (Big-O) vs. by carrying specifics across contexts; speculative | decide |
 
+## 8. God Help Us, Let's Try To Understand AI Monosemanticity (Astral Codex Ten)
+
+Scott Alexander. Astral Codex Ten, 2023-11-27.
+https://www.astralcodexten.com/p/god-help-us-lets-try-to-understand
+
+A lay explanation of "Toy Models of Superposition" and "Towards
+Monosemanticity", read in full (its figures weren't viewed). Valuable to
+the series mostly as a model of how to teach this to a lay reader; its
+claims about the papers are the author's summaries, so cite the papers
+themselves for facts.
+
+| Concept | What the post says | Series |
+|---|---|---|
+| The naive approach | Show many inputs and see when each neuron fires; a "dog neuron" | 008, 009 |
+| Why it fails | Middle-layer neurons aren't that simple: one fires for cat faces, car fronts and cat legs (polysemanticity, from "Zoom In") | 010 |
+| The counting argument | One concept per neuron caps you at as many concepts as neurons; sharing neurons fits more | superposition video |
+| A coordinate code | Two neurons' activation pairs as codes for five concepts; concepts as points on a shape | superposition video |
+| The cost of packing | More points, more confusion: two concepts at once can read as a third | superposition video |
+| The toy experiment | 400 features in 30 neurons: dense data gets one neuron per feature, sparse data packs features into shapes (tetrahedra, triangles, digons, pentagons, a square antiprism) | superposition video (reproduce on NES data) |
+| A small AI simulating a bigger one | The real neurons simulate a larger, sparser network; interpretation has to study that one | superposition video |
+| The autoencoder as translator | A second network re-expresses 512 neurons as thousands of features, which are monosemantic | SAE video |
+| A feature, worked through | The "God" feature: what fires it, which neurons build it, what it predicts next | SAE video |
+| Neuron summaries as tea leaves | Explaining single neurons reads noise; meaning lives at the feature level | 010 |
+| Feature splitting | More features split one into finer ones (math "the" into machine learning, complex analysis, topology) | SAE video |
+| Consistency across runs | Two models' features match closely (median correlation 0.72, per the paper) | SAE video |
+| Scaling the interpreter | An interpreter may cost as much as the model; reading millions of features needs automation | later |
+| A weak interpreter for a strong model | Too weak to scheme, strong enough to read | later |
+| Brains too? | One preprint reports superposition in visual cortex too (arXiv 2310.11431), hedged | decide |
+
+Teaching devices to adapt, crediting Scott Alexander: "inside every AI
+is a bigger AI"; the dog-neuron thought experiment; two neurons as a
+coordinate code; the shape-packing progression (with the square
+antiprism's biscornu); feature splitting as a tree.
+
+## 9. Towards Monosemanticity: Decomposing Language Models With Dictionary Learning
+
+Trenton Bricken, Adly Templeton, Joshua Batson, Brian Chen, Adam Jermyn,
+Tom Conerly, Nicholas L. Turner, Cem Anil, Carson Denison, Amanda
+Askell, Robert Lasenby, Yifan Wu, Shauna Kravec, Nicholas Schiefer, Tim
+Maxwell, Nicholas Joseph, Zac Hatfield-Dodds (in the BibTeX), Alex
+Tamkin, Karina Nguyen, Brayden McLean, Josiah E. Burke, Tristan Hume,
+Shan Carter, Tom Henighan, Chris Olah. Transformer Circuits Thread,
+2023-10-04.
+https://transformer-circuits.pub/2023/monosemantic-features/index.html
+
+Read in full from the page's text (figures and the reference list were
+stripped; claims that rest on a figure are marked †).
+
+| Concept | What the paper says | Series |
+|---|---|---|
+| Polysemantic neurons | E.g. one neuron for citations, English dialogue, HTTP requests and Korean | 010 |
+| Superposition as the cause | More features than neurons, each a direction; features form an overcomplete basis | superposition video |
+| Three ways out | Models without superposition; dictionary learning; a hybrid. Architectural sparsity wasn't enough, classic dictionary learning overfit; a "weak" learner (a sparse autoencoder) worked | SAE video |
+| Why sparse models stay polysemantic | Under cross-entropy loss, one neuron covering two exclusive features beats covering one cleanly (ln 2 ≈ 0.7 vs ¾·ln 3 ≈ 0.8) | SAE video (a pressure test we can reproduce) |
+| Features as a decomposition | x ≈ b + Σ fᵢ(x)·dᵢ: activity as a sum of feature directions, each scaled by its activation | superposition and SAE videos |
+| What makes a good decomposition | We can say when each feature fires, what it does downstream (consistently), and it explains a real share of the layer | 008 onward (standards) |
+| The setup | A one-layer transformer (residual 128, MLP 512, ReLU) trained on the Pile; autoencoders of 512 to 131,072 features on 8 billion MLP activations | SAE video (our NES version) |
+| The autoencoder | Subtract a bias, linear encoder + ReLU, linear decoder with unit-norm columns; loss = reconstruction error + λ·L1 of activations | SAE video |
+| Training tricks | Pre-encoder bias, untied weights, resampling dead features, long training, learning-rate sweeps, Adam handled with the norm constraint | SAE video (implementation) |
+| No good test metric | Judged by inspection, feature density, reconstruction, sparsity (L0 under ~10–20), and toy models with known answers | SAE video (pressure test) |
+| Five tests of a feature | Specificity, sensitivity, causal effect, not a neuron, universal | 008, 009 (a checklist) |
+| Worked features | Arabic (81% of its activity on Arabic, which is 0.13% of tokens), DNA, base64, Hebrew (in no neuron's top examples) | SAE video (we'll have game equivalents) |
+| Three downstream checks | Logit weights, ablating the feature, pinning it on while sampling | SAE video; causal-intervention video |
+| How interpretable, overall | Human scoring: median neuron 0, median feature interval 12 (of 14); automated scoring with Claude: features beat neurons (logit task 74% vs 58%, chance 50%) | SAE video |
+| How much it explains | 79% of the MLP's loss reduction (A/1), 94.5% at 131,072 features; the measure is doubtful | SAE video (pressure test) |
+| Model or data? | A randomly shuffled model gives mostly trivial features, so training creates the structure | SAE video (a control we can run) |
+| Feature motifs | Context features, token-in-context features (hundreds for "the"), trigram features; every feature is both an input and an action | SAE video |
+| Feature splitting | Bigger dictionaries split features into families; small dictionaries give a summary view | SAE video |
+| Universality | Features match across two seeds (median activation correlation 0.72 vs 0.46 for neurons) | SAE video; universality |
+| Finite-state automata | Features that chain through the text: a base64 loop, CAPS_SNAKE_CASE, a four-step HTML cycle | SAE video (game analogues: state machines in gameplay) |
+| Limits | No metric; doubtful explained-loss baseline; low activations less interpretable; dead and ultralow-density features; one-layer model; scaling cost (about 20B parameters for a 100× dictionary on a 10,000-wide layer) | SAE video (pressure test) |
+| Replication (Neel Nanda's comment) | Results replicate on an open one-layer GELU model; 92% of features spread across many neurons | SAE video |
+
+## 10. Toy Models of Superposition
+
+Nelson Elhage, Tristan Hume, Catherine Olsson, Nicholas Schiefer, Tom
+Henighan, Shauna Kravec, Zac Hatfield-Dodds, Robert Lasenby, Dawn Drain,
+Carol Chen, Roger Grosse, Sam McCandlish, Jared Kaplan, Dario Amodei,
+Martin Wattenberg, Christopher Olah. Transformer Circuits Thread,
+2022-09-14. https://transformer-circuits.pub/2022/toy_model/index.html
+
+Read in full from the page's text (figures, inline citations and some
+equations were stripped; training details such as the optimizer and
+learning rate live in the paper's notebooks, not the text).
+
+| Concept | What the paper says | Series |
+|---|---|---|
+| Why neurons are sometimes clean | Sparse features make small ReLU networks store more features than dimensions; interference is filtered by the nonlinearity | superposition video |
+| Decomposability and linearity | Representations as independent features; features as directions (x₁W₁ + x₂W₂ + …) | 007 onward |
+| Three definitions of "feature" | An arbitrary function (rejected), a human-interpretable property (rejected), a property a big enough network would give its own neuron (used, held loosely) | superposition video; a pressure test |
+| Privileged basis | An activation function makes neuron directions special; without one (embeddings, the residual stream) directions are arbitrary | superposition video |
+| Almost-orthogonal directions | n orthogonal directions fit in n dimensions, but exponentially many almost-orthogonal ones (Johnson–Lindenstrauss) | superposition video |
+| Compressed sensing | A sparse vector can be recovered from a low-dimensional projection | superposition video |
+| The toy model | n features (zero with probability S, else uniform 0–1, importance Iᵢ) → h = Wx (m < n) → x′ = ReLU(Wᵀh + b); loss = importance-weighted squared error. Linear model for contrast | superposition video (reproduce, then on NES variables) |
+| Linear vs. ReLU | The linear model learns the top m features (like PCA) whatever the sparsity; the ReLU model superposes as sparsity rises, least important features first | superposition video |
+| Benefit vs. interference | The loss trades representing a feature against interference with others; superposition is never optimal in the linear model | superposition video |
+| Phase change | Each feature is dropped, superposed or given its own dimension, with sharp (first-order) transitions over sparsity and importance (2 features in 1 dimension, closed form) | superposition video |
+| Geometry | Features per dimension stick at fractions: 3/4 tetrahedra, 2/3 triangles, 1/2 antipodal pairs, 2/5 pentagons, 3/8 square antiprisms; Thomson-problem solutions; tegum products; "too elegant to be true", maybe toy-specific | superposition video (the shapes on screen) |
+| Feature dimensionality | Dᵢ = ‖Wᵢ‖² / Σⱼ(Ŵᵢ·Wⱼ)²: 1 dedicated, 1/2 antipodal, 0 dropped; they sum to m when packing is efficient | superposition video |
+| Non-uniform superposition | Changing one feature's sparsity deforms a pentagon until it snaps to two digons | superposition video |
+| Correlated features | Correlated features prefer to be orthogonal, else side by side, else collapse to their principal component; anticorrelated features prefer to share | superposition video (NES variables are correlated) |
+| PCA vs. superposition | Correlation favours PCA, sparsity favours superposition | superposition video |
+| Learning dynamics | "Energy level" jumps between dimensionalities with drops in loss; learning as geometric transformations, PCA first | later (learning dynamics) |
+| Adversarial examples | Superposition makes models more vulnerable (over 3× once it forms); adversarial training reduces superposition only at huge attack sizes | later |
+| Privileged basis model | A hidden ReLU: neurons go from monosemantic to polysemantic as sparsity rises; both kinds coexist; the model can bypass the ReLU ("simulating identity") | 010 |
+| Computation in superposition | Absolute value computed on superposed features; primary and secondary features; an asymmetric superposition motif with inhibition | later |
+| The strategic picture | Superposition blocks enumerating features, which safety claims ("no deception feature here") need; three ways out: models without it, overcomplete bases (dictionary learning), hybrids; mixture-of-experts may have less | superposition and SAE videos |
+| Open questions | A test for superposition; controlling it; realism of toy models; scaling; how many features fit; links to compressed sensing phase changes and non-robust features | superposition video (pressure test) |
+| Replications (comments) | Redwood, DeepMind, OpenAI and others replicated it; a sparse autoencoder recovered toy features almost exactly (Sharkey, Braun, Millidge) | SAE video |
+
 ## Gaps
 
 - The middle and end of the podcast transcript are summary-only (†).
