@@ -39,14 +39,16 @@
   "smb1_land_height_cut_accuracy_spoken": "seventy-five percent",
   "smb1_land_line_accuracy": "91%",
   "smb1_land_line_accuracy_spoken": "ninety-one percent",
+  "smb1_land_misses_on_raised": "90%",
+  "smb1_land_misses_on_raised_spoken": "ninety percent",
   "smb1_land_rate": "25%",
   "smb1_land_rate_spoken": "twenty-five percent",
   "smb1_land_speed_cut_accuracy": "84%",
   "smb1_land_speed_cut_accuracy_spoken": "eighty-four percent",
   "smb1_land_weights": [
-    0.0335,
-    0.1683,
-    -5.084
+    0.0334730141632892,
+    0.16830420615086328,
+    -5.0841416114822895
   ],
   "smb1_land_within": 10,
   "smb1_land_within_spoken": "ten",

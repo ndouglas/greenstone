@@ -203,7 +203,24 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
     numbers["smb1_land_within"] = LAND_WITHIN
     numbers["smb1_land_within_spoken"] = spoken_number(LAND_WITHIN)
     # The line, as "lands soon when speed > slope × height + intercept".
-    numbers["smb1_land_weights"] = [round(float(w[0]), 4), round(float(w[1]), 4), round(float(b), 3)]
+    numbers["smb1_land_weights"] = [float(w[0]), float(w[1]), float(b)]
+    # Where the landing border goes wrong: missed landings onto something
+    # raised (heights above the floor), versus onto the floor.
+    said = (xt @ w + b > 0).astype(int)
+    missed = (said == 0) & (yt == 1)
+    land_heights = []
+    for r in test:
+        air = label("smb1")(r.ram)
+        keep, lands = landing(air, r.meta.get("restart_frames", []), LAND_WITHIN)
+        for t, l in zip(keep, lands):
+            if l:
+                first = next(k for k in range(1, LAND_WITHIN + 1) if not air[t + k])
+                land_heights.append(int(r.ram[t + first, 0x00CE]))
+            else:
+                land_heights.append(-1)
+    land_heights = np.array(land_heights)
+    raised = missed & (land_heights >= 0) & (land_heights < numbers["smb1_height_cut"])
+    put("smb1_land_misses_on_raised", raised.sum() / max(missed.sum(), 1))
 
     # Castlevania keeps where Simon is in his jump, not a speed.
     cv = [load(data_root / "castlevania" / s) for s in ("1", "2", "3")]
