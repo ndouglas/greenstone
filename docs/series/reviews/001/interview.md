@@ -198,3 +198,14 @@ the neuron change. Proposed: make learning 002 and move "when the line
 lies" to 003 (Nate to decide). Needs: play beyond 1-1 (an existing input
 recording of the whole game, or the rule teacher), and exp001's finding
 that the learning rule reaches 84%, below search's 94%, and never settles.
+
+## Outcome
+
+Twenty-one questions asked across six rounds (with follow-ups 1a, 11a, 12a).
+Changes to the script: why-zero; the graph (school, moved, then one-dot);
+not-a-fluke; steady-player; the sheet renamed the map; the depth offset
+shown; fewer percentages; the balance scale moved. Changes to the series:
+learning becomes 002 and "when the line lies" 003; 5 to 12 minutes is a
+comfortable size, not a ceiling. The changed script then needed five more
+adversarial passes (adversarial-6 to -10) before both reviewers found
+nothing substantial.
