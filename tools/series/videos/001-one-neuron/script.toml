@@ -68,7 +68,7 @@ cite = ["exp001"]
 
 [[line]]
 id = "depth"
-text = "Instead, the neuron reads a different number from the game's memory: Mario's depth, meaning how far down the screen he is, counted in dots from zero at the top to about two hundred and forty at the bottom. A bigger depth means lower on the screen."
+text = "Instead, the neuron reads a different number from the game's memory: Mario's depth, meaning how far down the screen he is, counted in dots from near the top. A bigger depth means lower on the screen."
 board = "A ruler down the left of the screen, zero at the top; a marker follows Mario"
 cite = ["datacrystal-smb1", "nesdev-oam", "exp001"]
 
@@ -199,14 +199,14 @@ framing = true
 
 [[line]]
 id = "new-question"
-text = "Now a question where two numbers do better than one. While Mario is in the air: will he land within the next {smb1_land_within} frames, a sixth of a second? The game doesn't store that answer, but our recording does: we look {smb1_land_within} frames ahead and see whether the in-the-air number says he's landed."
-spoken = "Now a question where two numbers do better than one. While Mario is in the air: will he land within the next {smb1_land_within_spoken} frames, a sixth of a second? The game doesn't store that answer, but our recording does: we look {smb1_land_within_spoken} frames ahead and see whether the in-the-air number says he's landed."
+text = "Now a question where two numbers do better than one. While Mario is in the air: will he land within the next {smb1_land_within} frames, a sixth of a second? The game doesn't store that answer, but we can work it out from the recording: we check the next {smb1_land_within} frames and see whether the in-the-air number says he's landed in any of them."
+spoken = "Now a question where two numbers do better than one. While Mario is in the air: will he land within the next {smb1_land_within_spoken} frames, a sixth of a second? The game doesn't store that answer, but we can work it out from the recording: we check the next {smb1_land_within_spoken} frames and see whether the in-the-air number says he's landed in any of them."
 board = "Mario mid-jump, a timer counting ten frames ahead"
 cite = ["exp001"]
 
 [[line]]
 id = "two-inputs"
-text = "This neuron reads his depth and a second number from the game's memory: his falling speed, in dots per frame. It's positive while he falls and negative while he rises."
+text = "This neuron reads his depth and a second number from the game's memory: his falling speed, in whole dots per frame. It's positive while he falls and negative while he rises."
 board = "A second memory square lights up, negative as Mario rises, positive as he falls"
 cite = ["datacrystal-smb1", "exp001"]
 
@@ -237,21 +237,22 @@ cite = ["bishop2006"]
 
 [[line]]
 id = "how-found"
-text = "To find its border, a program tried a great many leaning borders on the first two sessions and kept the one that matched that answer most often, the same way as the first setting. A neuron adjusting its own weights, a little after each mistake, is a later video."
+text = "To find its border, a program tried a great many leaning borders on the first two sessions and kept the one that most often matched whether he really landed within the next {smb1_land_within} frames, the same way as the first setting. A neuron adjusting its own weights, a little after each mistake, is a later video."
+spoken = "To find its border, a program tried a great many leaning borders on the first two sessions and kept the one that most often matched whether he really landed within the next {smb1_land_within_spoken} frames, the same way as the first setting. A neuron adjusting its own weights, a little after each mistake, is a later video."
 board = "Borders sweep and rotate across the sheet from the first two sessions; one stays"
 cite = ["exp001"]
 
 [[line]]
 id = "the-tilt"
-text = "Here is the border it found, written with whole numbers. Multiplying every weight and the bias by the same positive amount doesn't move the border, because every total gets multiplied too, so it's above zero in exactly the same places. So we scaled them until the depth's weight was one, then rounded: weights of one for the depth and {smb1_land_speed_weight} for the falling speed, and a bias of minus {smb1_land_threshold}. If one times the depth, plus {smb1_land_speed_weight} times the falling speed, minus {smb1_land_threshold}, is above zero, he lands soon."
-spoken = "Here is the border it found, written with whole numbers. Multiplying every weight and the bias by the same positive amount doesn't move the border, because every total gets multiplied too, so it's above zero in exactly the same places. So we scaled them until the depth's weight was one, then rounded: weights of one for the depth and {smb1_land_speed_weight_spoken} for the falling speed, and a bias of minus {smb1_land_threshold_spoken}. If one times the depth, plus {smb1_land_speed_weight_spoken} times the falling speed, minus {smb1_land_threshold_spoken}, is above zero, he lands soon."
+text = "Here is the border it found, written with whole numbers. Multiplying every weight and the bias by the same positive amount doesn't move the border, because every total gets multiplied too, so it's above zero in exactly the same places. So we scaled them until the depth's weight was one, then rounded: weights of one for the depth and {smb1_land_speed_weight} for the falling speed, and a bias of minus {smb1_land_threshold}. If the total is above zero, he lands soon."
+spoken = "Here is the border it found, written with whole numbers. Multiplying every weight and the bias by the same positive amount doesn't move the border, because every total gets multiplied too, so it's above zero in exactly the same places. So we scaled them until the depth's weight was one, then rounded: weights of one for the depth and {smb1_land_speed_weight_spoken} for the falling speed, and a bias of minus {smb1_land_threshold_spoken}. If the total is above zero, he lands soon."
 board = "1 × depth + 5 × falling speed − 152 > 0, colour-coded, beside the border"
 cite = ["exp001", "bishop2006"]
 
 [[line]]
 id = "why-plus"
-text = "The depth's weight is plus one this time, not minus one, because this question's yes is the other way round: deeper means closer to the floor, so closer to landing. And with the weight plus, the setting goes in as a minus bias: the total passes zero when the depth plus {smb1_land_speed_weight} times the falling speed passes {smb1_land_threshold}."
-spoken = "The depth's weight is plus one this time, not minus one, because this question's yes is the other way round: deeper means closer to the floor, so closer to landing. And with the weight plus, the setting goes in as a minus bias: the total passes zero when the depth plus {smb1_land_speed_weight_spoken} times the falling speed passes {smb1_land_threshold_spoken}."
+text = "The depth's weight is plus one this time, not minus one, because this question's yes is the other way round: deeper means closer to the floor, so closer to landing. And the bias is minus {smb1_land_threshold} because the test is depth plus {smb1_land_speed_weight} times the falling speed being more than {smb1_land_threshold}; moving that {smb1_land_threshold} to the other side of the comparison turns it into minus {smb1_land_threshold}, just as moving {smb1_height_cut} across turned it into plus {smb1_height_cut} before."
+spoken = "The depth's weight is plus one this time, not minus one, because this question's yes is the other way round: deeper means closer to the floor, so closer to landing. And the bias is minus {smb1_land_threshold_spoken} because the test is depth plus {smb1_land_speed_weight_spoken} times the falling speed being more than {smb1_land_threshold_spoken}; moving that {smb1_land_threshold_spoken} to the other side of the comparison turns it into minus {smb1_land_threshold_spoken}, just as moving {smb1_height_cut_spoken} across turned it into plus {smb1_height_cut_spoken} before."
 board = "The depth weight flips from −1 to +1, with 'closer to the floor' beside it"
 cite = ["exp001"]
 
@@ -271,8 +272,8 @@ cite = ["exp001"]
 
 [[line]]
 id = "school"
-text = "If you remember y = mx + b from school, put the depth in the place of x and the falling speed in the place of y. Along our border, the falling speed is {smb1_land_threshold} minus the depth, divided by {smb1_land_speed_weight}. So m, the steepness, is minus one fifth, and school's b, where the line crosses the side, is {smb1_land_threshold} divided by {smb1_land_speed_weight}, about thirty: a different number from the neuron's bias. Changing the neuron's bias slides the border without changing its steepness, just as changing b did in school."
-spoken = "If you remember y equals m x plus b from school, put the depth in the place of x and the falling speed in the place of y. Along our border, the falling speed is {smb1_land_threshold_spoken} minus the depth, divided by {smb1_land_speed_weight_spoken}. So m, the steepness, is minus one fifth, and school's b, where the line crosses the side, is {smb1_land_threshold_spoken} divided by {smb1_land_speed_weight_spoken}, about thirty: a different number from the neuron's bias. Changing the neuron's bias slides the border without changing its steepness, just as changing b did in school."
+text = "If you remember y = mx + b from school, put the depth in the place of x and the falling speed in the place of y. Along our border, the falling speed is {smb1_land_threshold} minus the depth, divided by {smb1_land_speed_weight}. So m, the steepness, is minus one fifth, counted in the sheet's own steps: one step of speed for five of depth. School's b would be where the line crosses depth zero, far off our sheet, and it's a different number from the neuron's bias. Changing the neuron's bias slides the border without changing its steepness, just as changing b did in school."
+spoken = "If you remember y equals m x plus b from school, put the depth in the place of x and the falling speed in the place of y. Along our border, the falling speed is {smb1_land_threshold_spoken} minus the depth, divided by {smb1_land_speed_weight_spoken}. So m, the steepness, is minus one fifth, counted in the sheet's own steps: one step of speed for five of depth. School's b would be where the line crosses depth zero, far off our sheet, and it's a different number from the neuron's bias. Changing the neuron's bias slides the border without changing its steepness, just as changing b did in school."
 board = "The border's steepness changes as one weight changes; then it slides, keeping its steepness, as the bias changes"
 cite = ["openstax-linear", "exp001"]
 
@@ -293,20 +294,14 @@ cite = ["exp001"]
 # --- The one idea ---
 
 [[line]]
-id = "all-of-it"
-text = "That's everything inside this neuron: a weight for each input, a bias, and the straight border they make. We can see all of it, and we know exactly what it does."
-board = "The neuron box, the formula and the border, all on screen at once, with nothing hidden"
-framing = true
-
-[[line]]
 id = "the-idea"
-text = "One neuron multiplies each input by a weight, adds them up with a bias, and says yes if the total is above zero. On the sheet of its inputs, that's a straight border: yes on one side, no on the other."
+text = "One neuron multiplies each input by a weight, adds them up with a bias, and says yes if the total is above zero. On the sheet of its inputs, that's a straight border: yes on one side, no on the other. That's everything inside it. We can see all of it, and we know exactly what it does."
 board = "The border across the sheet, yes on one side, no on the other"
 framing = true
 
 [[line]]
 id = "modern"
-text = "Today's artificial neurons are close cousins. They start from the same kind of weighted sum, usually with a bias, but they pass on a number instead of a bare yes or no. In one common kind, for years the standard choice, that number grows the further past the border the inputs are, and is zero on the other side."
+text = "Today's artificial neurons are close cousins. They start from the same kind of weighted sum, usually with a bias, but they pass on a number instead of a bare yes or no. In one common kind, long recommended as the default, that number grows the further past the border the inputs are, and is zero on the other side."
 board = "The yes/no light becomes a dial that rises the further past the border a dot sits, and reads zero on the no side"
 cite = ["goodfellow2016"]
 
@@ -314,7 +309,7 @@ cite = ["goodfellow2016"]
 id = "harder"
 text = "Now you know what one piece is. Networks built from huge numbers of them are much harder to see into than this single neuron, and that's what the rest of this series is about."
 board = "The single dot, with a crowd of dots waiting faintly behind it"
-framing = true
+cite = ["bluedot2024"]
 
 [[line]]
 id = "disclaimer"
