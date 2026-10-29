@@ -90,8 +90,8 @@ it with the real reasons, kept brief:
   comparing with 100 or 26 takes a compare first. Nate's understanding is
   that this holds across processors generally. Keep it brief and out of
   the weeds: one sentence, with the NES's own 6502 as the example on the
-  board (a real zero-flag branch from Super Mario Bros.' code, via
-  Greenstone's disassembly). Cite a 6502 instruction reference, and a
+  board (a real zero-flag branch from Super Mario Bros.' code, from a
+  published disassembly checked against the ROM). Cite a 6502 instruction reference, and a
   general source if the sentence claims more than the 6502.
 
 **Narration speed.** Slow the narrator by about 10% now. Proper
@@ -122,8 +122,8 @@ the bible, the spec and the pipeline change, not just 001.
   pacing lens judges real beat lengths; then the council and adversarial
   reviews; then Nate's interview, with the storyboard in hand.
 - **Title-screen tiles** are chosen automatically from the chapter's own
-  footage and boards, so a title screen always previews its own chapter;
-  a chapter can name its tiles to override.
+  footage and boards, so a title screen always previews its own chapter
+  (a per-chapter override can come later, when real footage tiles exist).
 - **Speed** is a parameter of the narrator (Kokoro's `speed`, 0.9 for
   "10% slower"), part of the voice cache key so changing it re-voices.
 - **The storyboard** shows chapter title screens (as placeholder cards
