@@ -164,7 +164,7 @@ experiments and their results are in `docs/series/games/001.md`.
   interpretability, so 002 teaches learning only as far as later videos
   need it.
 - **Experiments:** "is Mario in the air?" from his depth alone (a
-  setting; 94% against 55%), in three games; "will he land within 10
+  setting; 94% against 54%), in three games; "will he land within 10
   frames?" from depth and falling speed (a leaning border; 91% against
   75%), written in whole numbers as 1 × depth + 5 × falling speed − 152.
   A behavioural test and attribution (the balance-scale blocks) appear

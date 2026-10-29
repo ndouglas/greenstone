@@ -17,6 +17,12 @@ board = "The camera pushes into the tangle of dots; too many to follow"
 cite = ["bluedot2024"]
 
 [[section.line]]
+id = "nobody-knows-3"
+text = "Looking inside is how we'd check what they've really learned, instead of trusting what they seem to do."
+board = "A neuron's lit dots beside its outward answer; a magnifying glass over the dots"
+cite = ["bluedot2024"]
+
+[[section.line]]
 id = "memory"
 text = "Old games are a good place to try neurons out. A Nintendo Entertainment System's main working memory holds two thousand and forty-eight numbers, each between zero and two hundred and fifty-five, changing many times a second while a game runs."
 board = "An NES; its 2,048 bytes of work RAM as a grid of numbers, changing as Mario runs"
@@ -117,7 +123,7 @@ cite = ["exp001"]
 [[section.line]]
 id = "depth"
 text = "Instead, the neuron reads a different number from the game's memory: Mario's depth, meaning how far down the screen he is, counted in the tiny dots the picture is made of. A bigger depth means lower on the screen."
-board = "Footage: a ruler down the screen, its number following Mario as he jumps; its mark sits 32 dots above his feet, the gap labelled (depth d puts his feet at screen row d + 32)"
+board = "Footage: a ruler down the screen, its number following Mario's feet as he jumps; a small note shows the game's own mark, 32 dots above them"
 cite = ["datacrystal-smb1", "nesdev-oam", "exp001"]
 
 [[section.line]]
@@ -147,8 +153,8 @@ cite = ["exp001"]
 
 [[section.line]]
 id = "frames-3"
-text = "We left out the moments when the game moves Mario by itself, like when he dies or slides down the flagpole."
-board = "On a tape, the dying and flagpole stretches grey out"
+text = "We left out the moments when the game moves Mario by itself, like when he dies, or freezes while he grows or shrinks."
+board = "On a tape, the dying and freezing stretches grey out"
 cite = ["exp001"]
 
 [[section.line]]
@@ -253,7 +259,7 @@ cite = ["exp001"]
 
 [[section.line]]
 id = "other-games"
-text = "The same kind of neuron works in other games, each with its own setting, found and tested the same way; in each game, every session picks the same setting."
+text = "The same kind of neuron works in other games, each with its own setting, found and tested the same way."
 board = "Super Mario Bros., Super Mario Bros. 3 and Castlevania side by side, each with its own setting line"
 cite = ["exp001"]
 pause = 1.0
@@ -275,13 +281,19 @@ cite = ["datacrystal-cv"]
 id = "castlevania-2"
 text = "A neuron reading his depth is right {castlevania_height_accuracy} of the time, again well above always saying \"on the ground\"."
 spoken = "A neuron reading his depth is right {castlevania_height_accuracy_spoken} of the time, again well above always saying on the ground."
-board = "Castlevania: the setting across the screen; its bar at {castlevania_height_accuracy}, the score-to-beat bar faint beside it"
+board = "Castlevania: the setting across the screen at depth {castlevania_height_cut}, a little above where Simon stands ({castlevania_standing_height}); its bar at {castlevania_height_accuracy}, the score-to-beat bar faint beside it"
+cite = ["exp001"]
+
+[[section.line]]
+id = "every-session-games"
+text = "And in each game, every session, chosen on alone, picks the same setting."
+board = "Three session strips per game, each game's three settings landing together"
 cite = ["exp001"]
 
 [[section.line]]
 id = "testing-end-1"
 text = "So the neuron is good: in three games, on play it wasn't chosen on, it's right far more often than always guessing the same answer."
-board = "The three games' bars together, each with its three session strips"
+board = "The three games' bars together"
 cite = ["exp001"]
 
 [[section.line]]
@@ -300,8 +312,8 @@ cite = ["exp001"]
 [[section.line]]
 id = "testing-end"
 role = "conclusion"
-text = "So it goes wrong because all it knows about is the floor. Other questions need two numbers to answer well, and to write a neuron that reads two, we need the recipe."
-board = "Mario on a pipe; then a second input slot, empty, beside the neuron"
+text = "So it goes wrong because all it knows about is the floor, and a second number won't fix that for a neuron like this one. But other questions need two numbers to answer well, and to write a neuron that reads two, we need the recipe."
+board = "Mario on a pipe; then, apart from him, a new question mark and an empty second input slot"
 cite = ["exp001"]
 
 [[section]]
@@ -372,22 +384,36 @@ cite = ["exp001", "bishop2006"]
 
 [[section.line]]
 id = "why-zero"
-text = "Why zero? Any fixed number would work. If the total is 130, asking whether it's above 100 is the same as asking whether 30 is above zero, so we can always take the 100 off the total, by taking it off the bias, and compare with zero instead."
-spoken = "Why zero? Any fixed number would work. If the total is a hundred and thirty, asking whether it's above a hundred is the same as asking whether thirty is above zero, so we can always take the hundred off the total, by taking it off the bias, and compare with zero instead."
-board = "130 > 100 becomes 30 > 0; then '> 100' on the right of the formula slides across and joins the bias as '- 100', leaving '> 0'"
+text = "Why zero? Any fixed number would work. If the total is 130, asking whether it's above 100 is the same as asking whether 30 is above zero."
+spoken = "Why zero? Any fixed number would work. If the total is a hundred and thirty, asking whether it's above a hundred is the same as asking whether thirty is above zero."
+board = "130 > 100 becomes 30 > 0"
 cite = ["bishop2006"]
 pause = 3.0
 
 [[section.line]]
+id = "why-zero-b"
+text = "So we can always take the 100 off the total, by taking it off the bias, and compare with zero instead."
+spoken = "So we can always take the hundred off the total, by taking it off the bias, and compare with zero instead."
+board = "'> 100' on the right of the formula slides across and joins the bias as '- 100', leaving '> 0'"
+cite = ["bishop2006"]
+
+[[section.line]]
 id = "why-zero-3"
-text = "Computers do the same. To check whether a number is at least 10, the NES's processor takes 10 away and looks at whether it had to go below zero: the comparison becomes a comparison with zero."
-spoken = "Computers do the same. To check whether a number is at least ten, the NES's processor takes ten away and looks at whether it had to go below zero: the comparison becomes a comparison with zero."
+text = "Computers do something similar. To check whether a number is at least 10, the NES's processor takes 10 away and looks at whether it had to go below zero: the comparison becomes a comparison with zero."
+spoken = "Computers do something similar. To check whether a number is at least ten, the NES's processor takes ten away and looks at whether it had to go below zero: the comparison becomes a comparison with zero."
 board = "The NES's chip; 'at least 10?' becomes '− 10: below zero?'; beside it, the real instruction from Super Mario Bros. at $801B, 'cmp #10', checking a digit of the top score"
 cite = ["masswerk-6502", "smbdis", "exp001"]
 
 [[section.line]]
 id = "why-zero-2"
-text = "And with zero, the test has no number of its own: everything is in the total. Since one times the bias is just the bias, the bias can be treated as one more weight, on an input that's always one."
+text = "And with zero, the test has no number of its own: everything is in the total."
+board = "'> 0' alone on the right; everything else gathered on the left"
+cite = ["bishop2006"]
+pause = 1.0
+
+[[section.line]]
+id = "why-zero-2b"
+text = "Since one times the bias is just the bias, the bias can be treated as one more weight, on an input that's always one."
 board = "b turns into w₀ × 1: a weight on a new input fixed at 1"
 cite = ["bishop2006"]
 
@@ -405,7 +431,7 @@ title = "Drawing it"
 [[section.line]]
 id = "draw-intro"
 role = "intro"
-text = "Soon we'll want to turn a neuron's messy numbers into simple ones while barely changing its answers. Drawing the neuron as a line shows how."
+text = "Soon we'll want to turn a neuron's messy numbers into simple ones. Drawing the neuron as a line shows the first step: which changes leave its answers exactly the same."
 board = "Empty axes fade in beside the formula"
 framing = true
 
@@ -573,13 +599,13 @@ cite = ["bishop2006"]
 [[section.line]]
 id = "settings-are-borders-2"
 text = "A neuron reading only depth would draw a straight up-and-down border on this map, because its setting is one depth, whatever his speed. One reading only falling speed would draw a flat one."
-board = "An up-and-down border, then a level one"
+board = "An up-and-down border, then a flat one"
 cite = ["bishop2006"]
 
 [[section.line]]
 id = "settings-are-borders-3"
 text = "Reading both, the border can lean. It's the two-number version of the first neuron's setting."
-board = "The leaning border settles between them; the graph's pin, small, beside it"
+board = "The leaning border settles between them; the first neuron's mark on its depth line, small, beside it"
 cite = ["bishop2006"]
 
 [[section.line]]
@@ -621,8 +647,8 @@ framing = true
 
 [[section.line]]
 id = "the-tilt"
-text = "Written in whole numbers, the border the search found is very nearly: one times the depth, plus {smb1_land_speed_weight} times the falling speed, minus {smb1_land_threshold}."
-spoken = "Written in whole numbers, the border the search found is very nearly: one times the depth, plus {smb1_land_speed_weight_spoken} times the falling speed, minus {smb1_land_threshold_spoken}."
+text = "Written in whole numbers, the neuron the search found is very nearly: one times the depth, plus {smb1_land_speed_weight} times the falling speed, minus {smb1_land_threshold}."
+spoken = "Written in whole numbers, the neuron the search found is very nearly: one times the depth, plus {smb1_land_speed_weight_spoken} times the falling speed, minus {smb1_land_threshold_spoken}."
 board = "1 × depth + {smb1_land_speed_weight} × falling speed − {smb1_land_threshold}, colour-coded, beside the border"
 cite = ["exp001"]
 
@@ -634,7 +660,7 @@ cite = ["exp001"]
 
 [[section.line]]
 id = "the-tilt-2"
-text = "The search's own numbers were long decimals. As on the graph, multiplying them all by the same plus number doesn't move the border, so we scaled them until the depth's weight was exactly one."
+text = "The search's own numbers were long decimals. Just as the graph's crossing stayed put when we tripled everything, multiplying them all by the same plus number doesn't move the border, so we scaled them until the depth's weight was exactly one."
 board = "The search's decimal weights, scaling up together; the border unmoved"
 cite = ["exp001", "bishop2006"]
 
@@ -719,7 +745,7 @@ framing = true
 
 [[section.line]]
 id = "balance-3"
-text = "A plus number goes in the yes pan, and a minus number in the no pan. The bias, the weight on that input that's always one, is one more block, in the pan its own sign says."
+text = "A plus number goes in the yes pan, and a minus number in the no pan. The bias, which we treated as a weight on an input that's always one, is one more block, in the pan its own sign says."
 board = "A plus block drops into the yes pan, a minus block and the bias's block into the no pan"
 framing = true
 
