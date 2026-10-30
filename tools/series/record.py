@@ -18,7 +18,7 @@ import numpy as np
 import soundfile
 
 from series.script import Video
-from series.sound import process
+from series.sound import cache_path, process
 from series.takes import Take, TakeStore, trim
 
 ROOM_SECONDS = 10.0
@@ -107,6 +107,8 @@ class Session:
         self.problems: dict[tuple[str, int], list[str]] = {}
         self.dropouts: set[tuple[str, int]] = set()
         self.overflows_at_start = 0
+        # Saves the room tone, off the audio thread.
+        self.saving: threading.Thread | None = None
         self.narrator_seconds = {i: soundfile.info(p).duration for i, p in narration.items()}
 
     @property
@@ -114,7 +116,21 @@ class Session:
         return self.video.lines[self.index]
 
     def open(self) -> None:
+        self._prune()
         self.input.start(self._audio)
+
+    def _prune(self) -> None:
+        """Drop played-back takes the store no longer has, or that an older chain made."""
+        if not self.cache.exists():
+            return
+        keep = set()
+        for line in self.video.lines:
+            for take in self.store.takes(line.id):
+                path = cache_path(take, self.cache)
+                keep |= {path, path.with_suffix(".json")}
+        for path in self.cache.iterdir():
+            if path.is_file() and path not in keep:
+                path.unlink()
 
     def close(self) -> None:
         self.abandon()
@@ -122,14 +138,18 @@ class Session:
 
     def _audio(self, block: np.ndarray) -> None:
         self.level = peak_db(block)
+        room = None
         with self.lock:
             if not self.recording:
                 return
             self.blocks.append(block)
             if self.room_mode and sum(len(b) for b in self.blocks) >= ROOM_SECONDS * self.input.rate:
-                audio = np.concatenate(self.blocks)[:int(ROOM_SECONDS * self.input.rate)]
+                room = np.concatenate(self.blocks)[:int(ROOM_SECONDS * self.input.rate)]
                 self.blocks, self.recording, self.room_mode = [], False, False
-                self.store.set_room(audio, self.input.rate)
+        if room is not None:
+            # Writing a file here would hold up the microphone.
+            self.saving = threading.Thread(target=self.store.set_room, args=(room, self.input.rate))
+            self.saving.start()
 
     def goto(self, i: int) -> None:
         if not self.recording:
@@ -147,8 +167,10 @@ class Session:
             self.overflows_at_start = getattr(self.input, "overflows", 0)
 
     def record_room(self) -> None:
-        """Record ROOM_SECONDS of the room's quiet; it stops by itself."""
+        """Record ROOM_SECONDS of the room's quiet; it stops by itself. Not mid-take."""
         with self.lock:
+            if self.recording:
+                return
             self.blocks, self.recording, self.room_mode = [], True, True
 
     def stop(self) -> Take | None:
@@ -247,7 +269,18 @@ def serve(session: Session, port: int) -> ThreadingHTTPServer:
             self.end_headers()
             self.wfile.write(body)
 
+        def local(self) -> bool:
+            """Only the page itself, reached as this machine: a page elsewhere that
+            rebinds its own name to 127.0.0.1 still sends that name as Host."""
+            port = self.server.server_address[1]
+            if self.headers.get("Host") in (f"127.0.0.1:{port}", f"localhost:{port}"):
+                return True
+            self.send(403, b"forbidden")
+            return False
+
         def do_GET(self):
+            if not self.local():
+                return
             path = self.path.split("?")[0]
             if path == "/":
                 return self.send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
@@ -266,8 +299,13 @@ def serve(session: Session, port: int) -> ThreadingHTTPServer:
             self.send(200, Path(wav).read_bytes(), "audio/wav")
 
         def do_POST(self):
+            if not self.local():
+                return
             if self.path != "/action":
                 return self.send(404, b"not found")
+            # JSON only: a form on another site can't send it without asking first.
+            if self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
+                return self.send(415, b"send JSON")
             try:
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
                 do, n = body.get("do"), body.get("n")

@@ -79,7 +79,7 @@ def mix(movie: Path, music: Path | None, out: Path, room: Path | None = None, ro
     if room is not None:
         until = length if room_until is None else room_until
         inputs += ["-stream_loop", "-1", "-i", str(room)]
-        graph.append(f"[{inputs.count('-i') - 1}:a]atrim=end={until:.3f},afade=t=out:st={max(0.0, until - 0.5):.3f}:d=0.5,"
+        graph.append(f"[{inputs.count('-i') - 1}:a]atrim=end={until:.3f},afade=t=out:st={max(0.0, until - 0.5):.3f}:d={min(0.5, until):.3f},"
                      f"apad=whole_dur={length:.3f}[room]")
         graph.append("[voice][room]amix=inputs=2:duration=first:normalize=0[spoken]")
         voice = "[spoken]"
@@ -97,7 +97,7 @@ def mix(movie: Path, music: Path | None, out: Path, room: Path | None = None, ro
 def room_tone(video, found: dict[str, Voice], out: Path) -> Path | None:
     """The room's quiet at the takes' typical gain, when every beat is a take."""
     room = TakeStore(video.dir / TAKES).room()
-    if room is None or any(v.source != "take" for v in found.values()):
+    if room is None or not found or any(v.source != "take" for v in found.values()):
         return None
     return process_room(room, statistics.median(v.gain_db for v in found.values()), out / "room")
 

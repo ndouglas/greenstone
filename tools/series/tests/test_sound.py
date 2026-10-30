@@ -59,6 +59,15 @@ class Chain(unittest.TestCase):
             with mock.patch.object(sound, name, value):
                 self.assertNotEqual(process(t, cache)[0], first, name)
 
+    def test_room_tone_loops_without_a_seam(self):
+        # A tone that doesn't fit a whole number of cycles into 10 s jumps where it loops.
+        room = Path(tempfile.mkdtemp()) / "room.wav"
+        t = np.arange(48000 * 10) / 48000
+        soundfile.write(room, (0.01 * np.sin(2 * np.pi * 997.3 * t)).astype(np.float32), 48000)
+        out = soundfile.read(process_room(room, 0.0, Path(tempfile.mkdtemp())))[0]
+        steps = np.abs(np.diff(out))
+        self.assertLess(abs(out[0] - out[-1]), steps.max() * 1.5)
+
     def test_room_tone_takes_the_given_gain(self):
         rng = np.random.default_rng(0)
         room = Path(tempfile.mkdtemp()) / "room.wav"

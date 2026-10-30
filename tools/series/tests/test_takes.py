@@ -1,4 +1,5 @@
 import tempfile
+import threading
 import tomllib
 import unittest
 from pathlib import Path
@@ -121,6 +122,23 @@ class Store(unittest.TestCase):
         self.assertEqual((take.number, take.text, take.start), (0, "Hello.", 0.0))
         self.assertAlmostEqual(take.end, 2.0, delta=0.001)
         self.assertIsNone(s.chosen("b"))
+
+    def test_takes_added_at_once_get_their_own_numbers(self):
+        s = store()
+        audio = speech()
+        start = threading.Barrier(12)
+
+        def add():
+            start.wait()
+            s.add("a", audio, RATE, "Hello.")
+
+        threads = [threading.Thread(target=add) for _ in range(12)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual([t.number for t in s.takes("a")], list(range(1, 13)))
+        self.assertIn(s.chosen("a").number, range(1, 13))
 
     def test_room_tone_is_stored(self):
         s = store()

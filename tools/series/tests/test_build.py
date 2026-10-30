@@ -12,7 +12,7 @@ import numpy as np
 import soundfile
 
 from series import pacing
-from series.build import NotNarrated, SectionTooLong, build
+from series.build import NotNarrated, SectionTooLong, build, room_tone
 from series.credits import credits_seconds
 from series.pacing import STILLNESS
 from series.script import load_video
@@ -265,6 +265,11 @@ class Build(unittest.TestCase):
         self.assertLess(band_level(movie, 3000, duration(movie) - 3.0, 2.0), pause - 20)  # the credits
         _, mixed = room_level([("one", "The first line.")])
         self.assertLess(mixed, pause - 20)
+
+    def test_no_room_tone_without_beats(self):
+        root, d = videos()
+        TakeStore(d / TAKES).set_room(np.zeros(48000, dtype=np.float32), 48000)
+        self.assertIsNone(room_tone(load_video(d), {}, Path(tempfile.mkdtemp())))
 
     def test_a_section_over_the_limit_stops_the_build(self):
         root, d = videos(scene=False)

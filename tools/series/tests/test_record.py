@@ -178,11 +178,45 @@ class Recording(unittest.TestCase):
         self.assertEqual(remembered_device("FIFINE K669B", path), "FIFINE K669B")
         self.assertEqual(remembered_device(None, path), "FIFINE K669B")
 
+    def test_room_tone_is_saved_off_the_audio_thread(self):
+        s, fake, _ = session()
+        saved = []
+        real = s.store.set_room
+        s.store.set_room = lambda *a: saved.append((threading.current_thread(), s.lock.locked())) or real(*a)
+        s.record_room()
+        fake.feed(np.full(int(11 * RATE), 0.001, dtype=np.float32))
+        s.saving.join(5)
+        self.assertEqual(len(saved), 1)
+        self.assertIsNot(saved[0][0], threading.current_thread())
+        self.assertFalse(saved[0][1])
+
+    def test_room_tone_waits_for_a_take_to_finish(self):
+        s, fake, _ = session()
+        s.start()
+        fake.feed(speech()[:RATE])
+        s.record_room()  # mid-take: ignored
+        fake.feed(speech()[RATE:])
+        self.assertEqual(s.stop().number, 1)
+        self.assertIsNone(s.store.room())
+
+    def test_the_playback_cache_keeps_only_current_takes(self):
+        s, fake, d = session()
+        record(s, fake)
+        kept = s.processed("h", 1)
+        stray = s.cache / "h-9-0123456789ab.wav"
+        stray.write_bytes(b"old")
+        stray.with_suffix(".json").write_text("{}")
+        s2, _, _ = session(dir=d)
+        self.assertTrue(kept.exists())
+        self.assertFalse(stray.exists())
+        self.assertFalse(stray.with_suffix(".json").exists())
+
     def test_room_tone_stops_by_itself(self):
         s, fake, d = session()
         s.record_room()
         fake.feed(np.full(int(12 * RATE), 0.001, dtype=np.float32))
         self.assertFalse(s.recording)
+        s.saving.join(5)
         self.assertAlmostEqual(soundfile.info(s.store.room()).duration, ROOM_SECONDS, delta=0.05)
         self.assertEqual(s.store.takes("h"), [])
 
@@ -271,6 +305,25 @@ class Server(unittest.TestCase):
             urllib.request.urlopen(f"{self.url}/take/../../etc/1.wav")
         self.assertEqual(e.exception.code, 404)
         self.assertEqual(self.s.store.takes("h"), [])
+
+    def test_actions_must_be_json(self):
+        request = urllib.request.Request(f"{self.url}/action", data=b'{"do": "start"}',
+                                         headers={"Content-Type": "text/plain"})
+        with self.assertRaises(urllib.error.HTTPError) as e:
+            urllib.request.urlopen(request)
+        self.assertEqual(e.exception.code, 415)
+        self.assertFalse(self.s.recording)
+
+    def test_other_hosts_are_refused(self):
+        # A page elsewhere that rebinds its name to 127.0.0.1 still sends its own Host.
+        for path in ("/state", "/narrator/h.wav"):
+            request = urllib.request.Request(self.url + path, headers={"Host": "evil.example:80"})
+            with self.assertRaises(urllib.error.HTTPError) as e:
+                urllib.request.urlopen(request)
+            self.assertEqual(e.exception.code, 403)
+        port = self.server.server_address[1]
+        ok = urllib.request.Request(self.url + "/state", headers={"Host": f"localhost:{port}"})
+        self.assertEqual(urllib.request.urlopen(ok).status, 200)
 
     def test_the_server_listens_only_locally(self):
         self.assertEqual(self.server.server_address[0], "127.0.0.1")

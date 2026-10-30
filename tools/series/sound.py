@@ -8,6 +8,9 @@ import re
 import subprocess
 from pathlib import Path
 
+import numpy as np
+import soundfile
+
 from series.takes import Take, write_atomically
 
 # Part of every cache key, with every value below: change any and every take is reprocessed.
@@ -22,6 +25,8 @@ FILTERS = ("highpass=f=80,afftdn=nr=10:nf=-50,deesser=i=0.4,"
            "equalizer=f=4000:t=q:w=1:g=2")
 # A take with almost no level would otherwise be boosted without limit.
 MAX_GAIN_DB = 40.0
+# The room tone loops; its end is faded into its start over this long, so the loop has no seam.
+LOOP_FADE = 0.5
 
 
 def ffmpeg(*args: str) -> str:
@@ -57,10 +62,27 @@ def limiter() -> str:
     return f"alimiter=limit={LIMIT}:level=false"
 
 
+def cache_path(take: Take, cache: Path) -> Path:
+    """Where `process` keeps a take (its gain beside it, as .json)."""
+    return Path(cache) / f"{take.line_id}-{take.number}-{key(take.path, take.start, take.end)}.wav"
+
+
+def loopable(audio: np.ndarray, rate: int) -> np.ndarray:
+    """The audio shortened by LOOP_FADE, its end faded into its start, so it
+    can repeat with no seam (equal-power: room noise doesn't correlate)."""
+    n = min(int(LOOP_FADE * rate), len(audio) // 2)
+    if n == 0:
+        return audio
+    t = np.linspace(0.0, 1.0, n, endpoint=False)
+    out = audio[:len(audio) - n].copy()
+    out[:n] = audio[:n] * np.sin(t * np.pi / 2) + audio[len(audio) - n:] * np.cos(t * np.pi / 2)
+    return out
+
+
 def process(take: Take, cache: Path) -> tuple[Path, float]:
     """The take trimmed and through the chain, matched to TARGET_LUFS; and the
     gain, in dB, that matched it."""
-    out = Path(cache) / f"{take.line_id}-{take.number}-{key(take.path, take.start, take.end)}.wav"
+    out = cache_path(take, cache)
     gain_file = out.with_suffix(".json")
     if out.exists() and gain_file.exists():
         return out, json.loads(gain_file.read_text())["gain_db"]
@@ -74,7 +96,9 @@ def process(take: Take, cache: Path) -> tuple[Path, float]:
 def process_room(path: Path, gain_db: float, cache: Path) -> Path:
     """The room's quiet through the chain at a given gain (the takes' typical
     gain), so it sits at the takes' own noise floor."""
-    out = Path(cache) / f"room-{key(path, round(gain_db, 3))}.wav"
+    out = Path(cache) / f"room-{key(path, round(gain_db, 3), LOOP_FADE)}.wav"
     if not out.exists():
         render(path, f"{FILTERS},volume={gain_db:.3f}dB,{limiter()}", out)
+        audio, rate = soundfile.read(out, dtype="float32")
+        write_atomically(out, lambda p: soundfile.write(p, loopable(audio, rate), rate, subtype="PCM_16"))
     return out

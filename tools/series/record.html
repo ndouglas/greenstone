@@ -109,7 +109,8 @@ function chosen() { return state && state.takes.find((t) => t.chosen); }
 function render() {
   if (!state) return;
   const b = state.beat;
-  $("section").textContent = b.section || "";
+  // "Introduction · beat 1 of 9" already names its section.
+  $("section").textContent = b.section && !b.position.startsWith(b.section) ? b.section : "";
   $("position").textContent = b.position;
   $("text").textContent = b.text;
   $("board").textContent = b.board || "";

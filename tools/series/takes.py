@@ -11,6 +11,7 @@ takes/
 """
 
 import json
+import threading
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -103,6 +104,9 @@ def write_atomically(path: Path, write) -> None:
 class TakeStore:
     def __init__(self, dir: Path):
         self.dir = Path(dir)
+        # The page's requests arrive on several threads; numbering a take and
+        # rewriting takes.toml happen one at a time.
+        self.lock = threading.RLock()
 
     def index(self) -> dict:
         """takes.toml: each beat's chosen take ({"text", "take"}) or old-form text."""
@@ -137,17 +141,18 @@ class TakeStore:
 
     def add(self, line_id: str, audio: np.ndarray, rate: int, text: str) -> Take:
         """Keep a new take, and choose it unless there's no speech in it."""
-        number = max((t.number for t in self.takes(line_id)), default=0) + 1
-        folder = self.dir / RAW / line_id
         found = trim(audio, rate)
         meta = f"text = {quote(text)}\nrate = {rate}\n"
         meta += f"start = {float(found[0])!r}\nend = {float(found[1])!r}\n" if found else "silent = true\n"
-        # The wav first: a take's .toml is what makes it exist.
-        write_atomically(folder / f"{number}.wav", lambda p: soundfile.write(p, audio, rate, subtype="PCM_24"))
-        write_atomically(folder / f"{number}.toml", lambda p: p.write_text(meta))
-        if found:
-            self.choose(line_id, number)
-        return self._take(line_id, number)
+        folder = self.dir / RAW / line_id
+        with self.lock:
+            number = max((t.number for t in self.takes(line_id)), default=0) + 1
+            # The wav first: a take's .toml is what makes it exist.
+            write_atomically(folder / f"{number}.wav", lambda p: soundfile.write(p, audio, rate, subtype="PCM_24"))
+            write_atomically(folder / f"{number}.toml", lambda p: p.write_text(meta))
+            if found:
+                self.choose(line_id, number)
+            return self._take(line_id, number)
 
     def choose(self, line_id: str, number: int) -> None:
         take = next((t for t in self.takes(line_id) if t.number == number), None)
@@ -155,9 +160,10 @@ class TakeStore:
             raise ValueError(f"{line_id} has no take {number}")
         if self.silent(take):
             raise ValueError(f"{line_id}'s take {number} has no speech in it")
-        index = self._index()
-        index[line_id] = {"text": take.text, "take": number}
-        self._write_index(index)
+        with self.lock:
+            index = self._index()
+            index[line_id] = {"text": take.text, "take": number}
+            self._write_index(index)
 
     def chosen(self, line_id: str) -> Take | None:
         entry = self._index().get(line_id)
