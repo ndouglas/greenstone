@@ -1,9 +1,11 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
 import numpy as np
 
+from reservoir_film.model import NES_H, NES_W
 from series.build import OUT
 from series.recording import BYTE_LAG, LAG, MARIO_RED, MARIO_SHOE, Recording, measure_lag, smb1_sprite_bottom
 from series.tests.test_screen import synthetic as screen_synthetic
@@ -30,6 +32,31 @@ def bottom(frame: np.ndarray) -> int | None:
 
 
 class TestRecording(unittest.TestCase):
+    def test_a_span_outside_the_data_is_refused(self):
+        frames, ram = synthetic()
+        for span in (range(0, 20), range(2, 20), range(10, 41), range(10, 1000)):
+            with self.assertRaisesRegex(ValueError, "span"):
+                measure_lag(frames, ram, bottom, BYTE, OFFSET, span=span)
+        self.assertEqual(measure_lag(frames, ram, bottom, BYTE, OFFSET, span=range(3, 40)), (1, 1.0))
+
+    def test_a_directory_is_not_a_ram_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            take = Path(tmp) / "smb1" / "footage"
+            take.mkdir(parents=True)
+            (take / "take.json").write_text(json.dumps({"streams": {"game": 5}}))
+            np.zeros((5, NES_H, NES_W, 3), dtype=np.uint8).tofile(take / "game.rgb")
+            (Path(tmp) / "smb1" / "1" / "ram.u8").mkdir(parents=True)
+            with self.assertRaisesRegex(FileNotFoundError, "ram.u8"):
+                Recording("smb1", Path(tmp))
+
+    def test_games_not_yet_measured_stay_out_of_lag(self):
+        self.assertEqual(set(LAG), {"smb1"})  # smb3 and castlevania are refused until measured
+        for game in ("smb3", "castlevania"):
+            rec = Recording.__new__(Recording)
+            rec.game, rec.frames, rec.ram = game, [], np.zeros((1, 2048), dtype=np.uint8)
+            with self.assertRaisesRegex(KeyError, f"{game}.*measure_lag"):
+                rec.ram_at(0)
+
     def test_ram_is_read_behind_the_picture(self):
         frames, ram = synthetic()
         rec = Recording.__new__(Recording)
@@ -39,9 +66,6 @@ class TestRecording(unittest.TestCase):
         self.assertEqual(measure_lag(frames, ram, bottom, BYTE, OFFSET), (1, 1.0))
 
     def test_a_recording_with_short_ram_is_refused(self):
-        import tempfile
-        from reservoir_film.model import NES_H, NES_W
-        import json
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             take = root / "smb1" / "footage"
@@ -50,13 +74,10 @@ class TestRecording(unittest.TestCase):
             np.zeros((5, NES_H, NES_W, 3), dtype=np.uint8).tofile(take / "game.rgb")
             (root / "smb1" / "1").mkdir()
             np.zeros((3, 2048), dtype=np.uint8).tofile(root / "smb1" / "1" / "ram.u8")
-            with self.assertRaisesRegex(ValueError, "5.*3"):
+            with self.assertRaisesRegex(ValueError, r"footage has 5 frames but the RAM only 3"):
                 Recording("smb1", root)
 
     def test_a_recording_with_missing_ram_is_refused(self):
-        import tempfile
-        import json
-        from reservoir_film.model import NES_H, NES_W
         with tempfile.TemporaryDirectory() as tmp:
             take = Path(tmp) / "smb1" / "footage"
             take.mkdir(parents=True)

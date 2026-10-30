@@ -18,7 +18,7 @@ from pathlib import Path
 from manim import tempconfig
 from PIL import Image, ImageDraw
 
-from series.build import OUT
+from series.build import ENCODE, OUT
 
 STILL_WIDTH = 480
 
@@ -59,7 +59,7 @@ def sketch(path: Path, draft: bool = True, stills: int = 9, out_root: Path = OUT
     out = Path(out_root) / path.parent.parent.name / "sketches"
     quality = ({"quality": "low_quality", "pixel_width": 854, "pixel_height": 480, "frame_rate": 30} if draft
                else {"quality": "high_quality", "frame_rate": 60})
-    with tempconfig({**quality, "media_dir": str(out / "media"), "disable_caching": True,
+    with tempconfig({**quality, "video_encoder_options": ENCODE, "media_dir": str(out / "media"), "disable_caching": True,
                      "verbosity": "WARNING", "progress_bar": "none"}):
         scene = cls()
         scene.render()

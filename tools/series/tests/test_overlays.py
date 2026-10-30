@@ -90,13 +90,14 @@ class TestOverlays(unittest.TestCase):
         with tempconfig(FULL_HD):
             screen = self.screen(depth=100)
             feet = feet_line(screen)
-            with mock.patch.object(overlays, "serif", wraps=overlays.serif) as serif:
+            with (mock.patch.object(overlays, "serif", wraps=overlays.serif) as serif,
+                  mock.patch.object(overlays, "numeral", wraps=overlays.numeral) as numeral):
                 feet.refresh()
                 feet.refresh()
-                self.assertEqual(serif.call_count, 0)
+                self.assertEqual(serif.call_count + numeral.call_count, 0)
                 self.recording.ram[9, DEPTH] = 7
                 feet.refresh()
-                self.assertEqual(serif.call_count, 2)
+                self.assertEqual((serif.call_count, numeral.call_count), (1, 1))
                 self.assertEqual(feet.label.submobjects[1].text, "7")
 
     def test_replaced_marks_are_hidden(self):

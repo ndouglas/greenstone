@@ -5,7 +5,7 @@ import numpy as np
 from manim import DOWN, RIGHT, UP, Animation, Dot, Line, ManimColor, Rectangle, UpdateFromAlphaFunc, VGroup, interpolate_color
 
 from series import style
-from series.ember import serif
+from series.ember import numeral, serif
 
 DARK = "#2A2226"  # the line where the total is zero
 GRID = "#2E2628"
@@ -83,7 +83,7 @@ class NeuronGraph(VGroup):
         no_label.set_opacity(0.85)
         self.mark = Dot(self.point(ground, base), radius=0.06, color=style.TEXT)
         self.mark_label = serif("the setting", "#D8CFC8", 0.3).next_to(self.mark, UP + RIGHT, buff=0.1)
-        self.mark_value = serif(style.number(ground) if self.weight else "", style.TEXT, 0.3, italic=False).next_to(self.mark, DOWN, buff=0.12)
+        self.mark_value = numeral(style.number(ground) if self.weight else "", style.TEXT, 0.3).next_to(self.mark, DOWN, buff=0.12)
         if not self._on_page(ground):
             for m in (self.mark, self.mark_label, self.mark_value):
                 m.set_opacity(0)

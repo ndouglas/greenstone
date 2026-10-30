@@ -7,6 +7,7 @@ from manim import RIGHT, UP, Create, FadeIn, ValueTracker, config
 
 from series.ember import backdrop
 from series.exact import ExactScene
+from series.footage import NES_FPS
 from series.neuron import Input, Neuron
 from series.overlays import gap_band, feet_line, setting_line
 from series.recording import Recording
@@ -58,4 +59,4 @@ class Sketch(ExactScene):
         self.play(Create(setting), run_time=0.6)
         self.play(bias, gap.animate.set_value(1.0))
         self.play(output)
-        self.wait((END - screen.frame()) / 60)  # to the last frame, whatever the arrivals took
+        self.wait((END - screen.frame()) / NES_FPS)  # to the last frame, whatever the arrivals took

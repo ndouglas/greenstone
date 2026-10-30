@@ -3,6 +3,7 @@
 import warnings
 from pathlib import Path
 
+import numpy as np
 from manim import ImageMobject
 from manim.constants import RESAMPLING_ALGORITHMS
 from manim.utils.images import change_to_rgba_array
@@ -37,5 +38,8 @@ class GameFootage(ImageMobject):
         if index >= len(self.frames) and not self.warned:
             warnings.warn(f"footage ran past the end of take {self.take} and froze on its last frame", RuntimeWarning)
             self.warned = True
-        frame = self.frames[index]
-        self.pixel_array = change_to_rgba_array(frame)
+        self.pixel_array = self.picture(index)
+
+    def picture(self, index: int) -> np.ndarray:
+        """The pixels of frame `index`, as the image shows them."""
+        return change_to_rgba_array(self.frames[index])

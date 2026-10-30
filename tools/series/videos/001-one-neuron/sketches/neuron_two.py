@@ -9,6 +9,7 @@ from manim import RIGHT, UP, ValueTracker, config
 
 from series.ember import backdrop
 from series.exact import ExactScene
+from series.footage import NES_FPS
 from series.neuron import Input, Neuron
 from series.overlays import feet_line, mario_middle, signed, speed_arrow
 from series.recording import Recording
@@ -42,4 +43,4 @@ class Sketch(ExactScene):
         self.play(shown.animate.set_value(1.0), run_time=0.5)
         for step in steps:
             self.play(step)
-        self.wait((END - screen.frame()) / 60)  # to the last frame, whatever the arrivals took
+        self.wait((END - screen.frame()) / NES_FPS)  # to the last frame, whatever the arrivals took

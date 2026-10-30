@@ -7,7 +7,7 @@ import numpy as np
 from manim import ORIGIN, UP, Animation, AnimationGroup, Mobject, Transform, VGroup, smooth
 
 from series import style
-from series.ember import serif, swap
+from series.ember import numeral, serif, swap
 
 GAP = 0.17  # between pieces
 TIGHT = 0.03  # inside a product of bare symbols, which reads as one thing
@@ -88,7 +88,7 @@ class Formula(VGroup):
         self.zoom = 1.0  # how far the formula has been scaled, so pieces rebuilt later keep its size
         self.pieces: list[Piece] = []
         self.tokens: dict[str, Mobject] = {}
-        self.digit_height = serif("0", style.TEXT, italic=False).height
+        self.digit_height = numeral("0", style.TEXT).height
         self._set(self._pieces(), ORIGIN, animate=False)
 
     @staticmethod

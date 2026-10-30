@@ -7,7 +7,7 @@ import numpy as np
 from manim import DOWN, LEFT, RIGHT, UP, Arrow, Line, Rectangle, VGroup
 
 from series import style
-from series.ember import serif, swap
+from series.ember import numeral, serif, swap
 from series.screen import Screen
 
 HAIRLINE = 1.2
@@ -46,7 +46,7 @@ class _Line(VGroup):
         parts = self.parts()
         if parts != self.shown:  # building text is slow, so only when it changes
             name, value = parts
-            texts = [serif(name, self.colour)] + ([serif(value, self.colour, italic=False)] if value else [])
+            texts = [serif(name, self.colour)] + ([numeral(value, self.colour)] if value else [])
             swap(self.label, *texts).arrange(RIGHT, buff=0.12)
             self.shown = parts
         self.label.next_to([left + 0.3, y, 0], UP + RIGHT, buff=0.06)

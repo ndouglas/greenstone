@@ -26,6 +26,9 @@ MUSIC_DB = -18
 FADE_SECONDS = 2.0
 # Peak level of the final mix (about -1 dBFS).
 LIMIT = 0.89
+# x264 settings that keep the backdrop's dither: at its default the encoder flattens the grain, and the dark
+# gradient shows rings.
+ENCODE = {"crf": "16", "tune": "grain"}
 __all__ = ["NotNarrated", "SectionTooLong", "build"]
 
 
@@ -52,7 +55,7 @@ def scene_class(dir: Path) -> type[NarratedScene]:
 
 def render(cls: type[NarratedScene], media: Path, draft: bool) -> tuple[Path, NarratedScene]:
     quality = {"quality": "low_quality", "pixel_width": 854, "pixel_height": 480} if draft else {"quality": "high_quality"}
-    with tempconfig({**quality, "frame_rate": 60, "media_dir": str(media), "disable_caching": True,
+    with tempconfig({**quality, "frame_rate": 60, "video_encoder_options": ENCODE, "media_dir": str(media), "disable_caching": True,
                      "verbosity": "WARNING", "progress_bar": "none"}):
         scene = cls()
         scene.render()

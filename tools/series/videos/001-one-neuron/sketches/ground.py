@@ -5,7 +5,7 @@ import numpy as np
 from manim import LEFT, RIGHT, Circle, Scene, ValueTracker, smooth
 
 from series import style
-from series.ember import backdrop, fade_image, glow, live, serif
+from series.ember import backdrop, fade_image, glow, live, numeral, serif
 
 NEURON = RIGHT * 3
 
@@ -28,11 +28,16 @@ class Sketch(Scene):
         ring = Circle(radius=0.55, stroke_width=1.4, color=style.ASH).move_to(NEURON)
         shown = ValueTracker(1.0)
 
+        shown_value = [None]
+
         def place(m):
             v = round(value.get_value())
-            m.become(serif(style.number(v), style.temperature(v), 0.6, italic=False)).move_to(NEURON)
+            if v == shown_value[0]:
+                return
+            shown_value[0] = v
+            m.become(numeral(style.number(v), style.temperature(v), 0.6)).move_to(NEURON)
 
-        total = live(serif("0", style.TEXT, 0.6, italic=False), place, shown)
+        total = live(numeral("0", style.TEXT, 0.6), place, shown)
         caption = serif("a total", style.ASH, 0.42).move_to(LEFT * 3)
         self.add(warm, cool, ring, total, caption)
         warm.add_updater(lights)

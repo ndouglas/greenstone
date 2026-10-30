@@ -30,7 +30,7 @@ class Recording:
         root = Path(root)
         self.frames = Takes(root / game, "record the footage take")["footage"].frames("game")
         ram_path = root / game / "1" / "ram.u8"
-        if not ram_path.exists():
+        if not ram_path.is_file():
             raise FileNotFoundError(
                 f"{game}: no RAM at {ram_path} to go with the footage's {len(self.frames)} frames; record it with: "
                 f"cargo run --release --example series_record -- {game} PLAYER FRAMES OUT --footage")
@@ -63,6 +63,9 @@ def measure_lag(frames, ram: np.ndarray, sprite_bottom: Callable[[np.ndarray], i
     exactly. Only frames where the byte is moving count, and only `span`
     if given."""
     span = span if span is not None else range(max_lag + 1, min(len(frames), len(ram)))
+    if span.start < max_lag or span.stop > min(len(frames), len(ram)):
+        raise ValueError(f"span {span} must lie within frames {max_lag} to {min(len(frames), len(ram))}: "
+                         f"each frame reads up to {max_lag} frames back and the frames and RAM run out there")
     hits = np.zeros(max_lag + 1)
     total = 0
     for f in span:

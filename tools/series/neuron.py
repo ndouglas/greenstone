@@ -12,7 +12,7 @@ from manim import (DOWN, LEFT, RIGHT, UP, Animation, AnimationGroup, Circle, Gro
                    ValueTracker, VGroup, VMobject)
 
 from series import style
-from series.ember import fade_image, glow, serif, swap
+from series.ember import fade_image, glow, numeral, serif, swap
 
 RADIUS = 0.55
 STROKE = 1.4
@@ -101,12 +101,12 @@ class Neuron(Group):
             self.bare[i] = VGroup()
         self.bare_shown: list[str | None] = [None] * len(inputs)
         self.paths = [VMobject() for _ in inputs]
-        self.weights = [serif(f"× {figure(put.weight)}", style.temperature(put.weight, 1), italic=False)
+        self.weights = [numeral(f"× {figure(put.weight)}", style.temperature(put.weight, 1))
                         for put in inputs]
         self.bias_path = VMobject() if bias_source else None
         colour = style.temperature(bias, 2)
         sign, size = "−" if bias < 0 else "+", figure(abs(bias)) + ("," if bias_name else "")
-        self.bias_label = VGroup(serif(sign, colour, italic=False), serif(size, colour, italic=False))
+        self.bias_label = VGroup(numeral(sign, colour), numeral(size, colour))
         if bias_name:
             self.bias_label.add(serif(bias_name, colour))
         self.bias_label.arrange(RIGHT, buff=0.1)
@@ -157,7 +157,7 @@ class Neuron(Group):
         self.cool_level.set_value(body * style.light(e, self.light_scale) if e < 0 else 0.0)
         self.ring.set_stroke(opacity=body)
         if (text := figure(round(total))) != self.shown_total:
-            self.total_text = serif(text, style.TEXT, TOTAL_SIZE, italic=False).move_to(self.centre)
+            self.total_text = numeral(text, style.TEXT, TOTAL_SIZE).move_to(self.centre)
             swap(self.total_box, self.total_text)
             self.shown_total = text
         self.total_text.set_opacity(body)
@@ -172,7 +172,7 @@ class Neuron(Group):
             put = self.inputs[i]
             text = figure(put.value())
             if text != self.bare_shown[i]:
-                swap(group, serif(put.label, style.WARM[0]), serif(text, style.WARM[0], italic=False))
+                swap(group, serif(put.label, style.WARM[0]), numeral(text, style.WARM[0]))
                 group.arrange(RIGHT, buff=0.12)
                 self.bare_shown[i] = text
             group.next_to(self.bare_spots[i], LEFT, buff=0).set_opacity(self.drawn.get_value())

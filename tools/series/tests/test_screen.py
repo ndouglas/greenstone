@@ -4,14 +4,18 @@ import unittest
 from pathlib import Path
 
 import numpy as np
-from manim import FadeOut, Mobject, Scene, config, tempconfig
+from manim import UP, FadeOut, Mobject, Scene, config, tempconfig
 from manim.constants import RESAMPLING_ALGORITHMS
 
 from reservoir_film.model import NES_H, NES_W
+from scipy.ndimage import gaussian_filter
+
+from series import style
+from series.ember import rgb
 from series.recording import Recording
 from series.scene import NarratedScene
 from series.exact import ExactScene
-from series.screen import Screen, rounded_mask, screen_glow, screen_overlay
+from series.screen import Screen, rounded_mask, scanlines_fit, screen_glow, screen_overlay
 
 NEAREST = RESAMPLING_ALGORITHMS["nearest"]
 FULL_HD = {"pixel_width": 1920, "pixel_height": 1080, "frame_rate": 60}
@@ -71,8 +75,43 @@ class TestScreen(unittest.TestCase):
             glow_left = (snapped.glow.get_left()[0] + config.frame_width / 2) / px
             self.assertTrue(on_whole_pixel(glow_left), glow_left)
 
+    def test_the_top_edge_rounds_to_a_whole_pixel(self):
+        with tempconfig(FULL_HD):
+            px = config.frame_height / config.pixel_height
+            # rounded, not truncated: a top of 166.33 lands on 166, and 166.67 on 167
+            for lift, expected in ((13.67, 166), (13.33, 167)):
+                top = (config.frame_height / 2 - Screen(self.recording, 10, centre=UP * lift * px).game.get_top()[1]) / px
+                self.assertTrue(on_whole_pixel(top), top)
+                self.assertEqual(round(top), expected)
+
+    def test_scanlines_need_three_rows_per_line(self):
+        self.assertFalse(scanlines_fit(2))
+        self.assertTrue(scanlines_fit(3))
+        self.assertFalse(scanlines_fit(3.5))
+        with tempconfig(FULL_HD):
+            self.assertFalse(Screen(self.recording, 0, scale=2).scanlines)
+            with self.assertRaises(ValueError):
+                Screen(self.recording, 0, scale=2, scanlines=True)
+
+    def test_a_scale_of_zero_or_less_is_refused(self):
+        with tempconfig(FULL_HD):
+            for scale in (0, -1, -0.5):
+                with self.assertRaisesRegex(ValueError, "above 0"):
+                    Screen(self.recording, 0, scale=scale)
+
+    def test_a_copy_fades_by_its_own_tracker(self):
+        with tempconfig(FULL_HD):
+            screen = Screen(self.recording, 0)
+            copy = screen.copy()
+            copy.shown.set_value(0)
+            copy.glow.update(0)
+            screen.glow.update(0)
+            self.assertEqual(copy.glow.pixel_array[:, :, 3].max(), 0)
+            self.assertGreater(screen.glow.pixel_array[:, :, 3].max(), 0)
+            self.assertEqual(screen.shown.get_value(), 1)
+
     def test_scanlines_only_where_they_fit(self):
-        behind = np.array([3, 3, 3])
+        behind = rgb(style.BACKGROUND)
         dark = screen_overlay(768, 720, 3, behind)[:, 384, 3]
         self.assertTrue((dark[2:-198:3] > dark[0:-200:3]).all())
         self.assertTrue((dark[198:-201:3] == dark[199:-201:3]).all())
@@ -108,6 +147,11 @@ class TestScreen(unittest.TestCase):
         edge = alpha[margin, margin + 384]
         self.assertLess(corner, edge)
         self.assertGreater(corner, 0)
+        # A blur of a square screen would be much brighter at the corner than this rounded one.
+        square = np.zeros(alpha.shape)
+        square[margin:-margin, margin:-margin] = 1
+        squared = np.clip(gaussian_filter(square, 14 * 3) * 2, 0, 1) * 0.3 * 255
+        self.assertLess(corner, squared[margin, margin] - 1)  # about two levels of 255 darker
         mask = rounded_mask(768, 720, 26)
         self.assertEqual(mask[0, 0], 0)
         self.assertEqual(mask[360, 384], 1)
@@ -120,7 +164,7 @@ class TestScreen(unittest.TestCase):
             overlay = screen.overlay.pixel_array.astype(float)
             for y, x in ((0, 0), (2, 1), (719, 767)):
                 a = glow[margin + y, margin + x, 3] / 255
-                expected = np.array([3.0, 3.0, 3.0]) * (1 - a) + glow[margin + y, margin + x, :3] * a
+                expected = rgb(style.BACKGROUND) * (1 - a) + glow[margin + y, margin + x, :3] * a
                 self.assertTrue(np.allclose(overlay[y, x, :3], expected, atol=1), (y, x, overlay[y, x], expected))
                 self.assertEqual(overlay[y, x, 3], 255)
 
@@ -174,6 +218,20 @@ class TestScreen(unittest.TestCase):
             self.assertEqual(screen.cover.get_fill_opacity(), 1)
             self.assertIn(screen.cover, screen.submobjects)
 
+    def test_the_cover_comes_off_when_the_arrival_ends(self):
+        with tempconfig(FULL_HD):
+            screen = Screen(self.recording, 0)
+            animation = screen.arrive()
+            animation.begin()
+            self.assertIn(screen.cover, screen.submobjects)
+            animation.interpolate(1)
+            animation.finish()
+            self.assertNotIn(screen.cover, screen.submobjects)
+            self.assertEqual(screen.shown.get_value(), 1)
+            before = screen.frame()
+            screen.game.update(0.5)
+            self.assertGreater(screen.frame(), before)  # the footage plays again
+
     def test_arrival_holds_the_first_frame(self):
         recording, seen = self.recording, []
 
@@ -219,9 +277,11 @@ class TestScreen(unittest.TestCase):
         with tempconfig(FULL_HD):
             screen = Screen(self.recording, 40)
             screen.game.update(0.25)
-            self.assertEqual(screen.frame(), 55)
-            self.assertTrue(np.array_equal(screen.ram(), self.recording.ram_at(55)))
-            self.assertEqual(screen.ram()[0], 54)
+            drawn = int(screen.game.pixel_array[0, 0, 0])  # synthetic frames carry their index here
+            self.assertEqual(drawn, 55)
+            self.assertEqual(screen.frame(), drawn)
+            self.assertEqual(screen.ram()[0], drawn - 1)  # the RAM the picture drawn shows: one frame behind
+            self.assertEqual(screen.byte(0), drawn - 1)
 
 
 if __name__ == "__main__":

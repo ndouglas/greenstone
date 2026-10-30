@@ -10,7 +10,7 @@ from manim import UP, Animation, Group, ImageMobject, Line, Rectangle, UpdateFro
 from PIL import Image, ImageDraw, ImageFont
 
 from series import ember, style
-from series.ember import _rgb, glow_box, serif
+from series.ember import glow_box, numeral, rgb, serif
 from series.recording import Recording
 from series.screen import Screen
 
@@ -44,7 +44,7 @@ class Lit(Group):
         self.glow.stretch_to_fit_height(h + 2 * REACH).move_to(cell)
         self._alpha = self.glow.pixel_array[:, :, 3].astype(float)
         self.value = grid.value(address)
-        self.number = serif(str(self.value), style.TEXT, 0.3, italic=False).move_to(cell)
+        self.number = numeral(str(self.value), style.TEXT, 0.3).move_to(cell)
         self.label = serif(label, self.colour, 0.4)
         self.label.next_to(self.box, side, buff=0.45)
         edge = self.box.get_edge_center(side)
@@ -66,7 +66,7 @@ class Lit(Group):
         value = self.grid.value(self.address)
         if value != self.value:
             self.value = value
-            self.number.become(serif(str(value), style.TEXT, 0.3, italic=False).move_to(self.box).set_opacity(self.level))
+            self.number.become(numeral(str(value), style.TEXT, 0.3).move_to(self.box).set_opacity(self.level))
 
 
 class MemoryGrid(Group):
@@ -85,7 +85,7 @@ class MemoryGrid(Group):
         self.shown = np.full(BYTES, -1, dtype=int)
         w, h = columns * CELL_PX[0], self.rows * CELL_PX[1]
         pixels = np.zeros((h, w, 4), np.uint8)
-        pixels[:, :, :3] = _rgb(style.ASH).astype(np.uint8)
+        pixels[:, :, :3] = rgb(style.ASH).astype(np.uint8)
         self.image = ImageMobject(pixels).set(width=width).move_to(at)
         self.add(self.image)
         self._squares: dict[int, Rectangle] = {}

@@ -7,7 +7,7 @@ import numpy as np
 from manim import ValueTracker
 
 from series import ember, style
-from series.ember import backdrop, fade_image, glow, serif
+from series.ember import backdrop, fade_image, glow, live, numeral, rgb, serif
 from series.style import ASH, COOL, TEXT, WARM, light, number, temperature
 
 
@@ -91,6 +91,32 @@ class TestEmber(unittest.TestCase):
         level.set_value(1.0)
         image.update(0)
         self.assertTrue((image.pixel_array[:, :, 3] == full).all())
+
+    def test_a_copied_image_fades_by_its_own_tracker(self):
+        image, level = glow(WARM[0], 1.0), ValueTracker(1.0)
+        full = image.pixel_array[:, :, 3].astype(int)
+        fade_image(image, level)
+        level.set_value(0.5)
+        image.update(0)
+        copy = image.copy()
+        copy.fade_level.set_value(1.0)
+        copy.update(0)
+        image.update(0)
+        self.assertTrue((copy.pixel_array[:, :, 3] == full).all())
+        self.assertLessEqual(np.abs(image.pixel_array[:, :, 3].astype(int) - full / 2).max(), 1)
+
+    def test_numerals_are_upright_and_colours_are_rgb(self):
+        self.assertEqual(numeral("12", TEXT).slant, "NORMAL")
+        self.assertEqual(serif("x", TEXT).slant, "ITALIC")
+        self.assertEqual(list(rgb("#FF8000")), [255, 128, 0])
+
+    def test_live_places_every_frame_and_fades_by_the_tracker(self):
+        shown, placed = ValueTracker(1.0), []
+        text = live(serif("a", TEXT), lambda m: placed.append(1), shown)
+        shown.set_value(0.25)
+        text.update(0)
+        self.assertEqual(len(placed), 2)
+        self.assertAlmostEqual(text.get_fill_opacity(), 0.25)
 
 
 if __name__ == "__main__":

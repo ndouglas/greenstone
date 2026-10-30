@@ -9,7 +9,7 @@ from PIL import Image
 from scipy.ndimage import gaussian_filter
 
 from series import style
-from series.ember import _rgb, fade_image
+from series.ember import fade_image, rgb
 from series.footage import NES_FPS, GameFootage
 from series.recording import Recording
 
@@ -49,11 +49,11 @@ def screen_overlay(w: int, h: int, scale: float, behind: np.ndarray, scanlines: 
     edge = np.clip((np.maximum(np.abs(u), np.abs(v)) - 0.55) / 0.45, 0, 1) ** 2 * EDGE_DARK
     alpha = 1 - (1 - alpha) * (1 - edge)
     corner = 1 - rounded_mask(w, h, corner_radius(scale))
-    rgb = np.empty((h, w, 3))
-    rgb[:] = _rgb(style.BACKGROUND)
-    rgb[corner > 0] = np.broadcast_to(behind, (h, w, 3))[corner > 0]
+    ground = np.empty((h, w, 3))
+    ground[:] = rgb(style.BACKGROUND)
+    ground[corner > 0] = np.broadcast_to(behind, (h, w, 3))[corner > 0]
     alpha = 1 - (1 - alpha) * (1 - corner)
-    return np.dstack([rgb, alpha * 255]).round().astype(np.uint8)
+    return np.dstack([ground, alpha * 255]).round().astype(np.uint8)
 
 
 def screen_glow(colour: np.ndarray, w: int, h: int, scale: float) -> tuple[np.ndarray, int]:
@@ -120,8 +120,6 @@ class Footage(GameFootage):
             self.ahead = False
             return
         GameFootage.advance(self, dt)  # keeps its clock and its warning past the end
-        if self.size:
-            self.pixel_array = self.picture(self.index())
 
     def advance_first(self, dt: float) -> None:
         """Move on before the scene's other updaters run (see ExactScene); its own updater then stands aside."""
@@ -138,6 +136,8 @@ class Screen(Group):
                  scanlines: bool | None = None, left_px: int | None = None, centre: np.ndarray | None = None):
         self.recording = recording
         scale = max(1, config.pixel_height * 2 // 720) if scale is None else scale
+        if scale <= 0:
+            raise ValueError(f"a screen can't be drawn at scale {scale}: it must be above 0")
         if scale >= 1 and not float(scale).is_integer():
             raise ValueError(f"a screen can't be drawn at scale {scale}: it must be a whole number of at least 1, "
                              f"or any value below 1 (anything else stretches NES pixels unevenly)")
@@ -166,7 +166,7 @@ class Screen(Group):
         glow_image, margin = screen_glow(colour, w, h, self.pixel_scale)
         # The cut-away corners are painted as the glow lights the dark there, so they vanish into it.
         lit = glow_image[margin:margin + h, margin:margin + w, 3:] / 255
-        behind = _rgb(style.BACKGROUND) * (1 - lit) + colour * lit
+        behind = rgb(style.BACKGROUND) * (1 - lit) + colour * lit
         self.glow = placed(ImageMobject(glow_image), h + 2 * margin)
         self.shown = ValueTracker(1.0)
         fade_image(self.glow, self.shown)

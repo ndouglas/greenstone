@@ -6,7 +6,7 @@ import numpy as np
 from manim import DOWN, UP, Animation, Dot, Line, ManimColor, Square, UpdateFromAlphaFunc, VGroup, interpolate_color, linear
 
 from series import style
-from series.ember import serif
+from series.ember import numeral, serif
 
 HALF_BEAM = 3.0
 PIVOT = np.array([0.0, 2.2, 0.0])  # relative to the scale's own centre
@@ -87,7 +87,7 @@ class Balance(VGroup):
             Line(pivot + (DIAL - 0.06) * UP, pivot + (DIAL + 0.06) * UP, stroke_color=style.ASH, stroke_width=1.0))
         self.needle = Line(pivot, pivot + NEEDLE * UP, stroke_color=style.TEXT, stroke_width=1.2)
         self.mark = Line(pivot, pivot + UP, stroke_width=1.4)
-        self.reading = serif("0", style.ASH, 0.42, italic=False)
+        self.reading = numeral("0", style.ASH, 0.42)
         self.add(self.post, self.dial, self.mark, self.reading, self.needle, self.beam, self.strings,
                  *self.plates.values(), self.hub, *self.labels.values(), self.stack, self.verdict_label)
         self._lay()
@@ -201,7 +201,7 @@ class Balance(VGroup):
         colour = style.WARM[1] if total > 0 else style.COOL[1] if total < 0 else style.ASH
         if (total, colour) != self._read:
             self._read = (total, colour)
-            fresh = serif(style.number(total), colour, 0.42, italic=False)
+            fresh = numeral(style.number(total), colour, 0.42)
             self.reading.become(fresh)
             self.reading.text = fresh.text  # become() takes the glyphs, not the words
             self.mark.set_stroke(color=colour)
