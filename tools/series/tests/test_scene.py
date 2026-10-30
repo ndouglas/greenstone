@@ -189,7 +189,6 @@ class Credits(unittest.TestCase):
             render(S, d / "media")
         self.assertIn("b", str(e.exception))
 
-
     def test_the_credits_turn_their_pages(self):
         sources = "".join(f'[s{i}]\ntitle = "Source {i}"\nauthors = "A. Author"\nyear = 2000\nurl = "https://x/{i}"\n'
                           for i in range(30))
@@ -375,7 +374,6 @@ class Chapters(unittest.TestCase):
         intro = Section(id="introduction", kind="introduction", number=None, title="Introduction", lines=())
         self.assertFalse(any("Chapter" in t for t in texts(title_card(intro, []))))
 
-
     def test_titles_are_in_charter(self):
         video = chapters()[0]
         card = title_card(video.sections[1], board_tiles(video.sections[1]))
@@ -420,6 +418,28 @@ class Chapters(unittest.TestCase):
         texts = [t for g in seen for t in g.get_family() if isinstance(t, Text)]
         self.assertTrue(texts)
         self.assertTrue(all(t.font == style.FONT for t in texts))
+
+    def test_a_placeholder_slants_its_header_and_note_and_sets_its_line_roman(self):
+        script = SCRIPT.replace('framing = true\n[[line]]\nid = "b"', 'board = "a drawing"\nframing = true\n[[line]]\nid = "b"')
+        video, voices, d = fixtures({"a": 0.2, "b": 0.2}, script)
+        seen = []
+
+        class S(NarratedScene):
+            def construct(self):
+                original = self.say
+                self.say = lambda *a, **k: (seen.extend(m for m in self.mobjects if isinstance(m, VGroup)), original(*a, **k))
+                self.placeholder("a")
+                self.placeholder("b")
+
+        S.video, S.voices = video, voices
+        render(S, d / "media")
+        words = {t.text: t for g in seen for t in g.get_family() if isinstance(t, Text)}
+        self.assertEqual(words["One."].slant, "NORMAL")  # what is said, in roman
+        header = next(t for k, t in words.items() if k.startswith("a") and len(k) == 1)
+        self.assertEqual(header.slant, "ITALIC")
+        note = next(t for k, t in words.items() if k.startswith("Animation:"))
+        self.assertEqual(note.slant, "ITALIC")
+        self.assertEqual(note.color.to_hex().upper(), style.ASH)  # cool means below zero; this is neither
 
     def test_the_wall_keeps_each_pictures_shape(self):
         from manim import Rectangle

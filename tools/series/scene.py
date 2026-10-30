@@ -108,7 +108,7 @@ class NarratedScene(ExactScene):
         rows = [serif(f"{section.title} · {line.id}" if section else line.id, style.WARM[0], 0.5)]
         rows.append(serif(textwrap.fill(line.text, 48), style.TEXT, 0.6, italic=False))
         if line.board:
-            rows.append(serif(textwrap.fill(f"Animation: {line.board}", 56), style.COOL[0], 0.45))
+            rows.append(serif(textwrap.fill(f"Animation: {line.board}", 56), style.ASH, 0.45))
         card = VGroup(*rows).arrange(DOWN, buff=0.4)
         self.add(card)
         self.say(line_id)

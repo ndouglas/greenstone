@@ -98,12 +98,21 @@ class Pages(unittest.TestCase):
         self.assertEqual(texts(pages[0])[0], f"Sources(1of{len(numbered)})")
 
     def test_credits_are_in_charter(self):
-        for page in credit_pages(many()):
+        pages = credit_pages(many())
+        for page in pages:
             words = [m for m in page.get_family() if isinstance(m, Text)]
             self.assertTrue(all(m.font == style.FONT for m in words))
-            self.assertTrue(any(m.slant == "ITALIC" and m.text.startswith("Sources") for m in words) or page is credit_pages(many())[-1])
-        last = [m for m in credit_pages(many())[-1].get_family() if isinstance(m, Text)]
-        self.assertEqual(last[-1].slant, "ITALIC")
+            heading = [m for m in words if m.text.startswith("Sources")]
+            if heading:  # the lone disclaimer page has none
+                self.assertEqual(heading[0].slant, "ITALIC")
+        last = [m for m in pages[-1].get_family() if isinstance(m, Text)]
+        self.assertEqual(last[-1].slant, "ITALIC")  # the disclaimer
+
+    def test_the_sources_themselves_are_roman(self):
+        entries = [m for page in credit_pages(many()) for m in page.get_family()
+                   if isinstance(m, Text) and re.search(r"Source\d+\.$", m.text)]
+        self.assertEqual(len(entries), 30)
+        self.assertTrue(all(m.slant == "NORMAL" for m in entries))
 
     def test_every_page_is_the_same_readable_size(self):
         def row(page, i):
@@ -117,6 +126,7 @@ class Pages(unittest.TestCase):
     def test_the_credits_hold_each_page(self):
         self.assertEqual(credits_seconds(many()), len(credit_pages(many())) * PAGE_SECONDS)
         self.assertEqual(credits_seconds(video()), PAGE_SECONDS)
+
 
 if __name__ == "__main__":
     unittest.main()
