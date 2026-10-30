@@ -74,6 +74,9 @@ class TestOverlays(unittest.TestCase):
     def test_the_label_is_italic_and_the_number_roman(self):
         with tempconfig(FULL_HD):
             name, number = feet_line(self.screen(depth=100)).label.submobjects
+            self.assertEqual(name.original_text, "depth")  # not Mobject.name, the class's name
+            self.assertEqual(setting_line(self.screen(), 176, "setting").label.submobjects[0].original_text,
+                             "setting")
             self.assertEqual(name.slant, "ITALIC")
             self.assertEqual(number.slant, "NORMAL")
             self.assertEqual(number.text, "100")
@@ -90,6 +93,19 @@ class TestOverlays(unittest.TestCase):
                 feet.refresh()
                 self.assertEqual(serif.call_count, 2)
                 self.assertEqual(feet.label.submobjects[1].text, "7")
+
+    def test_replaced_marks_are_hidden(self):
+        # During a play Manim keeps drawing the mobjects it began with, so a replaced one must be hidden.
+        with tempconfig(FULL_HD):
+            screen = self.screen(depth=100, speed=3)
+            feet, arrow = feet_line(screen), speed_arrow(screen, X, DEPTH, SPEED)
+            old_label, old_arrow = list(feet.label.submobjects), arrow.submobjects[0]
+            self.recording.ram[9, DEPTH] = 7
+            feet.refresh()
+            arrow.refresh()
+            for old in old_label + [old_arrow]:
+                self.assertTrue(all(o == 0 for o in old.get_fill_opacities()) and
+                                all(o == 0 for o in old.get_stroke_opacities()))
 
     def test_the_speed_arrow_is_as_long_as_the_speed_and_starts_at_mario(self):
         with tempconfig(FULL_HD):

@@ -60,5 +60,14 @@ def fade_image(image: ImageMobject, level: ValueTracker) -> None:
     image.add_updater(update)
 
 
+def swap(group: Mobject, *children: Mobject) -> Mobject:
+    """Replace a group's children with new ones, hiding the old first: during a play Manim keeps drawing
+    every mobject the play began with, so a child merely dropped would linger on screen until it ends."""
+    for old in group.submobjects:
+        old.set_opacity(0)
+    group.submobjects = []
+    return group.add(*children)
+
+
 def _rgb(colour: str) -> np.ndarray:
     return np.array([int(colour[i:i + 2], 16) for i in (1, 3, 5)], float)

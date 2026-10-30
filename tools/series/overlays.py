@@ -5,7 +5,7 @@ import numpy as np
 from manim import DOWN, LEFT, RIGHT, UP, Arrow, Line, Rectangle, VGroup
 
 from series import style
-from series.ember import serif
+from series.ember import serif, swap
 from series.screen import Screen
 
 HAIRLINE = 1.2
@@ -42,15 +42,14 @@ class _Line(VGroup):
         if parts != self.shown:  # building text is slow, so only when it changes
             name, value = parts
             texts = [serif(name, self.colour)] + ([serif(value, self.colour, italic=False)] if value else [])
-            self.label.submobjects = []
-            self.label.add(*texts).arrange(RIGHT, buff=0.12)
+            swap(self.label, *texts).arrange(RIGHT, buff=0.12)
             self.shown = parts
         self.label.next_to([left + 0.3, y, 0], UP + RIGHT, buff=0.06)
 
 
 class FeetLine(_Line):
     def __init__(self, screen: Screen, byte: int, offset: int, label: str):
-        self.byte, self.offset, self.name = byte, offset, label
+        self.byte, self.offset, self.caption = byte, offset, label
         super().__init__(screen, style.WARM[0])
         self.refresh()
         self.add_updater(self.refresh)
@@ -63,12 +62,12 @@ class FeetLine(_Line):
         return self.screen.row_y(self.value() + self.offset)
 
     def parts(self) -> tuple[str, str | None]:
-        return self.name, style.number(self.value())
+        return self.caption, style.number(self.value())
 
 
 class SettingLine(_Line):
     def __init__(self, screen: Screen, row: int, label: str, offset: int):
-        self.row, self.offset, self.name = row, offset, label
+        self.row, self.offset, self.caption = row, offset, label
         super().__init__(screen, style.WARM[2])
         self.refresh()
 
@@ -76,7 +75,7 @@ class SettingLine(_Line):
         return self.screen.row_y(self.row + self.offset)
 
     def parts(self) -> tuple[str, str | None]:
-        return self.name, None
+        return self.caption, None
 
 
 def feet_line(screen: Screen, byte: int = 0x00CE, offset: int = 33, label: str = "depth") -> FeetLine:
@@ -126,7 +125,7 @@ class SpeedArrow(VGroup):
         x, y, speed = self.bytes
         ram = self.screen.ram()
         speed = signed(int(ram[speed]))
-        self.submobjects = []
+        swap(self)
         if not speed:
             return
         middle = np.array([self.screen.col_x(int(ram[x]) + MARIO_HALF[0]),
