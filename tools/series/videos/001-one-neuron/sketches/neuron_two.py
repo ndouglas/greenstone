@@ -9,13 +9,13 @@ from manim import RIGHT, UP, Scene, ValueTracker, config
 
 from series.ember import backdrop
 from series.neuron import Input, Neuron
-from series.overlays import MARIO_HALF, feet_line, signed, speed_arrow
+from series.overlays import feet_line, mario_middle, signed, speed_arrow
 from series.recording import Recording
 from series.screen import Screen
 
 NUMBERS = json.loads((Path(__file__).parent.parent / "numbers.json").read_text())
 SPEED_WEIGHT, THRESHOLD = NUMBERS["smb1_land_speed_weight"], NUMBERS["smb1_land_threshold"]
-X, DEPTH, FALLING = 0x0086, 0x00CE, 0x009F
+FALLING = 0x009F
 START, END = 1247, 1943
 CENTRE = RIGHT * 2.3 + UP * 0.2
 
@@ -25,16 +25,11 @@ class Sketch(Scene):
         self.add(backdrop())
         screen = Screen(Recording("smb1"), START, left_px=36 * config.pixel_height // 1080)
         feet = feet_line(screen)
-        arrow = speed_arrow(screen, X, DEPTH, FALLING)
+        arrow = speed_arrow(screen, FALLING)
         right = screen.col_x(256)
 
-        def mario() -> np.ndarray:  # where the arrow starts: his middle
-            ram = screen.ram()
-            return np.array([screen.col_x(int(ram[X]) + MARIO_HALF[0]),
-                             screen.row_y(int(ram[DEPTH]) + MARIO_HALF[1]), 0])
-
         neuron = Neuron([Input(feet.value, 1, lambda: np.array([right, feet.y(), 0]), "depth"),
-                         Input(lambda: signed(int(screen.ram()[FALLING])), SPEED_WEIGHT, mario, "falling")],
+                         Input(lambda: signed(screen.byte(FALLING)), SPEED_WEIGHT, lambda: mario_middle(screen), "falling")],
                         -THRESHOLD, None, CENTRE, "lands soon", "not yet")
         steps = neuron.arrive()
         shown = ValueTracker(0.0)

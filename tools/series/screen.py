@@ -176,6 +176,10 @@ class Screen(Group):
         """The RAM the picture on screen shows."""
         return self.recording.ram_at(self.frame())
 
+    def byte(self, address: int) -> int:
+        """One byte as the picture on screen shows it, at its own measured lag."""
+        return self.recording.byte_at(self.frame(), address)
+
     def row_y(self, row: float) -> float:
         """The top edge of NES pixel row `row`."""
         return self.game.get_top()[1] - row * self.dot

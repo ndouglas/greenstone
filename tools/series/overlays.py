@@ -1,6 +1,8 @@
 """Marks drawn on the game screen: the feet and setting lines, the gap between them, and the speed arrow.
 Each one follows the RAM behind the frame on screen, so it is right from the frame it appears."""
 
+from typing import Callable
+
 import numpy as np
 from manim import DOWN, LEFT, RIGHT, UP, Arrow, Line, Rectangle, VGroup
 
@@ -11,7 +13,10 @@ from series.screen import Screen
 HAIRLINE = 1.2
 BAND_LIGHT = 0.32  # fill opacity of a band at full light
 ARROW_ROWS_PER_SPEED = 4  # NES pixel rows of arrow per unit of speed
-MARIO_HALF = 8, 16  # from the sprite's top-left (x byte, depth) to its middle, in NES pixels
+SCREEN_X, DEPTH, SMALL = 0x03AD, 0x00CE, 0x0754  # SMB1: Mario's column on screen, his depth, and 1 if small
+# From (screen x, depth) to his middle, in NES pixels, measured on the sprite: his 15 columns start at the
+# screen x; small Mario's rows are depth + 18 to + 32, big Mario's depth + 1 to + 32.
+MIDDLE_X, MIDDLE_Y = 7.5, {True: 25, False: 17}
 
 
 def signed(byte: int) -> int:
@@ -114,28 +119,32 @@ def gap_band(screen: Screen, upper: _Line, lower: _Line, weight: float = -1,
     return GapBand(screen, upper, lower, weight, scale)
 
 
+def mario_middle(screen: Screen) -> np.ndarray:
+    """The middle of Mario's sprite in the picture on screen (SMB1)."""
+    small = bool(screen.byte(SMALL))
+    return np.array([screen.col_x(screen.byte(SCREEN_X) + MIDDLE_X),
+                     screen.row_y(screen.byte(DEPTH) + MIDDLE_Y[small]), 0])
+
+
 class SpeedArrow(VGroup):
-    def __init__(self, screen: Screen, x_byte: int, y_byte: int, speed_byte: int):
-        self.screen, self.bytes = screen, (x_byte, y_byte, speed_byte)
+    def __init__(self, screen: Screen, speed_byte: int, at: Callable[[Screen], np.ndarray]):
+        self.screen, self.speed_byte, self.at = screen, speed_byte, at
         super().__init__()
         self.refresh()
         self.add_updater(self.refresh)
 
     def refresh(self, *_) -> None:
-        x, y, speed = self.bytes
-        ram = self.screen.ram()
-        speed = signed(int(ram[speed]))
+        speed = signed(self.screen.byte(self.speed_byte))
         swap(self)
         if not speed:
             return
-        middle = np.array([self.screen.col_x(int(ram[x]) + MARIO_HALF[0]),
-                           self.screen.row_y(int(ram[y]) + MARIO_HALF[1]), 0])
+        middle = self.at(self.screen)
         end = middle + DOWN * speed * ARROW_ROWS_PER_SPEED * self.screen.dot
         colour = style.WARM[0] if speed > 0 else style.COOL[0]
         self.add(Arrow(middle, end, buff=0, stroke_width=3, color=colour, max_tip_length_to_length_ratio=0.5))
 
 
-def speed_arrow(screen: Screen, x_byte: int, y_byte: int, speed_byte: int) -> SpeedArrow:
-    """An arrow at Mario, as long as his speed (a signed byte, positive falling): warm and down while he
-    falls, cool and up while he rises, absent at zero."""
-    return SpeedArrow(screen, x_byte, y_byte, speed_byte)
+def speed_arrow(screen: Screen, speed_byte: int, at: Callable[[Screen], np.ndarray] = mario_middle) -> SpeedArrow:
+    """An arrow from `at` (Mario's middle by default), as long as his speed (a signed byte, positive
+    falling): warm and down while he falls, cool and up while he rises, absent at zero."""
+    return SpeedArrow(screen, speed_byte, at)

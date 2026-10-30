@@ -14,6 +14,9 @@ DATA = OUT / "001-one-neuron" / "data"
 # How many frames the picture trails the RAM written for the same frame
 # index, measured against the player's sprite (see measure_lag).
 LAG = {"smb1": 1}
+# Bytes whose lag differs from their game's, each measured against the sprite the same way. SMB1 writes
+# Mario's screen x ($03AD) before the picture of the same frame is drawn.
+BYTE_LAG = {"smb1": {0x03AD: 0}}
 
 MARIO_RED = (152, 34, 32)
 MARIO_SHOE = (84, 90, 0)
@@ -44,6 +47,13 @@ class Recording:
             raise KeyError(f"{self.game}'s lag hasn't been measured; find a sprite rule and run "
                            f"series.recording.measure_lag against its footage, then add it to LAG")
         return self.ram[max(frame - LAG[self.game], 0)]
+
+    def byte_at(self, frame: int, address: int) -> int:
+        """The value of one byte as the picture of `frame` shows it, at that byte's own lag if it has one."""
+        lag = BYTE_LAG.get(self.game, {}).get(address)
+        if lag is None:
+            return int(self.ram_at(frame)[address])
+        return int(self.ram[max(frame - lag, 0)][address])
 
 
 def measure_lag(frames, ram: np.ndarray, sprite_bottom: Callable[[np.ndarray], int | None],

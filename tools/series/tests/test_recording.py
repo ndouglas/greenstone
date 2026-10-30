@@ -1,10 +1,12 @@
+import tempfile
 import unittest
 from pathlib import Path
 
 import numpy as np
 
 from series.build import OUT
-from series.recording import LAG, Recording, measure_lag, smb1_sprite_bottom
+from series.recording import BYTE_LAG, LAG, MARIO_RED, MARIO_SHOE, Recording, measure_lag, smb1_sprite_bottom
+from series.tests.test_screen import synthetic as screen_synthetic
 
 DATA = OUT / "001-one-neuron" / "data"
 BYTE, OFFSET = 7, 32
@@ -69,6 +71,31 @@ class TestRecording(unittest.TestCase):
         rec.game, rec.frames, rec.ram = "tetris", frames, ram
         with self.assertRaisesRegex(KeyError, "tetris.*measure_lag"):
             rec.ram_at(3)
+
+    def test_a_byte_can_have_its_own_lag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rec = screen_synthetic(Path(tmp))
+            rec.ram[:, 0x03AD] = np.arange(len(rec.ram)) % 256
+            rec.ram[:, 0x00CE] = np.arange(len(rec.ram)) % 256
+            self.assertEqual(rec.byte_at(30, 0x03AD), 30)  # Mario's screen x: read on the frame shown
+            self.assertEqual(rec.byte_at(30, 0x00CE), 29)  # his depth: the game's lag, one back
+
+    @unittest.skipUnless((DATA / "smb1" / "footage").exists(), "smb1 footage not recorded")
+    def test_smb1s_screen_x_is_read_on_the_frame_shown(self):
+        rec = Recording("smb1")
+        spread = []
+        for lag in range(3):
+            error = []
+            for f in range(300, 1940):
+                if len({int(rec.ram[f - k][0x03AD]) for k in range(3)}) == 1:
+                    continue  # standing still says nothing about lag
+                picture = np.asarray(rec.frames[f])[..., :3]
+                cols = np.argwhere((picture == MARIO_RED).all(2) | (picture == MARIO_SHOE).all(2))[:, 1]
+                if len(cols) >= 10:
+                    error.append((cols.min() + cols.max()) / 2 - int(rec.ram[f - lag][0x03AD]))
+            spread.append(float(np.std(error)))
+        self.assertEqual(int(np.argmin(spread)), BYTE_LAG["smb1"][0x03AD])
+        self.assertLess(spread[0], 1.5)
 
     @unittest.skipUnless((DATA / "smb1" / "footage").exists(), "smb1 footage not recorded")
     def test_smb1s_lag_is_measured(self):
