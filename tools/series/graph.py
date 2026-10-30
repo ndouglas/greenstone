@@ -22,16 +22,18 @@ class NeuronGraph(VGroup):
 
     def __init__(self, weight: float, bias: float, x_range: tuple, y_range: tuple, x_label: str,
                  y_label: str = "total", yes: str = "yes", no: str = "no", width: float = 7.0,
-                 height: float = 4.0, at: np.ndarray = np.zeros(3)):
+                 height: float = 4.0, at: np.ndarray = None):
         super().__init__()
         self.weight, self.bias = float(weight), float(bias)
         self.x_range, self.y_range = x_range, y_range
-        self.size, self.at = (width, height), np.asarray(at, float)
+        self.size, self.at = (width, height), np.zeros(3) if at is None else np.asarray(at, float)
         self._build_frame(x_label, y_label, yes, no)
-        self.segments = [Line(self.at, self.at, stroke_width=1.6) for _ in range(2 * STEPS)]
+        self.segments = [Line(self.at, self.at, stroke_width=1.4) for _ in range(2 * STEPS)]
         self.line = VGroup(*self.segments)
         self._draw_line()
-        self.add(self.line, self.mark, self.mark_label, self.mark_value)
+        self.add(self.line)
+        if self._on_page(self.setting()):  # off the page there is no setting to mark
+            self.add(self.mark, self.mark_label, self.mark_value)
 
     def setting(self) -> float:
         """Where the total crosses zero; a flat line (weight 0) never does, so its setting is infinite."""
@@ -70,24 +72,24 @@ class NeuronGraph(VGroup):
             grid.add(Line([self.point(x0, 0)[0], y, 0], [self.point(x1, 0)[0], y, 0], stroke_color=GRID, stroke_width=0.5))
         axis_y = self.point(0, base)[1]
         axes = VGroup(
-            Line(self.point(x0, y0), self.point(x0, y1), stroke_color=style.ASH, stroke_width=1.0),
-            Line([self.point(x0, 0)[0], axis_y, 0], [self.point(x1, 0)[0], axis_y, 0], stroke_color=style.ASH, stroke_width=1.0),
+            Line(self.point(x0, y0), self.point(x0, y1), stroke_color=style.ASH, stroke_width=1.2),
+            Line([self.point(x0, 0)[0], axis_y, 0], [self.point(x1, 0)[0], axis_y, 0], stroke_color=style.ASH, stroke_width=1.2),
         )
         depth = serif(x_label, style.ASH, 0.3).next_to(axes[1].get_end(), DOWN, buff=0.12).align_to(axes[1].get_end(), RIGHT)
         total = serif(y_label, style.ASH, 0.3).next_to(axes[0].get_end(), RIGHT, buff=0.12).shift(DOWN * 0.1)
-        yes_label = serif(yes, style.WARM[1], 0.32)
-        no_label = serif(no, style.COOL[1], 0.32)
-        for label, zone in ((yes_label, self.yes_zone), (no_label, self.no_zone)):
-            label.move_to(zone.get_bottom() + UP * 0.35)
-        yes_label.set_opacity(0.85)
-        no_label.set_opacity(0.85)
+        self.yes_label = serif(yes, style.WARM[1], 0.32).set_opacity(0.85)
+        self.no_label = serif(no, style.COOL[1], 0.32).set_opacity(0.85)
+        edges = self.point(x0, 0)[0], self.point(x1, 0)[0]
+        for label, zone in ((self.yes_label, self.yes_zone), (self.no_label, self.no_zone)):
+            label.move_to(zone.get_bottom() + UP * 0.35)  # an empty side is a sliver at the page's edge: keep the word on the page
+            label.shift(RIGHT * (max(edges[0] - label.get_left()[0], 0) - max(label.get_right()[0] - edges[1], 0)))
         self.mark = Dot(self.point(ground, base), radius=0.06, color=style.TEXT)
         self.mark_label = serif("the setting", "#D8CFC8", 0.3).next_to(self.mark, UP + RIGHT, buff=0.1)
         self.mark_value = numeral(style.number(ground) if self.weight else "", style.TEXT, 0.3).next_to(self.mark, DOWN, buff=0.12)
-        if not self._on_page(ground):
+        if not self._on_page(ground):  # hidden, and left out of the group so nothing fades it back in
             for m in (self.mark, self.mark_label, self.mark_value):
                 m.set_opacity(0)
-        self.add(self.yes_zone, self.no_zone, grid, axes, depth, total, yes_label, no_label)
+        self.add(self.yes_zone, self.no_zone, grid, axes, depth, total, self.yes_label, self.no_label)
 
     def _side(self, a: float, b: float, colour: str, rising: bool) -> VGroup:
         """One tinted side: strongest away from the setting, fading toward it."""
@@ -131,7 +133,7 @@ class NeuronGraph(VGroup):
                     continue
                 p, q = xs[i], xs[i + 1]
                 seg.put_start_and_end_on(self.point(p, self.total(p)), self.point(q, self.total(q)))
-                seg.set_stroke(color=self._colour(self.total((p + q) / 2)), opacity=1, width=1.6)
+                seg.set_stroke(color=self._colour(self.total((p + q) / 2)), opacity=1, width=1.4)
 
     def scale_weights(self, k: float) -> Animation:
         """Multiply the weight and the bias by k: the line steepens and pivots about the setting."""

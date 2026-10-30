@@ -41,18 +41,18 @@ class BorderMap(VGroup):
 
     def __init__(self, points: np.ndarray, outcomes: list, weights: tuple, bias: float, x_label: str,
                  y_label: str, yes: str = "yes", no: str = "no", width: float = 7.0, height: float = 4.4,
-                 at: np.ndarray = np.zeros(3), hues: dict = HUES, x_hue: str = style.WARM[0], y_hue: str = style.WARM[3]):
+                 at: np.ndarray = None, hues: dict = HUES, x_hue: str = style.WARM[0], y_hue: str = style.WARM[3]):
         super().__init__()
         pts = np.asarray(points, float)
         self.data, self.outcomes = pts, list(outcomes)
         self.weights, self.bias = np.asarray(weights, float), float(bias)
-        self.size, self.at = (width, height), np.asarray(at, float)
+        self.size, self.at = (width, height), np.zeros(3) if at is None else np.asarray(at, float)
         lo, hi = pts.min(0), pts.max(0)
         pad = (hi - lo) * 0.06
         self.lo, self.hi = lo - pad, hi + pad
         self.x_hue, self.y_hue = x_hue, y_hue
         self.bands = [Polygon(*[self.at] * 3, stroke_width=0, fill_opacity=0) for _ in range(2 * FADE)]
-        self.pieces = [Line(self.at, self.at, stroke_width=1.5) for _ in range(STEPS)]
+        self.pieces = [Line(self.at, self.at, stroke_width=1.4) for _ in range(STEPS)]
         self.dots = []
         halos, cores = VGroup(), VGroup()
         for p, o in zip(pts, self.outcomes):
@@ -66,8 +66,8 @@ class BorderMap(VGroup):
             cores.add(d)
         corner = self.page(self.lo)
         axes = VGroup(
-            Line(corner, self.page([self.lo[0], self.hi[1]]), stroke_color=style.ASH, stroke_width=1.0),
-            Line(corner, self.page([self.hi[0], self.lo[1]]), stroke_color=style.ASH, stroke_width=1.0),
+            Line(corner, self.page([self.lo[0], self.hi[1]]), stroke_color=style.ASH, stroke_width=1.2),
+            Line(corner, self.page([self.hi[0], self.lo[1]]), stroke_color=style.ASH, stroke_width=1.2),
         )
         x_text = serif(x_label, style.ASH, 0.3).next_to(axes[1].get_end(), DOWN, buff=0.12).align_to(axes[1].get_end(), RIGHT)
         y_text = serif(y_label, style.ASH, 0.3).next_to(axes[0].get_end(), RIGHT, buff=0.12).shift(DOWN * 0.1)
@@ -132,25 +132,39 @@ class BorderMap(VGroup):
             p, q = a + (z - a) * i / STEPS, a + (z - a) * (i + 1) / STEPS
             piece.put_start_and_end_on(p, q if drawn else p + RIGHT * 1e-6)
             colour = interpolate_color(ManimColor(self.x_hue), ManimColor(self.y_hue), (i + 0.5) / STEPS)
-            piece.set_stroke(color=colour, width=1.5, opacity=1 if drawn else 0)
+            piece.set_stroke(color=colour, width=1.4, opacity=1 if drawn else 0)
 
     def slide_bias(self, new: float) -> Animation:
         """Move the border parallel to itself, until the bias is `new`."""
-        b0 = self.bias
-
-        def update(_, alpha: float) -> None:
+        def update(b0: float, alpha: float) -> None:
             self.bias = b0 + (float(new) - b0) * alpha
             self._lay()
-        return UpdateFromAlphaFunc(self, update)
+        return _AtBegin(self, lambda: self.bias, update)
 
     def lean(self, weights: tuple) -> Animation:
-        """Turn the border to the new weights, about the middle of where it crosses the map."""
-        w0, target = self.weights.copy(), np.asarray(weights, float)
-        a, z = self.border_points()
-        pivot = (a + z) / 2 if np.linalg.norm(a - z) > 1e-9 else (self.lo + self.hi) / 2
+        """Turn the border to the new weights, about the middle of where it crosses the map as the turn begins."""
+        target = np.asarray(weights, float)
 
-        def update(_, alpha: float) -> None:
+        def start() -> tuple:
+            a, z = self.border_points()
+            return self.weights.copy(), (a + z) / 2 if np.linalg.norm(a - z) > 1e-9 else (self.lo + self.hi) / 2
+
+        def update(state: tuple, alpha: float) -> None:
+            w0, pivot = state
             self.weights = w0 + (target - w0) * alpha
             self.bias = -float(self.weights @ pivot)
             self._lay()
-        return UpdateFromAlphaFunc(self, update)
+        return _AtBegin(self, start, update)
+
+
+class _AtBegin(UpdateFromAlphaFunc):
+    """An alpha update whose starting state is taken as the animation begins, not when it was made."""
+
+    def __init__(self, mobject, start, update):
+        self._start = start
+        self._state = None
+        super().__init__(mobject, lambda _, alpha: update(self._state, alpha))
+
+    def begin(self) -> None:
+        self._state = self._start()
+        super().begin()

@@ -75,6 +75,33 @@ class GraphTest(unittest.TestCase):
         for zone in (g.yes_zone, g.no_zone):
             self.assertLess(max(z.get_fill_opacity() for z in zone), 0.15)
 
+    def test_yes_is_warm_and_no_is_cool_whichever_way_the_line_runs(self):
+        for weight in (-1, 1):
+            g = graph(weight, 176 if weight < 0 else -100)
+            yes, no = g.yes_zone[0].get_fill_color().to_rgb(), g.no_zone[0].get_fill_color().to_rgb()
+            self.assertGreater(yes[0], yes[2])
+            self.assertGreater(no[2], no[0])
+
+    def test_a_hidden_mark_stays_out_of_the_group(self):
+        g = graph(-1, 500)
+        for m in (g.mark, g.mark_label, g.mark_value):
+            self.assertNotIn(m, g.submobjects)
+        on = graph()
+        self.assertIn(on.mark, on.submobjects)
+
+    def test_graphs_do_not_share_a_default_position(self):
+        a, b = graph(), graph()
+        a.at += 1
+        np.testing.assert_allclose(b.at, 0)
+
+    def test_the_side_words_stay_on_the_page_even_for_a_flat_neuron(self):
+        for bias in (50, -50):
+            g = graph(0, bias)
+            left, right = g.point(0, 0)[0], g.point(300, 0)[0]
+            for label in (g.yes_label, g.no_label):
+                self.assertGreaterEqual(label.get_left()[0], left - 1e-6)
+                self.assertLessEqual(label.get_right()[0], right + 1e-6)
+
     def test_each_side_fades_toward_the_setting(self):
         g = graph()
         yes = [z.get_fill_opacity() for z in g.yes_zone]
