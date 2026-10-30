@@ -9,7 +9,9 @@ from series.ember import serif
 
 DARK = "#2A2226"  # the line where the total is zero
 GRID = "#2E2628"
-SIDE = 0.07  # how faintly the two sides are tinted
+SIDE = 0.11  # how faintly each side is tinted, at its far edge
+NEAR = 0.02  # and at the setting
+FADE = 24  # strips across each side
 SPAN = 0.4  # how far from zero, as a share of the page's height, the line reaches its full colour
 STEPS = 64  # short pieces per side of the crossing
 
@@ -25,7 +27,6 @@ class NeuronGraph(VGroup):
         self.weight, self.bias = float(weight), float(bias)
         self.x_range, self.y_range = x_range, y_range
         self.size, self.at = (width, height), np.asarray(at, float)
-        self._ground = self.setting() if self.weight else None
         self._build_frame(x_label, y_label, yes, no)
         self.segments = [Line(self.at, self.at, stroke_width=1.6) for _ in range(2 * STEPS)]
         self.line = VGroup(*self.segments)
@@ -33,8 +34,8 @@ class NeuronGraph(VGroup):
         self.add(self.line, self.mark, self.mark_label, self.mark_value)
 
     def setting(self) -> float:
-        """Where the total crosses zero."""
-        return -self.bias / self.weight
+        """Where the total crosses zero; a flat line (weight 0) never does, so its setting is infinite."""
+        return -self.bias / self.weight if self.weight else float("inf")
 
     def total(self, x: float) -> float:
         return self.weight * x + self.bias
@@ -52,15 +53,14 @@ class NeuronGraph(VGroup):
         (x0, x1), (y0, y1) = self.x_range, self.y_range
         base = max(y0, min(0.0, y1))  # the horizontal axis sits at zero if zero is on the page
         ground = self.setting()
-        cut = min(max(ground, x0), x1)
-        left, right = (style.WARM[0], style.COOL[0]) if self.weight < 0 else (style.COOL[0], style.WARM[0])
-        zones = []
-        for a, b, colour in ((x0, cut, left), (cut, x1, right)):
-            zone = Rectangle(width=max(self.point(b, 0)[0] - self.point(a, 0)[0], 1e-6), height=self.size[1],
-                             stroke_width=0, fill_color=colour, fill_opacity=SIDE)
-            zone.move_to((self.point(a, 0) + self.point(b, 0)) / 2 * [1, 0, 1] + self.at * [0, 1, 0])
-            zones.append(zone)
-        self.yes_zone, self.no_zone = (zones[0], zones[1]) if self.weight < 0 else (zones[1], zones[0])
+        if self.weight:
+            cut = min(max(ground, x0), x1)
+        else:  # flat: the whole page is on one side
+            cut = x1 if self.bias > 0 else x0
+        yes_left = self.weight <= 0
+        left, right = (style.WARM[0], style.COOL[0]) if yes_left else (style.COOL[0], style.WARM[0])
+        zones = [self._side(x0, cut, left, False), self._side(cut, x1, right, True)]
+        self.yes_zone, self.no_zone = (zones[0], zones[1]) if yes_left else (zones[1], zones[0])
         grid = VGroup()
         for fx in (0.25, 0.5, 0.75):
             x = self.point(x0 + fx * (x1 - x0), 0)[0]
@@ -83,11 +83,24 @@ class NeuronGraph(VGroup):
         no_label.set_opacity(0.85)
         self.mark = Dot(self.point(ground, base), radius=0.06, color=style.TEXT)
         self.mark_label = serif("the setting", "#D8CFC8", 0.3).next_to(self.mark, UP + RIGHT, buff=0.1)
-        self.mark_value = serif(style.number(ground), style.TEXT, 0.3, italic=False).next_to(self.mark, DOWN, buff=0.12)
+        self.mark_value = serif(style.number(ground) if self.weight else "", style.TEXT, 0.3, italic=False).next_to(self.mark, DOWN, buff=0.12)
         if not self._on_page(ground):
             for m in (self.mark, self.mark_label, self.mark_value):
                 m.set_opacity(0)
         self.add(self.yes_zone, self.no_zone, grid, axes, depth, total, yes_label, no_label)
+
+    def _side(self, a: float, b: float, colour: str, rising: bool) -> VGroup:
+        """One tinted side: strongest away from the setting, fading toward it."""
+        left, right = self.point(a, 0)[0], self.point(b, 0)[0]
+        side = VGroup()
+        for i in range(FADE):
+            lo, hi = left + (right - left) * i / FADE, left + (right - left) * (i + 1) / FADE
+            t = (i + 0.5) / FADE
+            strength = t if rising else 1 - t
+            strip = Rectangle(width=max(hi - lo, 1e-6), height=self.size[1], stroke_width=0, fill_color=colour,
+                              fill_opacity=NEAR + (SIDE - NEAR) * strength)
+            side.add(strip.move_to([(lo + hi) / 2, self.at[1], 0]))
+        return side
 
     def _colour(self, y: float):
         """Dark at zero, then the sign's colour, its far shade as the line runs on."""

@@ -72,8 +72,30 @@ class GraphTest(unittest.TestCase):
     def test_the_sides_are_faintly_warm_and_cool(self):
         g = graph()
         self.assertLess(g.yes_zone.get_center()[0], g.no_zone.get_center()[0])
-        self.assertLess(g.yes_zone.get_fill_opacity(), 0.15)
-        self.assertLess(g.no_zone.get_fill_opacity(), 0.15)
+        for zone in (g.yes_zone, g.no_zone):
+            self.assertLess(max(z.get_fill_opacity() for z in zone), 0.15)
+
+    def test_each_side_fades_toward_the_setting(self):
+        g = graph()
+        yes = [z.get_fill_opacity() for z in g.yes_zone]
+        no = [z.get_fill_opacity() for z in g.no_zone]
+        self.assertTrue(all(a > b for a, b in zip(yes, yes[1:])))
+        self.assertTrue(all(a < b for a, b in zip(no, no[1:])))
+        self.assertAlmostEqual(yes[-1], no[0], delta=0.01)
+
+    def test_a_flat_neuron_has_no_setting_and_does_not_crash(self):
+        for bias in (50, -50):
+            g = graph(0, bias)
+            self.assertEqual(g.setting(), float("inf"))
+            self.assertEqual(g.mark.get_fill_opacity(), 0)
+            play(g.scale_weights(3))
+            self.assertEqual(g.weight, 0)
+
+    def test_scaling_from_or_to_zero_does_not_crash(self):
+        g = graph(-1, 176)
+        play(g.scale_weights(0))
+        self.assertEqual(g.weight, 0)
+        play(graph(0, 50).scale_weights(0))
 
 
 if __name__ == "__main__":
