@@ -5,7 +5,7 @@ import numpy as np
 from manim import ValueTracker
 
 from series import style
-from series.ember import fade_image, glow, serif
+from series.ember import backdrop, fade_image, glow, serif
 from series.style import ASH, COOL, TEXT, WARM, light, number, temperature
 
 
@@ -31,11 +31,33 @@ class TestStyle(unittest.TestCase):
 
 class TestEmber(unittest.TestCase):
     def test_glow_has_no_edge(self):
-        alpha = glow(WARM[1], 1.0).pixel_array[:, :, 3]
+        alpha = glow(WARM[1], 1.0).pixel_array[:, :, 3].astype(int)
         for border in (alpha[0], alpha[-1], alpha[:, 0], alpha[:, -1]):
             self.assertTrue((border == 0).all())
-        self.assertEqual(alpha.max(), alpha[alpha.shape[0] // 2, alpha.shape[1] // 2])
-        self.assertGreater(len(np.unique(alpha)), 150)
+        c = alpha.shape[0] // 2
+        self.assertEqual(alpha.max(), alpha[c, c])
+
+    def test_glow_is_smooth(self):
+        alpha = glow(WARM[1], 1.0).pixel_array[:, :, 3].astype(int)
+        c = alpha.shape[0] // 2
+        rays = [alpha[c, c:], alpha[c:, c][:], alpha[c, :c + 1][::-1], alpha[:c + 1, c][::-1],
+                np.diagonal(alpha[c:, c:])]
+        for ray in rays:
+            self.assertTrue((np.diff(ray) <= 0).all())
+        self.assertLessEqual(np.abs(np.diff(alpha, axis=0)).max(), 6)
+        self.assertLessEqual(np.abs(np.diff(alpha, axis=1)).max(), 6)
+
+    def test_backdrop_is_dithered_not_banded(self):
+        rgb = backdrop().pixel_array[:, :, :3].astype(int)
+        w = rgb.shape[1]
+        row = rgb[rgb.shape[0] // 2, w * 3 // 10:w * 7 // 10, 0]
+        longest = run = 1
+        for a, b in zip(row, row[1:]):
+            run = run + 1 if a == b else 1
+            longest = max(longest, run)
+        self.assertLessEqual(longest, 16)
+        self.assertGreater((np.diff(row) != 0).mean(), 0.3)  # undithered, most neighbours are equal
+        self.assertLessEqual(np.abs(np.diff(row)).max(), 3)
 
     def test_serif_is_charter(self):
         self.assertIn("Charter", manimpango.list_fonts(), "install Charter")
@@ -45,14 +67,19 @@ class TestEmber(unittest.TestCase):
     def test_fading_an_image_keeps_its_gradient(self):
         image = glow(WARM[0], 1.0)
         full = image.pixel_array[:, :, 3].astype(int)
+        c = full.shape[0] // 2
+        mid = (c, c + c // 2)
         level = ValueTracker(1.0)
         fade_image(image, level)
         level.set_value(0.5)
         image.update(0)
         half = image.pixel_array[:, :, 3].astype(int)
         self.assertLessEqual(np.abs(half - full / 2).max(), 1)
-        self.assertEqual(half.argmax(), full.argmax())
-        self.assertGreater(len(np.unique(half)), 100)
+        self.assertGreater(half[c, c], half[mid] + 5)
+        self.assertAlmostEqual(half[mid] / half[c, c], full[mid] / full[c, c], delta=0.02)
+        level.set_value(1.0)
+        image.update(0)
+        self.assertTrue((image.pixel_array[:, :, 3] == full).all())
 
 
 if __name__ == "__main__":

@@ -9,15 +9,17 @@ from series import style
 
 
 def backdrop(focus: np.ndarray = RIGHT * 3) -> ImageMobject:
-    """The full-frame ground: near-black, warming toward the focus point."""
-    w, h = 960, 540
+    """The full-frame ground at the frame's pixel size, near-black, warming toward the focus point, dithered."""
+    w, h = config.pixel_width, config.pixel_height
     y, x = np.mgrid[0:h, 0:w]
     fx = (focus[0] / config.frame_width + 0.5) * w
     fy = (0.5 - focus[1] / config.frame_height) * h
     d = np.sqrt(((x - fx) / (0.9 * w)) ** 2 + ((y - fy) / (0.9 * h)) ** 2)
     t = np.clip(d / 0.75, 0, 1)[..., None] ** 0.8
     warm, dark = _rgb(style.EMBER), _rgb(style.BACKGROUND)
-    rgb = (warm * (1 - t) + dark * t).round().astype(np.uint8)
+    rng = np.random.default_rng(0)
+    noise = rng.random((h, w, 3)) + rng.random((h, w, 3)) - 1  # triangular dither: 8 bits alone would band
+    rgb = np.clip((warm * (1 - t) + dark * t + noise).round(), 0, 255).astype(np.uint8)
     image = ImageMobject(np.dstack([rgb, np.full((h, w), 255, np.uint8)]))
     return image.set(width=config.frame_width, height=config.frame_height)
 
