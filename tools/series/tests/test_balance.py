@@ -1,15 +1,27 @@
 import unittest
+from unittest import mock
 
 import numpy as np
-from manim import ImageMobject
+from manim import AnimationGroup, ImageMobject, Succession, Wait
 
 from series import style
-from series.balance import SOFT, TILT, Balance
+from series.balance import PAN, SOFT, TILT, Balance
 
 
 def play(animation) -> None:
     animation.begin()
     animation.interpolate(1.0)
+    animation.finish()
+    animation.mobject.update(0)  # the scene's updater lays the frame out
+
+
+def frames(animation, seconds: float, fps: int = 60) -> None:
+    """Run an animation as the scene does: each frame is told its dt, then drawn."""
+    animation.begin()
+    n = round(seconds * fps)
+    for i in range(1, n + 1):
+        animation.update_mobjects(1 / fps)
+        animation.interpolate(i / n)
     animation.finish()
 
 
@@ -51,9 +63,11 @@ class BalanceTest(unittest.TestCase):
         a = b.drop(140, "140")
         a.begin()
         a.interpolate(0.0)
+        b.update(0)
         high = b.pans["yes"][0].get_center()[1]
         a.interpolate(1.0)
         a.finish()
+        b.update(0)
         self.assertGreater(high, b.pans["yes"][0].get_center()[1] + 0.5)
 
     def test_the_beam_tips_to_the_heavier_pan(self):
@@ -233,3 +247,88 @@ class BalanceTest(unittest.TestCase):
             swing.append(b.angle())
         self.assertGreater(max(swing), target * 1.05)
         self.assertAlmostEqual(b.dial_angle(), target, places=3)  # the number waits where it will settle
+
+    def test_the_dial_never_reads_zero_beside_a_warm_or_cool_total(self):
+        b = Balance("yes", "no")
+        play(b.drop(0.4, "0.4"))
+        self.assertEqual(b.reading.text, "0.4")
+        self.assertEqual(b.reading.get_color().to_hex().upper(), style.WARM[1])
+        play(b.drop(-0.7, "0.7"))
+        self.assertEqual(b.reading.text, style.number(-0.3, 1))
+        self.assertEqual(b.reading.get_color().to_hex().upper(), style.COOL[1])
+
+    def test_a_zero_is_ash_in_the_no_pan(self):
+        b = Balance("yes", "no")
+        play(b.drop(0, "0"))
+        self.assertEqual(b.pans["yes"], [])
+        self.assertEqual(b.pans["no"][0].colour, style.ASH)
+
+    def test_the_jolt_is_the_same_inside_a_group(self):
+        def jolt(wrap) -> float:
+            b = Balance("yes", "no")
+            a = b.drop(140, "140")
+            a.run_time = 2.0
+            group = wrap(a)
+            group.scene = None
+            frames(group, 2.0)
+            return b._omega
+        alone = jolt(lambda a: a)
+        self.assertGreater(alone, 0.3)
+        self.assertAlmostEqual(jolt(lambda a: AnimationGroup(a, run_time=2.0)), alone, delta=alone * 0.02)
+        self.assertAlmostEqual(jolt(lambda a: Succession(a)), alone, delta=alone * 0.02)
+
+    def test_a_slower_fall_jolts_softer(self):
+        def jolt(seconds: float) -> float:
+            b = Balance("yes", "no")
+            a = b.drop(140, "140")
+            frames(a, seconds)
+            return b._omega
+        self.assertGreater(jolt(1.0), jolt(2.0) * 1.8)
+
+    def test_the_strings_stop_at_the_blocks(self):
+        b = Balance("yes", "no")
+        play(b.drop(140, "140"))
+        play(b.drop(100, "100"))
+        play(b.drop(80, "80"))  # a tall stack reaches up into the strings
+        k = b.pans["yes"][-1]
+        left, right, bottom, top = k.box.get_left()[0], k.box.get_right()[0], k.box.get_bottom()[1], k.box.get_top()[1]
+        for piece in b.strings:
+            if piece.get_stroke_opacity() == 0:
+                continue
+            for t in np.linspace(0, 1, 40):
+                x, y = (piece.get_start() + (piece.get_end() - piece.get_start()) * t)[:2]
+                self.assertFalse(left + 1e-3 < x < right - 1e-3 and bottom + 1e-3 < y < top - 1e-3)
+
+    def test_a_frame_is_laid_out_once(self):
+        b = Balance("yes", "no")
+        a = b.drop(140, "140")
+        laid = []
+        original = Balance._lay
+
+        def counting(this):
+            laid.append(this)
+            original(this)
+        with mock.patch.object(Balance, "_lay", counting):
+            a.begin()
+            a.update_mobjects(1 / 60)  # the animation's copy of the scale is laid too, but only this one is seen
+            a.interpolate(0.5)
+            b.update(1 / 60)
+        self.assertEqual(sum(1 for x in laid if x is b), 1)
+
+    def test_the_verdict_is_announced_with_a_fade(self):
+        b = land()
+        self.assertEqual(b.verdict_label.get_fill_opacity(), 0)  # unspoken until announced
+        a = b.announce()
+        a.begin()
+        a.interpolate(0.5)
+        b.update(0)
+        self.assertAlmostEqual(b.verdict_label.get_fill_opacity(), 0.5, places=2)
+        a.interpolate(1.0)
+        a.finish()
+        b.update(0)
+        self.assertAlmostEqual(b.verdict_label.get_fill_opacity(), 1.0, places=2)
+
+    def test_balances_do_not_share_a_default_position(self):
+        a, b = Balance("yes", "no"), Balance("yes", "no")
+        a.at += 1
+        np.testing.assert_allclose(b.at, 0)

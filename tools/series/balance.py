@@ -3,14 +3,16 @@ blocks fall into the yes pan, minus blocks into the no pan, and the beam tips to
 A needle square to the beam swings over a dial and settles on the one number it shows: the total."""
 
 import numpy as np
-from manim import DOWN, UP, Animation, Dot, Line, ManimColor, Square, UpdateFromAlphaFunc, VGroup, interpolate_color, linear
+from manim import DOWN, RIGHT, UP, Animation, Dot, Line, ManimColor, Square, UpdateFromAlphaFunc, VGroup, interpolate_color, linear
 
 from series import style
 from series.ember import numeral, serif
+from series.neuron import total_figure
 
 HALF_BEAM = 3.0
 PIVOT = np.array([0.0, 2.2, 0.0])  # relative to the scale's own centre
 STRING = 2.2
+STRING_PIECES = 3  # a string cut by the blocks is drawn in at most this many pieces
 PAN = 1.2  # half a pan's width
 DROP = 3.0  # how far above its pan a block starts
 TILT = 0.24  # the beam's greatest angle, radians
@@ -35,7 +37,7 @@ class Block(VGroup):
     def __init__(self, value: float, label: str, hue: int):
         super().__init__()
         self.value = value
-        self.colour = style.temperature(value if value else -1, hue)
+        self.colour = style.temperature(value, hue)
         self.side = 0.3 + 0.85 * (min(abs(value), BIGGEST) / BIGGEST) ** 0.5
         self.fall = 1.0  # 1 high above its pan, 0 resting on it
         self.landed = False  # its weight counts from the moment it lands
@@ -54,10 +56,10 @@ class Block(VGroup):
 class Balance(VGroup):
     """yes on the left pan (warm), no on the right (cool). drop() lets a block fall; verdict() reads the tilt."""
 
-    def __init__(self, yes: str, no: str, at: np.ndarray = np.zeros(3)):
+    def __init__(self, yes: str, no: str, at: np.ndarray = None):
         super().__init__()
         self.words = {"yes": yes, "no": no}
-        self.at = np.asarray(at, float)
+        self.at = np.zeros(3) if at is None else np.asarray(at, float)
         self.pans = {"yes": [], "no": []}
         self._theta = 0.0  # the beam's angle now, positive when the yes end is down
         self._omega = 0.0  # and how fast it is turning
@@ -71,7 +73,7 @@ class Balance(VGroup):
         cols = (style.WARM[1], style.COOL[0])
         self.beam = VGroup(*[Line(pivot, pivot, stroke_width=1.6, stroke_color=interpolate_color(
             ManimColor(cols[0]), ManimColor(cols[1]), (i + 0.5) / STEPS)) for i in range(STEPS)])
-        self.strings = VGroup(*[Line(pivot, pivot, stroke_color=style.ASH, stroke_width=0.8) for _ in range(4)])
+        self.strings = VGroup(*[Line(pivot, pivot, stroke_color=style.ASH, stroke_width=0.8) for _ in range(4 * STRING_PIECES)])
         self.plates = {"yes": Line(pivot, pivot, stroke_color=style.WARM[1], stroke_width=1.6),
                        "no": Line(pivot, pivot, stroke_color=style.COOL[0], stroke_width=1.6)}
         self.hub = Dot(pivot, radius=0.05, color=style.ASH)
@@ -136,7 +138,8 @@ class Balance(VGroup):
         return self.end(side) + DOWN * STRING
 
     def drop(self, value: float, label: str, hue: int = 0) -> Animation:
-        """A block of |value|'s size falls into its sign's pan while the beam tips to the new sum."""
+        """A block of |value|'s size falls into its sign's pan (a zero, ash, into the no pan) while the beam tips
+        to the new sum. The beam is jolted by the speed the block really hits at, as the scene steps it."""
         block = Block(value, label, hue)
         side = "yes" if value > 0 else "no"
         self.pans[side].append(block)
@@ -145,23 +148,23 @@ class Balance(VGroup):
         self._lay()
 
         def update(_, alpha: float) -> None:
+            before = block.fall
             block.fall = 1 - alpha ** 2  # gravity: it speeds up all the way down (the rate is linear, no ease-out)
             block.show(min(1.0, alpha * 4))
             if alpha >= 1.0 and not block.landed:
                 block.landed = True
-                speed = 2 * DROP / max(animation.run_time, 1e-3)  # the speed it hits the pan at, units per second
+                step = (before - block.fall) * DROP  # how far it fell in the last step, and in the time it took
+                speed = step / animation.dt if animation.dt > 0 else 2 * DROP / max(animation.run_time, 1e-3)
                 self._omega += (1.0 if value > 0 else -1.0) * IMPACT * min(abs(value), BIGGEST) / BIGGEST * speed
             elif alpha < 1.0:
                 block.landed = False
-            self._lay()
-        animation = UpdateFromAlphaFunc(self, update, rate_func=linear)
+        animation = _Timed(self, update, rate_func=linear)
         return animation
 
     def announce(self) -> Animation:
         """Say the verdict beneath the scale (the total is on the dial)."""
         def update(_, alpha: float) -> None:
             self._announced = alpha
-            self._lay()
         return UpdateFromAlphaFunc(self, update)
 
     def _lay(self) -> None:
@@ -176,8 +179,8 @@ class Balance(VGroup):
         for side, i in (("yes", 0), ("no", 2)):
             top, pan = self.end(side), self.pan_centre(side)
             left, right = pan + [-PAN, 0, 0], pan + [PAN, 0, 0]
-            self.strings[i].put_start_and_end_on(top, left)
-            self.strings[i + 1].put_start_and_end_on(top, right)
+            for k, corner in enumerate((left, right)):
+                self._string((i + k) * STRING_PIECES, top, corner, side)
             self.plates[side].put_start_and_end_on(left, right)
             y = pan[1] + GAP
             for k in self.pans[side]:
@@ -185,6 +188,35 @@ class Balance(VGroup):
                 y += k.side + GAP
             self.labels[side].move_to(pan + DOWN * 0.4)
         self._speak(pivot)
+
+    def _string(self, first: int, top: np.ndarray, corner: np.ndarray, side: str) -> None:
+        """A string from the beam to a corner of its pan, stopping at any block it would cross."""
+        covered = []
+        for k in self.pans[side]:
+            lo, hi = _inside(top, corner, k.box)
+            if hi > lo:
+                covered.append([lo, hi])
+        covered.sort()
+        merged = []
+        for lo, hi in covered:
+            if merged and lo <= merged[-1][1] + 0.05:  # blocks a gap apart read as one
+                merged[-1][1] = max(merged[-1][1], hi)
+            else:
+                merged.append([lo, hi])
+        shown, start = [], 0.0
+        for lo, hi in merged + [[1.0, 1.0]]:
+            if lo > start + 1e-6:
+                shown.append((start, lo))
+            start = max(start, hi)
+        for n in range(STRING_PIECES):
+            piece = self.strings[first + n]
+            if n < len(shown):
+                a, z = shown[n]
+                piece.put_start_and_end_on(top + (corner - top) * a, top + (corner - top) * z)
+                piece.set_stroke(opacity=1)
+            else:
+                piece.put_start_and_end_on(top, top + RIGHT * 1e-6)
+                piece.set_stroke(opacity=0)
 
     def _speak(self, pivot: np.ndarray) -> None:
         word = self.verdict()
@@ -201,7 +233,7 @@ class Balance(VGroup):
         colour = style.WARM[1] if total > 0 else style.COOL[1] if total < 0 else style.ASH
         if (total, colour) != self._read:
             self._read = (total, colour)
-            fresh = numeral(style.number(total), colour, 0.42)
+            fresh = numeral(total_figure(total), colour, 0.42)
             self.reading.become(fresh)
             self.reading.text = fresh.text  # become() takes the glyphs, not the words
             self.mark.set_stroke(color=colour)
@@ -213,3 +245,29 @@ class Balance(VGroup):
 def _up(angle: float) -> np.ndarray:
     """Straight up from the pivot, turned with a beam at this angle (positive leans toward yes, on the left)."""
     return np.array([-np.sin(angle), np.cos(angle), 0.0])
+
+
+class _Timed(UpdateFromAlphaFunc):
+    """An alpha update that knows how long the frame it is drawing took: the scene tells every animation, inside
+    a group or a succession too, before it draws."""
+
+    dt = 0.0
+
+    def update_mobjects(self, dt: float) -> None:
+        self.dt = dt
+        super().update_mobjects(dt)
+
+
+def _inside(a: np.ndarray, b: np.ndarray, box) -> tuple:
+    """The stretch (as shares of the way from a to b) of that segment inside the box's rectangle."""
+    lo, hi = 0.0, 1.0
+    (x0, y0), (x1, y1) = box.get_corner(np.array([-1, -1, 0]))[:2], box.get_corner(np.array([1, 1, 0]))[:2]
+    for axis, (low, high) in enumerate(((x0, x1), (y0, y1))):
+        d = b[axis] - a[axis]
+        if abs(d) < 1e-12:
+            if not low <= a[axis] <= high:
+                return 1.0, 0.0
+            continue
+        t0, t1 = sorted(((low - a[axis]) / d, (high - a[axis]) / d))
+        lo, hi = max(lo, t0), min(hi, t1)
+    return lo, hi
