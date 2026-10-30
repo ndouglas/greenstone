@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 from manim import ImageMobject, tempconfig
 
-from series import style
+from series import ember, memory, style
 from series.memory import MemoryGrid
 from series.screen import Screen
 from series.tests.test_screen import FULL_HD, synthetic
@@ -26,6 +26,9 @@ class MemoryGridTest(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+
+    def test_the_grid_draws_its_numbers_in_the_bundled_charter(self):
+        self.assertEqual(Path(memory.font().path), ember.ROMAN)
 
     def test_the_grid_holds_every_byte(self):
         with tempconfig(FULL_HD):

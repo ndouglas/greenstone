@@ -8,6 +8,7 @@ import numpy as np
 import soundfile
 from manim import Dot, FadeIn, ImageMobject, Text, VGroup, tempconfig
 
+from series import style
 from series.credits import PAGE_SECONDS, credits_seconds
 from series.scene import NarratedScene, ScriptOrderError, StoryboardScene
 from series.title import board_tiles, title_card
@@ -380,7 +381,7 @@ class Chapters(unittest.TestCase):
         card = title_card(video.sections[1], board_tiles(video.sections[1]))
         words = [m for m in card.get_family() if isinstance(m, Text)]
         self.assertTrue(words)
-        self.assertTrue(all(m.font == "Charter" for m in words))
+        self.assertTrue(all(m.font == style.FONT for m in words))
         # The chapter number is italic, the title roman.
         slant = {m.text: m.slant for m in words}
         self.assertEqual(slant["Chapter1"], "ITALIC")
@@ -418,7 +419,7 @@ class Chapters(unittest.TestCase):
         render(S, d / "media")
         texts = [t for g in seen for t in g.get_family() if isinstance(t, Text)]
         self.assertTrue(texts)
-        self.assertTrue(all(t.font == "Charter" for t in texts))
+        self.assertTrue(all(t.font == style.FONT for t in texts))
 
     def test_the_wall_keeps_each_pictures_shape(self):
         from manim import Rectangle

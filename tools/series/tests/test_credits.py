@@ -5,6 +5,7 @@ from pathlib import Path
 
 from manim import Text, config
 
+from series import style
 from series.credits import DISCLAIMER, PAGE_SECONDS, credit_pages, credits_seconds, description
 from series.script import load_video
 
@@ -99,7 +100,7 @@ class Pages(unittest.TestCase):
     def test_credits_are_in_charter(self):
         for page in credit_pages(many()):
             words = [m for m in page.get_family() if isinstance(m, Text)]
-            self.assertTrue(all(m.font == "Charter" for m in words))
+            self.assertTrue(all(m.font == style.FONT for m in words))
             self.assertTrue(any(m.slant == "ITALIC" and m.text.startswith("Sources") for m in words) or page is credit_pages(many())[-1])
         last = [m for m in credit_pages(many())[-1].get_family() if isinstance(m, Text)]
         self.assertEqual(last[-1].slant, "ITALIC")

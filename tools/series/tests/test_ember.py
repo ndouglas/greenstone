@@ -1,10 +1,12 @@
 import unittest
+from pathlib import Path
+from unittest import mock
 
 import manimpango
 import numpy as np
 from manim import ValueTracker
 
-from series import style
+from series import ember, style
 from series.ember import backdrop, fade_image, glow, serif
 from series.style import ASH, COOL, TEXT, WARM, light, number, temperature
 
@@ -59,10 +61,19 @@ class TestEmber(unittest.TestCase):
         self.assertGreater((np.diff(row) != 0).mean(), 0.3)  # undithered, most neighbours are equal
         self.assertLessEqual(np.abs(np.diff(row)).max(), 3)
 
-    def test_serif_is_charter(self):
-        self.assertIn("Charter", manimpango.list_fonts(), "install Charter")
-        self.assertEqual(serif("x", TEXT).font, "Charter")
-        self.assertEqual(style.FONT, "Charter")
+    def test_serif_is_the_bundled_charter(self):
+        fonts = Path(ember.__file__).parent / "fonts"
+        self.assertEqual({ember.ROMAN.parent, ember.ITALIC_FILE.parent}, {fonts})  # in the repo, not the machine's
+        self.assertTrue(ember.ROMAN.exists() and ember.ITALIC_FILE.exists())
+        self.assertTrue((fonts / "LICENSE").read_text().count("BITSTREAM CHARTER is a registered trademark"))
+        self.assertIn("XCharter", manimpango.list_fonts())  # registered on import
+        self.assertEqual(style.FONT, "XCharter")
+        self.assertEqual(serif("x", TEXT).font, "XCharter")
+
+    def test_a_missing_font_is_an_error_not_a_substitute(self):
+        with mock.patch.object(ember, "ROMAN", Path("/nowhere/XCharter-Roman.otf")):
+            with self.assertRaisesRegex(FileNotFoundError, "XCharter-Roman"):
+                ember.register_fonts()
 
     def test_fading_an_image_keeps_its_gradient(self):
         image = glow(WARM[0], 1.0)

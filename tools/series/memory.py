@@ -9,7 +9,7 @@ import numpy as np
 from manim import UP, Animation, Group, ImageMobject, Line, Rectangle, UpdateFromAlphaFunc
 from PIL import Image, ImageDraw, ImageFont
 
-from series import style
+from series import ember, style
 from series.ember import _rgb, glow_box, serif
 from series.recording import Recording
 from series.screen import Screen
@@ -17,7 +17,6 @@ from series.screen import Screen
 BYTES = 2048
 CELL_PX = (36, 20)  # a cell's size in the grid's own image
 FONT_PX = 17
-FONTS = ("/System/Library/Fonts/Supplemental/Charter.ttc", "/Library/Fonts/Charter.ttc")
 DIM = 0.8  # a number's brightness; zero is dimmer still
 ZERO = 0.5  # zero's share of it
 ZOOM = 3.6  # how much larger a lit square is than its cell
@@ -25,13 +24,9 @@ REACH = 0.25
 GLOW = 0.5
 
 
-def font() -> ImageFont.ImageFont:
-    for path in FONTS:
-        try:
-            return ImageFont.truetype(path, FONT_PX)
-        except OSError:
-            continue
-    return ImageFont.load_default(FONT_PX)
+def font() -> ImageFont.FreeTypeFont:
+    """The series' Charter at the grid's size (ember.register_fonts has already refused a missing file)."""
+    return ImageFont.truetype(str(ember.ROMAN), FONT_PX)
 
 
 class Lit(Group):

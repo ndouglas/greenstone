@@ -1,11 +1,29 @@
 """Ember's ground and light: the backdrop, the glow, the serif type, and live (self-redrawing) objects."""
 
+from pathlib import Path
 from typing import Callable
 
+import manimpango
 import numpy as np
 from manim import ITALIC, RIGHT, ImageMobject, Mobject, Text, ValueTracker, config
 
 from series import style
+
+# The type travels with the repo (XCharter, the free Bitstream Charter extended), so a render on any machine
+# sets the same letters; a missing file is an error, never a quiet substitute.
+ROMAN = Path(__file__).parent / "fonts" / "XCharter-Roman.otf"
+ITALIC_FILE = Path(__file__).parent / "fonts" / "XCharter-Italic.otf"
+
+
+def register_fonts() -> None:
+    for path in (ROMAN, ITALIC_FILE):
+        if not path.exists():
+            raise FileNotFoundError(f"the series' type is missing: {path}")
+        if not manimpango.register_font(str(path)):
+            raise RuntimeError(f"Pango wouldn't register {path}")
+
+
+register_fonts()
 
 
 def backdrop(focus: np.ndarray = RIGHT * 3) -> ImageMobject:

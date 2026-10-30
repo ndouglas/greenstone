@@ -1,7 +1,7 @@
 """The series' visual language, Ember: sign is temperature, magnitude is light.
 
 Warm colours are positive, cool are negative, ash is zero. One light scale
-per video says how bright a value is. Numbers are set in Charter.
+per video says how bright a value is. Words and numbers are set in Charter.
 """
 
 import math
@@ -12,7 +12,7 @@ TEXT = "#FBE3C4"  # parchment
 ASH = "#A88A6C"
 WARM = ("#F2B34A", "#EE8660", "#FFD59A", "#E8597A", "#C0392B")  # amber, coral, gold, rose, crimson
 COOL = ("#4F8FB8", "#7FB7E0", "#5EC8D8", "#9A8CF0")  # blue, light blue, teal, violet
-FONT = "Charter"
+FONT = "XCharter"  # Charter, bundled in series/fonts and registered by series.ember
 
 LIGHT_SCALE = 60.0  # the video's one light scale; a video may set its own, once
 
