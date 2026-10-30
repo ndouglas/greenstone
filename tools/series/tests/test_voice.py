@@ -8,7 +8,9 @@ import soundfile
 from series.script import load_video
 from importlib.metadata import version
 
-from series.voice import TAKES, KokoroEngine, take_problems, voices
+from series.takes import TakeStore
+from series.tests.test_takes import speech
+from series.voice import TAKES, KokoroEngine, narrator, take_problems, voices
 
 RATE = 24000
 
@@ -91,6 +93,38 @@ class Voices(unittest.TestCase):
         got, stale = voices(load_video(d), FakeEngine(), self.out)
         self.assertEqual(got["one"].source, "synth")
         self.assertEqual(stale, ["one"])
+
+    def test_a_chosen_take_is_processed_and_used(self):
+        d = video()
+        TakeStore(d / TAKES).add("one", speech(), 48000, "The first line.")
+        got, stale = voices(load_video(d), FakeEngine(), self.out)
+        self.assertEqual(got["one"].source, "take")
+        self.assertEqual(got["one"].path.parent, self.out / "takes")
+        self.assertIsNotNone(got["one"].gain_db)
+        self.assertEqual(soundfile.info(got["one"].path).samplerate, 48000)
+        self.assertIsNone(got["two"].gain_db)
+
+    def test_a_take_goes_stale_when_the_text_changes(self):
+        d = video()
+        TakeStore(d / TAKES).add("one", speech(), 48000, "Old.")
+        got, stale = voices(load_video(d), FakeEngine(), self.out)
+        self.assertEqual(got["one"].source, "synth")
+        self.assertEqual(stale, ["one"])
+
+    def test_the_narrator_is_kept_for_recorded_lines(self):
+        d, engine = video(), FakeEngine()
+        TakeStore(d / TAKES).add("one", speech(), 48000, "The first line.")
+        v = load_video(d)
+        voices(v, engine, self.out)
+        self.assertTrue(narrator(v, engine, self.out)["one"].exists())
+        voices(v, engine, self.out)
+        self.assertEqual(engine.calls, ["The first line.", "w times x, plus b"])
+
+    def test_raw_takes_for_unknown_ids_are_reported(self):
+        d = video()
+        TakeStore(d / TAKES).add("ghost", speech(), 48000, "Boo.")
+        problems = take_problems(load_video(d))
+        self.assertTrue(any("ghost" in p for p in problems), problems)
 
     def test_half_registered_takes_are_reported(self):
         d = video()
