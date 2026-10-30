@@ -1,12 +1,16 @@
 import json
 import tempfile
+import threading
 import unittest
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 import numpy as np
 import soundfile
 
-from series.record import ROOM_SECONDS, Session, checks
+import series.record
+from series.record import ROOM_SECONDS, Session, checks, serve
 from series.script import load_video
 from series.takes import Take, TakeStore
 from series.tests.test_takes import speech
@@ -171,6 +175,56 @@ class State(unittest.TestCase):
         s.goto(0)
         self.assertEqual(s.state()["beat"]["position"], "Introduction · beat 1 of 1")
         self.assertIsNone(s.state()["before"])
+
+
+class Server(unittest.TestCase):
+    def setUp(self):
+        self.s, self.fake, _ = session()
+        self.server = serve(self.s, 0)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.url = f"http://127.0.0.1:{self.server.server_address[1]}"
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+
+    def post(self, body):
+        request = urllib.request.Request(f"{self.url}/action", data=json.dumps(body).encode(),
+                                         headers={"Content-Type": "application/json"})
+        return urllib.request.urlopen(request)
+
+    def test_the_server_drives_the_session(self):
+        self.post({"do": "start"})
+        self.fake.feed(speech())
+        self.post({"do": "stop"})
+        state = json.load(urllib.request.urlopen(f"{self.url}/state"))
+        self.assertEqual(len(state["takes"]), 1)
+        wav = Path(tempfile.mkdtemp()) / "take.wav"
+        wav.write_bytes(urllib.request.urlopen(f"{self.url}/take/h/1.wav").read())
+        self.assertEqual(soundfile.info(wav).samplerate, 48000)
+        self.assertGreater(len(urllib.request.urlopen(f"{self.url}/narrator/h.wav").read()), 44)
+        self.post({"do": "next"})
+        self.post({"do": "goto", "n": 3})
+        self.assertEqual(self.s.index, 3)
+        self.assertIn(b"<html", urllib.request.urlopen(self.url + "/").read().lower())
+
+    def test_the_server_refuses_unknown_actions(self):
+        for body in ({"do": "delete"}, {"do": "choose", "n": "x"}, {"do": "choose", "n": 7}):
+            with self.assertRaises(urllib.error.HTTPError) as e:
+                self.post(body)
+            self.assertEqual(e.exception.code, 400)
+        with self.assertRaises(urllib.error.HTTPError) as e:
+            urllib.request.urlopen(f"{self.url}/take/../../etc/1.wav")
+        self.assertEqual(e.exception.code, 404)
+        self.assertEqual(self.s.store.takes("h"), [])
+
+    def test_the_server_listens_only_locally(self):
+        self.assertEqual(self.server.server_address[0], "127.0.0.1")
+
+    def test_the_page_names_every_key(self):
+        page = (Path(series.record.__file__).parent / "record.html").read_text()
+        for key in ("Space", "Enter", "R", "P", "N", "Esc", "1–9", "room tone"):
+            self.assertIn(key, page)
 
 
 if __name__ == "__main__":

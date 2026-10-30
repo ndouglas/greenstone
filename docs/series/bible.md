@@ -291,6 +291,11 @@ still as a horizon, so every dot's height above it is its total.
 5. **Sketches:** each animation explored alone with
    `python -m series.sketch`, judged from its contact sheet and iterated.
    Nate reviews.
-6. **Full render:** `python -m series.build NNN-slug`; it checks each
+6. **Narration:** Nate records every beat with
+   `python -m series.record NNN-slug` (a page on his own machine: one
+   key per take, every take kept raw; the sound is applied at build
+   time). A release build, `python -m series.build NNN-slug --release`,
+   refuses any beat still in the narrator's voice (Nate, 2026-10-30).
+7. **Full render:** `python -m series.build NNN-slug`; it checks each
    section's length again as rendered, since a scene's own waits count.
    Nate reviews.

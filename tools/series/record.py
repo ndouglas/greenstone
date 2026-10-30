@@ -1,10 +1,16 @@
 """The beat recorder: Nate reads a video's beats one at a time, as many
 takes as each needs (docs/superpowers/specs/2026-10-30-beat-recorder-design.md).
 
-Usage: cd tools && series/.venv/bin/python -m series.record NAME [--device NAME] [--list-devices]
+Usage: cd tools && series/.venv/bin/python -m series.record NAME [--device NAME] [--list-devices] [--no-browser]
 """
 
+import argparse
+import json
+import re
 import threading
+import tomllib
+import webbrowser
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Callable, Protocol
 
@@ -200,3 +206,118 @@ class Session:
             "strip": [self._status(l) for l in lines],
             "room": self.store.room() is not None,
         }
+
+
+ACTIONS = {"start", "stop", "abandon", "next", "prev", "goto", "choose", "room"}
+PAGE = Path(__file__).resolve().parent / "record.html"
+TAKE_URL = re.compile(r"^/take/([a-z0-9-]+)/(\d+)\.wav$")
+NARRATOR_URL = re.compile(r"^/narrator/([a-z0-9-]+)\.wav$")
+
+
+def serve(session: Session, port: int) -> ThreadingHTTPServer:
+    """The recorder's page and its actions, on this machine only."""
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def send(self, code: int, body: bytes = b"", kind: str = "text/plain") -> None:
+            self.send_response(code)
+            self.send_header("Content-Type", kind)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            path = self.path.split("?")[0]
+            if path == "/":
+                return self.send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
+            if path == "/state":
+                return self.send(200, json.dumps(session.state()).encode(), "application/json")
+            wav = None
+            if m := TAKE_URL.match(path):
+                try:
+                    wav = session.processed(m.group(1), int(m.group(2)))
+                except StopIteration:
+                    wav = None
+            elif m := NARRATOR_URL.match(path):
+                wav = session.narration.get(m.group(1))
+            if wav is None:
+                return self.send(404, b"not found")
+            self.send(200, Path(wav).read_bytes(), "audio/wav")
+
+        def do_POST(self):
+            if self.path != "/action":
+                return self.send(404, b"not found")
+            try:
+                body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
+                do, n = body.get("do"), body.get("n")
+                if do not in ACTIONS or (do in ("goto", "choose") and not isinstance(n, int)):
+                    raise ValueError(f"unknown action {body!r}")
+                if do == "goto":
+                    session.goto(n)
+                elif do == "choose":
+                    session.choose(n)
+                elif do == "room":
+                    session.record_room()
+                else:
+                    getattr(session, do)()
+            except (ValueError, TypeError, AttributeError) as e:
+                return self.send(400, str(e).encode())
+            self.send(200, json.dumps(session.state()).encode(), "application/json")
+
+    return ThreadingHTTPServer(("127.0.0.1", port), Handler)
+
+
+def remembered_device(store: TakeStore, name: str | None) -> str | None:
+    """The input named on the command line, remembered in takes/recorder.toml; else the last one used."""
+    path = store.dir / "recorder.toml"
+    if name is not None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"device = {json.dumps(name)}\n")
+        return name
+    return tomllib.loads(path.read_text()).get("device") if path.exists() else None
+
+
+def main() -> None:
+    from series.build import OUT
+    from series.script import VIDEOS, load_video
+    from series.voice import TAKES, KokoroEngine, narrator
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("name", nargs="?")
+    parser.add_argument("--device", help="the input device's name (remembered)")
+    parser.add_argument("--list-devices", action="store_true")
+    parser.add_argument("--port", type=int, default=8770)
+    parser.add_argument("--no-browser", action="store_true", help="don't open the page")
+    args = parser.parse_args()
+    if args.list_devices:
+        import sounddevice
+        print(sounddevice.query_devices())
+        return
+    if args.name is None:
+        parser.error("name the video, e.g. 001-one-neuron")
+    video = load_video(VIDEOS / args.name)
+    store = TakeStore(video.dir / TAKES)
+    out = OUT / args.name
+    print("Voicing the narrator's guide readings (cached after the first time)…")
+    session = Session(video, store, DeviceInput(remembered_device(store, args.device)), narrator(video, KokoroEngine(), out),
+                      out / "recorder")
+    session.open()
+    server = serve(session, args.port)
+    url = f"http://127.0.0.1:{args.port}/"
+    print(f"Recording {args.name} at {url} (Ctrl-C to finish)")
+    if not args.no_browser:
+        webbrowser.open(url)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        session.close()
+        server.server_close()
+
+
+if __name__ == "__main__":
+    main()

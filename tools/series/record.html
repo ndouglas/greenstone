@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beat recorder</title>
+<style>
+  :root {
+    --bg: #15171a; --panel: #1e2125; --text: #eceae4; --dim: #7c7f86; --faint: #3a3e44;
+    --rec: #e5484d; --ok: #46a758; --warn: #f5a524; --accent: #6e9cf5;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Inter", sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 140px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; color: var(--dim); }
+  #position { font-size: 15px; letter-spacing: 0.02em; }
+  #section { color: var(--text); font-weight: 600; }
+  .context { color: var(--dim); font-size: 19px; min-height: 1.4em; margin: 20px 0; opacity: 0.7; }
+  #text { font-size: 38px; line-height: 1.35; margin: 8px 0; font-weight: 500; }
+  #board { color: var(--dim); font-size: 14px; margin-top: 6px; }
+  #board::before { content: "On screen: "; color: var(--faint); }
+  .row { display: flex; align-items: center; gap: 16px; margin: 24px 0 8px; flex-wrap: wrap; }
+  #status { font-weight: 600; min-width: 140px; }
+  #status.rec { color: var(--rec); }
+  #status.rec::before { content: "● "; }
+  meter { width: 260px; height: 14px; }
+  #db { color: var(--dim); font-variant-numeric: tabular-nums; width: 64px; }
+  #takes { display: flex; gap: 8px; flex-wrap: wrap; }
+  .take { background: var(--panel); border: 2px solid transparent; border-radius: 8px; padding: 8px 12px;
+          cursor: pointer; font-variant-numeric: tabular-nums; }
+  .take.chosen { border-color: var(--ok); }
+  .take.stale { opacity: 0.5; }
+  .take .n { font-weight: 700; margin-right: 6px; }
+  .take .p { display: block; color: var(--warn); font-size: 12px; }
+  #narrator { color: var(--dim); font-size: 14px; }
+  label, button { color: var(--dim); font-size: 14px; }
+  button { background: var(--panel); border: 1px solid var(--faint); border-radius: 6px; padding: 6px 10px;
+           color: var(--text); cursor: pointer; }
+  #keys { color: var(--dim); font-size: 13px; margin-top: 28px; line-height: 1.9; }
+  kbd { background: var(--panel); border: 1px solid var(--faint); border-radius: 4px; padding: 1px 6px;
+        color: var(--text); font: 12px ui-monospace, monospace; }
+  #strip { position: fixed; left: 0; right: 0; bottom: 0; background: var(--panel); padding: 12px 16px;
+           display: flex; gap: 2px; align-items: flex-end; }
+  #strip div { flex: 1; height: 18px; border-radius: 2px; cursor: pointer; background: var(--faint); }
+  #strip div.recorded { background: var(--ok); }
+  #strip div.stale { background: var(--warn); }
+  #strip div.here { height: 30px; outline: 2px solid var(--text); }
+  #summary { position: fixed; right: 16px; bottom: 50px; color: var(--dim); font-size: 13px; }
+  @media (max-width: 600px) { #text { font-size: 28px; } meter { width: 140px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div><span id="section"></span> <span id="position"></span></div>
+    <div id="narrator"></div>
+  </header>
+  <div class="context" id="before"></div>
+  <div id="text"></div>
+  <div id="board"></div>
+  <div class="context" id="after"></div>
+
+  <div class="row">
+    <span id="status">Ready</span>
+    <meter id="level" min="-60" max="0" low="-30" high="-6" optimum="-18"></meter>
+    <span id="db"></span>
+  </div>
+  <div id="takes"></div>
+
+  <div class="row">
+    <label><input type="checkbox" id="playback" checked> Play back after each take</label>
+    <button id="room">Record room tone (10 s of quiet)</button>
+    <span id="roomstate"></span>
+  </div>
+
+  <div id="keys">
+    <kbd>Space</kbd> start / stop a take &nbsp; <kbd>R</kbd> another take &nbsp; <kbd>Esc</kbd> abandon the take<br>
+    <kbd>Enter</kbd> or <kbd>→</kbd> next beat &nbsp; <kbd>←</kbd> previous beat &nbsp; <kbd>1–9</kbd> choose a take<br>
+    <kbd>P</kbd> play the chosen take &nbsp; <kbd>N</kbd> play the narrator's reading
+  </div>
+</main>
+<div id="summary"></div>
+<div id="strip"></div>
+
+<script>
+let state = null;
+const $ = (id) => document.getElementById(id);
+const player = new Audio();
+const playback = $("playback");
+try { playback.checked = localStorage.getItem("playback") !== "off"; } catch (e) {}
+playback.addEventListener("change", () => {
+  try { localStorage.setItem("playback", playback.checked ? "on" : "off"); } catch (e) {}
+});
+
+async function act(body) {
+  const r = await fetch("/action", { method: "POST", headers: { "Content-Type": "application/json" },
+                                     body: JSON.stringify(body) });
+  if (r.ok) { state = await r.json(); render(); }
+  return r.ok;
+}
+
+function play(url) { player.src = url + "?t=" + Date.now(); player.play(); }
+function chosen() { return state && state.takes.find((t) => t.chosen); }
+
+function render() {
+  if (!state) return;
+  const b = state.beat;
+  $("section").textContent = b.section || "";
+  $("position").textContent = b.position;
+  $("text").textContent = b.text;
+  $("board").textContent = b.board || "";
+  $("before").textContent = state.before || "";
+  $("after").textContent = state.after || "";
+  $("narrator").textContent = `Narrator: ${state.narrator_seconds.toFixed(1)} s`;
+  const status = $("status");
+  status.className = state.recording ? "rec" : "";
+  status.textContent = state.room_recording ? "Recording room tone…" : state.recording ? "Recording" : "Ready";
+  $("level").value = Math.max(-60, state.level);
+  $("db").textContent = `${Math.round(state.level)} dB`;
+  $("roomstate").textContent = state.room ? "Room tone recorded" : "No room tone yet";
+
+  const takes = $("takes");
+  takes.replaceChildren(...state.takes.map((t) => {
+    const el = document.createElement("div");
+    el.className = "take" + (t.chosen ? " chosen" : "") + (t.stale ? " stale" : "");
+    el.innerHTML = `<span class="n"></span><span class="s"></span><span class="p"></span>`;
+    el.querySelector(".n").textContent = t.number;
+    el.querySelector(".s").textContent = `${t.seconds.toFixed(1)} s` + (t.stale ? " · old text" : "");
+    el.querySelector(".p").textContent = t.problems.join(", ");
+    el.addEventListener("click", () => { act({ do: "choose", n: t.number }); play(`/take/${b.id}/${t.number}.wav`); });
+    return el;
+  }));
+
+  const strip = $("strip");
+  if (strip.children.length !== state.strip.length) {
+    strip.replaceChildren(...state.strip.map((_, i) => {
+      const el = document.createElement("div");
+      el.addEventListener("click", () => act({ do: "goto", n: i }));
+      return el;
+    }));
+  }
+  state.strip.forEach((s, i) => { strip.children[i].className = s + (i === state.index ? " here" : ""); });
+  const done = state.strip.filter((s) => s === "recorded").length;
+  const stale = state.strip.filter((s) => s === "stale").length;
+  $("summary").textContent = `${done} of ${state.strip.length} recorded` + (stale ? ` · ${stale} stale` : "");
+}
+
+async function poll() {
+  try { const r = await fetch("/state"); state = await r.json(); render(); } catch (e) {}
+  setTimeout(poll, 66);
+}
+
+document.addEventListener("keydown", async (e) => {
+  if (!state || e.metaKey || e.ctrlKey || e.target.tagName === "INPUT") return;
+  const key = e.key;
+  if (key === " ") {
+    e.preventDefault();
+    if (state.recording) {
+      await act({ do: "stop" });
+      const t = chosen();
+      if (playback.checked && t && t === state.takes[state.takes.length - 1]) play(`/take/${state.beat.id}/${t.number}.wav`);
+    } else {
+      player.pause();
+      act({ do: "start" });
+    }
+  } else if (key === "Enter" || key === "ArrowRight") { act({ do: "next" }); }
+  else if (key === "ArrowLeft") { act({ do: "prev" }); }
+  else if (key === "r" || key === "R") { if (!state.recording) { player.pause(); act({ do: "start" }); } }
+  else if (key === "Escape") { act({ do: "abandon" }); }
+  else if (key === "p" || key === "P") { const t = chosen(); if (t) play(`/take/${state.beat.id}/${t.number}.wav`); }
+  else if (key === "n" || key === "N") { play(`/narrator/${state.beat.id}.wav`); }
+  else if (/^[1-9]$/.test(key)) { act({ do: "choose", n: Number(key) }); }
+});
+$("room").addEventListener("click", (e) => { e.target.blur(); act({ do: "room" }); });
+poll();
+</script>
+</body>
+</html>
