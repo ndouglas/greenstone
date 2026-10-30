@@ -3,9 +3,10 @@ ruler under Mario's feet and the setting at the floor run off the screen into on
 them shaded; it answers "in the air" until the run ends in the pit."""
 
 import numpy as np
-from manim import RIGHT, UP, Create, FadeIn, Scene, ValueTracker, config
+from manim import RIGHT, UP, Create, FadeIn, ValueTracker, config
 
 from series.ember import backdrop
+from series.exact import ExactScene
 from series.neuron import Input, Neuron
 from series.overlays import gap_band, feet_line, setting_line
 from series.recording import Recording
@@ -33,7 +34,7 @@ def faded(band, shown: ValueTracker) -> None:
     band.add_updater(lambda m: m.set_fill(opacity=m.get_fill_opacity() * shown.get_value()))
 
 
-class Sketch(Scene):
+class Sketch(ExactScene):
     def construct(self):
         self.add(backdrop())
         screen = Screen(Recording("smb1"), START, left_px=36 * config.pixel_height // 1080)

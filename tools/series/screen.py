@@ -97,7 +97,7 @@ class Footage(GameFootage):
         if not 0 <= start < len(recording):
             raise ValueError(f"{recording.game} has {len(recording)} frames; start {start} is outside it")
         self.frames, self.take, self.size = recording.frames, recording.game, size
-        self.warned, self.start_frame, self.elapsed = False, start, 0.0
+        self.warned, self.start_frame, self.elapsed, self.ahead = False, start, 0.0, False
         ImageMobject.__init__(self, self.picture(start))
         self.set_resampling_algorithm(RESAMPLING_ALGORITHMS["bilinear"] if size else NEAREST)
         self.add_updater(Footage.advance)
@@ -116,9 +116,17 @@ class Footage(GameFootage):
         return min(self.start_frame + round(self.elapsed * NES_FPS), len(self.frames) - 1)
 
     def advance(self, dt: float) -> None:
+        if self.ahead:  # an ExactScene already moved it on this frame
+            self.ahead = False
+            return
         GameFootage.advance(self, dt)  # keeps its clock and its warning past the end
         if self.size:
             self.pixel_array = self.picture(self.index())
+
+    def advance_first(self, dt: float) -> None:
+        """Move on before the scene's other updaters run (see ExactScene); its own updater then stands aside."""
+        self.advance(dt)
+        self.ahead = True
 
 
 class Screen(Group):

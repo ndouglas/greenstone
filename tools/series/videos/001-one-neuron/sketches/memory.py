@@ -1,9 +1,10 @@
 """001's memory grid: the 2,048 bytes of work RAM as a sea of numbers beside the game that moves them, live for
 six seconds; then three squares light up and say what they are."""
 
-from manim import DOWN, UP, Scene, config
+from manim import DOWN, UP, config
 
 from series.ember import backdrop
+from series.exact import ExactScene
 from series.memory import MemoryGrid
 from series.recording import Recording
 from series.screen import Screen
@@ -12,7 +13,7 @@ START = 1247
 POSITION, LIVES, JUMPING = 0x0086, 0x075A, 0x001D  # docs/series/games/001.md; lives is SMB1's life counter
 
 
-class Sketch(Scene):
+class Sketch(ExactScene):
     def construct(self):
         self.add(backdrop())
         u = config.pixel_height / 1080

@@ -2,9 +2,10 @@
 three games side by side (the 3× ones with scanlines, the small ones averaged down)."""
 
 import numpy as np
-from manim import Scene, config
+from manim import config
 
 from series.ember import backdrop
+from series.exact import ExactScene
 from series.recording import Recording
 from series.screen import Screen
 
@@ -17,7 +18,7 @@ def at(x_px: float, y_px: float) -> np.ndarray:
     return np.array([x_px * px, y_px * px, 0])
 
 
-class Sketch(Scene):
+class Sketch(ExactScene):
     def construct(self):
         self.add(backdrop())
         recordings = {game: Recording(game) for game in GAMES}

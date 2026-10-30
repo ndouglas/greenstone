@@ -9,6 +9,8 @@ from manim.constants import RESAMPLING_ALGORITHMS
 
 from reservoir_film.model import NES_H, NES_W
 from series.recording import Recording
+from series.scene import NarratedScene
+from series.exact import ExactScene
 from series.screen import Screen, rounded_mask, screen_glow, screen_overlay
 
 NEAREST = RESAMPLING_ALGORITHMS["nearest"]
@@ -192,6 +194,26 @@ class TestScreen(unittest.TestCase):
         self.assertEqual(set(arriving), {5})
         self.assertGreater(after[-1], 5 + 20)
         self.assertEqual(after, sorted(after))
+
+    def test_marks_added_before_the_screen_still_read_the_picture_drawn(self):
+        recording, read, drawn = self.recording, [], []
+
+        class Marks(ExactScene):
+            def construct(self):
+                screen = Screen(recording, 5)
+                early, late = Mobject(), Mobject()
+                early.add_updater(lambda m: read.append(int(screen.ram()[0])))  # a mark added before the screen
+                late.add_updater(lambda m: drawn.append(int(screen.game.pixel_array[0, 0, 0])))  # the picture
+                self.add(early, screen, late)
+                self.wait(0.3)
+
+        with tempfile.TemporaryDirectory() as media:
+            with tempconfig({"pixel_width": 320, "pixel_height": 180, "frame_rate": 60, "media_dir": media,
+                             "disable_caching": True, "verbosity": "ERROR", "progress_bar": "none"}):
+                Marks().render()
+        self.assertGreater(len(set(drawn)), 10)
+        self.assertEqual(read, [f - 1 for f in drawn])  # the RAM one frame behind the picture actually drawn
+        self.assertTrue(issubclass(NarratedScene, ExactScene))
 
     def test_the_ram_matches_the_picture(self):
         with tempconfig(FULL_HD):

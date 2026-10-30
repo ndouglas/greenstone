@@ -5,6 +5,7 @@ import textwrap
 from manim import DOWN, LEFT, FadeIn, Mobject, Scene, VGroup, config, linear
 
 from series import style
+from series.exact import ExactScene
 from series.ember import backdrop, serif
 from series.credits import PAGE_SECONDS, credit_pages
 from series.pacing import STILLNESS, TITLE_HOLD
@@ -17,7 +18,7 @@ class ScriptOrderError(Exception):
     pass
 
 
-class NarratedScene(Scene):
+class NarratedScene(ExactScene):
     """Say every script line once, in order; each line's animations last as
     long as its voice. The build sets `video` and `voices`."""
 

@@ -5,9 +5,10 @@ import json
 from pathlib import Path
 
 import numpy as np
-from manim import RIGHT, UP, Scene, ValueTracker, config
+from manim import RIGHT, UP, ValueTracker, config
 
 from series.ember import backdrop
+from series.exact import ExactScene
 from series.neuron import Input, Neuron
 from series.overlays import feet_line, mario_middle, signed, speed_arrow
 from series.recording import Recording
@@ -20,7 +21,7 @@ START, END = 1247, 1943
 CENTRE = RIGHT * 2.3 + UP * 0.2
 
 
-class Sketch(Scene):
+class Sketch(ExactScene):
     def construct(self):
         self.add(backdrop())
         screen = Screen(Recording("smb1"), START, left_px=36 * config.pixel_height // 1080)
