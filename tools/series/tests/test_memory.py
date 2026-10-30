@@ -1,0 +1,77 @@
+import tempfile
+import unittest
+from pathlib import Path
+
+import numpy as np
+from manim import ImageMobject, tempconfig
+
+from series import style
+from series.memory import MemoryGrid
+from series.screen import Screen
+from series.tests.test_screen import FULL_HD, synthetic
+
+
+def play(animation) -> None:
+    animation.begin()
+    animation.interpolate(1.0)
+    animation.finish()
+
+
+class MemoryGridTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.recording = synthetic(Path(self.tmp.name))
+        self.recording.ram[:, 0xCE] = (np.arange(len(self.recording)) * 3) % 256
+        self.recording.ram[:, 0x75A] = 2
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_the_grid_holds_every_byte(self):
+        with tempconfig(FULL_HD):
+            screen = Screen(self.recording, 40, scale=1)
+            grid = MemoryGrid(screen)
+            self.assertEqual(len(grid.shown), 2048)
+            self.assertEqual(grid.value(0xCE), int(screen.ram()[0xCE]))
+            self.assertEqual(grid.value(0xCE), (39 * 3) % 256)  # the lagged RAM of the frame on screen
+            self.assertEqual(grid.value(0x75A), 2)
+            screen.game.elapsed = 10 / 60  # ten frames on
+            grid.update(0)
+            self.assertEqual(grid.value(0xCE), int(screen.ram()[0xCE]))
+            self.assertEqual(grid.value(0xCE), (49 * 3) % 256)
+
+    def test_only_changed_cells_are_redrawn(self):
+        with tempconfig(FULL_HD):
+            screen = Screen(self.recording, 40, scale=1)
+            grid = MemoryGrid(screen)
+            before = grid.image.pixel_array.copy()
+            screen.game.elapsed = 1 / 60
+            grid.update(0)
+            changed = (grid.image.pixel_array != before).any(axis=2)
+            rows, cols = np.nonzero(changed)
+            # byte 0 and byte 0xCE changed; nothing else was touched
+            for r, c in zip(rows, cols):
+                self.assertIn((r // grid.cell_px[1]) * grid.columns + c // grid.cell_px[0], (0, 0xCE))
+
+    def test_it_is_a_grid_of_columns(self):
+        with tempconfig(FULL_HD):
+            grid = MemoryGrid(self.recording, columns=32)
+            self.assertEqual(grid.rows, 64)
+            a, b = grid.square(0).get_center(), grid.square(33).get_center()
+            self.assertAlmostEqual(a[0], grid.square(1).get_center()[0] - (grid.square(1).get_center()[0] - a[0]))
+            self.assertAlmostEqual(b[0], grid.square(1).get_center()[0])  # 33 is column 1 of row 1
+            self.assertLess(b[1], a[1])
+
+    def test_a_lit_square_is_a_source(self):
+        with tempconfig(FULL_HD):
+            grid = MemoryGrid(Screen(self.recording, 40, scale=1))
+            source = grid.point(0x1D)
+            self.assertTrue(np.allclose(source(), grid.square(0x1D).get_center()))
+            grid.shift([1.0, -0.5, 0])  # it follows the grid
+            self.assertTrue(np.allclose(source(), grid.square(0x1D).get_center()))
+            self.assertAlmostEqual(source()[0], grid.image.get_left()[0] + (0x1D + 0.5) * grid.image.width / 64, places=5)
+            lit = grid.light(0x1D, "jumping")
+            play(lit)
+            self.assertTrue(np.allclose(source(), grid.square(0x1D).get_center()))
+            self.assertIn(style.WARM[0], [c.to_hex().upper() for c in grid.lit[0x1D].box.get_stroke_colors()])
+            self.assertEqual(grid.lit[0x1D].label.text, "jumping")
