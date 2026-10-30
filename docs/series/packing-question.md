@@ -139,6 +139,36 @@ throughout, and in time shown on screen:
   the reward hacking the essay found (the optimizer falling into the
   easiest path).
 
+## Patterns from Petri
+
+Anthropic's Petri ([article](https://www.anthropic.com/research/petri-open-source-auditing),
+[repo](https://github.com/safety-research/petri)) audits chat models: an
+agent plays out natural-language "seed" scenarios against a target, a judge
+scores each transcript, and people read the ones the scores surface. Its
+method transfers to our networks, some of it better than to chat:
+
+- **Rewind and branch.** Petri's auditor rolls a conversation back and
+  tries another move. A savestate is an exact rewind: from frame N, change
+  one byte or one button, play on, and compare what each neuron does on
+  the two timelines. On screen, two timelines splitting from one frame.
+- **One factor at a time.** Its clearest result came from ablations that
+  varied one condition and held the rest. Each experiment changes one
+  thing (the network's size, its seed, the level, the game) and keeps the
+  rest fixed.
+- **Seeds, fanned out.** A seed is a game, a stretch of RAM, a concept and
+  a neuron budget; one list of seeds runs in parallel on velaryon and
+  every run is comparable.
+- **Scores triage; reading decides.** The judge's numbers only pick which
+  transcripts to read, and the authors call their default metrics
+  reductive. Ours rank which neurons and moments to look at; the claims
+  rest on those moments, read closely and shown.
+- **A browser for the results.** Searchable, filterable transcripts are
+  our neuron browser: filter neurons by what lights them, jump to the
+  frames.
+- **Limits stated up front:** a small set of scenarios, tools no smarter
+  than today's models, metrics meant to be replaced. Each video says the
+  same of its own method.
+
 ## Open questions
 
 - How "related" is defined: by the game's own semantics (what the bytes
