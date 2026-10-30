@@ -35,6 +35,19 @@ def glow(colour: str, radius: float) -> ImageMobject:
     return ImageMobject(np.dstack([rgb, (alpha * 255).round()]).astype(np.uint8)).set(height=2 * radius)
 
 
+def glow_box(colour: str, side: float, pad: float) -> ImageMobject:
+    """A soft light round a square of the given side: one gradient image, falling off smoothly with the distance
+    from the square and exactly 0 at its own border, pad beyond the square."""
+    n = 257
+    y, x = np.mgrid[0:n, 0:n]
+    half = side / (side + 2 * pad) * (n // 2)  # the square's half-side in pixels
+    d = np.hypot(np.maximum(np.abs(x - n // 2) - half, 0), np.maximum(np.abs(y - n // 2) - half, 0)) / (n // 2 - half)
+    alpha = np.clip(np.exp(-(d / 0.45) ** 2) - np.exp(-(1 / 0.45) ** 2), 0, 1)
+    alpha[(np.abs(x - n // 2) == n // 2) | (np.abs(y - n // 2) == n // 2)] = 0
+    rgb = np.broadcast_to(_rgb(colour), (n, n, 3))
+    return ImageMobject(np.dstack([rgb, (alpha * 255).round()]).astype(np.uint8)).set(width=side + 2 * pad)
+
+
 def serif(text: str, colour: str, size: float = 0.42, italic: bool = True) -> Text:
     """Text in the series' serif; italic for quantities, upright for answers."""
     return Text(text, font=style.FONT, slant=ITALIC if italic else "NORMAL", color=colour).scale(size)

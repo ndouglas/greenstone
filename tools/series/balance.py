@@ -2,10 +2,10 @@
 blocks fall into the yes pan, minus blocks into the no pan, and the beam tips to the heavier. A balance says no."""
 
 import numpy as np
-from manim import DOWN, UP, Animation, Dot, Line, ManimColor, Square, UpdateFromAlphaFunc, VGroup, interpolate_color
+from manim import DOWN, UP, Animation, Dot, Group, Line, ManimColor, Square, UpdateFromAlphaFunc, VGroup, interpolate_color
 
 from series import style
-from series.ember import serif
+from series.ember import glow_box, serif
 
 HALF_BEAM = 3.0
 PIVOT = np.array([0.0, 2.2, 0.0])  # relative to the scale's own centre
@@ -16,12 +16,13 @@ TILT = 0.24  # the beam's greatest angle, radians
 SOFT = 80.0  # the sum at which the beam is most of the way to it
 BIGGEST = 160.0  # the value whose block is full size
 STEPS = 24  # pieces of the beam
-HALOS = 4
+REACH = 0.3  # how far a block's glow runs past its edge
+GLOW = 0.45  # the glow's strength at its brightest
 GAP = 0.06
 
 
-class Block(VGroup):
-    """One term: a hairline square with a faint fill and a soft glow, its number roman inside."""
+class Block(Group):
+    """One term (a Group, since its glow is an image): a hairline square with a faint fill and a soft glow, its number roman inside."""
 
     def __init__(self, value: float, label: str, hue: int):
         super().__init__()
@@ -29,23 +30,22 @@ class Block(VGroup):
         self.colour = style.temperature(value if value else -1, hue)
         self.side = 0.3 + 0.85 * (min(abs(value), BIGGEST) / BIGGEST) ** 0.5
         self.fall = 1.0  # 1 high above its pan, 0 resting on it
-        self.halos = [Square(self.side + 0.12 * (i + 1), stroke_width=0, fill_color=self.colour, fill_opacity=0.0)
-                      for i in range(HALOS)]
+        self.glow = glow_box(self.colour, self.side, REACH)
+        self._alpha = self.glow.pixel_array[:, :, 3].astype(float)
         self.box = Square(self.side, stroke_color=self.colour, stroke_width=1.2, fill_color=self.colour, fill_opacity=0.0)
         self.text = serif(label, style.TEXT, 0.4, italic=False)
-        self.add(*self.halos, self.box, self.text)
+        self.add(self.glow, self.box, self.text)
         self.shown = 0.0
 
     def show(self, level: float) -> None:
         self.shown = level
-        for h in self.halos:
-            h.set_fill(opacity=0.035 * level)
+        self.glow.pixel_array[:, :, 3] = np.round(self._alpha * GLOW * level).astype(np.uint8)
         self.box.set_fill(opacity=0.12 * level)
         self.box.set_stroke(opacity=level)
         self.text.set_opacity(level)
 
 
-class Balance(VGroup):
+class Balance(Group):
     """yes on the left pan (warm), no on the right (cool). drop() lets a block fall; verdict() reads the tilt."""
 
     def __init__(self, yes: str, no: str, at: np.ndarray = np.zeros(3)):
@@ -71,7 +71,7 @@ class Balance(VGroup):
         self.labels = {"yes": serif(yes, style.WARM[1], 0.4), "no": serif(no, style.COOL[1], 0.4)}
         self.verdict_label = serif(no, style.COOL[1], 0.55)
         self.total_label = serif("0", style.COOL[1], 0.5, italic=False)
-        self.stack = VGroup()  # the blocks, in the pans
+        self.stack = Group()  # the blocks, in the pans
         self.add(self.post, self.beam, self.strings, *self.plates.values(), self.hub, *self.labels.values(),
                  self.stack, self.verdict_label, self.total_label)
         self._lay()
