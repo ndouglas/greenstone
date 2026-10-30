@@ -34,6 +34,24 @@ class Trim(unittest.TestCase):
         start, _ = trim(speech(at=0.05), RATE)
         self.assertEqual(start, 0.0)
 
+    def test_room_noise_with_bumps_is_not_speech(self):
+        # Like a real "nobody speaking" take: room noise around -40 dB RMS,
+        # with a few louder bumps, but nothing held at speaking level.
+        rng = np.random.default_rng(1)
+        audio = (rng.standard_normal(RATE * 2) * 10 ** (-40 / 20)).astype(np.float32)
+        for at in (0.3, 0.9, 1.4):
+            audio[int(at * RATE):int(at * RATE) + 960] *= 3.5  # 20 ms bumps near -31 dB
+        self.assertIsNone(trim(audio, RATE))
+
+    def test_key_clicks_at_the_ends_are_not_speech(self):
+        audio = speech(at=1.0, length=0.5, total=2.5)
+        click = np.hanning(240).astype(np.float32) * 0.5
+        audio[int(0.05 * RATE):int(0.05 * RATE) + 240] += click  # the start key, released
+        audio[-int(0.08 * RATE):-int(0.08 * RATE) + 240] += click  # the stop key, pressed
+        start, end = trim(audio, RATE)
+        self.assertAlmostEqual(start, 1.0 - PAD, delta=0.03)
+        self.assertAlmostEqual(end, 1.5 + PAD, delta=0.03)
+
     def test_trim_of_silence_is_none(self):
         self.assertIsNone(trim(np.zeros(RATE, dtype=np.float32), RATE))
         hiss = (np.random.default_rng(0).standard_normal(RATE) * 10 ** (-60 / 20)).astype(np.float32)

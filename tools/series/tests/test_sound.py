@@ -52,6 +52,13 @@ class Chain(unittest.TestCase):
         with mock.patch.object(sound, "CHAIN_VERSION", sound.CHAIN_VERSION + 1):
             self.assertNotEqual(process(t, cache)[0], first[0])
 
+    def test_every_tuned_value_is_part_of_the_cache_key(self):
+        t, cache = take(), Path(tempfile.mkdtemp())
+        first = process(t, cache)[0]
+        for name, value in (("TARGET_LUFS", -20.0), ("LIMIT", 0.7), ("MAX_GAIN_DB", 20.0), ("RATE", 44100)):
+            with mock.patch.object(sound, name, value):
+                self.assertNotEqual(process(t, cache)[0], first, name)
+
     def test_room_tone_takes_the_given_gain(self):
         rng = np.random.default_rng(0)
         room = Path(tempfile.mkdtemp()) / "room.wav"

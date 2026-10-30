@@ -25,6 +25,7 @@
   #status.rec { color: var(--rec); }
   #status.rec::before { content: "● "; }
   meter { width: 260px; height: 14px; }
+  #device { color: var(--dim); font-size: 13px; }
   #db { color: var(--dim); font-variant-numeric: tabular-nums; width: 64px; }
   #takes { display: flex; gap: 8px; flex-wrap: wrap; }
   .take { background: var(--panel); border: 2px solid transparent; border-radius: 8px; padding: 8px 12px;
@@ -65,6 +66,7 @@
     <span id="status">Ready</span>
     <meter id="level" min="-60" max="0" low="-30" high="-6" optimum="-18"></meter>
     <span id="db"></span>
+    <span id="device"></span>
   </div>
   <div id="takes"></div>
 
@@ -90,6 +92,7 @@ const player = new Audio();
 const playback = $("playback");
 try { playback.checked = localStorage.getItem("playback") !== "off"; } catch (e) {}
 playback.addEventListener("change", () => {
+  playback.blur();  // give the keys back
   try { localStorage.setItem("playback", playback.checked ? "on" : "off"); } catch (e) {}
 });
 
@@ -118,6 +121,7 @@ function render() {
   status.textContent = state.room_recording ? "Recording room tone…" : state.recording ? "Recording" : "Ready";
   $("level").value = Math.max(-60, state.level);
   $("db").textContent = `${Math.round(state.level)} dB`;
+  $("device").textContent = `${state.device}, ${state.rate / 1000} kHz`;
   $("roomstate").textContent = state.room ? "Room tone recorded" : "No room tone yet";
 
   const takes = $("takes");

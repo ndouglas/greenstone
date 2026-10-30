@@ -10,7 +10,7 @@ from pathlib import Path
 
 from series.takes import Take, write_atomically
 
-# Part of every cache key: change it (or FILTERS) and every take is reprocessed.
+# Part of every cache key, with every value below: change any and every take is reprocessed.
 CHAIN_VERSION = 1
 TARGET_LUFS = -16.0
 # Peak level of a processed take (about -1 dBFS).
@@ -46,7 +46,8 @@ def render(source: Path, chain: str, out: Path) -> None:
 
 
 def key(path: Path, *parts) -> str:
-    h = hashlib.sha256(f"{CHAIN_VERSION}\0{FILTERS}\0{parts}".encode())
+    tuned = (CHAIN_VERSION, FILTERS, TARGET_LUFS, LIMIT, MAX_GAIN_DB, RATE)
+    h = hashlib.sha256(f"{tuned}\0{parts}".encode())
     h.update(path.read_bytes())
     return h.hexdigest()[:12]
 

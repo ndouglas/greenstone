@@ -10,7 +10,7 @@ import numpy as np
 import soundfile
 
 import series.record
-from series.record import ROOM_SECONDS, Session, checks, serve
+from series.record import ROOM_SECONDS, Session, checks, remembered_device, serve
 from series.script import load_video
 from series.takes import Take, TakeStore
 from series.tests.test_takes import speech
@@ -124,6 +124,60 @@ class Recording(unittest.TestCase):
         s.choose(1)
         self.assertEqual(s.store.chosen("h").number, 1)
 
+    def test_a_take_stays_with_its_beat_when_next_comes_quickly(self):
+        s, fake, _ = session()
+
+        class EnterOnRelease:
+            """The session's lock; the moment stop() lets go of it, Enter arrives."""
+
+            def __init__(self):
+                self.lock, self.armed = threading.Lock(), False
+
+            def __enter__(self):
+                self.lock.acquire()
+
+            def __exit__(self, *exc):
+                self.lock.release()
+                if self.armed:
+                    self.armed = False
+                    s.next()
+
+        s.lock = EnterOnRelease()
+        s.start()
+        fake.feed(speech())
+        s.lock.armed = True
+        s.stop()
+        self.assertEqual([t.line_id for t in s.store.takes("h")], ["h"])
+        self.assertEqual(s.store.takes("i1"), [])
+
+    def test_dropouts_are_flagged(self):
+        s, fake, _ = session()
+        fake.overflows = 0
+        s.start()
+        fake.feed(speech()[:RATE])
+        fake.overflows = 2
+        fake.feed(speech()[RATE:])
+        take = s.stop()
+        self.assertIn("dropouts", s.state()["takes"][0]["problems"])
+        self.assertEqual(take.number, 1)
+
+    def test_state_reads_the_index_once(self):
+        s, fake, _ = session()
+        for _ in range(4):
+            record(s, fake)
+            s.next()
+        calls = []
+        real = s.store._index
+        s.store._index = lambda: calls.append(1) or real()
+        s.state()
+        self.assertLessEqual(len(calls), 2)
+
+    def test_the_device_is_remembered_for_every_video(self):
+        path = Path(tempfile.mkdtemp()) / "recorder.toml"
+        self.assertIsNone(remembered_device(None, path))
+        self.assertEqual(remembered_device("FIFINE K669B", path), "FIFINE K669B")
+        self.assertEqual(remembered_device(None, path), "FIFINE K669B")
+
     def test_room_tone_stops_by_itself(self):
         s, fake, d = session()
         s.record_room()
@@ -140,7 +194,7 @@ class Checks(unittest.TestCase):
     def test_checks_flag_problems(self):
         loud = speech(amplitude=1.0)
         self.assertIn("clipped", checks(loud, RATE, self.take(), 1.0))
-        quiet = speech(amplitude=10 ** (-30 / 20))
+        quiet = speech(amplitude=10 ** (-25 / 20))
         self.assertIn("too quiet", checks(quiet, RATE, self.take(), 1.0))
         self.assertIn("much shorter than the narrator", checks(speech(), RATE, self.take(0.0, 0.5), 2.0))
         self.assertIn("much longer than the narrator", checks(speech(), RATE, self.take(0.0, 3.5), 2.0))
@@ -220,6 +274,10 @@ class Server(unittest.TestCase):
 
     def test_the_server_listens_only_locally(self):
         self.assertEqual(self.server.server_address[0], "127.0.0.1")
+
+    def test_the_checkbox_gives_the_keys_back(self):
+        page = (Path(series.record.__file__).parent / "record.html").read_text()
+        self.assertIn("playback.blur()", page)
 
     def test_the_page_names_every_key(self):
         page = (Path(series.record.__file__).parent / "record.html").read_text()

@@ -43,16 +43,20 @@ class DeviceInput:
         import sounddevice
 
         self.sd = sounddevice
-        self.device = name
+        self.device = self.name = name
         try:
             sounddevice.check_input_settings(device=name, channels=1, samplerate=48000, dtype="float32")
             self.rate = 48000
         except Exception:
             self.rate = int(sounddevice.query_devices(name, "input")["default_samplerate"])
         self.stream = None
+        # Blocks the computer couldn't keep up with; a take that loses any is flagged.
+        self.overflows = 0
 
     def start(self, callback: Callable[[np.ndarray], None]) -> None:
         def on_audio(indata, frames, time, status):
+            if status.input_overflow:
+                self.overflows += 1
             callback(indata[:, 0].copy())
 
         self.stream = self.sd.InputStream(device=self.device, channels=1, samplerate=self.rate, dtype="float32",
@@ -101,6 +105,8 @@ class Session:
         self.blocks: list[np.ndarray] = []
         self.lock = threading.Lock()
         self.problems: dict[tuple[str, int], list[str]] = {}
+        self.dropouts: set[tuple[str, int]] = set()
+        self.overflows_at_start = 0
         self.narrator_seconds = {i: soundfile.info(p).duration for i, p in narration.items()}
 
     @property
@@ -138,6 +144,7 @@ class Session:
     def start(self) -> None:
         with self.lock:
             self.blocks, self.recording, self.room_mode = [], True, False
+            self.overflows_at_start = getattr(self.input, "overflows", 0)
 
     def record_room(self) -> None:
         """Record ROOM_SECONDS of the room's quiet; it stops by itself."""
@@ -149,8 +156,14 @@ class Session:
             if not self.recording or self.room_mode:
                 return None
             blocks, self.blocks, self.recording = self.blocks, [], False
+            # The beat is fixed here: once recording is off, Enter may move on.
+            line = self.line
+            dropped = getattr(self.input, "overflows", 0) > self.overflows_at_start
         audio = np.concatenate(blocks) if blocks else np.zeros(0, dtype=np.float32)
-        return self.store.add(self.line.id, audio, self.input.rate, self.line.text)
+        take = self.store.add(line.id, audio, self.input.rate, line.text)
+        if dropped:
+            self.dropouts.add((take.line_id, take.number))
+        return take
 
     def abandon(self) -> None:
         with self.lock:
@@ -168,7 +181,7 @@ class Session:
         if key not in self.problems:
             audio, rate = soundfile.read(take.path, dtype="float32")
             self.problems[key] = checks(audio, rate, take, self.narrator_seconds.get(take.line_id, 0.0))
-        return self.problems[key]
+        return self.problems[key] + (["dropouts"] if key in self.dropouts else [])
 
     def _position(self) -> tuple[str | None, str]:
         line = self.line
@@ -180,14 +193,17 @@ class Session:
         ids = [l.id for l in section.lines]
         return section.title, f"{name} · beat {ids.index(line.id) + 1} of {len(ids)}"
 
-    def _status(self, line) -> str:
-        take = self.store.chosen(line.id)
-        if take is None:
+    @staticmethod
+    def _status(line, index: dict) -> str:
+        entry = index.get(line.id)
+        if entry is None:
             return "unrecorded"
-        return "recorded" if take.text == line.text else "stale"
+        text = entry["text"] if isinstance(entry, dict) else entry
+        return "recorded" if text == line.text else "stale"
 
     def state(self) -> dict:
         line, lines = self.line, self.video.lines
+        index = self.store.index()
         chosen = self.store.chosen(line.id)
         section, position = self._position()
         return {
@@ -203,7 +219,9 @@ class Session:
             "recording": self.recording,
             "room_recording": self.room_mode,
             "level": round(self.level, 1),
-            "strip": [self._status(l) for l in lines],
+            "strip": [self._status(l, index) for l in lines],
+            "device": getattr(self.input, "name", None) or "the default input",
+            "rate": self.input.rate,
             "room": self.store.room() is not None,
         }
 
@@ -270,9 +288,12 @@ def serve(session: Session, port: int) -> ThreadingHTTPServer:
     return ThreadingHTTPServer(("127.0.0.1", port), Handler)
 
 
-def remembered_device(store: TakeStore, name: str | None) -> str | None:
-    """The input named on the command line, remembered in takes/recorder.toml; else the last one used."""
-    path = store.dir / "recorder.toml"
+# The microphone is the machine's, not a video's: remembered for every video.
+DEVICE_FILE = Path(__file__).resolve().parent / "recorder.toml"
+
+
+def remembered_device(name: str | None, path: Path = DEVICE_FILE) -> str | None:
+    """The input named on the command line, remembered; else the last one named."""
     if name is not None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"device = {json.dumps(name)}\n")
@@ -302,8 +323,9 @@ def main() -> None:
     store = TakeStore(video.dir / TAKES)
     out = OUT / args.name
     print("Voicing the narrator's guide readings (cached after the first time)…")
-    session = Session(video, store, DeviceInput(remembered_device(store, args.device)), narrator(video, KokoroEngine(), out),
-                      out / "recorder")
+    microphone = DeviceInput(remembered_device(args.device))
+    print(f"Input: {microphone.device or 'the default input'}, at {microphone.rate} Hz")
+    session = Session(video, store, microphone, narrator(video, KokoroEngine(), out), out / "recorder")
     session.open()
     server = serve(session, args.port)
     url = f"http://127.0.0.1:{args.port}/"

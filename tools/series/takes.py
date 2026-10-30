@@ -23,9 +23,17 @@ ROOM = "room.wav"
 # Seconds kept either side of the speech, so breaths and consonants aren't clipped.
 PAD = 0.15
 FRAME = 0.02
-# Speech is any frame above this, or within RANGE dB of the loudest, whichever is higher.
+# A take has speech only if at least MIN_SPEECH seconds of it are above
+# SPEECH_DB; room noise with the odd bump never is.
+SPEECH_DB = -30.0
+MIN_SPEECH = 0.25
+# Where the speech starts and ends: frames above this, or within RANGE dB
+# of the loudest, whichever is higher.
 FLOOR_DB = -50.0
 RANGE_DB = 35.0
+# A burst this short this near either end is the start or stop key, not speech.
+CLICK = 0.06
+EDGE = 0.3
 
 
 @dataclass(frozen=True)
@@ -52,7 +60,23 @@ def trim(audio: np.ndarray, rate: int) -> tuple[float, float] | None:
         return None
     rms = np.sqrt(np.mean(audio[:frames * size].astype(np.float64).reshape(frames, size) ** 2, axis=1))
     db = 20 * np.log10(np.maximum(rms, 1e-10))
-    loud = np.flatnonzero(db > max(FLOOR_DB, db.max() - RANGE_DB))
+    if np.count_nonzero(db > SPEECH_DB) * size / rate < MIN_SPEECH:
+        return None
+    mask = db > max(FLOOR_DB, db.max() - RANGE_DB)
+    # Drop key clicks: short bursts near the ends.
+    edge, click = int(EDGE * rate / size), int(CLICK * rate / size)
+    i = 0
+    while i < frames:
+        if not mask[i]:
+            i += 1
+            continue
+        j = i
+        while j < frames and mask[j]:
+            j += 1
+        if j - i < max(click, 1) and (i < edge or j > frames - edge):
+            mask[i:j] = False
+        i = j
+    loud = np.flatnonzero(mask)
     if len(loud) == 0:
         return None
     start = max(0.0, loud[0] * size / rate - PAD)
@@ -79,6 +103,10 @@ def write_atomically(path: Path, write) -> None:
 class TakeStore:
     def __init__(self, dir: Path):
         self.dir = Path(dir)
+
+    def index(self) -> dict:
+        """takes.toml: each beat's chosen take ({"text", "take"}) or old-form text."""
+        return self._index()
 
     def _index(self) -> dict:
         toml = self.dir / "takes.toml"
