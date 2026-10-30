@@ -13,9 +13,9 @@ class VideoScene(NarratedScene):
         self.play(FadeOut(title), run_time=0.5)
 
         formula = MathTex("w", r"\cdot", "x", "+", "b").scale(2)
-        formula[0].set_color(style.WEIGHT)
-        formula[2].set_color(style.INPUT)
-        formula[4].set_color(style.BIAS)
+        formula[0].set_color(style.COOL[0])
+        formula[2].set_color(style.WARM[0])
+        formula[4].set_color(style.WARM[1])
         self.say("neuron", Write(formula))
         self.play(FadeOut(formula), run_time=0.5)
 

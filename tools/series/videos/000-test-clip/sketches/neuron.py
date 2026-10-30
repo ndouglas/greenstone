@@ -53,7 +53,7 @@ class Sketch(Scene):
                     y += blk[0].height + 0.06
                     parts.append(blk)
                 answer = "yes" if side < 0 else "no"
-                parts.append(Text(answer, font=style.FONT, color=style.OUTPUT if side < 0 else style.TEXT)
+                parts.append(Text(answer, font=style.FONT, color=style.WARM[2] if side < 0 else style.TEXT)
                              .scale(0.6).next_to(pan_y, DOWN, buff=0.3))
             return VGroup(*parts)
 
@@ -64,9 +64,9 @@ class Sketch(Scene):
         self.wait(0.5)
 
         for side, label, colour, mass, delta in [
-            (-1, "w_1 x_1", style.INPUT, 1.5, 1.5),
-            (-1, "w_2 x_2", style.INPUT, 1.0, 1.0),
-            (1, "b", style.BIAS, 2.0, -2.0),
+            (-1, "w_1 x_1", style.WARM[0], 1.5, 1.5),
+            (-1, "w_2 x_2", style.WARM[0], 1.0, 1.0),
+            (1, "b", style.WARM[1], 2.0, -2.0),
         ]:
             drop = ValueTracker(1.0)
             pans[side].append((label, colour, mass, drop))
@@ -74,6 +74,6 @@ class Sketch(Scene):
             self.play(total.animate.increment_value(delta), run_time=1.2)
             self.wait(0.5)
 
-        verdict = MathTex("w_1 x_1 + w_2 x_2 + b > 0", color=style.OUTPUT).scale(1.0).to_edge(UP)
+        verdict = MathTex("w_1 x_1 + w_2 x_2 + b > 0", color=style.WARM[2]).scale(1.0).to_edge(UP)
         self.play(FadeIn(verdict), run_time=0.75)
         self.wait(1.0)

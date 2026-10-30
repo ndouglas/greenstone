@@ -94,10 +94,10 @@ class NarratedScene(Scene):
         if line is None:
             raise ScriptOrderError(f"placeholder for {line_id!r}, which isn't a line in the script")
         section = next((s for s in self.video.sections if s.id == line.section), None)
-        rows = [Text(f"{section.title} · {line.id}" if section else line.id, font=style.FONT, color=style.INPUT).scale(0.5)]
+        rows = [Text(f"{section.title} · {line.id}" if section else line.id, font=style.FONT, color=style.WARM[0]).scale(0.5)]
         rows.append(Text(textwrap.fill(line.text, 48), font=style.FONT, color=style.TEXT).scale(0.6))
         if line.board:
-            rows.append(Text(textwrap.fill(f"Animation: {line.board}", 56), font=style.FONT, color=style.WEIGHT).scale(0.45))
+            rows.append(Text(textwrap.fill(f"Animation: {line.board}", 56), font=style.FONT, color=style.COOL[0]).scale(0.45))
         card = VGroup(*rows).arrange(DOWN, buff=0.4)
         self.add(card)
         self.say(line_id)
