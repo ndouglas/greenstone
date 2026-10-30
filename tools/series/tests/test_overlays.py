@@ -9,6 +9,7 @@ from manim import config, tempconfig
 
 from series import overlays, style
 from series.overlays import feet_line, gap_band, mario_middle, setting_line, speed_arrow
+from series.footage import NES_FPS
 from series.recording import DATA, MARIO_RED, MARIO_SHOE, Recording
 from series.screen import Screen
 from series.tests.test_screen import FULL_HD, synthetic
@@ -52,15 +53,27 @@ class TestOverlays(unittest.TestCase):
                     self.assertEqual(band.get_fill_opacity(), 0)
                     continue
                 self.assertAlmostEqual(band.height, rows * screen.dot)
+                top, bottom = sorted([screen.row_y(depth + 33), screen.row_y(209)], reverse=True)
+                self.assertAlmostEqual(band.get_top()[1], top)  # it fills exactly the gap between the lines
+                self.assertAlmostEqual(band.get_bottom()[1], bottom)
                 self.assertEqual(band.get_fill_color().to_hex().upper(),
                                  (style.WARM[2] if warm else style.COOL[0]).upper())
                 self.assertGreater(band.get_fill_opacity(), 0)
 
+    def test_the_band_takes_the_sign_of_its_contribution(self):
+        with tempconfig(FULL_HD):
+            for depth, weight, warm in [(150, -1, True), (150, 1, False), (200, -1, False), (200, 1, True)]:
+                screen = self.screen(depth=depth)
+                band = gap_band(screen, feet_line(screen), setting_line(screen, 176, "setting"), weight=weight)
+                self.assertEqual(band.get_fill_color().to_hex().upper(),
+                                 (style.WARM[2] if warm else style.COOL[0]).upper(), (depth, weight))
+
     def test_a_bigger_weight_burns_brighter(self):
         with tempconfig(FULL_HD):
-            screen = self.screen(depth=150)
+            screen = self.screen(depth=150)  # 26 rows: weights this small stay well below saturation
             feet, setting = feet_line(screen), setting_line(screen, 176, "setting")
-            one, three = gap_band(screen, feet, setting, weight=-1), gap_band(screen, feet, setting, weight=-3)
+            one = gap_band(screen, feet, setting, weight=-0.1, scale=300)
+            three = gap_band(screen, feet, setting, weight=-0.3, scale=300)
             self.assertGreater(three.get_fill_opacity(), one.get_fill_opacity())
             self.assertAlmostEqual(three.height, one.height)
 
@@ -131,7 +144,7 @@ class TestOverlays(unittest.TestCase):
             screen = Screen(Recording("smb1"), 1247)
             inside = seen = 0
             for f in range(1247, 1943, 3):
-                screen.game.elapsed = (f - 1247) / 60.0988
+                screen.game.elapsed = (f - 1247) / NES_FPS
                 picture = np.asarray(screen.recording.frames[screen.frame()])[..., :3]
                 mario = np.argwhere((picture == MARIO_RED).all(2) | (picture == MARIO_SHOE).all(2))
                 if len(mario) < 10:

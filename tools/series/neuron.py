@@ -24,7 +24,6 @@ VERDICT_SIZE = 0.5
 ANSWER_GAP = 2.45  # from the ring's right to the answer's centre
 SOCKET = 0.2
 DOT = 0.12
-QUIET = "#3A3034"  # an output line before its colour arrives
 COOLING = "#7A6A58"  # the midpoint of a warm path cooling, so it never passes through green
 END_HANDLE = 1.5  # how far out from the ring a path turns in
 LABEL_AT = 0.55  # how far along a path's turn its label sits
@@ -55,6 +54,17 @@ def figure(value: float) -> str:
     return style.number(value, 0 if float(value).is_integer() else 2)
 
 
+def total_figure(total: float) -> str:
+    """The running total as the ring shows it: whole when it is whole, else with just enough places that it
+    never reads as zero (or as another whole number) beside an answer that used the exact value."""
+    if abs(total - round(total)) < 1e-9:
+        return figure(round(total))
+    for places in (1, 2):
+        if float(f"{total:.{places}f}") not in (0, round(total)):
+            return style.number(total, places)
+    return style.number(total, 3)
+
+
 def path_colours(start: str, contribution: float) -> list[str]:
     """Warm as it leaves its source, taking the temperature of what it contributes as it arrives."""
     if contribution < 0:
@@ -77,6 +87,8 @@ class Neuron(Group):
                  centre: np.ndarray, yes: str, no: str, scale: float = style.LIGHT_SCALE,
                  bias_name: str | None = None):
         super().__init__()
+        if not inputs and not bias_source:
+            raise ValueError("a neuron needs an input or a bias place to draw a path from")
         self.inputs, self.bias, self.bias_source = inputs, bias, bias_source
         self.centre, self.yes, self.no, self.light_scale = np.asarray(centre, float), yes, no, scale
         self.drawn = ValueTracker(1.0)  # the input paths
@@ -156,7 +168,7 @@ class Neuron(Group):
         self.warm_level.set_value(body * style.light(e, self.light_scale) if e > 0 else 0.0)
         self.cool_level.set_value(body * style.light(e, self.light_scale) if e < 0 else 0.0)
         self.ring.set_stroke(opacity=body)
-        if (text := figure(round(total))) != self.shown_total:
+        if (text := total_figure(total)) != self.shown_total:
             self.total_text = numeral(text, style.TEXT, TOTAL_SIZE).move_to(self.centre)
             swap(self.total_box, self.total_text)
             self.shown_total = text
@@ -263,7 +275,7 @@ class Neuron(Group):
         self.socket.set_stroke(color=colour, opacity=shown)
         self.dot.set_fill(opacity=shown if yes else 0.0)
         if yes != self.shown_answer:
-            self.verdict = (serif(self.yes, style.TEXT, VERDICT_SIZE) if yes
+            self.verdict = (serif(self.yes, style.WARM[0], VERDICT_SIZE) if yes
                             else serif(self.no, style.COOL[1], VERDICT_SIZE)).next_to(self.answer_at, DOWN, buff=0.45)
             swap(self.verdict_box, self.verdict)
             self.shown_answer = yes

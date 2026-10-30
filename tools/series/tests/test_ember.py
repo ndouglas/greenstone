@@ -4,7 +4,7 @@ from unittest import mock
 
 import manimpango
 import numpy as np
-from manim import ValueTracker
+from manim import Mobject, ValueTracker
 
 from series import ember, style
 from series.ember import backdrop, fade_image, glow, live, numeral, rgb, serif
@@ -32,6 +32,16 @@ class TestStyle(unittest.TestCase):
 
 
 class TestEmber(unittest.TestCase):
+    def test_swap_keeps_a_child_it_is_given_back(self):
+        group, kept, dropped = Mobject(), Mobject(), Mobject()
+        group.add(kept, dropped)
+        kept.set_opacity = mock.Mock()
+        dropped.set_opacity = mock.Mock()
+        ember.swap(group, kept)
+        kept.set_opacity.assert_not_called()
+        dropped.set_opacity.assert_called_once_with(0)
+        self.assertEqual(group.submobjects, [kept])
+
     def test_glow_has_no_edge(self):
         alpha = glow(WARM[1], 1.0).pixel_array[:, :, 3].astype(int)
         for border in (alpha[0], alpha[-1], alpha[:, 0], alpha[:, -1]):

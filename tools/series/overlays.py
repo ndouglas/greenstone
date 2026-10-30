@@ -12,6 +12,8 @@ from series.screen import Screen
 
 HAIRLINE = 1.2
 BAND_LIGHT = 0.32  # fill opacity of a band at full light
+LABEL_INSET = 0.3  # how far in from the screen's left edge a line's label starts
+ARROW_STROKE = 3
 ARROW_ROWS_PER_SPEED = 4  # NES pixel rows of arrow per unit of speed
 SCREEN_X, DEPTH, SMALL = 0x03AD, 0x00CE, 0x0754  # SMB1: Mario's column on screen, his depth, and 1 if small
 # From (screen x, depth) to his middle, in NES pixels, measured on the sprite: his 15 columns start at the
@@ -49,7 +51,7 @@ class _Line(VGroup):
             texts = [serif(name, self.colour)] + ([numeral(value, self.colour)] if value else [])
             swap(self.label, *texts).arrange(RIGHT, buff=0.12)
             self.shown = parts
-        self.label.next_to([left + 0.3, y, 0], UP + RIGHT, buff=0.06)
+        self.label.next_to([left + LABEL_INSET, y, 0], UP + RIGHT, buff=0.06)
 
 
 class FeetLine(_Line):
@@ -105,17 +107,18 @@ class GapBand(Rectangle):
         y0, y1 = self.upper.y(), self.lower.y()
         left, right = self.screen.col_x(0), self.screen.col_x(256)
         rows = (y0 - y1) / self.screen.dot  # positive while the upper line is above the lower
-        warm = rows > 0
-        light = style.light(self.weight * rows, self.light_scale) if rows else 0.0
-        colour = style.WARM[2] if warm else style.COOL[0]
+        contribution = -self.weight * rows  # weight × (upper's depth − lower's), as the neuron adds it
+        light = style.light(contribution, self.light_scale) if rows else 0.0
+        colour = style.WARM[2] if contribution > 0 else style.COOL[0]
         self.become(Rectangle(width=right - left, height=max(abs(y0 - y1), 1e-3), stroke_width=0, fill_color=colour,
                               fill_opacity=BAND_LIGHT * light).move_to([(left + right) / 2, (y0 + y1) / 2, 0]))
 
 
 def gap_band(screen: Screen, upper: _Line, lower: _Line, weight: float = -1,
              scale: float = style.LIGHT_SCALE) -> GapBand:
-    """The band between two lines: warm when `upper` is above `lower`, cool when below, absent when equal.
-    Its light is `light(weight × gap, scale)`, so a bigger weight burns brighter at the same height."""
+    """The band between two lines, lit by what it adds to the total, weight × (upper's depth − lower's): warm
+    when that is positive (a negative weight with `upper` above `lower`, or a positive one with it below),
+    cool when negative, absent when the lines meet. A bigger weight burns brighter at the same height."""
     return GapBand(screen, upper, lower, weight, scale)
 
 
@@ -141,7 +144,7 @@ class SpeedArrow(VGroup):
         middle = self.at(self.screen)
         end = middle + DOWN * speed * ARROW_ROWS_PER_SPEED * self.screen.dot
         colour = style.WARM[0] if speed > 0 else style.COOL[0]
-        self.add(Arrow(middle, end, buff=0, stroke_width=3, color=colour, max_tip_length_to_length_ratio=0.5))
+        self.add(Arrow(middle, end, buff=0, stroke_width=ARROW_STROKE, color=colour, max_tip_length_to_length_ratio=0.5))
 
 
 def speed_arrow(screen: Screen, speed_byte: int, at: Callable[[Screen], np.ndarray] = mario_middle) -> SpeedArrow:

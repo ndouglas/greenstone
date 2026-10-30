@@ -6,7 +6,7 @@ can be the start of a neuron's path."""
 from typing import Callable
 
 import numpy as np
-from manim import UP, Animation, Group, ImageMobject, Line, Rectangle, UpdateFromAlphaFunc
+from manim import RIGHT, UP, Animation, Group, ImageMobject, Line, Rectangle, UpdateFromAlphaFunc
 from PIL import Image, ImageDraw, ImageFont
 
 from series import ember, style
@@ -131,8 +131,13 @@ class MemoryGrid(Group):
         return self._squares[address]
 
     def point(self, address: int) -> Callable[[], np.ndarray]:
-        """Where a square is now, as an Input's source."""
-        return lambda: self.square(address).get_center()
+        """Where a square is now, as an Input's source: its centre, drawing out to the right edge of its lit
+        box as it lights, so a path never starts under the enlarged square."""
+        def where() -> np.ndarray:
+            centre = self.square(address).get_center()
+            lit = self.lit.get(address)
+            return centre if lit is None else centre + RIGHT * lit.box.width / 2 * lit.level
+        return where
 
     def light(self, address: int, label: str, hue: int = 0, side: np.ndarray = UP) -> Animation:
         """The square warms, enlarges, and shows its label above it (or on `side`)."""

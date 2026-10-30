@@ -105,7 +105,8 @@ def swap(group: Mobject, *children: Mobject) -> Mobject:
     """Replace a group's children with new ones, hiding the old first: during a play Manim keeps drawing
     every mobject the play began with, so a child merely dropped would linger on screen until it ends."""
     for old in group.submobjects:
-        old.set_opacity(0)
+        if not any(old is new for new in children):  # one kept is not hidden
+            old.set_opacity(0)
     group.submobjects = []
     return group.add(*children)
 

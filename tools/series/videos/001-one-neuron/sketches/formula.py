@@ -1,7 +1,7 @@
 """The formula, neutral until filled: w·x + b > 100, then 001's numbers, then the threshold carried into the
 bias."""
 
-from manim import DOWN, Scene, UP, Wait
+from manim import Scene
 
 from series.ember import backdrop
 from series.formula import Formula
@@ -11,7 +11,6 @@ class Sketch(Scene):
     def construct(self):
         self.add(backdrop())
         formula = Formula(["w·x", "+ b"], "> 100").scale(2.2)
-        self.play(formula.animate.set_opacity(1), run_time=0.1)
         self.add(formula)
         self.wait(1)
         self.play(formula.fill("w", -1), run_time=1)

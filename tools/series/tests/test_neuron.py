@@ -72,7 +72,18 @@ class TestNeuron(unittest.TestCase):
             self.assertTrue(n.answer())
             self.assertEqual(n.dot.get_fill_opacity(), 1)
             self.assertEqual(n.verdict.original_text, "in the air")
-            self.assertEqual(n.verdict.get_color().to_hex().upper(), style.TEXT.upper())
+            self.assertEqual(n.verdict.get_color().to_hex().upper(), style.WARM[0].upper())
+
+    def test_the_ring_never_contradicts_the_answer(self):
+        n = neuron([Input(constant(0.3), 1, None, "x")], 0)
+        self.assertTrue(n.answer())
+        self.assertEqual(n.total_text.text, "0.3")
+        self.assertEqual(neuron([Input(constant(-0.04), 1, None, "x")], 0).total_text.text, "−0.04")
+        self.assertEqual(neuron([Input(constant(2), 1, None, "x")], 0).total_text.text, "2")
+
+    def test_a_neuron_with_nothing_to_read_says_so(self):
+        with self.assertRaises(ValueError):
+            neuron([], 3)
 
     def test_the_total_is_roman_with_a_true_minus(self):
         n = neuron([Input(constant(200), -1, at(-1, -1), "depth")], 176, at(-1, -2))

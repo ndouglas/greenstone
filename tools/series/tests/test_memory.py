@@ -75,6 +75,8 @@ class MemoryGridTest(unittest.TestCase):
             self.assertAlmostEqual(source()[0], grid.image.get_left()[0] + (0x1D + 0.5) * grid.image.width / 64, places=5)
             lit = grid.light(0x1D, "jumping")
             play(lit)
-            self.assertTrue(np.allclose(source(), grid.square(0x1D).get_center()))
+            box = grid.lit[0x1D].box  # lit, the path starts at the enlarged box's edge, not under it
+            self.assertTrue(np.allclose(source(), box.get_right()))
+            self.assertGreater(source()[0], grid.square(0x1D).get_right()[0])
             self.assertIn(style.WARM[0], [c.to_hex().upper() for c in grid.lit[0x1D].box.get_stroke_colors()])
             self.assertEqual(grid.lit[0x1D].label.text, "jumping")
