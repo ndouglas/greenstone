@@ -51,6 +51,18 @@ class TestRecording(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "5.*3"):
                 Recording("smb1", root)
 
+    def test_a_recording_with_missing_ram_is_refused(self):
+        import tempfile
+        import json
+        from reservoir_film.model import NES_H, NES_W
+        with tempfile.TemporaryDirectory() as tmp:
+            take = Path(tmp) / "smb1" / "footage"
+            take.mkdir(parents=True)
+            (take / "take.json").write_text(json.dumps({"streams": {"game": 5}}))
+            np.zeros((5, NES_H, NES_W, 3), dtype=np.uint8).tofile(take / "game.rgb")
+            with self.assertRaisesRegex(FileNotFoundError, r"smb1.*ram\.u8.*5 frames.*series_record"):
+                Recording("smb1", Path(tmp))
+
     def test_an_unmeasured_game_is_refused(self):
         frames, ram = synthetic()
         rec = Recording.__new__(Recording)

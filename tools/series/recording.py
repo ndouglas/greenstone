@@ -26,7 +26,12 @@ class Recording:
         self.game = game
         root = Path(root)
         self.frames = Takes(root / game, "record the footage take")["footage"].frames("game")
-        self.ram = np.fromfile(root / game / "1" / "ram.u8", dtype=np.uint8).reshape(-1, RAM_BYTES)
+        ram_path = root / game / "1" / "ram.u8"
+        if not ram_path.exists():
+            raise FileNotFoundError(
+                f"{game}: no RAM at {ram_path} to go with the footage's {len(self.frames)} frames; record it with: "
+                f"cargo run --release --example series_record -- {game} PLAYER FRAMES OUT --footage")
+        self.ram = np.fromfile(ram_path, dtype=np.uint8).reshape(-1, RAM_BYTES)
         if len(self.ram) < len(self.frames):
             raise ValueError(f"{game}: the footage has {len(self.frames)} frames but the RAM only {len(self.ram)}")
 
