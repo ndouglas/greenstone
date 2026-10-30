@@ -107,9 +107,7 @@ class ScoreBars(VGroup):
         super().add(bar)
         return bar
 
-    def add(self, value: float | None = None, label: str | None = None, faint: bool = False) -> Animation:
+    def bar(self, value: float, label: str, faint: bool = False) -> Animation:
         """A bar rises for `value` (the neuron's result is warm; faint is the score still to beat)."""
-        if value is None:  # VGroup's own construction
-            return super().add()
         bar = self._place(float(value), label, style.WARM[0], faint)
         return UpdateFromAlphaFunc(bar, lambda m, alpha: m.grow(alpha))

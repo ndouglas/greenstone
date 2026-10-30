@@ -18,7 +18,7 @@ class Sketch(Scene):
         u = config.pixel_height / 1080
         screen = Screen(Recording("smb1"), START, scale=2, left_px=round(40 * u))
         grid = MemoryGrid(screen, width=9.0)
-        grid.move_to([screen.get_right()[0] + 0.5 + grid.image.width / 2, 0.1, 0])
+        grid.move_to([config.frame_width / 2 - 0.4 - grid.image.width / 2, 0.1, 0])
         self.play(screen.arrive(), run_time=1)
         self.add(grid)
         self.wait(6)

@@ -1,6 +1,6 @@
 import unittest
 
-from manim import Rectangle
+from manim import FadeIn, FadeOut, Rectangle
 
 from series import style
 from series.records import ScoreBars, Tapes
@@ -15,8 +15,8 @@ def play(animation) -> None:
 class ScoreBarsTest(unittest.TestCase):
     def test_bars_are_proportional(self):
         bars = ScoreBars(54)
-        play(bars.add(94, "the neuron"))
-        play(bars.add(27, "half", faint=True))
+        play(bars.bar(94, "the neuron"))
+        play(bars.bar(27, "half", faint=True))
         base, result, small = (b.box.height for b in bars.bars)
         self.assertAlmostEqual(result / base, 94 / 54, places=4)
         self.assertAlmostEqual(small / base, 27 / 54, places=4)
@@ -25,25 +25,39 @@ class ScoreBarsTest(unittest.TestCase):
 
     def test_the_baseline_is_ash(self):
         bars = ScoreBars(54)
-        play(bars.add(94, "the neuron"))
+        play(bars.bar(94, "the neuron"))
         self.assertEqual(bars.bars[0].colour, style.ASH)
         self.assertEqual(bars.bars[1].colour, style.WARM[0])
         self.assertEqual(bars.bars[0].box.get_stroke_colors()[0].to_hex().upper(), style.ASH)
 
     def test_a_faint_bar_is_faint(self):
         bars = ScoreBars(54)
-        play(bars.add(94, "the neuron"))
-        play(bars.add(94, "to beat", faint=True))
+        play(bars.bar(94, "the neuron"))
+        play(bars.bar(94, "to beat", faint=True))
         self.assertLess(bars.bars[2].box.get_stroke_opacity(), bars.bars[1].box.get_stroke_opacity())
 
     def test_a_bar_grows_from_nothing(self):
         bars = ScoreBars(54)
-        a = bars.add(94, "the neuron")
+        a = bars.bar(94, "the neuron")
         a.begin()
         a.interpolate(0.0)
         self.assertLess(bars.bars[1].box.height, 0.01)
         a.interpolate(1.0)
         a.finish()
+
+
+class ScoreBarsMobjectTest(unittest.TestCase):
+    def test_add_is_a_normal_add(self):
+        bars = ScoreBars(54)
+        extra = Rectangle()
+        bars.add(extra)
+        self.assertIn(extra, bars.submobjects)
+
+    def test_it_fades_in_and_out_with_bars(self):
+        bars = ScoreBars(54)
+        play(bars.bar(94, "the neuron"))
+        for animation in (FadeIn(bars), FadeOut(bars)):
+            play(animation)
 
 
 class TapesTest(unittest.TestCase):

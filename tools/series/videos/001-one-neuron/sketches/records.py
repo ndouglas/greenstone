@@ -31,5 +31,5 @@ class Sketch(Scene):
         bars = ScoreBars(base)
         self.play(FadeIn(bars), run_time=0.6)
         self.wait(1)
-        self.play(bars.add(result, "the neuron"), run_time=1.4)
+        self.play(bars.bar(result, "the neuron"), run_time=1.4)
         self.wait(2)
