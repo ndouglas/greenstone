@@ -25,19 +25,27 @@ class _Line(VGroup):
     def __init__(self, screen: Screen, colour: str):
         self.screen, self.colour = screen, colour
         self.line = Line(LEFT, RIGHT, stroke_width=HAIRLINE, color=colour)
-        self.label = serif(" ", colour)
+        self.label, self.shown = VGroup(), None
         super().__init__(self.line, self.label)
 
     def y(self) -> float:
         raise NotImplementedError
 
-    def text(self) -> str:
+    def parts(self) -> tuple[str, str | None]:
+        """The label (set in italic) and the number after it, if any (set in roman)."""
         raise NotImplementedError
 
     def refresh(self, *_) -> None:
         y, left, right = self.y(), self.screen.col_x(0), self.screen.col_x(256)
         self.line.put_start_and_end_on([left, y, 0], [right, y, 0])
-        self.label.become(serif(self.text(), self.colour)).next_to([left + 0.3, y, 0], UP + RIGHT, buff=0.06)
+        parts = self.parts()
+        if parts != self.shown:  # building text is slow, so only when it changes
+            name, value = parts
+            texts = [serif(name, self.colour)] + ([serif(value, self.colour, italic=False)] if value else [])
+            self.label.submobjects = []
+            self.label.add(*texts).arrange(RIGHT, buff=0.12)
+            self.shown = parts
+        self.label.next_to([left + 0.3, y, 0], UP + RIGHT, buff=0.06)
 
 
 class FeetLine(_Line):
@@ -54,8 +62,8 @@ class FeetLine(_Line):
     def y(self) -> float:
         return self.screen.row_y(self.value() + self.offset)
 
-    def text(self) -> str:
-        return f"{self.name} {style.number(self.value())}"
+    def parts(self) -> tuple[str, str | None]:
+        return self.name, style.number(self.value())
 
 
 class SettingLine(_Line):
@@ -67,8 +75,8 @@ class SettingLine(_Line):
     def y(self) -> float:
         return self.screen.row_y(self.row + self.offset)
 
-    def text(self) -> str:
-        return self.name
+    def parts(self) -> tuple[str, str | None]:
+        return self.name, None
 
 
 def feet_line(screen: Screen, byte: int = 0x00CE, offset: int = 33, label: str = "depth") -> FeetLine:

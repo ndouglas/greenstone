@@ -1,10 +1,11 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from manim import config, tempconfig
 
-from series import style
+from series import overlays, style
 from series.overlays import feet_line, gap_band, setting_line, speed_arrow
 from series.screen import Screen
 from series.tests.test_screen import FULL_HD, synthetic
@@ -69,3 +70,33 @@ class TestOverlays(unittest.TestCase):
             self.assertGreater(rising.get_end()[1], rising.get_start()[1])
             self.assertEqual(rising.get_color().to_hex().upper(), style.COOL[0].upper())
             self.assertEqual(len(speed_arrow(self.screen(speed=0), X, DEPTH, SPEED).submobjects), 0)
+
+    def test_the_label_is_italic_and_the_number_roman(self):
+        with tempconfig(FULL_HD):
+            name, number = feet_line(self.screen(depth=100)).label.submobjects
+            self.assertEqual(name.slant, "ITALIC")
+            self.assertEqual(number.slant, "NORMAL")
+            self.assertEqual(number.text, "100")
+
+    def test_text_is_only_rebuilt_when_the_reading_changes(self):
+        with tempconfig(FULL_HD):
+            screen = self.screen(depth=100)
+            feet = feet_line(screen)
+            with mock.patch.object(overlays, "serif", wraps=overlays.serif) as serif:
+                feet.refresh()
+                feet.refresh()
+                self.assertEqual(serif.call_count, 0)
+                self.recording.ram[9, DEPTH] = 7
+                feet.refresh()
+                self.assertEqual(serif.call_count, 2)
+                self.assertEqual(feet.label.submobjects[1].text, "7")
+
+    def test_the_speed_arrow_is_as_long_as_the_speed_and_starts_at_mario(self):
+        with tempconfig(FULL_HD):
+            screen = self.screen(depth=100, speed=3)
+            three = speed_arrow(screen, X, DEPTH, SPEED).submobjects[0]
+            start = three.get_start()
+            self.assertAlmostEqual(start[0], screen.col_x(88))
+            self.assertAlmostEqual(start[1], screen.row_y(116))
+            six = speed_arrow(self.screen(depth=100, speed=6), X, DEPTH, SPEED).submobjects[0]
+            self.assertAlmostEqual(six.get_length(), 2 * three.get_length())
