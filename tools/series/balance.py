@@ -1,8 +1,9 @@
 """The balance scale: a neuron's answer weighed instead of summed. Each term is a block of its size; plus
-blocks fall into the yes pan, minus blocks into the no pan, and the beam tips to the heavier. A balance says no."""
+blocks fall into the yes pan, minus blocks into the no pan, and the beam tips to the heavier. A balance says no.
+A needle square to the beam swings over a dial and settles on the one number it shows: the total."""
 
 import numpy as np
-from manim import DOWN, UP, Animation, Dot, Line, ManimColor, Square, UpdateFromAlphaFunc, VGroup, interpolate_color, linear, linear
+from manim import DOWN, UP, Animation, Dot, Line, ManimColor, Square, UpdateFromAlphaFunc, VGroup, interpolate_color, linear
 
 from series import style
 from series.ember import serif
@@ -20,7 +21,11 @@ GAP = 0.06
 NATURAL = 11.0  # the beam's own swing, radians per second
 DAMPING = 0.4  # under 1, so it overshoots and rings down: settled in about a second
 SUBSTEP = 1 / 240
-IMPACT = 0.25  # radians per second of beam jolt, per unit of (mass / BIGGEST) x (impact speed in units per second)
+NEEDLE = 1.3  # from the pivot to the needle's tip
+DIAL = 1.45  # the dial's radius about the pivot
+DIAL_STEPS = 16
+READ = 0.32  # how far beyond the dial the number sits
+SLIDE = 0.1  # seconds for the number to move to where the needle will settle (a time constant)
 IMPACT = 0.25  # radians per second of beam jolt, per unit of (mass / BIGGEST) x (impact speed in units per second)
 
 
@@ -72,15 +77,25 @@ class Balance(VGroup):
         self.hub = Dot(pivot, radius=0.05, color=style.ASH)
         self.labels = {"yes": serif(yes, style.WARM[1], 0.4), "no": serif(no, style.COOL[1], 0.4)}
         self.verdict_label = serif(no, style.COOL[1], 0.55)
-        self.total_label = serif("0", style.COOL[1], 0.5, italic=False)
         self.stack = VGroup()  # the blocks, in the pans
-        self.add(self.post, self.beam, self.strings, *self.plates.values(), self.hub, *self.labels.values(),
-                 self.stack, self.verdict_label, self.total_label)
+        self._dial = 0.0  # the angle the number sits at, sliding to where the needle will settle
+        self._read = None
+        spread = TILT + 0.08
+        arc = [pivot + DIAL * _up(spread - 2 * spread * i / DIAL_STEPS) for i in range(DIAL_STEPS + 1)]
+        self.dial = VGroup(*[Line(a, b, stroke_width=1.0, stroke_opacity=0.6, stroke_color=interpolate_color(
+            ManimColor(cols[0]), ManimColor(cols[1]), (i + 0.5) / DIAL_STEPS)) for i, (a, b) in enumerate(zip(arc, arc[1:]))],
+            Line(pivot + (DIAL - 0.06) * UP, pivot + (DIAL + 0.06) * UP, stroke_color=style.ASH, stroke_width=1.0))
+        self.needle = Line(pivot, pivot + NEEDLE * UP, stroke_color=style.TEXT, stroke_width=1.2)
+        self.mark = Line(pivot, pivot + UP, stroke_width=1.4)
+        self.reading = serif("0", style.ASH, 0.42, italic=False)
+        self.add(self.post, self.dial, self.mark, self.reading, self.needle, self.beam, self.strings,
+                 *self.plates.values(), self.hub, *self.labels.values(), self.stack, self.verdict_label)
         self._lay()
         self.add_updater(self._tick)
 
     def _tick(self, _, dt: float = 0.0) -> None:
         self._swing(dt)
+        self._dial += (self.rest() - self._dial) * (1 - np.exp(-dt / SLIDE))
         self._lay()
 
     def sum(self) -> float:
@@ -97,6 +112,10 @@ class Balance(VGroup):
     def rest(self) -> float:
         """The angle the beam settles at for the landed weight; it saturates for a heavy sum."""
         return TILT * float(np.tanh(self.sum() / SOFT))
+
+    def dial_angle(self) -> float:
+        """Where on the dial the number sits: where the needle will come to rest."""
+        return self._dial
 
     def _swing(self, dt: float) -> None:
         """A damped spring toward the resting angle, so a landing makes the beam overshoot and ring down."""
@@ -139,7 +158,7 @@ class Balance(VGroup):
         return animation
 
     def announce(self) -> Animation:
-        """Say the verdict beneath the scale, with the total."""
+        """Say the verdict beneath the scale (the total is on the dial)."""
         def update(_, alpha: float) -> None:
             self._announced = alpha
             self._lay()
@@ -152,6 +171,8 @@ class Balance(VGroup):
         for seg, a, b in zip(self.beam, pts, pts[1:]):
             seg.put_start_and_end_on(a, b)
         self.hub.move_to(pivot)
+        self.needle.put_start_and_end_on(pivot, pivot + NEEDLE * _up(self.angle()))
+        self._show_reading(pivot)
         for side, i in (("yes", 0), ("no", 2)):
             top, pan = self.end(side), self.pan_centre(side)
             left, right = pan + [-PAN, 0, 0], pan + [PAN, 0, 0]
@@ -172,9 +193,23 @@ class Balance(VGroup):
         if key != self._said:
             self._said = key
             self.verdict_label.become(serif(word, colour, 0.55))
-        self.total_label.become(serif(style.number(self.sum()), colour, 0.5, italic=False))
-        base = self.at + PIVOT + DOWN * 4.9
-        self.verdict_label.move_to(base)
-        self.total_label.next_to(self.verdict_label, DOWN, buff=0.2)
+        self.verdict_label.move_to(self.at + PIVOT + DOWN * 4.9)
         self.verdict_label.set_opacity(self._announced)
-        self.total_label.set_opacity(self._announced)
+
+    def _show_reading(self, pivot: np.ndarray) -> None:
+        total = self.sum()
+        colour = style.WARM[1] if total > 0 else style.COOL[1] if total < 0 else style.ASH
+        if (total, colour) != self._read:
+            self._read = (total, colour)
+            fresh = serif(style.number(total), colour, 0.42, italic=False)
+            self.reading.become(fresh)
+            self.reading.text = fresh.text  # become() takes the glyphs, not the words
+            self.mark.set_stroke(color=colour)
+        way = _up(self._dial)
+        self.mark.put_start_and_end_on(pivot + (DIAL - 0.08) * way, pivot + (DIAL + 0.1) * way)
+        self.reading.move_to(pivot + (DIAL + READ) * way)
+
+
+def _up(angle: float) -> np.ndarray:
+    """Straight up from the pivot, turned with a beam at this angle (positive leans toward yes, on the left)."""
+    return np.array([-np.sin(angle), np.cos(angle), 0.0])

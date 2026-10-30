@@ -185,3 +185,51 @@ class BalanceTest(unittest.TestCase):
         k = b.pans["yes"][0]
         k.show(1.0)
         self.assertFalse(any(isinstance(m, ImageMobject) for m in k.get_family()))
+
+    def test_the_needle_stands_square_to_the_beam(self):
+        b = Balance("yes", "no")
+        play(b.drop(140, "140"))
+        for _ in range(9):  # mid-swing, too
+            b.update(1 / 60)
+            beam = b.end("no") - b.end("yes")
+            needle = b.needle.get_end() - b.needle.get_start()
+            self.assertAlmostEqual(float(np.dot(beam, needle)), 0.0, places=4)
+            self.assertGreater(needle[1], 0)  # it points up, over the dial
+
+    def test_the_needle_leans_to_the_heavier_side(self):
+        b = land()
+        self.assertLess(b.needle.get_end()[0], b.needle.get_start()[0])  # toward yes, on the left
+        play(b.drop(-300, "300"))
+        settle(b)
+        self.assertGreater(b.needle.get_end()[0], b.needle.get_start()[0])
+
+    def test_the_dial_shows_one_number_the_total(self):
+        b = Balance("yes", "no")
+        self.assertEqual(b.reading.text, "0")  # live from the start
+        play(b.drop(140, "140"))
+        self.assertEqual(b.reading.text, "140")
+        play(b.drop(-162, "162"))
+        self.assertEqual(b.reading.text, style.number(-22))
+        settle(b)
+        self.assertEqual(b.reading.get_color().to_hex().upper(), style.COOL[1])
+
+    def test_the_needle_settles_on_the_number(self):
+        b = land()
+        pivot = b.needle.get_start()
+        needle = b.needle.get_end() - pivot
+        mark = b.mark.get_center() - pivot
+        number = b.reading.get_center() - pivot
+        for v in (mark, number):
+            self.assertAlmostEqual(float(needle[0] * v[1] - needle[1] * v[0]) / np.linalg.norm(v), 0.0, places=2)
+            self.assertGreater(np.linalg.norm(v), np.linalg.norm(needle))  # beyond the tip
+
+    def test_the_needle_overshoots_the_number_then_returns(self):
+        b = Balance("yes", "no")
+        play(b.drop(140, "140"))
+        target = b.rest()
+        swing = []
+        for _ in range(60):
+            b.update(1 / 60)
+            swing.append(b.angle())
+        self.assertGreater(max(swing), target * 1.05)
+        self.assertAlmostEqual(b.dial_angle(), target, places=3)  # the number waits where it will settle
