@@ -419,6 +419,33 @@ using linear classifier probes" (arXiv 1610.01644, 2016); arXiv
 2308.14752 (deception) and 2206.13353 (power-seeking), named only by
 number.
 
+## 14. Neural Networks Are Already Clean (Goodfire)
+
+Nick Cammarata, with Curt Tigges and Tarun Gogineni. Goodfire, 2026
+(revised 2026-10-30). https://already-clean.goodfire.com (plain text:
+/essay.md). The main body was read in full from the plain-text version,
+with the appendix sections on superposition's definitions, toy models,
+watching neurons develop, circuit ecology, scale, recursive
+generalization, sign regimes and attribution audits; figures and the
+interactive microscopes weren't viewed. An essay, not a peer-reviewed
+paper; its language-model numbers are preliminary and a companion
+technical paper is promised. The basis of the packing question
+(`packing-question.md`).
+
+| Concept | What the essay says | Series |
+|---|---|---|
+| The thesis | Polysemanticity came mostly from fixable problems (weak tools, poor architecture, too little data), not superposition; networks are "already clean" | packing question |
+| Cat-and-car, reread | InceptionV1 4e:55 brings in cat, fox and car detectors because of a shared pointed V shape; its negative pole is an O; the essay softened "it's a V neuron" on 2026-10-30 | 010 / packing question |
+| The superposition circuit, reread | Zoom In's car-into-dogs circuit was shared pose (100+ generalized pose neurons), plus feature visualization reward-hacked into dogs | packing question |
+| Recursive generalization | A neuron sprouts related offshoots as it grows ("iy" → "diy" → "do it yourself"), seen by watching checkpoints | packing question (Grow) |
+| Squeezed networks | Less room makes neurons coarser, not mixed; InceptionV1's last layer goes from ~0–5% legible to ~99% in a ConvNeXt of the same size and data | packing question (Squeeze, Architecture) |
+| Toy models, conceded | Toy Models of Superposition does pack, in a world of features that are ends in themselves; add correlated inputs and hidden neurons and related inputs share neurons | packing question (Structure dial) |
+| Rare facts | Predicted to ride on related neurons, not unrelated ones | packing question (Rare events) |
+| Negative poles | Matter about as much as positive ones; top-k labels miss them (Santa on a negative pole) | tools |
+| Explanations that can lose | Blind maximum, near misses, per-bundle tests | tools |
+| Dictionaries | SAEs on clean layers mostly rediscover the neurons | packing question; SAE video |
+| Language-model audit | ~90% of Qwen3-32B neuron poles with one main job (preliminary, threshold-dependent) | later |
+
 ## Gaps
 
 - The middle and end of the podcast transcript are summary-only (†).

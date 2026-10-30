@@ -124,7 +124,15 @@ up. Numbers are plain whole numbers, never sub-numbered.
 | 007 | A neuron's weights are a picture of what it wants | A neuron that sees screen pixels |
 | 008 | Check a neuron's meaning against the answer key (probing) | Does a neuron track Mario's speed in RAM? |
 | 009 | Play a neuron backwards: what excites it most | Dataset examples vs. synthesized inputs |
-| 010 | One neuron, several meanings (polysemanticity) | A neuron firing for two unrelated things |
+| 010 | One neuron, several meanings (polysemanticity) | Can become the first video of the packing question (`docs/series/packing-question.md`): is a mixed neuron packing unrelated things, or generalizing? |
+
+The packing question (Nate, 2026-10-30): a core strand of the series,
+several videos long, testing empirically whether neurons pack unrelated
+things (superposition) or group things that share something
+(generalization), across games, phenomena, levels of abstraction and
+kinds of network. No fixed place in the curriculum; one video at a
+time, each experiment run well ahead of its script. Its question,
+experiments, games and tools are in `docs/series/packing-question.md`.
 
 Beyond the pilot (direction, not commitment): superposition; causal
 intervention by rewinding and editing the game; circuits; convolutional
