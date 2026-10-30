@@ -1,6 +1,5 @@
 import unittest
 
-import numpy as np
 from manim import ImageMobject
 
 from series import style
@@ -88,15 +87,8 @@ class BalanceTest(unittest.TestCase):
         self.assertGreater(l[0], l[2])
         self.assertGreater(r[2], r[0])
 
-    def test_a_blocks_glow_is_one_smooth_image(self):
+    def test_a_block_has_no_glow_image(self):
         b = land()
         k = b.pans["yes"][0]
         k.show(1.0)
-        a = k.glow.pixel_array[:, :, 3].astype(int)
-        self.assertEqual(sum(isinstance(m, ImageMobject) for m in k.get_family()), 1)
-        for edge in (a[0], a[-1], a[:, 0], a[:, -1]):
-            self.assertEqual(edge.max(), 0)  # nothing at its border
-        row = a[a.shape[0] // 2, a.shape[1] // 2:]
-        self.assertGreater(row.max(), 0)
-        self.assertTrue(np.all(np.diff(row) <= 0))  # falls off monotonically
-        self.assertLess(np.abs(np.diff(row)).max(), 0.25 * row.max())  # no steps
+        self.assertFalse(any(isinstance(m, ImageMobject) for m in k.get_family()))
