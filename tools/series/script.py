@@ -172,6 +172,8 @@ def load_video(dir: Path) -> Video:
                               "add closing = true")
         lines.append(make_line(raw, None))
     music = script.get("music")
+    if music and not str(music).lower().endswith(".wav"):
+        raise ScriptError(f"music must be a WAV file, but {music!r} isn't")
     return Video(
         name=dir.name,
         dir=dir,

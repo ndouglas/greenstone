@@ -12,7 +12,7 @@ import numpy as np
 import soundfile
 
 from series import pacing
-from series.build import NotNarrated, SectionTooLong, build, room_tone
+from series.build import NotNarrated, SectionTooLong, build, mix, room_tone
 from series.credits import credits_seconds
 from series.pacing import STILLNESS
 from series.script import load_video
@@ -45,9 +45,9 @@ class VideoScene(NarratedScene):
 '''
 
 
-def tone(path, hz, seconds, amplitude=0.5):
+def tone(path, hz, seconds, amplitude=0.5, subtype=None):
     t = np.arange(int(seconds * RATE)) / RATE
-    soundfile.write(path, (amplitude * np.sin(2 * np.pi * hz * t)).astype(np.float32), RATE)
+    soundfile.write(path, (amplitude * np.sin(2 * np.pi * hz * t)).astype(np.float32), RATE, subtype=subtype)
 
 
 class ToneEngine:
@@ -169,6 +169,19 @@ class Build(unittest.TestCase):
         self.assertGreater(band_level(movie, 1000, start=3.0, length=2.0), -45)
         self.assertLess(band_level(movie, 1000, start=end - 0.2, length=0.2),
                         band_level(movie, 1000, start=3.0, length=2.0) - 10)
+
+    def test_24_bit_music_and_room_tone_are_mixed(self):
+        # ffmpeg 9 sniffs some quiet 24-bit WAVs as MPEG-TS unless told they are WAV.
+        root, d = videos()
+        with contextlib.redirect_stdout(io.StringIO()):
+            movie = build("001-test", ToneEngine(), draft=True, videos=root, out_root=Path(tempfile.mkdtemp()))
+        folder = Path(tempfile.mkdtemp())
+        music, room = folder / "music.wav", folder / "room.wav"
+        for path, hz in ((music, 3000), (room, 3100)):
+            tone(path, hz, 1.0, amplitude=0.01, subtype="PCM_24")
+        mixed = folder / "mixed.mp4"
+        mix(movie, music, mixed, room=room)
+        self.assertAlmostEqual(duration(mixed), duration(movie), delta=0.2)
 
     def test_the_mix_does_not_clip(self):
         root, d = videos(music='music = "MUSIC"')

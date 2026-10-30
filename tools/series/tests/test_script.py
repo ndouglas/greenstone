@@ -126,6 +126,13 @@ framing = true
         self.assertEqual(v.music, REPO / "target" / "x.wav")
         self.assertIsNone(load_video(video('title = "t"\n' + base)).music)
 
+    def test_music_must_be_a_wav_file(self):
+        base = '\n[[line]]\nid = "a"\ntext = "One."\nframing = true\n'
+        with self.assertRaises(ScriptError) as e:
+            load_video(video('title = "t"\nmusic = "target/x.mp3"\n' + base))
+        self.assertIn("music must be a WAV file", str(e.exception))
+        self.assertIn("x.mp3", str(e.exception))
+
 
 class Numbers(unittest.TestCase):
     def test_numbers_fill_the_script(self):
