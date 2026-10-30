@@ -36,7 +36,7 @@ def ffmpeg(*args: str) -> str:
 
 def measure(source: Path, chain: str) -> float:
     """Integrated loudness, in LUFS, of `source` through `chain`."""
-    err = ffmpeg("-i", str(source), "-af", f"{chain},ebur128", "-f", "null", "-")
+    err = ffmpeg("-f", "wav", "-i", str(source), "-af", f"{chain},ebur128", "-f", "null", "-")
     found = re.findall(r"I:\s+(-?[\d.]+|-inf) LUFS", err)
     return float(found[-1])
 
@@ -46,7 +46,7 @@ def loudness(path: Path) -> float:
 
 
 def render(source: Path, chain: str, out: Path) -> None:
-    write_atomically(out, lambda p: ffmpeg("-y", "-i", str(source), "-af", chain, "-ac", "1", "-ar", str(RATE),
+    write_atomically(out, lambda p: ffmpeg("-y", "-f", "wav", "-i", str(source), "-af", chain, "-ac", "1", "-ar", str(RATE),
                                            "-c:a", "pcm_s16le", str(p)))
 
 

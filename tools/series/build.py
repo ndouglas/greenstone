@@ -78,14 +78,14 @@ def mix(movie: Path, music: Path | None, out: Path, room: Path | None = None, ro
     inputs, graph, voice = ["-i", str(movie)], [f"[0:a]apad=whole_dur={length:.3f}[voice]"], "[voice]"
     if room is not None:
         until = length if room_until is None else room_until
-        inputs += ["-stream_loop", "-1", "-i", str(room)]
+        inputs += ["-stream_loop", "-1", "-f", "wav", "-i", str(room)]
         graph.append(f"[{inputs.count('-i') - 1}:a]atrim=end={until:.3f},afade=t=out:st={max(0.0, until - 0.5):.3f}:d={min(0.5, until):.3f},"
                      f"apad=whole_dur={length:.3f}[room]")
         graph.append("[voice][room]amix=inputs=2:duration=first:normalize=0[spoken]")
         voice = "[spoken]"
     if music is not None:
         fade_at = max(0.0, length - FADE_SECONDS)
-        inputs += ["-stream_loop", "-1", "-i", str(music)]
+        inputs += ["-stream_loop", "-1", "-f", "wav", "-i", str(music)]
         graph.append(f"[{inputs.count('-i') - 1}:a]volume={MUSIC_DB}dB,afade=t=out:st={fade_at:.3f}:d={FADE_SECONDS}[bed]")
         graph.append(f"{voice}[bed]amix=inputs=2:duration=first:normalize=0[mixed]")
         voice = "[mixed]"

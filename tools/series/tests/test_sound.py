@@ -77,6 +77,19 @@ class Chain(unittest.TestCase):
         self.assertAlmostEqual(loudness(loud) - loudness(quiet), 6.0, delta=1.5)
         self.assertEqual(soundfile.info(loud).samplerate, 48000)
 
+    def test_a_quiet_24_bit_tone_is_read_whatever_ffmpeg_sniffs(self):
+        # ffmpeg 9 probes some 24-bit WAVs as MPEG-TS unless told the format.
+        t = np.arange(48000) / 48000
+        tone = (0.01 * np.sin(2 * np.pi * 3000 * t)).astype(np.float32)
+        folder = Path(tempfile.mkdtemp())
+        wav = folder / "tone.wav"
+        soundfile.write(wav, tone, 48000, subtype="PCM_24")
+        fake = mock.Mock(path=wav, start=0.0, end=1.0, number=1, line_id="a")
+        with mock.patch.object(sound, "cache_path", return_value=folder / "take.wav"):
+            out, _ = process(fake, folder)
+        self.assertEqual(soundfile.info(out).samplerate, 48000)
+        self.assertEqual(soundfile.info(process_room(wav, 0.0, folder)).samplerate, 48000)
+
 
 if __name__ == "__main__":
     unittest.main()
