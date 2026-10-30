@@ -5,6 +5,7 @@ import textwrap
 from manim import DOWN, LEFT, Text, VGroup
 
 from series import style
+from series.ember import serif
 from series.script import Citation, Video
 
 # Each page of the end cards holds this long.
@@ -41,19 +42,19 @@ def stack(*rows: Text) -> VGroup:
 
 
 def heading(page: int, pages: int) -> Text:
-    return Text(f"Sources ({page} of {pages})", font=style.FONT, color=style.TEXT, weight="BOLD").scale(SIZE)
+    return serif(f"Sources ({page} of {pages})", style.WARM[0], SIZE)
 
 
 def credit_pages(video: Video) -> list[VGroup]:
     """The end cards: the sources a page at a time, every one at the same
     readable size, closing on the disclaimer (on its own page if it won't fit)."""
-    entries = [Text(textwrap.fill(f"{c.authors} ({c.year}). {c.title}.", 64), font=style.FONT, color=style.TEXT)
+    entries = [serif(textwrap.fill(f"{c.authors} ({c.year}). {c.title}.", 64), style.TEXT, 1.0, italic=False)
                for c in cited(video)]
     # One size for every page, narrower only if a line is too wide.
     size = min([SIZE] + [WIDTH / e.width for e in entries])
     for e in entries:
         e.scale(size)
-    disclaimer = Text(textwrap.fill(DISCLAIMER, 64), font=style.FONT, color=style.TEXT, slant="ITALIC").scale(SIZE)
+    disclaimer = serif(textwrap.fill(DISCLAIMER, 64), style.TEXT, SIZE)
     groups: list[list[Text]] = []
     for e in entries:
         if not groups or stack(heading(1, 1), *groups[-1], e).height > HEIGHT:

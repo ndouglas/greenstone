@@ -96,6 +96,14 @@ class Pages(unittest.TestCase):
         numbered = [page for page in pages if texts(page)[0].startswith("Sources")]
         self.assertEqual(texts(pages[0])[0], f"Sources(1of{len(numbered)})")
 
+    def test_credits_are_in_charter(self):
+        for page in credit_pages(many()):
+            words = [m for m in page.get_family() if isinstance(m, Text)]
+            self.assertTrue(all(m.font == "Charter" for m in words))
+            self.assertTrue(any(m.slant == "ITALIC" and m.text.startswith("Sources") for m in words) or page is credit_pages(many())[-1])
+        last = [m for m in credit_pages(many())[-1].get_family() if isinstance(m, Text)]
+        self.assertEqual(last[-1].slant, "ITALIC")
+
     def test_every_page_is_the_same_readable_size(self):
         def row(page, i):
             return next(m for m in page.get_family() if isinstance(m, Text) and m.text.endswith(f"Source{i}."))

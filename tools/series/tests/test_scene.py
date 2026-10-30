@@ -6,11 +6,11 @@ from pathlib import Path
 
 import numpy as np
 import soundfile
-from manim import Dot, FadeIn, Text, tempconfig
+from manim import Dot, FadeIn, ImageMobject, Text, VGroup, tempconfig
 
 from series.credits import PAGE_SECONDS, credits_seconds
 from series.scene import NarratedScene, ScriptOrderError, StoryboardScene
-from series.title import title_card
+from series.title import board_tiles, title_card
 from series.script import Section, load_video
 from series.voice import Voice
 
@@ -374,6 +374,51 @@ class Chapters(unittest.TestCase):
         intro = Section(id="introduction", kind="introduction", number=None, title="Introduction", lines=())
         self.assertFalse(any("Chapter" in t for t in texts(title_card(intro, []))))
 
+
+    def test_titles_are_in_charter(self):
+        video = chapters()[0]
+        card = title_card(video.sections[1], board_tiles(video.sections[1]))
+        words = [m for m in card.get_family() if isinstance(m, Text)]
+        self.assertTrue(words)
+        self.assertTrue(all(m.font == "Charter" for m in words))
+        # The chapter number is italic, the title roman.
+        slant = {m.text: m.slant for m in words}
+        self.assertEqual(slant["Chapter1"], "ITALIC")
+        self.assertEqual(slant["One"], "NORMAL")
+
+    def test_the_wall_leaves_the_ground_showing(self):
+        from manim import Rectangle
+        from series.title import wall
+        for row in wall([Rectangle(width=2.0, height=1.0)]):
+            for slot in row:
+                self.assertEqual(slot[0].fill_opacity, 0)
+
+    def test_every_scene_starts_on_the_ground(self):
+        with tempconfig({"pixel_width": 160, "pixel_height": 90, "verbosity": "ERROR"}):
+            scene = NarratedScene()
+            scene.setup()
+            self.assertIsInstance(scene.mobjects[0], ImageMobject)
+            self.assertIs(scene.mobjects[0], scene.ground)
+            scene.add(Dot())
+            scene.clear()
+            self.assertEqual(scene.mobjects, [scene.ground])
+
+    def test_placeholders_are_in_charter(self):
+        video, voices, d = fixtures({"a": 0.2, "b": 0.2})
+        seen = []
+
+        class S(NarratedScene):
+            def construct(self):
+                original = self.say
+                self.say = lambda *a, **k: (seen.extend(m for m in self.mobjects if isinstance(m, VGroup)), original(*a, **k))
+                self.placeholder("a")
+                self.placeholder("b")
+
+        S.video, S.voices = video, voices
+        render(S, d / "media")
+        texts = [t for g in seen for t in g.get_family() if isinstance(t, Text)]
+        self.assertTrue(texts)
+        self.assertTrue(all(t.font == "Charter" for t in texts))
 
     def test_the_wall_keeps_each_pictures_shape(self):
         from manim import Rectangle

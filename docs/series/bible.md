@@ -232,9 +232,56 @@ it, so later videos can call back to it.
 
 ## Visual language
 
-One consistent look per concept, so the eye learns it. The palette and
-fonts live in `tools/series/style.py`, for Nate's review in the pilot:
-input, weight, bias and output each keep their colour in every video.
+The look is **Ember**, fixed for every video in
+`docs/superpowers/specs/2026-10-30-visual-language-design.md` (read it for
+the detail); the palette and type live in `tools/series/style.py`, and the
+pieces in `tools/series/`. The rules:
+
+- **Ember, and light means understanding.** A deep, nearly black ground
+  with a faint warm glow toward the action. What the video has explained
+  gives light; what it hasn't stays dim (unexplained neurons are dim coals).
+- **Temperature is sign; hue is identity.** Warm (amber, coral, gold, rose)
+  is above zero: pushes up, excites, says yes. Cool (blue, light blue, teal,
+  violet) is below zero: pushes down, inhibits, says no. The dark is zero.
+  Within a temperature, hue tells things apart, and paths blend where they
+  combine. This replaces "one colour per concept in every video": a concept
+  needn't keep a colour across videos, only warm and cool keep their meaning.
+- **Type.** Charter (Bitstream Charter, so renders reproduce): italic for
+  labels and words, roman for numbers and answers, a true minus (−) for
+  negatives. Formulas are set in the same serif; a symbol is neutral
+  parchment until a number fills it, and a filled term takes its sign's
+  temperature.
+- **Lines** are hairlines, about 1.2 to 1.4 px at 1080p, for paths, axes and
+  rulers. Nothing heavy.
+- **Light.** A continuous value (a total, an activation) is a smooth radial
+  glow, one gradient image, warm above zero and cool below, easing toward the
+  value; one light scale per video, so brightness always means size. A binary
+  answer is a crisp ring, a warm dot for yes and empty and cool for no, with
+  no glow. The moment the dot becomes a glow is the moment the light becomes
+  a dial.
+- **Motion.** Instruments arrive one at a time, drawn or faded in over about
+  half a second to a second, after the thing they measure. Numbers are live
+  from the moment they appear. Nothing that is a continuous quantity snaps.
+- **The game screen stays exactly itself.** Whole-number pixel scaling (3× at
+  1080p) on whole-pixel positions, nearest-neighbour; original colours, never
+  dimmed; an old-TV treatment (rounded corners, a real blur-glow in the
+  clip's own colour, soft darkening toward the corners, faint scanlines only
+  at 3× or more). The game arrives from black by a cover fading off it.
+  Footage comes only from recordings with RAM saved every frame, and
+  overlays read RAM one frame behind the picture (measured per game).
+  Nothing drawn over the game may disagree with it by a frame or a pixel.
+- **The neuron is drawn from what it measures.** A hairline ring holds its
+  running total, with its glow behind; each input is a path from the thing
+  it measures (a mark on the screen, a square of the memory grid, or a bare
+  number when it measures nothing on screen). **The setting is on the screen
+  too:** a fixed gold line, whose path into the neuron is the bias, and **the
+  gap** between it and the measured line is the total, shaded warm above the
+  setting and cool below. Weights change how brightly the gap burns, never
+  where the setting is. The answer is the ring and dot, with its verdict in
+  italics beneath.
+- **Title screens and credits** are on the same ground, in the same type: the
+  chapter number in italic, the title in roman, over a dim wall of the
+  chapter's own pictures; the sources, then the disclaimer, in Charter.
 
 Two names that must never blur (from Nate's interview on 001): **the
 graph** is the neuron's total plotted against one input, a line whose zero

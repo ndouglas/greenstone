@@ -2,9 +2,10 @@
 
 import textwrap
 
-from manim import DOWN, LEFT, FadeIn, Mobject, Scene, Text, VGroup, config, linear
+from manim import DOWN, LEFT, FadeIn, Mobject, Scene, VGroup, config, linear
 
 from series import style
+from series.ember import backdrop, serif
 from series.credits import PAGE_SECONDS, credit_pages
 from series.pacing import STILLNESS, TITLE_HOLD
 from series.script import Video
@@ -27,6 +28,9 @@ class NarratedScene(Scene):
 
     def setup(self):
         self.camera.background_color = style.BACKGROUND
+        # Ember's ground, under everything: first drawn, and kept when the screen clears.
+        self.ground = backdrop()
+        self.add(self.ground)
         self.said: list[str] = []
         self.titled: list[str] = []
         self.credits_rolled = False
@@ -63,6 +67,12 @@ class NarratedScene(Scene):
         self.section_starts[section_id] = start
         self.section_lengths[section_id] = self.time - start
 
+    def clear(self):
+        """Clear the screen down to the ground."""
+        super().clear()
+        self.add(self.ground)
+        return self
+
     def say(self, line_id: str, *animations, pad: float | None = None) -> None:
         """Say a beat, then hold still: `pad` seconds, else the beat's own
         pause, else STILLNESS."""
@@ -94,10 +104,10 @@ class NarratedScene(Scene):
         if line is None:
             raise ScriptOrderError(f"placeholder for {line_id!r}, which isn't a line in the script")
         section = next((s for s in self.video.sections if s.id == line.section), None)
-        rows = [Text(f"{section.title} · {line.id}" if section else line.id, font=style.FONT, color=style.WARM[0]).scale(0.5)]
-        rows.append(Text(textwrap.fill(line.text, 48), font=style.FONT, color=style.TEXT).scale(0.6))
+        rows = [serif(f"{section.title} · {line.id}" if section else line.id, style.WARM[0], 0.5)]
+        rows.append(serif(textwrap.fill(line.text, 48), style.TEXT, 0.6, italic=False))
         if line.board:
-            rows.append(Text(textwrap.fill(f"Animation: {line.board}", 56), font=style.FONT, color=style.COOL[0]).scale(0.45))
+            rows.append(serif(textwrap.fill(f"Animation: {line.board}", 56), style.COOL[0], 0.45))
         card = VGroup(*rows).arrange(DOWN, buff=0.4)
         self.add(card)
         self.say(line_id)

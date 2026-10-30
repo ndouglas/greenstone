@@ -343,7 +343,7 @@ cite = ["goodfellow2016", "bishop2006"]
 id = "formula"
 text = "With one input, that's w·x + b > 0."
 spoken = "With one input, that's w times x, plus b, is above zero."
-board = "w·x + b > 0 assembles, w in orange, x in blue, b in purple"
+board = "w·x + b > 0 assembles, every symbol neutral until a number fills it, then each filled term takes its sign's temperature, warm above zero and cool below"
 cite = ["goodfellow2016", "bishop2006"]
 pause = 3.0
 
@@ -657,7 +657,7 @@ framing = true
 id = "the-tilt"
 text = "Written in whole numbers, the neuron the search found is very nearly: one times the depth, plus {smb1_land_speed_weight} times the falling speed, minus {smb1_land_threshold}."
 spoken = "Written in whole numbers, the neuron the search found is very nearly: one times the depth, plus {smb1_land_speed_weight_spoken} times the falling speed, minus {smb1_land_threshold_spoken}."
-board = "1 × depth + {smb1_land_speed_weight} × falling speed − {smb1_land_threshold}, colour-coded, beside the border"
+board = "1 × depth + {smb1_land_speed_weight} × falling speed − {smb1_land_threshold}, each filled term in its sign's temperature, beside the border"
 cite = ["exp001"]
 
 [[section.line]]
