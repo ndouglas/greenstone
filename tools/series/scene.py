@@ -30,6 +30,8 @@ class NarratedScene(Scene):
         self.said: list[str] = []
         self.titled: list[str] = []
         self.credits_rolled = False
+        # When the credits began, in seconds: the room tone stops there.
+        self.credits_at: float | None = None
         # Each section's length as rendered: from its title screen to the end of its last beat.
         self.section_starts: dict[str, float] = {}
         self.section_lengths: dict[str, float] = {}
@@ -108,6 +110,7 @@ class NarratedScene(Scene):
         if unsaid:
             raise ScriptOrderError(f"credits rolled before {', '.join(unsaid)} was said")
         self.clear()
+        self.credits_at = self.time
         for page in credit_pages(self.video):
             self.play(FadeIn(page), run_time=0.5)
             self.wait(PAGE_SECONDS - 0.5)

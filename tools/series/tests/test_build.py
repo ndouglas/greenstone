@@ -12,10 +12,12 @@ import numpy as np
 import soundfile
 
 from series import pacing
-from series.build import SectionTooLong, build
+from series.build import NotNarrated, SectionTooLong, build
 from series.credits import credits_seconds
 from series.pacing import STILLNESS
 from series.script import load_video
+from series.takes import TakeStore
+from series.tests.test_takes import speech
 from series.voice import TAKES
 
 RATE = 24000
@@ -108,6 +110,10 @@ class VideoScene(NarratedScene):
         self.say("bye")
         self.roll_credits()
 '''
+
+
+def record(d, line_id, text):
+    TakeStore(d / TAKES).add(line_id, speech(at=0.2, length=0.5, total=1.0), 48000, text)
 
 
 class Build(unittest.TestCase):
@@ -206,6 +212,59 @@ class Build(unittest.TestCase):
         self.assertEqual(movie.name, "001-test-storyboard.mp4")
         lines = len("The first line.") / 20 + len("The second line.") / 20
         self.assertAlmostEqual(duration(movie), lines + 2 * STILLNESS + credits_seconds(load_video(d)), delta=0.15)
+
+    def test_release_refuses_beats_in_the_narrators_voice(self):
+        root, d = videos()
+        record(d, "one", "The first line.")
+        out = Path(tempfile.mkdtemp())
+        with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(NotNarrated) as e:
+            build("001-test", ToneEngine(), draft=True, release=True, videos=root, out_root=out)
+        self.assertIn("two", str(e.exception))
+        self.assertNotIn("one", str(e.exception).replace("1 of", ""))
+        self.assertFalse((out / "001-test" / "media").exists())
+
+    def test_release_refuses_a_stale_take(self):
+        root, d = videos()
+        record(d, "one", "The first line.")
+        record(d, "two", "An older second line.")
+        with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(NotNarrated) as e:
+            build("001-test", ToneEngine(), draft=True, release=True, videos=root, out_root=Path(tempfile.mkdtemp()))
+        self.assertIn("two", str(e.exception))
+
+    def test_release_builds_when_every_beat_is_a_take(self):
+        root, d = videos()
+        record(d, "one", "The first line.")
+        record(d, "two", "The second line.")
+        with contextlib.redirect_stdout(io.StringIO()):
+            movie = build("001-test", ToneEngine(), draft=True, release=True, videos=root,
+                          out_root=Path(tempfile.mkdtemp()))
+        self.assertTrue(movie.exists())
+
+    def test_the_build_counts_the_narrators_beats(self):
+        root, d = videos()
+        record(d, "one", "The first line.")
+        report = io.StringIO()
+        with contextlib.redirect_stdout(report):
+            build("001-test", ToneEngine(), draft=True, videos=root, out_root=Path(tempfile.mkdtemp()))
+        self.assertIn("1 of 2 beats narrated by Kokoro", report.getvalue())
+
+    def test_room_tone_plays_only_under_takes(self):
+        def room_level(recorded):
+            root, d = videos()
+            for line_id, text in recorded:
+                record(d, line_id, text)
+            store = TakeStore(d / TAKES)
+            t = np.arange(48000 * 10) / 48000
+            store.set_room((0.01 * np.sin(2 * np.pi * 3000 * t)).astype(np.float32), 48000)
+            with contextlib.redirect_stdout(io.StringIO()):
+                movie = build("001-test", ToneEngine(), draft=True, videos=root, out_root=Path(tempfile.mkdtemp()))
+            return movie, band_level(movie, 3000, 1.3, 0.8)  # in the stillness after the first line
+
+        movie, pause = room_level([("one", "The first line."), ("two", "The second line.")])
+        self.assertGreater(pause, -75)
+        self.assertLess(band_level(movie, 3000, duration(movie) - 3.0, 2.0), pause - 20)  # the credits
+        _, mixed = room_level([("one", "The first line.")])
+        self.assertLess(mixed, pause - 20)
 
     def test_a_section_over_the_limit_stops_the_build(self):
         root, d = videos(scene=False)
