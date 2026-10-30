@@ -41,7 +41,7 @@ class BorderMap(VGroup):
 
     def __init__(self, points: np.ndarray, outcomes: list, weights: tuple, bias: float, x_label: str,
                  y_label: str, yes: str = "yes", no: str = "no", width: float = 7.0, height: float = 4.4,
-                 at: np.ndarray = np.zeros(3), hues: dict = HUES, x_hue: str = style.WARM[2], y_hue: str = style.COOL[1]):
+                 at: np.ndarray = np.zeros(3), hues: dict = HUES, x_hue: str = style.WARM[0], y_hue: str = style.WARM[3]):
         super().__init__()
         pts = np.asarray(points, float)
         self.data, self.outcomes = pts, list(outcomes)
@@ -73,8 +73,9 @@ class BorderMap(VGroup):
         y_text = serif(y_label, style.ASH, 0.3).next_to(axes[0].get_end(), RIGHT, buff=0.12).shift(DOWN * 0.1)
         self.yes_label = serif(yes, style.WARM[1], 0.32).set_opacity(0.85)
         self.no_label = serif(no, style.COOL[1], 0.32).set_opacity(0.85)
-        self.yes_label.move_to(self.page(self.lo + (self.hi - self.lo) * [0.85, 0.9]))
-        self.no_label.move_to(self.page(self.lo + (self.hi - self.lo) * [0.15, 0.1]))
+        top = self.page(self.hi)[1] + 0.3  # outside the plot, above its edge, each on its own side
+        self.yes_label.move_to([self.page(self.hi)[0], top, 0]).align_to(self.page(self.hi), RIGHT)
+        self.no_label.move_to([self.page(self.lo)[0], top, 0]).align_to(self.page(self.lo), LEFT)
         self._lay()
         self.border = VGroup(*self.pieces)
         self.add(*self.bands, axes, x_text, y_text, self.yes_label, self.no_label, halos, cores, self.border)

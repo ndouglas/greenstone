@@ -59,3 +59,17 @@ class BorderMapTest(unittest.TestCase):
         a, b = m.border_points()
         self.assertAlmostEqual((b - a)[1] / (b - a)[0], -1.0, places=6)
         self.assertAlmostEqual(float(np.dot(m.weights, a) + m.bias), 0, places=6)
+
+    def test_the_border_is_warm_end_to_end(self):
+        m = make()
+        for hue in (m.x_hue, m.y_hue):
+            self.assertIn(hue.upper(), style.WARM)
+        for piece in (m.pieces[0], m.pieces[-1]):
+            r, _, b = piece.get_stroke_color().to_rgb()
+            self.assertGreater(r, b)
+
+    def test_the_side_labels_sit_outside_the_plot(self):
+        m = make()
+        top = m.page(m.hi)[1]
+        for label in (m.yes_label, m.no_label):
+            self.assertGreater(label.get_bottom()[1], top)
