@@ -17,6 +17,9 @@ SOFT = 80.0  # the sum at which the beam is most of the way to it
 BIGGEST = 160.0  # the value whose block is full size
 STEPS = 24  # pieces of the beam
 GAP = 0.06
+NATURAL = 11.0  # the beam's own swing, radians per second
+DAMPING = 0.4  # under 1, so it overshoots and rings down: settled in about a second
+SUBSTEP = 1 / 240
 
 
 class Block(VGroup):
@@ -28,6 +31,7 @@ class Block(VGroup):
         self.colour = style.temperature(value if value else -1, hue)
         self.side = 0.3 + 0.85 * (min(abs(value), BIGGEST) / BIGGEST) ** 0.5
         self.fall = 1.0  # 1 high above its pan, 0 resting on it
+        self.landed = False  # its weight counts from the moment it lands
         self.box = Square(self.side, stroke_color=self.colour, stroke_width=1.2, fill_color=self.colour, fill_opacity=0.0)
         self.text = serif(label, style.TEXT, 0.4, italic=False)
         self.add(self.box, self.text)
@@ -48,7 +52,8 @@ class Balance(VGroup):
         self.words = {"yes": yes, "no": no}
         self.at = np.asarray(at, float)
         self.pans = {"yes": [], "no": []}
-        self._tilt = 0.0  # the sum the beam currently shows
+        self._theta = 0.0  # the beam's angle now, positive when the yes end is down
+        self._omega = 0.0  # and how fast it is turning
         self._announced = 0.0
         self._said = None
 
@@ -70,18 +75,36 @@ class Balance(VGroup):
         self.add(self.post, self.beam, self.strings, *self.plates.values(), self.hub, *self.labels.values(),
                  self.stack, self.verdict_label, self.total_label)
         self._lay()
-        self.add_updater(lambda _: self._lay())
+        self.add_updater(self._tick)
+
+    def _tick(self, _, dt: float = 0.0) -> None:
+        self._swing(dt)
+        self._lay()
 
     def sum(self) -> float:
-        return sum(k.value for ks in self.pans.values() for k in ks)
+        return sum(k.value for ks in self.pans.values() for k in ks if k.landed)
 
     def verdict(self) -> str:
         """The side the beam tips to; balanced is no, since a neuron says yes only above zero."""
         return self.words["yes"] if self.sum() > 0 else self.words["no"]
 
     def angle(self) -> float:
-        """The beam's angle, positive when the yes (left) end is down; it saturates for a heavy sum."""
-        return TILT * float(np.tanh(self._tilt / SOFT))
+        """The beam's angle now, positive when the yes (left) end is down."""
+        return self._theta
+
+    def rest(self) -> float:
+        """The angle the beam settles at for the landed weight; it saturates for a heavy sum."""
+        return TILT * float(np.tanh(self.sum() / SOFT))
+
+    def _swing(self, dt: float) -> None:
+        """A damped spring toward the resting angle, so a landing makes the beam overshoot and ring down."""
+        rest = self.rest()
+        left = dt
+        while left > 1e-9:
+            h = min(SUBSTEP, left)
+            self._omega += (-NATURAL ** 2 * (self._theta - rest) - 2 * DAMPING * NATURAL * self._omega) * h
+            self._theta += self._omega * h
+            left -= h
 
     def end(self, side: str) -> np.ndarray:
         a = self.angle()
@@ -95,8 +118,6 @@ class Balance(VGroup):
         """A block of |value|'s size falls into its sign's pan while the beam tips to the new sum."""
         block = Block(value, label, hue)
         side = "yes" if value > 0 else "no"
-        before = self._tilt
-        after = self.sum() + value
         self.pans[side].append(block)
         self.stack.add(block)
         block.fall = 1.0
@@ -105,7 +126,7 @@ class Balance(VGroup):
         def update(_, alpha: float) -> None:
             block.fall = (1 - alpha) ** 2  # accelerating
             block.show(min(1.0, alpha * 4))
-            self._tilt = before + (after - before) * alpha
+            block.landed = alpha >= 1.0
             self._lay()
         return UpdateFromAlphaFunc(self, update)
 
