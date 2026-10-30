@@ -87,12 +87,14 @@ class Bar(VGroup):
 
 
 class ScoreBars(VGroup):
-    """Bars standing on one line, heights proportional to their value; the first, the baseline, is ash."""
+    """Bars standing on one line, heights proportional to their value (`top` is the value of a full bar); the
+    first, the baseline, is ash. The bars are centred on the `slots` they will fill, the numbers shown to `places`."""
 
     def __init__(self, baseline: float, baseline_label: str = "always on the ground", top: float = 100.0,
-                 slots: int = 3, unit: str = "%", at: np.ndarray = (0, -0.4, 0)):
+                 slots: int = 2, unit: str = "%", places: int = 0, at: np.ndarray = (0, -0.4, 0)):
         super().__init__()
-        self.strength, self.slots, self.unit_mark, self.at = top, slots, unit, np.asarray(at, float)
+        self.top, self.slots, self.places, self.unit_mark = top, slots, places, unit
+        self.at = np.asarray(at, float)
         self.bars: list[Bar] = []
         self._place(baseline, baseline_label, style.ASH, False)
         self.bars[0].grow(1.0)
@@ -102,7 +104,8 @@ class ScoreBars(VGroup):
         if k >= self.slots:
             raise ValueError(f"the bars have {self.slots} places and all are taken")
         x = self.at[0] + (k - (self.slots - 1) / 2) * (BAR_W + BAR_GAP)
-        bar = Bar(value, label, colour, x, self.at[1], BAR_HEIGHT / self.strength, faint, style.number(value) + self.unit_mark)
+        bar = Bar(value, label, colour, x, self.at[1], BAR_HEIGHT / self.top, faint,
+                  style.number(value, self.places) + self.unit_mark)
         self.bars.append(bar)
         super().add(bar)
         return bar

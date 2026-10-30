@@ -3,7 +3,7 @@ import unittest
 from manim import FadeIn, FadeOut, Rectangle
 
 from series import style
-from series.records import ScoreBars, Tapes
+from series.records import BAR_HEIGHT, ScoreBars, Tapes
 
 
 def play(animation) -> None:
@@ -14,7 +14,7 @@ def play(animation) -> None:
 
 class ScoreBarsTest(unittest.TestCase):
     def test_bars_are_proportional(self):
-        bars = ScoreBars(54)
+        bars = ScoreBars(54, slots=3)
         play(bars.bar(94, "the neuron"))
         play(bars.bar(27, "half", faint=True))
         base, result, small = (b.box.height for b in bars.bars)
@@ -31,7 +31,7 @@ class ScoreBarsTest(unittest.TestCase):
         self.assertEqual(bars.bars[0].box.get_stroke_colors()[0].to_hex().upper(), style.ASH)
 
     def test_a_faint_bar_is_faint(self):
-        bars = ScoreBars(54)
+        bars = ScoreBars(54, slots=3)
         play(bars.bar(94, "the neuron"))
         play(bars.bar(94, "to beat", faint=True))
         self.assertLess(bars.bars[2].box.get_stroke_opacity(), bars.bars[1].box.get_stroke_opacity())
@@ -44,6 +44,28 @@ class ScoreBarsTest(unittest.TestCase):
         self.assertLess(bars.bars[1].box.height, 0.01)
         a.interpolate(1.0)
         a.finish()
+
+
+class ScoreBarsReadingTest(unittest.TestCase):
+    def test_the_numbers_show_the_places_asked_for(self):
+        bars = ScoreBars(54.5, places=1)
+        play(bars.bar(86.5, "the neuron"))
+        self.assertEqual([b.number.text for b in bars.bars], ["54.5%", "86.5%"])
+        whole = ScoreBars(54)
+        play(whole.bar(86, "the neuron"))
+        self.assertEqual([b.number.text for b in whole.bars], ["54%", "86%"])
+
+    def test_the_bars_are_centred_on_the_page(self):
+        for slots in (2, 3):
+            bars = ScoreBars(54, slots=slots)
+            for k in range(slots - 1):
+                play(bars.bar(80 + k, str(k)))
+            xs = [b.x for b in bars.bars]
+            self.assertAlmostEqual((min(xs) + max(xs)) / 2, 0.0, places=6)
+
+    def test_the_full_bar_is_top(self):
+        bars = ScoreBars(50, top=50.0)
+        self.assertAlmostEqual(bars.bars[0].box.height, BAR_HEIGHT, places=4)
 
 
 class ScoreBarsMobjectTest(unittest.TestCase):

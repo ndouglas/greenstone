@@ -17,7 +17,7 @@ from series.screen import Screen
 BYTES = 2048
 CELL_PX = (36, 20)  # a cell's size in the grid's own image
 FONT_PX = 17
-DIM = 0.8  # a number's brightness; zero is dimmer still
+DIM = 1.0  # a number's brightness, in ash; zero is dimmer still, and a lit square far brighter
 ZERO = 0.5  # zero's share of it
 ZOOM = 3.6  # how much larger a lit square is than its cell
 REACH = 0.25

@@ -61,8 +61,11 @@ class MemoryGridTest(unittest.TestCase):
             grid = MemoryGrid(self.recording, columns=32)
             self.assertEqual(grid.rows, 64)
             a, b = grid.square(0).get_center(), grid.square(33).get_center()
-            self.assertAlmostEqual(a[0], grid.square(1).get_center()[0] - (grid.square(1).get_center()[0] - a[0]))
-            self.assertAlmostEqual(b[0], grid.square(1).get_center()[0])  # 33 is column 1 of row 1
+            step = grid.square(1).get_center()[0] - a[0]
+            self.assertGreater(step, 0)  # columns run left to right, evenly
+            self.assertAlmostEqual(grid.square(2).get_center()[0] - grid.square(1).get_center()[0], step)
+            self.assertAlmostEqual(a[0], grid.square(32).get_center()[0])  # 32 wraps back to column 0
+            self.assertAlmostEqual(b[0], a[0] + step)  # 33 is column 1 of row 1
             self.assertLess(b[1], a[1])
 
     def test_a_lit_square_is_a_source(self):
