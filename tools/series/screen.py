@@ -102,6 +102,10 @@ class Footage(GameFootage):
         self.set_resampling_algorithm(RESAMPLING_ALGORITHMS["bilinear"] if size else NEAREST)
         self.add_updater(Footage.advance)
 
+    def __deepcopy__(self, memo: dict) -> "Footage":
+        memo[id(self.frames)] = self.frames  # copies share the frames: a recording is hundreds of megabytes
+        return super().__deepcopy__(memo)
+
     def picture(self, index: int) -> np.ndarray:
         frame = np.asarray(self.frames[index])
         if self.size:
@@ -118,18 +122,23 @@ class Footage(GameFootage):
 
 
 class Screen(Group):
-    """A recording on screen from frame `start`: `scale` screen pixels per NES pixel (3 at 1080p), its
-    left edge at `left_px` or centred on `centre`, always on whole pixels."""
+    """A recording on screen from frame `start`: `scale` screen pixels per NES pixel (3 at 1080p; a whole
+    number, or any value below 1), its left edge at `left_px` or centred on `centre`, always on whole pixels.
+    The scale is kept as `pixel_scale`."""
 
     def __init__(self, recording: Recording, start: int, scale: float | None = None,
                  scanlines: bool | None = None, left_px: int | None = None, centre: np.ndarray | None = None):
         self.recording = recording
-        self.scale = max(1, config.pixel_height * 2 // 720) if scale is None else scale
-        if scanlines and not scanlines_fit(self.scale):
-            raise ValueError(f"scanlines don't fit at {self.scale}×: they need a whole number of at least 3 "
+        scale = max(1, config.pixel_height * 2 // 720) if scale is None else scale
+        if scale >= 1 and not float(scale).is_integer():
+            raise ValueError(f"a screen can't be drawn at scale {scale}: it must be a whole number of at least 1, "
+                             f"or any value below 1 (anything else stretches NES pixels unevenly)")
+        self.pixel_scale = int(scale) if scale >= 1 else scale
+        if scanlines and not scanlines_fit(self.pixel_scale):
+            raise ValueError(f"scanlines don't fit at {self.pixel_scale}×: they need a whole number of at least 3 "
                              f"screen rows per NES line")
-        self.scanlines = scanlines_fit(self.scale) if scanlines is None else scanlines
-        w, h = round(NES_W * self.scale), round(NES_H * self.scale)
+        self.scanlines = scanlines_fit(self.pixel_scale) if scanlines is None else scanlines
+        w, h = round(NES_W * self.pixel_scale), round(NES_H * self.pixel_scale)
         px = config.frame_height / config.pixel_height
         centre = ORIGIN if centre is None else np.asarray(centre)
         if left_px is None:
@@ -142,19 +151,19 @@ class Screen(Group):
             image.set_resampling_algorithm(NEAREST)
             return image.set(height=height * px).move_to(middle)
 
-        self.game = Footage(recording, start, (w, h) if self.scale < 1 else None)
+        self.game = Footage(recording, start, (w, h) if self.pixel_scale < 1 else None)
         self.game.set(height=h * px).move_to(middle)
         self.dot = self.game.height / NES_H
         colour = clip_colour(recording, start)
-        glow_image, margin = screen_glow(colour, w, h, self.scale)
+        glow_image, margin = screen_glow(colour, w, h, self.pixel_scale)
         # The cut-away corners are painted as the glow lights the dark there, so they vanish into it.
         lit = glow_image[margin:margin + h, margin:margin + w, 3:] / 255
         behind = _rgb(style.BACKGROUND) * (1 - lit) + colour * lit
         self.glow = placed(ImageMobject(glow_image), h + 2 * margin)
         self.shown = ValueTracker(1.0)
         fade_image(self.glow, self.shown)
-        self.overlay = placed(ImageMobject(screen_overlay(w, h, self.scale, behind, self.scanlines)), h)
-        self.bloom = placed(ImageMobject(screen_bloom(colour, w, h, self.scale)), h)
+        self.overlay = placed(ImageMobject(screen_overlay(w, h, self.pixel_scale, behind, self.scanlines)), h)
+        self.bloom = placed(ImageMobject(screen_bloom(colour, w, h, self.pixel_scale)), h)
         self.cover = Rectangle(width=(w + 2) * px, height=(h + 2) * px, stroke_width=0,
                                fill_color=style.BACKGROUND, fill_opacity=1).move_to(middle)
         super().__init__(self.glow, self.game, self.overlay, self.bloom)
@@ -179,6 +188,15 @@ class Screen(Group):
         """The game arriving from black: a cover fades off it and the glow fades up, while the footage holds
         its frame until the arrival ends."""
         return Arrival(self, run_time=run_time)
+
+    def depart(self, run_time: float = 0.8) -> Animation:
+        """The game leaving into black: a cover fades onto it and the glow fades down; then the footage
+        stops."""
+        return Departure(self, run_time=run_time)
+
+    def __deepcopy__(self, memo: dict) -> "Screen":
+        memo[id(self.recording)] = self.recording  # copies share the recording: it is hundreds of megabytes
+        return super().__deepcopy__(memo)
 
 
 class Arrival(Animation):
@@ -208,3 +226,29 @@ class Arrival(Animation):
         super().finish()
         self.mobject.remove(self.mobject.cover)
         self.mobject.game.resume_updating()
+
+
+class Departure(Animation):
+    """Screen.depart's animation: Arrival in reverse, on the screen itself. The cover stays on afterwards."""
+
+    def __init__(self, screen: Screen, **kwargs):
+        super().__init__(screen, suspend_mobject_updating=False, **kwargs)
+
+    def create_starting_mobject(self) -> Screen:
+        return self.mobject
+
+    def get_all_mobjects_to_update(self) -> list:
+        return []
+
+    def begin(self) -> None:
+        self.mobject.add(self.mobject.cover)
+        super().begin()
+
+    def interpolate_mobject(self, alpha: float) -> None:
+        a = self.rate_func(alpha)
+        self.mobject.cover.set_fill(opacity=a)
+        self.mobject.shown.set_value(1 - a)
+
+    def finish(self) -> None:
+        super().finish()
+        self.mobject.game.suspend_updating()

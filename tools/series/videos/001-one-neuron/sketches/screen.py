@@ -24,7 +24,8 @@ class Sketch(Scene):
         big = Screen(recordings["smb1"], 1247, left_px=36 * config.pixel_height // 1080)
         self.play(big.arrive())
         self.wait(5)
-        self.remove(big)  # a cut: FadeOut would scale it (`scale` is the screen's pixel scale) and flatten its glow
+        self.play(big.depart(run_time=0.5))
+        self.remove(big)
 
         u = config.pixel_height / 1080  # the layout scales with the frame; the screens' sizes are fixed
         ones = [Screen(recordings[g], 600, scale=1, centre=at((i - 1) * 300 * u, 150 * u))

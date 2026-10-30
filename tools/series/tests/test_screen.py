@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 import numpy as np
-from manim import Mobject, Scene, config, tempconfig
+from manim import FadeOut, Mobject, Scene, config, tempconfig
 from manim.constants import RESAMPLING_ALGORITHMS
 
 from reservoir_film.model import NES_H, NES_W
@@ -49,7 +49,7 @@ class TestScreen(unittest.TestCase):
         with tempconfig(FULL_HD):
             px = config.frame_height / config.pixel_height
             screen = Screen(self.recording, 10)
-            self.assertEqual(screen.scale, 3)
+            self.assertEqual(screen.pixel_scale, 3)
             game = screen.game
             self.assertAlmostEqual(game.width / px, 768)
             self.assertAlmostEqual(game.height / px, 720)
@@ -121,6 +121,56 @@ class TestScreen(unittest.TestCase):
                 expected = np.array([3.0, 3.0, 3.0]) * (1 - a) + glow[margin + y, margin + x, :3] * a
                 self.assertTrue(np.allclose(overlay[y, x, :3], expected, atol=1), (y, x, overlay[y, x], expected))
                 self.assertEqual(overlay[y, x, 3], 255)
+
+    def test_scales_above_one_are_whole(self):
+        with tempconfig(FULL_HD):
+            for scale in (1.5, 1.1, 2.7):
+                with self.assertRaisesRegex(ValueError, f"{scale}.*whole.*below 1"):
+                    Screen(self.recording, 0, scale=scale)
+            self.assertEqual(Screen(self.recording, 0, scale=2.0).pixel_scale, 2)
+
+    def test_departure_covers_the_screen_and_stops_it(self):
+        recording, seen, screens = self.recording, [], []
+
+        class Departure(Scene):
+            def construct(self):
+                screen = Screen(recording, 5)
+                screens.append(screen)
+                self.add(screen)
+                self.wait(0.2)
+                self.play(screen.depart(run_time=0.5))
+                watcher = Mobject()
+                watcher.add_updater(lambda m: seen.append(screen.frame()))
+                self.add(watcher)
+                self.wait(0.3)
+                self.play(FadeOut(screen), run_time=0.2)
+
+        with tempfile.TemporaryDirectory() as media:
+            with tempconfig({"pixel_width": 320, "pixel_height": 180, "frame_rate": 60, "media_dir": media,
+                             "disable_caching": True, "verbosity": "ERROR", "progress_bar": "none"}):
+                Departure().render()
+                screen = screens[0]
+                self.assertGreater(seen[0], 5 + 30)  # it played through the departure
+                self.assertEqual(len(set(seen)), 1)  # then stopped
+                fresh = Screen(recording, 5)
+                fresh.scale(0.5)  # an ordinary Mobject again
+                copy = fresh.copy()  # copies (as FadeOut makes) share the recording rather than duplicate it
+                self.assertIs(copy.recording, recording)
+                self.assertIs(copy.game.frames, fresh.game.frames)
+        cover = screens[0].cover
+        self.assertIn(cover, screens[0].submobjects)
+        self.assertEqual(screens[0].shown.get_value(), 0)
+
+    def test_departure_leaves_the_glow_dark_and_the_cover_opaque(self):
+        with tempconfig(FULL_HD):
+            screen = Screen(self.recording, 0)
+            animation = screen.depart()
+            animation.begin()
+            animation.finish()
+            screen.glow.update(0)
+            self.assertEqual(screen.glow.pixel_array[:, :, 3].max(), 0)
+            self.assertEqual(screen.cover.get_fill_opacity(), 1)
+            self.assertIn(screen.cover, screen.submobjects)
 
     def test_arrival_holds_the_first_frame(self):
         recording, seen = self.recording, []
