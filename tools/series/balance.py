@@ -2,7 +2,7 @@
 blocks fall into the yes pan, minus blocks into the no pan, and the beam tips to the heavier. A balance says no."""
 
 import numpy as np
-from manim import DOWN, UP, Animation, Dot, Line, ManimColor, Square, UpdateFromAlphaFunc, VGroup, interpolate_color
+from manim import DOWN, UP, Animation, Dot, Line, ManimColor, Square, UpdateFromAlphaFunc, VGroup, interpolate_color, linear, linear
 
 from series import style
 from series.ember import serif
@@ -20,6 +20,8 @@ GAP = 0.06
 NATURAL = 11.0  # the beam's own swing, radians per second
 DAMPING = 0.4  # under 1, so it overshoots and rings down: settled in about a second
 SUBSTEP = 1 / 240
+IMPACT = 0.25  # radians per second of beam jolt, per unit of (mass / BIGGEST) x (impact speed in units per second)
+IMPACT = 0.25  # radians per second of beam jolt, per unit of (mass / BIGGEST) x (impact speed in units per second)
 
 
 class Block(VGroup):
@@ -124,11 +126,17 @@ class Balance(VGroup):
         self._lay()
 
         def update(_, alpha: float) -> None:
-            block.fall = (1 - alpha) ** 2  # accelerating
+            block.fall = 1 - alpha ** 2  # gravity: it speeds up all the way down (the rate is linear, no ease-out)
             block.show(min(1.0, alpha * 4))
-            block.landed = alpha >= 1.0
+            if alpha >= 1.0 and not block.landed:
+                block.landed = True
+                speed = 2 * DROP / max(animation.run_time, 1e-3)  # the speed it hits the pan at, units per second
+                self._omega += (1.0 if value > 0 else -1.0) * IMPACT * min(abs(value), BIGGEST) / BIGGEST * speed
+            elif alpha < 1.0:
+                block.landed = False
             self._lay()
-        return UpdateFromAlphaFunc(self, update)
+        animation = UpdateFromAlphaFunc(self, update, rate_func=linear)
+        return animation
 
     def announce(self) -> Animation:
         """Say the verdict beneath the scale, with the total."""

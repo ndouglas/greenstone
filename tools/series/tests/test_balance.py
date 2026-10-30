@@ -133,6 +133,44 @@ class BalanceTest(unittest.TestCase):
             b.update(1 / 60)
         self.assertAlmostEqual(b.angle(), target, places=3)
 
+    def test_a_landing_jolts_the_beam_at_once(self):
+        b = Balance("yes", "no")
+        a = b.drop(140, "140")
+        a.begin()
+        a.interpolate(1.0)
+        a.finish()
+        self.assertGreater(b._omega, 0.3)  # already moving toward the heavier side, on the landing frame itself
+        b.update(1 / 60)
+        self.assertGreater(b.angle(), 0.003)
+        c = Balance("yes", "no")
+        a = c.drop(-140, "140")
+        a.begin()
+        a.interpolate(1.0)
+        a.finish()
+        self.assertLess(c._omega, -0.3)
+
+    def test_a_heavier_block_jolts_harder(self):
+        speeds = []
+        for v in (20, 140):
+            b = Balance("yes", "no")
+            a = b.drop(v, str(v))
+            a.begin()
+            a.interpolate(1.0)
+            a.finish()
+            speeds.append(b._omega)
+        self.assertGreater(speeds[1], speeds[0] * 2)
+
+    def test_a_block_falls_under_gravity(self):
+        b = Balance("yes", "no")
+        a = b.drop(140, "140")
+        k = b.pans["yes"][0]
+        a.begin()
+        height = []
+        for alpha in (0.0, 0.1, 0.9, 1.0):
+            a.interpolate(alpha)
+            height.append(k.fall)
+        self.assertGreater(height[2] - height[3], height[0] - height[1])  # faster at the end: no ease-out
+
     def test_the_pans_follow_the_swinging_beam(self):
         b = Balance("yes", "no")
         play(b.drop(140, "140"))
