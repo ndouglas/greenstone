@@ -4,7 +4,7 @@ sign's temperature, the threshold carried into the bias when it moves."""
 from dataclasses import dataclass
 
 import numpy as np
-from manim import ORIGIN, UP, Animation, AnimationGroup, Mobject, Transform, VGroup
+from manim import ORIGIN, UP, Animation, AnimationGroup, Mobject, Transform, VGroup, smooth
 
 from series import style
 from series.ember import serif, swap
@@ -12,7 +12,7 @@ from series.ember import serif, swap
 GAP = 0.17  # between pieces
 TIGHT = 0.03  # inside a product of bare symbols, which reads as one thing
 AXIS = 0.42  # where operators sit, as a share of a digit's height
-ARC = -0.9  # the bend of the threshold's journey into the bias
+ARC = 3.1  # the bend of the threshold's hop over the comparison into the bias
 MINUS = "\N{MINUS SIGN}"
 DOT = "\N{MIDDLE DOT}"
 
@@ -27,6 +27,32 @@ class Piece:
     italic: bool
     tight: bool = False
     operator: bool = False
+
+
+def window(start: float, end: float):
+    """A rate function that holds still until start, eases through to end, then holds."""
+    return lambda t: smooth(min(max((t - start) / (end - start), 0.0), 1.0))
+
+
+class _Ghost(Animation):
+    """The old look of a piece whose text changes: it stays in the formula while it fades out and slides
+    to where the new piece is, and is gone when it finishes."""
+
+    def __init__(self, ghost: Mobject, holder: VGroup, to: np.ndarray, **kwargs):
+        super().__init__(ghost, **kwargs)
+        self.holder, self.origin, self.to = holder, ghost.get_center(), to
+
+    def begin(self) -> None:
+        self.holder.add(self.mobject)
+        super().begin()
+
+    def interpolate_mobject(self, alpha: float) -> None:
+        a = self.rate_func(alpha)
+        self.mobject.move_to(self.origin + (self.to - self.origin) * a).set_opacity(1 - a)
+
+    def finish(self) -> None:
+        super().finish()
+        self.holder.remove(self.mobject)
 
 
 class _From(Transform):
@@ -131,28 +157,33 @@ class Formula(VGroup):
         row.shift(at - np.array([x * self.zoom / 2, 0, 0]))
         return mobs
 
-    def _set(self, pieces: list[Piece], at: np.ndarray, animate: bool) -> list[Animation]:
+    def _set(self, pieces: list[Piece], at: np.ndarray, animate: bool, when: dict | None = None,
+             arcs: dict | None = None) -> list[Animation]:
+        """Lay the pieces out and return their animations. A piece whose text or slant is unchanged is
+        carried from where it was; one whose text changes is crossfaded (morphing one glyph into another
+        scribbles); a new piece fades in. `when` gives pieces their window of the animation."""
         new = self._build(pieces, at)
         old = self.tokens
         moves: list[Animation] = []
         if animate:
             for p in pieces:
-                m = new[p.key]
-                if p.key in old:
-                    start = old[p.key].copy()
-                    arc = ARC if p.key == "thr" and old[p.key].get_center()[0] != m.get_center()[0] else 0
-                    moves.append(_From(m, start, path_arc=arc))
+                m, rate = new[p.key], window(*(when or {}).get(p.key, (0.0, 1.0)))
+                before = old.get(p.key)
+                if before is not None and (before.original_text, before.slant) == (m.original_text, m.slant):
+                    moves.append(_From(m, before.copy(), path_arc=(arcs or {}).get(p.key, 0), rate_func=rate))
+                elif before is not None:
+                    moves.append(_Ghost(before.copy(), self, m.get_center(), rate_func=rate))
+                    moves.append(_From(m, m.copy().set_opacity(0).move_to(before.get_center()), rate_func=rate))
                 else:
-                    start = m.copy().set_opacity(0)
-                    moves.append(_From(m, start))
+                    moves.append(_From(m, m.copy().set_opacity(0), rate_func=rate))
         swap(self, *[new[p.key] for p in pieces])
         self.tokens, self.pieces = new, pieces
         return moves
 
-    def _change(self) -> Animation:
+    def _change(self, when: dict | None = None, arcs: dict | None = None) -> Animation:
         letters = [m for p, m in zip(self.pieces, self.tokens.values()) if not p.operator]
         at = np.array([self.get_center()[0], letters[0].get_bottom()[1], 0])
-        return AnimationGroup(*self._set(self._pieces(), at, animate=True), lag_ratio=0)
+        return AnimationGroup(*self._set(self._pieces(), at, True, when, arcs), lag_ratio=0)
 
     def fill(self, name: str, value: float) -> Animation:
         """Replace a symbol with its number, in its sign's temperature."""
@@ -162,4 +193,7 @@ class Formula(VGroup):
     def move_into_bias(self, threshold: float) -> Animation:
         """The "> 100" becomes "− 100" beside the bias, leaving "> 0"."""
         self.moved = threshold
-        return self._change()
+        # The threshold hops over the comparison first; the comparison slides out as it clears, the minus
+        # appears where the comparison was, and the new zero comes last.
+        when = {"thr": (0.0, 0.6), "cmp": (0.3, 0.75), "minus": (0.45, 0.8), "zero": (0.7, 1.0)}
+        return self._change(when, {"thr": ARC})

@@ -17,5 +17,5 @@ class Sketch(Scene):
         self.play(formula.fill("w", -1), run_time=1)
         self.play(formula.fill("b", 176), run_time=1)
         self.wait(0.5)
-        self.play(formula.move_into_bias(100), run_time=1.6)
+        self.play(formula.move_into_bias(100), run_time=1.0)
         self.wait(1.5)
