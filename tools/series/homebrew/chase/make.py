@@ -18,8 +18,9 @@ FRAMES = 420  # 7 s at 60 fps
 
 # Nate's sheet: three colours, one sprite palette. Frames by their box in nate.png (x0, y0, x1, y1).
 NATE_COLOURS = {(124, 124, 124): 1, (255, 160, 68): 2, (248, 248, 248): 3}
-NATE_FRAMES = {"walk_a": (117, 1, 134, 23), "walk_b": (139, 1, 156, 23), "stand": (101, 0, 111, 23),
-               "leap": (69, 47, 87, 70)}
+NATE_FRAMES = {"stride_a": (117, 1, 134, 23), "stride_b": (139, 1, 156, 23), "pass": (101, 0, 111, 23),
+               "front": (82, 0, 96, 23), "look_back": (45, 0, 55, 23), "leap": (69, 47, 87, 70)}
+RUN = ("stride_a", "pass", "stride_b", "pass")  # his run to the right, a beat per pose
 CLIP_ART = [  # 10 x 22: X the white wire, x the grey inner loop, W the eyes' whites, K brows and pupils
     "...XXXX...",
     "..X....X..",
@@ -99,20 +100,22 @@ def art():
 
 def choreography() -> list[list[tuple[int, int, str | None]]]:
     """Every frame: each actor's (x, y of its feet, sprite frame or None). Actor 0 is Nate, the rest clips."""
-    stop, leap, run, clips = 96, 230, 262, 5
+    stop, turn, look, leap, run, clips = 96, 196, 212, 230, 262, 5
     frames = []
     for f in range(FRAMES):
         # Nate walks in (a pixel a frame) and stands; the swarm reaches him; he leaps, lands, and runs off.
         y = GROUND
-        if f < leap:
+        if f < turn:
             x = min(-24 + f, stop)
-            pose = "stand" if x == stop else ("walk_a" if f // 8 % 2 else "walk_b")
+            pose = "pass" if x == stop else RUN[f // 8 % 4]
+        elif f < leap:
+            x, pose = stop, "front" if f < look else "look_back"  # he turns to us, then looks back at them
         elif f < run:
             x, pose = stop, "leap"
             y = GROUND - round(14 * np.sin(np.pi * (f - leap) / (run - leap)))
         else:
             x = stop + round(2.5 * (f - run))
-            pose = "walk_a" if (f - run) // 5 % 2 else "walk_b"
+            pose = RUN[(f - run) // 5 % 4]
         actors = [(x, y, pose if x < 256 else None)]
         nate_x = x
         # The clips hop in from the left, one after another, then chase him at his pace.
