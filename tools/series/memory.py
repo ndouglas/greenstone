@@ -6,11 +6,11 @@ can be the start of a neuron's path."""
 from typing import Callable
 
 import numpy as np
-from manim import RIGHT, UP, Animation, Group, ImageMobject, Line, Rectangle, UpdateFromAlphaFunc
+from manim import RIGHT, UP, Animation, Group, ImageMobject, Line, Rectangle, UpdateFromAlphaFunc, VGroup
 from PIL import Image, ImageDraw, ImageFont
 
 from series import ember, style
-from series.ember import glow_box, numeral, rgb, serif
+from series.ember import glow_box, numeral, rgb, serif, swap
 from series.recording import Recording
 from series.screen import Screen
 
@@ -44,7 +44,7 @@ class Lit(Group):
         self.glow.stretch_to_fit_height(h + 2 * REACH).move_to(cell)
         self._alpha = self.glow.pixel_array[:, :, 3].astype(float)
         self.value = grid.value(address)
-        self.number = numeral(str(self.value), style.TEXT, 0.3).move_to(cell)
+        self.number = VGroup(numeral(str(self.value), style.TEXT, 0.3).move_to(cell))
         self.label = serif(label, self.colour, 0.4)
         self.label.next_to(self.box, side, buff=0.45)
         edge = self.box.get_edge_center(side)
@@ -62,11 +62,12 @@ class Lit(Group):
             part.set_opacity(level)
 
     def _follow(self) -> None:
-        """Keep the number live: rebuilt only when the byte changes."""
+        """Keep the number live: rebuilt only when the byte changes, and swapped in (become, between numbers of
+        different lengths, leaves the old glyphs drawn)."""
         value = self.grid.value(self.address)
         if value != self.value:
             self.value = value
-            self.number.become(numeral(str(value), style.TEXT, 0.3).move_to(self.box).set_opacity(self.level))
+            swap(self.number, numeral(str(value), style.TEXT, 0.3).move_to(self.box).set_opacity(self.level))
 
 
 class MemoryGrid(Group):

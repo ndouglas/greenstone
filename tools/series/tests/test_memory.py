@@ -6,6 +6,7 @@ import numpy as np
 from manim import ImageMobject, tempconfig
 
 from series import ember, memory, style
+from series.ember import numeral
 from series.memory import MemoryGrid
 from series.screen import Screen
 from series.tests.test_screen import FULL_HD, synthetic
@@ -100,3 +101,17 @@ class MemoryGridTest(unittest.TestCase):
             self.assertGreater(source()[0], grid.square(0x1D).get_right()[0])
             self.assertIn(style.WARM[0], [c.to_hex().upper() for c in grid.lit[0x1D].box.get_stroke_colors()])
             self.assertEqual(grid.lit[0x1D].label.text, "jumping")
+
+    def test_a_lit_square_draws_the_byte_as_it_changes(self):
+        with tempconfig(FULL_HD):
+            screen = Screen(self.recording, 40)
+            grid = MemoryGrid(screen)
+            play(grid.light(0xCE, "depth"))
+            lit = grid.lit[0xCE]
+            for _ in range(3):
+                screen.update(1 / 60)
+                grid.update(1 / 60)
+                drawn = numeral(str(screen.byte(0xCE)), style.TEXT, 0.3).move_to(lit.box)
+                points = lit.number.get_all_points()
+                self.assertTrue(points.shape == drawn.get_all_points().shape and np.allclose(points, drawn.get_all_points()),
+                                f"the square shows a stale number, not {screen.byte(0xCE)}")
