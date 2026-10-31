@@ -25,7 +25,7 @@ FPS = 60.0988
 PHASES = (2.4, 2.0, 5.5)
 # The first frame the scene is fully drawn on, filmed from power-on: before it the console is starting up (black
 # while the palettes load, then the sky alone until the picture is switched on between frames). Footage starts here.
-FIRST_DRAWN = 3
+FIRST_DRAWN = 4
 
 # Nate's sheet: three colours, one sprite palette. Frames by their box in nate.png (x0, y0, x1, y1).
 NATE_COLOURS = {(124, 124, 124): 1, (255, 160, 68): 2, (248, 248, 248): 3}
@@ -47,17 +47,17 @@ CLIP_ART = [  # 10 x 22: X the white wire, x the grey inner loop, W the eyes' wh
 CLIP = [row.translate(str.maketrans("XWKx", "1132")) for row in CLIP_ART]  # colour indices in its palette
 
 # NES palettes: four for the background, then four for sprites; entry 0 of each is the shared sky.
-SKY = 0x22
-PALETTES = bytes([SKY, 0x17, 0x07, 0x27,  # ground: brown, its dark edges, its lit edges
-                  SKY, 0x2A, 0x1A, 0x0F,  # hills and bushes: green, darker green, black outline
-                  SKY, 0x30, 0x21, 0x0F,  # clouds: white, pale blue, black outline
-                  SKY, 0x30, 0x31, 0x0F,
+SKY = 0x0F  # black: the universal backdrop, under everything
+PALETTES = bytes([SKY, 0x07, 0x17, 0x27,  # the night: dark brown (the glow's dither), brown, amber
+                  SKY, 0x07, 0x17, 0x27,  # the same, for blocks with embers: its amber is cycled to twinkle
+                  SKY, 0x07, 0x17, 0x27,
+                  SKY, 0x07, 0x17, 0x27,
                   SKY, 0x00, 0x27, 0x30,  # Nate: grey, orange, white
                   SKY, 0x30, 0x00, 0x0F,  # paperclip: white wire, grey, black
                   SKY, 0x00, 0x10, 0x30,
                   SKY, 0x00, 0x10, 0x30])
 NATE, CLIP_PAL = 0, 1
-GROUND_PAL, HILLS_PAL, CLOUDS_PAL = 0, 1, 2
+GROUND_PAL, EMBER_PAL = 0, 1
 FLOOR_ROW = 24  # the ground's first nametable row, on a 16-pixel colour-block boundary; feet stand on it
 GROUND = 8 * FLOOR_ROW
 BOX = 24  # every sprite frame is centred in a box this wide; an actor's x is the box's left edge
@@ -115,47 +115,45 @@ def _lobes(lobes, size=(240, 256)) -> np.ndarray:
     return _round(shape)
 
 
-def ground_block() -> np.ndarray:
-    """One 16x16 ground block: brown, lit along its top and left, dark along its bottom and right."""
-    b = np.ones((16, 16), np.uint8)
-    b[0, :], b[:, 0] = 3, 3
-    b[15, :], b[:, 15] = 2, 2
-    b[0, 15], b[15, 0] = 2, 2
-    return b
+BAYER = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]) / 16  # ordered dither
+EMBERS = ((30, 20), (58, 46), (92, 14), (140, 38), (171, 22), (214, 52), (238, 18), (120, 70), (20, 84),
+          (196, 88), (74, 100))
+TWINKLE = (0x27, 0x37, 0x27, 0x17, 0x07, 0x17)  # the embers' amber, a step every TWINKLE_FRAMES
+TWINKLE_FRAMES = 6
+GLOW = (176, 170, 150)  # the fire's centre (x, y) and reach, off to the right: the dark warms toward it
 
 
 def scenery() -> tuple[np.ndarray, np.ndarray]:
-    """An original backdrop in the Mario spirit: outlined clouds, hills lit from the upper left, bushes, and a
-    floor of ground blocks. Colour indices for every pixel (240 x 256), and the background palette of each
-    16x16 block (15 x 16): clouds in the top eight block rows, hills and bushes in the next four, ground below,
-    so no block needs more than its three colours."""
-    pixels = np.zeros((240, 256), np.uint8)
-    clouds = [_lobes([(58, 44, 16, 10), (44, 50, 11, 8), (74, 50, 11, 8), (58, 53, 24, 6)]),
-              _lobes([(176, 30, 13, 9), (164, 36, 9, 7), (190, 36, 10, 7), (177, 39, 19, 5)]),
-              _lobes([(226, 78, 10, 7), (216, 82, 7, 5), (236, 82, 7, 5), (226, 85, 14, 4)])]
-    for cloud in clouds:
-        pixels[cloud] = 1                       # white
-        pixels[_shade(cloud, 3)] = 2            # pale blue away from the light
-        pixels[_edge(cloud)] = 3                # outline
+    """An original night scene in the series' Ember look: a black sky dithered warm toward a fire off to the
+    right, embers, hills and bushes as black silhouettes rimmed in amber where the firelight catches them,
+    and an amber floor over dim blocks. All in one palette (black, dark brown, brown, amber), but the blocks
+    with embers take the second, whose amber is cycled so they twinkle. Colour indices for every pixel
+    (240 x 256), and each 16x16 block's palette (15 x 16)."""
     y, x = np.mgrid[0:240, 0:256]
-    for cx, rx, ry in ((70, 52, 50), (196, 34, 30)):
-        hill = _round((((x - cx) / rx) ** 2 + ((y - GROUND) / ry) ** 2 <= 1) & (y < GROUND))
-        pixels[hill] = 1                        # green
-        pixels[_shade(hill | (y >= GROUND), 6) & hill] = 2  # dark green away from the light; it goes on below
-        pixels[_edge(hill) & (y < GROUND - 1)] = 3
+    cx, cy, reach = GLOW
+    warmth = np.clip(1 - np.hypot(x - cx, (y - cy) * 1.4) / reach, 0, 1) ** 1.8 * 0.55
+    pixels = np.where(warmth > BAYER[y % 4, x % 4], 1, 0).astype(np.uint8)  # dark brown, dithered
+    blocks = np.full((15, 16), GROUND_PAL, np.uint8)
+    for ex, ey in EMBERS:
+        pixels[ey, ex] = 3
+        pixels[ey, ex + 1] = pixels[ey + 1, ex] = 2
+        blocks[ey // 16, ex // 16] = EMBER_PAL
+
+    def silhouette(shape: np.ndarray) -> None:
+        pixels[shape] = 0
+        lit = shape & ~np.roll(np.roll(shape, 2, axis=0), -2, axis=1)  # the edge facing the fire, up and right
+        pixels[lit] = 2
+        pixels[shape & ~np.roll(np.roll(shape, 1, axis=0), -1, axis=1)] = 3
+    for hx, rx, ry in ((70, 52, 50), (196, 34, 30)):
+        silhouette(_round((((x - hx) / rx) ** 2 + ((y - GROUND) / ry) ** 2 <= 1) & (y < GROUND)))
     for lobes in ([(130, GROUND - 6, 10, 9), (144, GROUND - 9, 11, 11), (158, GROUND - 6, 10, 9)],
                   [(236, GROUND - 5, 8, 7), (247, GROUND - 7, 9, 9)]):
-        bush = _lobes(lobes) & (y < GROUND)
-        pixels[bush] = 1
-        pixels[_shade(bush | (y >= GROUND), 3) & bush] = 2
-        pixels[_edge(bush) & (y < GROUND - 1)] = 3
-    block = ground_block()
-    for by in range(GROUND, 240, 16):
-        for bx in range(0, 256, 16):
-            pixels[by:by + 16, bx:bx + 16] = block[:240 - by]
-    blocks = np.full((15, 16), CLOUDS_PAL, np.uint8)
-    blocks[GROUND // 16 - 4:GROUND // 16] = HILLS_PAL
-    blocks[GROUND // 16:] = GROUND_PAL
+        silhouette(_lobes(lobes) & (y < GROUND))
+    ground = y >= GROUND
+    shine = np.clip(1 - np.abs(x - cx) / reach, 0, 1) * np.clip(1 - (y - GROUND) / 40, 0, 1) * 0.45
+    pixels[ground] = np.where(shine[ground] > BAYER[y % 4, x % 4][ground], 1, 0)  # the fire, reflected
+    pixels[GROUND] = 3  # the floor: an amber hairline
+    pixels[GROUND + 1] = 2
     return pixels, blocks
 
 
@@ -263,7 +261,8 @@ def table(frames, names: list[str]) -> bytes:
 
 def source(metas, frames, screen: bytes) -> str:
     names = list(metas)
-    lines = [f"ACTORS = {len(frames[0])}", f"FRAME_COUNT = {len(frames)}", "", ".segment \"RODATA\"", "palettes:",
+    lines = [f"ACTORS = {len(frames[0])}", f"FRAME_COUNT = {len(frames)}", f"TWINKLE_COUNT = {len(TWINKLE)}", f"TWINKLE_FRAMES = {TWINKLE_FRAMES}", "",
+             ".segment \"RODATA\"", "twinkle:", "  .byte " + ", ".join(f"${b:02X}" for b in TWINKLE), "palettes:",
              "  .byte " + ", ".join(f"${b:02X}" for b in PALETTES), "metas_lo:",
              "  .byte " + ", ".join(f"<meta_{n}" for n in names), "metas_hi:",
              "  .byte " + ", ".join(f">meta_{n}" for n in names)]

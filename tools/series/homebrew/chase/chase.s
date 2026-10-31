@@ -1,4 +1,4 @@
-; chase: 8-bit Nate, some scenery, and a pair of paperclips, played back from a table.
+; chase: 8-bit Nate, a night scene with twinkling embers, and a pair of paperclips, played back from a table.
 ;
 ; make.py writes data.inc (the palettes, the metasprites, and every actor's x, y and sprite frame on every
 ; frame) and chase.chr (the tiles). Each frame this program turns the table's row into sprites: Nate
@@ -24,6 +24,8 @@ row:      .res 2  ; this frame's row of the choreography
 meta:     .res 2  ; the metasprite being drawn
 frame:    .res 2
 nmi_done: .res 1
+glint:    .res 1  ; the embers' step in their twinkle
+glint_t:  .res 1  ; frames into it
 first:    .res 1  ; the clip drawn first this frame (0 to ACTORS - 2)
 k:        .res 1
 x_lo:     .res 1
@@ -234,15 +236,42 @@ draw:
 
 nmi:
   pha
+  txa
+  pha
   lda #0
   sta OAMADDR
   lda #>oam
   sta OAMDMA
+  inc glint_t             ; the embers twinkle: a new amber for their palette every TWINKLE_FRAMES
+  lda glint_t
+  cmp #TWINKLE_FRAMES
+  bne @still
+  lda #0
+  sta glint_t
+  bit PPUSTATUS
+  lda #$3F
+  sta PPUADDR
+  lda #$07                ; background palette 1, colour 3
+  sta PPUADDR
+  ldx glint
+  lda twinkle, x
+  sta PPUDATA
+  inx
+  cpx #TWINKLE_COUNT
+  bne @next
+  ldx #0
+@next:
+  stx glint
+@still:
+  lda #%10000000          ; the nametable select, which the palette address overwrote
+  sta PPUCTRL
   lda #0
   sta PPUSCROLL
   sta PPUSCROLL
   lda #1
   sta nmi_done
+  pla
+  tax
   pla
   rti
 
