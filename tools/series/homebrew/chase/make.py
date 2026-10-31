@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
+from scipy import ndimage
 
 from series.homebrew.chase import music
 
@@ -37,9 +38,9 @@ CLIP = [row.translate(str.maketrans("XWKx", "1132")) for row in CLIP_ART]  # col
 
 # NES palettes: four for the background, then four for sprites; entry 0 of each is the shared sky.
 SKY = 0x22
-PALETTES = bytes([SKY, 0x17, 0x07, 0x27,  # ground: brick, mortar, the lit top edge
-                  SKY, 0x1A, 0x0A, 0x0F,  # hills: green, dark green, black
-                  SKY, 0x30, 0x31, 0x0F,  # clouds: white, pale blue
+PALETTES = bytes([SKY, 0x17, 0x07, 0x27,  # ground: brown, its dark edges, its lit edges
+                  SKY, 0x2A, 0x1A, 0x0F,  # hills and bushes: green, darker green, black outline
+                  SKY, 0x30, 0x21, 0x0F,  # clouds: white, pale blue, black outline
                   SKY, 0x30, 0x31, 0x0F,
                   SKY, 0x00, 0x27, 0x30,  # Nate: grey, orange, white
                   SKY, 0x30, 0x00, 0x0F,  # paperclip: white wire, grey, black
@@ -47,7 +48,7 @@ PALETTES = bytes([SKY, 0x17, 0x07, 0x27,  # ground: brick, mortar, the lit top e
                   SKY, 0x00, 0x10, 0x30])
 NATE, CLIP_PAL = 0, 1
 GROUND_PAL, HILLS_PAL, CLOUDS_PAL = 0, 1, 2
-FLOOR_ROW = 20  # the ground's first nametable row, on a 16-pixel colour-block boundary; feet stand on it
+FLOOR_ROW = 24  # the ground's first nametable row, on a 16-pixel colour-block boundary; feet stand on it
 GROUND = 8 * FLOOR_ROW
 BOX = 24  # every sprite frame is centred in a box this wide; an actor's x is the box's left edge
 
@@ -81,31 +82,70 @@ def clip_grid() -> np.ndarray:
     return np.array([[0 if c == "." else int(c) for c in row] for row in CLIP], np.uint8)
 
 
+def _round(mask: np.ndarray) -> np.ndarray:
+    """A shape cleaned of stray pixels and notches, as pixel art would be drawn."""
+    return ndimage.binary_closing(ndimage.binary_opening(mask, iterations=2), iterations=2) & mask.any()
+
+
+def _edge(mask: np.ndarray) -> np.ndarray:
+    """A shape's one-pixel outline, inside it."""
+    return mask & ~ndimage.binary_erosion(mask, structure=[[0, 1, 0], [1, 1, 1], [0, 1, 0]])
+
+
+def _shade(mask: np.ndarray, depth: int) -> np.ndarray:
+    """The band of a shape away from the light (the light comes from the upper left)."""
+    return mask & ~np.roll(np.roll(mask, -depth, axis=0), -depth, axis=1)
+
+
+def _lobes(lobes, size=(240, 256)) -> np.ndarray:
+    y, x = np.mgrid[0:size[0], 0:size[1]]
+    shape = np.zeros(size, bool)
+    for cx, cy, rx, ry in lobes:
+        shape |= ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1
+    return _round(shape)
+
+
+def ground_block() -> np.ndarray:
+    """One 16x16 ground block: brown, lit along its top and left, dark along its bottom and right."""
+    b = np.ones((16, 16), np.uint8)
+    b[0, :], b[:, 0] = 3, 3
+    b[15, :], b[:, 15] = 2, 2
+    b[0, 15], b[15, 0] = 2, 2
+    return b
+
+
 def scenery() -> tuple[np.ndarray, np.ndarray]:
-    """An original backdrop in the Mario spirit: two clouds, two hills, brick ground. Colour indices for every
-    pixel (240 x 256), and the background palette of every 16x16 block (15 x 16): clouds in the top six block
-    rows, hills in the next four, the ground below, so no block needs more than its three colours."""
+    """An original backdrop in the Mario spirit: outlined clouds, hills lit from the upper left, bushes, and a
+    floor of ground blocks. Colour indices for every pixel (240 x 256), and the background palette of each
+    16x16 block (15 x 16): clouds in the top eight block rows, hills and bushes in the next four, ground below,
+    so no block needs more than its three colours."""
     pixels = np.zeros((240, 256), np.uint8)
+    clouds = [_lobes([(58, 44, 16, 10), (44, 50, 11, 8), (74, 50, 11, 8), (58, 53, 24, 6)]),
+              _lobes([(176, 30, 13, 9), (164, 36, 9, 7), (190, 36, 10, 7), (177, 39, 19, 5)]),
+              _lobes([(226, 78, 10, 7), (216, 82, 7, 5), (236, 82, 7, 5), (226, 85, 14, 4)])]
+    for cloud in clouds:
+        pixels[cloud] = 1                       # white
+        pixels[_shade(cloud, 3)] = 2            # pale blue away from the light
+        pixels[_edge(cloud)] = 3                # outline
     y, x = np.mgrid[0:240, 0:256]
-    cloud = np.zeros_like(pixels, bool)
-    for cx, cy, r in ((120, 52, 14), (106, 58, 10), (134, 58, 10), (206, 36, 11), (194, 41, 8), (218, 41, 8)):
-        cloud |= (x - cx) ** 2 + (y - cy) ** 2 <= r * r
-    pixels[cloud] = 1
-    pixels[cloud & ~np.roll(cloud, -3, axis=0)] = 2  # pale blue along the cloud's underside
-    for cx, r in ((52, 44), (196, 28)):
-        d = np.sqrt((x - cx) ** 2 + (y - GROUND) ** 2)
-        hill = (d <= r) & (y < GROUND)
-        pixels[hill] = 1
-        pixels[hill & (d > r - 1.5)] = 3  # outline
-        spots = hill & ((x - cx) % 12 < 2) & ((y - GROUND + 20) % 14 < 3) & (d < r - 6)
-        pixels[spots] = 2
-    ground = y >= GROUND
-    brick = ((y - GROUND) % 8 == 7) | (((x + 8 * ((y - GROUND) // 8 % 2)) % 16) == 15)
-    pixels[ground] = np.where(brick[ground], 2, 1)
-    pixels[GROUND:GROUND + 2] = 3  # the lit top edge
+    for cx, rx, ry in ((70, 52, 50), (196, 34, 30)):
+        hill = _round((((x - cx) / rx) ** 2 + ((y - GROUND) / ry) ** 2 <= 1) & (y < GROUND))
+        pixels[hill] = 1                        # green
+        pixels[_shade(hill | (y >= GROUND), 6) & hill] = 2  # dark green away from the light; it goes on below
+        pixels[_edge(hill) & (y < GROUND - 1)] = 3
+    for lobes in ([(130, GROUND - 6, 10, 9), (144, GROUND - 9, 11, 11), (158, GROUND - 6, 10, 9)],
+                  [(236, GROUND - 5, 8, 7), (247, GROUND - 7, 9, 9)]):
+        bush = _lobes(lobes) & (y < GROUND)
+        pixels[bush] = 1
+        pixels[_shade(bush | (y >= GROUND), 3) & bush] = 2
+        pixels[_edge(bush) & (y < GROUND - 1)] = 3
+    block = ground_block()
+    for by in range(GROUND, 240, 16):
+        for bx in range(0, 256, 16):
+            pixels[by:by + 16, bx:bx + 16] = block[:240 - by]
     blocks = np.full((15, 16), CLOUDS_PAL, np.uint8)
-    blocks[6:10] = HILLS_PAL
-    blocks[10:] = GROUND_PAL
+    blocks[GROUND // 16 - 4:GROUND // 16] = HILLS_PAL
+    blocks[GROUND // 16:] = GROUND_PAL
     return pixels, blocks
 
 
