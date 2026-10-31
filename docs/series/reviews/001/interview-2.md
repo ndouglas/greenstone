@@ -70,5 +70,17 @@ Asked 2026-10-30, after the visual language was built.
    ("in the air" whenever it isn't zero is right 97% of the time), but
    that's both sides of zero and one neuron draws one line; a puzzle for
    a later video (004).
+5. The breaks and titles work, and "Weighing it" keeps its chapter. But
+   instead of the Introduction's title screen, Nate wants a title screen or
+   sequence for the video itself, with the episode title (to design).
+6. Two seconds of stillness is about right; intros and conclusions stay.
 7. Moot: Nate narrates himself.
+8. Nowhere: "I think it's good now."
 10. Moot: the ruler now sits at Mario's feet (the visual language).
+9. The chapter title screens look right; the opening sequence is its own
+   thing, not the wall.
+11. The promise for 002 stands.
+
+Opening sequence (to design with Nate): about 5 seconds, with the episode
+title; the title and approach to be workshopped; chiptune music, something
+Philip Glass-like.
