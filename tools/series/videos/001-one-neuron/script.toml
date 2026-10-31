@@ -5,6 +5,78 @@ kind = "introduction"
 title = "Introduction"
 
 [[section.line]]
+id = "series"
+text = "In this series, we'll explore neural networks, and learn how they work from the ground up."
+board = "A real network we trained on the games, thousands of neurons in a dense web, its actual activations rippling warm and cool through it as Mario plays beside it"
+framing = true
+
+[[section.line]]
+id = "series-2"
+text = "As we learn what they can do, we'll also learn what they can't do…"
+board = "Super Mario Bros. mirrored, the flag now to the left; a network that learned to play keeps running right, into the wall at the start (placeholder until a later video trains one)"
+framing = true
+
+[[section.line]]
+id = "series-3"
+text = "…what they might do…"
+board = "Superposition: five features squeezed as five arrows into a plane, two neurons holding them all"
+cite = ["elhage2022"]
+
+[[section.line]]
+id = "series-4"
+text = "…and what they almost certainly shouldn't do."
+board = "Tetris, the stack nearly at the top; a game-playing program pauses just before the piece that would end it, and stays paused. Caption: Murphy's 2013 learning program, a search, not a neural network, but the same failure: it found an answer to the letter of its goal"
+cite = ["murphy2013"]
+
+[[section.line]]
+id = "who"
+text = "My name is Nathan Douglas. I'm a software engineer, and recently I've begun a move into AI safety and research."
+board = "A real NES ROM running in greenstone: an original 8-bit Nate (grey hair; Mikey-from-The-Goonies proportions, drawn new) walks on, then is chased across the screen by a swarm of 8-bit paperclips"
+framing = true
+
+[[section.line]]
+id = "who-2"
+text = "You may already know a lot about neural networks. You might know much more than I do, and if I get anything wrong, please tell me."
+board = "A card: 'Corrections welcome', and where to send them (the video's public errata list); the titles of the papers this video cites drift past behind it"
+framing = true
+
+[[section.line]]
+id = "promise"
+text = "Here's where we're going. We'll start with a single artificial neuron and build up: neurons that learn, layers that bend straight lines, networks that look at the game screen itself."
+board = "A quick montage of the series' coming pictures, one per step (placeholder cards until they exist)"
+framing = true
+
+[[section.line]]
+id = "promise-2"
+text = "Along the way, we'll build some broken on purpose, with a flaw we planted, to check whether our tools can find it."
+board = "A network with one dot secretly marked; a magnifying glass sweeps over it and finds the mark"
+framing = true
+
+[[section.line]]
+id = "promise-3"
+text = "And we'll take on some of the field's open questions, questions nobody thought to ask, and questions only a mad scientist would ask."
+board = "Three cards: one neuron lit by three different game moments; a strange byte glowing in the memory grid; a network shrunk and squeezed under a bell jar"
+framing = true
+
+[[section.line]]
+id = "promise-4"
+text = "Whatever we find, we'll test, and show you how."
+board = "A result beside its baseline bar and its held-out test, the checks lighting one by one"
+framing = true
+
+[[section.line]]
+id = "slow"
+text = "You may wonder at times why we're moving so slowly."
+board = "One dot, alone, the rest of the network faint and far behind it"
+framing = true
+
+[[section.line]]
+id = "slow-2"
+text = "But I believe, if you stay with me, we'll see some pretty amazing things."
+board = "The faint network behind the dot begins to light, neuron by neuron"
+framing = true
+
+[[section.line]]
 id = "nobody-knows"
 text = "The systems we now call artificial intelligence are built from enormous numbers of simple pieces called artificial neurons, loosely inspired by brain cells."
 board = "A network of dots and lines grows to thousands of dots"

@@ -88,3 +88,14 @@ authors = "C. M. Bishop"
 year = 2006
 url = "https://www.microsoft.com/en-us/research/publication/pattern-recognition-machine-learning/"
 
+[elhage2022]
+title = "Toy Models of Superposition (Transformer Circuits Thread): five features stored in two dimensions as a pentagon"
+authors = "N. Elhage, T. Hume, C. Olsson, et al."
+year = 2022
+url = "https://transformer-circuits.pub/2022/toy_model/index.html"
+
+[murphy2013]
+title = "The First Level of Super Mario Bros. is Easy with Lexicographic Orderings and Time Travel . . . after that it gets a little tricky (SIGBOVIK 2013): in Tetris, playfun pauses the game right before the next piece would end it, and leaves it paused"
+authors = "T. Murphy VII"
+year = 2013
+url = "http://tom7.org/mario/mario.pdf"
