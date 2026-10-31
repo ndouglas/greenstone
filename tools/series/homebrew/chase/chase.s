@@ -21,8 +21,6 @@ OAMDMA    = $4014
 
 .segment "ZEROPAGE"
 row:      .res 2  ; this frame's row of the choreography
-tune:     .res 2  ; this frame's sound-register writes
-count:    .res 1
 meta:     .res 2  ; the metasprite being drawn
 frame:    .res 2
 nmi_done: .res 1
@@ -108,14 +106,6 @@ reset:
   sta row
   lda #>choreography
   sta row + 1
-  lda #<notes
-  sta tune
-  lda #>notes
-  sta tune + 1
-  lda #%00000101          ; sound: the first pulse channel and the triangle
-  sta $4015
-  lda #$08                ; no pitch sweep on the pulse
-  sta $4001
   lda #0
   sta PPUSCROLL
   sta PPUSCROLL
@@ -136,7 +126,6 @@ main:
   lda frame + 1
   sbc #>(FRAME_COUNT - 1)
   bcs main
-  jsr play
   inc frame
   bne @row
   inc frame + 1
@@ -238,33 +227,6 @@ draw:
   inx
   inx
   bne @hide
-  rts
-
-; Make this frame's sound-register writes: a count, then (register's offset from $4000, value) pairs.
-play:
-  ldy #0
-  lda (tune), y
-  sta count
-  iny
-@write:
-  lda count
-  beq @done
-  lda (tune), y
-  tax
-  iny
-  lda (tune), y
-  sta $4000, x
-  iny
-  dec count
-  jmp @write
-@done:
-  tya                     ; on to the next frame's writes
-  clc
-  adc tune
-  sta tune
-  bcc @same_page
-  inc tune + 1
-@same_page:
   rts
 
 nmi:

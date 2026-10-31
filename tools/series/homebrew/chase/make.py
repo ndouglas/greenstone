@@ -1,5 +1,5 @@
 """Build 'chase', the NES ROM behind 001's "who" beat: 8-bit Nate walks on, sees the paperclips, leaps, and runs,
-the paperclips hopping after him, to the opening of Stures schottis (music.py).
+the paperclips hopping after him. No music: Nate talks over it.
 
 The art is Nate's own (nate.png, drawn on pixel-editor.com) and the paperclip below. Python turns them into
 CHR tiles and metasprites, and works out every actor's place on every frame; chase.s plays that table back.
@@ -15,19 +15,19 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 
-from series.homebrew.chase import music
 
 HERE = Path(__file__).parent
 FPS = 60.0988
 # Seconds for each of the three beats it plays under, each line's voice and its stillness: "My name is Nathan
-# Douglas." (he runs in), "I'm a software engineer." (he looks around), "And recently, I've begun a move into
+# Douglas." (he walks in), "I'm a software engineer." (he looks around), "And recently, I've begun a move into
 # AI safety and research." (the chase). Estimates until Nate's takes exist; then the build passes the real ones.
 PHASES = (2.4, 2.0, 5.5)
 
 # Nate's sheet: three colours, one sprite palette. Frames by their box in nate.png (x0, y0, x1, y1).
 NATE_COLOURS = {(124, 124, 124): 1, (255, 160, 68): 2, (248, 248, 248): 3}
 NATE_FRAMES = {"stride_a": (117, 1, 134, 23), "stride_b": (139, 1, 156, 23), "pass": (101, 0, 111, 23),
-               "front": (82, 0, 96, 23), "look_back": (45, 0, 55, 23), "leap": (69, 47, 87, 70)}
+               "front": (82, 0, 96, 23), "front_b": (60, 0, 74, 23), "look_back": (45, 0, 55, 23),
+               "leap": (69, 47, 87, 70)}  # front: the sheet's fifth frame, his standing pose; front_b, the fourth
 RUN = ("stride_a", "pass", "stride_b", "pass")  # his run to the right, a beat per pose
 CLIP_ART = [  # 10 x 22: X the white wire, x the grey inner loop, W the eyes' whites, K brows and pupils
     "...XXXX...",
@@ -205,29 +205,26 @@ def frame_counts(phases: tuple[float, float, float] = PHASES) -> tuple[int, int,
 
 def choreography(phases: tuple[float, float, float] = PHASES) -> list[list[tuple[int, int, str | None]]]:
     """Every frame: each actor's (x, y of its feet, sprite frame or None). Actor 0 is Nate, the rest clips.
-    In the first phase he runs in and stops; in the second he looks around; in the third the clips hop in
+    In the first phase he walks in and stops; in the second he looks around; in the third the clips hop in
     behind him, he sees them, leaps, and runs off, and they chase him."""
     name, engineer, chase = frame_counts(phases)
     stop, clips = 96, 2  # two clips: with him, seven sprites a line at most
-    looking = (("front", 0.3), ("look_back", 0.25), ("front", 0.2), ("pass", 0.25))
     arrive = name + engineer + round(0.35 * chase)  # the lead clip reaches him
     notice, leap, run = arrive - 14, arrive, arrive + 32
     first_clip = name + engineer
+    walk = (stop + 24) / (0.8 * name)  # pixels a frame: about one, a walking pace
     speed = (stop - 20 + 16) / (arrive - first_clip)  # to arrive on time, from just off the left edge
     frames = []
     for f in range(name + engineer + chase):
         y = GROUND
         if f < name:
-            x = min(-24 + 2 * f, stop)
-            pose = "pass" if x == stop else RUN[f // 5 % 4]
+            x = min(-24 + round(walk * f), stop)  # a walk, arriving four-fifths into his name
+            pose = "front" if x == stop else RUN[f // 8 % 4]
         elif f < notice:
-            x, t, pose = stop, (f - name) / engineer, "pass"
-            for pose, share in looking:  # in the second beat he looks around; then stands, facing on
-                if t < share:
-                    break
-                t -= share
-            if f >= name + engineer:
-                pose = "pass"
+            x = stop
+            pose = "front"
+            if f < name + engineer:  # in the second beat he looks around, between his two front frames
+                pose = ("front", "front_b")[(f - name) // 24 % 2]
         elif f < leap:
             x, pose = stop, "look_back"  # he hears them
         elif f < run:
@@ -272,10 +269,6 @@ def source(metas, frames, screen: bytes) -> str:
     lines.append("nametable:")
     for i in range(0, len(screen), 32):
         lines.append("  .byte " + ", ".join(f"${b:02X}" for b in screen[i:i + 32]))
-    lines.append("notes:")
-    sound = music.table(len(frames))
-    for i in range(0, len(sound), 32):
-        lines.append("  .byte " + ", ".join(f"${b:02X}" for b in sound[i:i + 32]))
     lines.append("choreography:")
     data = table(frames, names)
     for i in range(0, len(data), 16):
