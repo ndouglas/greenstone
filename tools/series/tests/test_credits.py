@@ -6,7 +6,7 @@ from pathlib import Path
 from manim import Text, config
 
 from series import style
-from series.credits import DISCLAIMER, PAGE_SECONDS, credit_pages, credits_seconds, description
+from series.credits import DISCLAIMER, ERRATA_DIR, PAGE_SECONDS, credit_pages, credits_seconds, description, errata_url
 from series.script import load_video
 
 CITATIONS = '''
@@ -52,6 +52,17 @@ class Description(unittest.TestCase):
         for part in ("The perceptron", "F. Rosenblatt", "1958", "https://doi.org/10.1037/h0042519"):
             self.assertEqual(text.count(part), 1, part)
         self.assertLess(text.index("McCulloch"), text.index("Rosenblatt"))
+
+    def test_description_links_the_videos_errata(self):
+        v = video()
+        text = description(v)
+        self.assertIn(f"Corrections: {errata_url(v)}", text)
+        self.assertEqual(errata_url(v),
+                         f"https://github.com/ndouglas/greenstone/blob/main/docs/series/errata/{v.name}.md")
+        self.assertLess(text.index("Corrections:"), text.index("Sources:"))
+
+    def test_001_has_an_errata_list(self):
+        self.assertTrue((ERRATA_DIR / "001-one-neuron.md").is_file())
 
     def test_description_ends_with_the_disclaimer(self):
         self.assertEqual(

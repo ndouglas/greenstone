@@ -37,7 +37,7 @@ framing = true
 [[section.line]]
 id = "who-2"
 text = "You may already know a lot about neural networks. You might know much more than I do, and if I get anything wrong, please tell me."
-board = "A card: 'Corrections welcome', and where to send them (the video's public errata list); the titles of the papers this video cites drift past behind it"
+board = "A card: 'Corrections welcome: see link in description' (the description links the video's public errata list); the titles of the papers this video cites drift past behind it"
 framing = true
 
 [[section.line]]

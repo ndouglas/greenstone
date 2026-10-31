@@ -1,6 +1,7 @@
 """A video's sources and disclaimer: in its description, and on screen."""
 
 import textwrap
+from pathlib import Path
 
 from manim import DOWN, LEFT, Text, VGroup
 
@@ -15,6 +16,9 @@ SIZE = 0.6
 WIDTH = 12.0
 HEIGHT = 6.0
 BUFF = 0.35
+# Each video's corrections, kept public in the repo; its description links them ("see link in description").
+ERRATA_DIR = Path(__file__).resolve().parents[2] / "docs" / "series" / "errata"
+ERRATA_URL = "https://github.com/ndouglas/greenstone/blob/main/docs/series/errata/{name}.md"
 DISCLAIMER = "I'm not an expert, just a guy learning this stuff, in public. If you spot a mistake, please tell me."
 
 
@@ -28,8 +32,12 @@ def reference(c: Citation) -> str:
     return f"{c.authors} ({c.year}). {c.title}. {c.url}"
 
 
+def errata_url(video: Video) -> str:
+    return ERRATA_URL.format(name=video.name)
+
+
 def description(video: Video) -> str:
-    parts = [video.title]
+    parts = [video.title, f"Corrections: {errata_url(video)}"]
     sources = cited(video)
     if sources:
         parts.append("Sources:\n" + "\n".join(f"- {reference(c)}" for c in sources))
