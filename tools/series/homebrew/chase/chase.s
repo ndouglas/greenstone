@@ -1,4 +1,4 @@
-; chase: 8-bit Nate, a floor, and a swarm of paperclips, played back from a table.
+; chase: 8-bit Nate, some scenery, and a pair of paperclips, played back from a table.
 ;
 ; make.py writes data.inc (the palettes, the metasprites, and every actor's x, y and sprite frame on every
 ; frame) and chase.chr (the tiles). Each frame this program turns the table's row into sprites: Nate
@@ -83,30 +83,24 @@ reset:
   cpx #32
   bne @palette
 
-  lda #$20                ; the first nametable and its attributes, blank
+  lda #$20                ; the scenery: the first nametable and its attributes, 1 KB from the table
   sta PPUADDR
   lda #$00
   sta PPUADDR
-  ldy #4
-  ldx #0
-  lda #0
-@blank:
+  lda #<nametable
+  sta row
+  lda #>nametable
+  sta row + 1
+  ldx #4
+  ldy #0
+@scenery:
+  lda (row), y
   sta PPUDATA
-  inx
-  bne @blank
-  dey
-  bne @blank
-
-  lda #>($2000 + FLOOR_ROW * 32)  ; the floor: tile 1 along one row
-  sta PPUADDR
-  lda #<($2000 + FLOOR_ROW * 32)
-  sta PPUADDR
-  lda #1
-  ldx #32
-@floor:
-  sta PPUDATA
+  iny
+  bne @scenery
+  inc row + 1
   dex
-  bne @floor
+  bne @scenery
 
   lda #<choreography
   sta row

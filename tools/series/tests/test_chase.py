@@ -18,7 +18,7 @@ class ChaseTest(unittest.TestCase):
         self.assertEqual(data[8], 0b00110001)  # high plane: colours 2 and 3
 
     def test_every_pose_stands_on_its_feet_and_shares_a_middle(self):
-        _, metas = make.art()
+        _, metas, _ = make.art()
         for name, entries in metas.items():
             grid = make.clip_grid() if name == "clip" else make.nate_grid(make.NATE_FRAMES[name])
             self.assertEqual(min(dy for dy, *_ in entries), -grid.shape[0], name)  # the art's top row
@@ -26,7 +26,7 @@ class ChaseTest(unittest.TestCase):
             self.assertEqual(min(lefts), (make.BOX - grid.shape[1]) // 2, name)  # centred in the box
 
     def test_the_tiles_fit_and_nate_keeps_his_colours(self):
-        data, metas = make.art()
+        data, metas, _ = make.art()
         self.assertEqual(len(data), 8192)
         self.assertEqual({e[2] for n, es in metas.items() if n != "clip" for e in es}, {make.NATE})
         self.assertEqual({e[2] for e in metas["clip"]}, {make.CLIP_PAL})
@@ -41,7 +41,7 @@ class ChaseTest(unittest.TestCase):
         self.assertIn("leap", {nate[2] for nate, *_ in frames})
 
     def test_no_line_ever_needs_more_than_eight_sprites(self):
-        _, metas = make.art()
+        _, metas, _ = make.art()
         for f, actors in enumerate(make.choreography()):
             lines = np.zeros(240, int)
             for x, y, pose in actors:

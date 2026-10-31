@@ -33,14 +33,19 @@ CLIP_ART = [  # 10 x 22: X the white wire, x the grey inner loop, W the eyes' wh
                                                   ".........."]
 CLIP = [row.translate(str.maketrans("XWKx", "1132")) for row in CLIP_ART]  # colour indices in its palette
 
-# NES palettes: background, then four sprite palettes (entry 0 of each is the shared backdrop).
-PALETTES = bytes([0x0F, 0x00, 0x10, 0x30] * 4 +  # background: black, greys
-                 [0x0F, 0x00, 0x27, 0x30,       # Nate: grey, orange, white
-                  0x0F, 0x30, 0x00, 0x0F,       # paperclip: white wire, grey, black
-                  0x0F, 0x00, 0x10, 0x30,
-                  0x0F, 0x00, 0x10, 0x30])
+# NES palettes: four for the background, then four for sprites; entry 0 of each is the shared sky.
+SKY = 0x22
+PALETTES = bytes([SKY, 0x17, 0x07, 0x27,  # ground: brick, mortar, the lit top edge
+                  SKY, 0x1A, 0x0A, 0x0F,  # hills: green, dark green, black
+                  SKY, 0x30, 0x31, 0x0F,  # clouds: white, pale blue
+                  SKY, 0x30, 0x31, 0x0F,
+                  SKY, 0x00, 0x27, 0x30,  # Nate: grey, orange, white
+                  SKY, 0x30, 0x00, 0x0F,  # paperclip: white wire, grey, black
+                  SKY, 0x00, 0x10, 0x30,
+                  SKY, 0x00, 0x10, 0x30])
 NATE, CLIP_PAL = 0, 1
-FLOOR_ROW = 19  # nametable row of the floor line; feet stand just above it
+GROUND_PAL, HILLS_PAL, CLOUDS_PAL = 0, 1, 2
+FLOOR_ROW = 20  # the ground's first nametable row, on a 16-pixel colour-block boundary; feet stand on it
 GROUND = 8 * FLOOR_ROW
 BOX = 24  # every sprite frame is centred in a box this wide; an actor's x is the box's left edge
 
@@ -74,11 +79,57 @@ def clip_grid() -> np.ndarray:
     return np.array([[0 if c == "." else int(c) for c in row] for row in CLIP], np.uint8)
 
 
+def scenery() -> tuple[np.ndarray, np.ndarray]:
+    """An original backdrop in the Mario spirit: two clouds, two hills, brick ground. Colour indices for every
+    pixel (240 x 256), and the background palette of every 16x16 block (15 x 16): clouds in the top six block
+    rows, hills in the next four, the ground below, so no block needs more than its three colours."""
+    pixels = np.zeros((240, 256), np.uint8)
+    y, x = np.mgrid[0:240, 0:256]
+    cloud = np.zeros_like(pixels, bool)
+    for cx, cy, r in ((120, 52, 14), (106, 58, 10), (134, 58, 10), (206, 36, 11), (194, 41, 8), (218, 41, 8)):
+        cloud |= (x - cx) ** 2 + (y - cy) ** 2 <= r * r
+    pixels[cloud] = 1
+    pixels[cloud & ~np.roll(cloud, -3, axis=0)] = 2  # pale blue along the cloud's underside
+    for cx, r in ((52, 44), (196, 28)):
+        d = np.sqrt((x - cx) ** 2 + (y - GROUND) ** 2)
+        hill = (d <= r) & (y < GROUND)
+        pixels[hill] = 1
+        pixels[hill & (d > r - 1.5)] = 3  # outline
+        spots = hill & ((x - cx) % 12 < 2) & ((y - GROUND + 20) % 14 < 3) & (d < r - 6)
+        pixels[spots] = 2
+    ground = y >= GROUND
+    brick = ((y - GROUND) % 8 == 7) | (((x + 8 * ((y - GROUND) // 8 % 2)) % 16) == 15)
+    pixels[ground] = np.where(brick[ground], 2, 1)
+    pixels[GROUND:GROUND + 2] = 3  # the lit top edge
+    blocks = np.full((15, 16), CLOUDS_PAL, np.uint8)
+    blocks[6:10] = HILLS_PAL
+    blocks[10:] = GROUND_PAL
+    return pixels, blocks
+
+
+def nametable(pixels: np.ndarray, blocks: np.ndarray, chr_tiles: list[np.ndarray]) -> bytes:
+    """The screen's 960 tile numbers (adding new tiles to chr_tiles, reusing identical ones) and its 64
+    attribute bytes (each a 32x32 area: four 16x16 blocks, two bits each)."""
+    index = {t.tobytes(): i for i, t in enumerate(chr_tiles)}
+    names = bytearray()
+    for ty in range(30):
+        for tx in range(32):
+            tile = pixels[ty * 8:ty * 8 + 8, tx * 8:tx * 8 + 8]
+            key = tile.tobytes()
+            if key not in index:
+                index[key] = len(chr_tiles)
+                chr_tiles.append(tile.copy())
+            names.append(index[key])
+    padded = np.vstack([blocks, blocks[-1:]])  # the last attribute row covers half a block row past the screen
+    attributes = bytes(int(padded[2 * ay, 2 * ax] | padded[2 * ay, 2 * ax + 1] << 2 | padded[2 * ay + 1, 2 * ax] << 4
+                           | padded[2 * ay + 1, 2 * ax + 1] << 6) for ay in range(8) for ax in range(8))
+    return bytes(names) + attributes
+
+
 def art():
-    """CHR (8 KB: tile 0 blank, tile 1 the floor line, then the sprites) and the metasprites: per sprite frame,
-    its tiles as (dy, tile, attribute, dx) from its bottom-left corner."""
-    chr_tiles = [np.zeros((8, 8), np.uint8), np.zeros((8, 8), np.uint8)]
-    chr_tiles[1][0] = 2  # the floor: a grey line along the top of the row
+    """CHR (8 KB: tile 0 blank, then the sprites, then the scenery), the metasprites (per sprite frame, its tiles
+    as (dy, tile, attribute, dx) from its bottom-left corner) and the nametable."""
+    chr_tiles = [np.zeros((8, 8), np.uint8)]
     metas = {}
     sources = {name: (nate_grid(box), NATE) for name, box in NATE_FRAMES.items()}
     sources["clip"] = (clip_grid(), CLIP_PAL)
@@ -94,8 +145,11 @@ def art():
             entries.append((row * 8 - h, len(chr_tiles), palette, col * 8 + (BOX - w) // 2))
             chr_tiles.append(tile)
         metas[name] = entries
+    names = nametable(*scenery(), chr_tiles)
+    if len(chr_tiles) > 256:
+        raise ValueError(f"{len(chr_tiles)} tiles; a pattern table holds 256")
     data = b"".join(chr_bytes(t) for t in chr_tiles)
-    return data + bytes(8192 - len(data)), metas
+    return data + bytes(8192 - len(data)), metas, names
 
 
 def choreography() -> list[list[tuple[int, int, str | None]]]:
@@ -140,9 +194,9 @@ def table(frames, names: list[str]) -> bytes:
     return bytes(out)
 
 
-def source(metas, frames) -> str:
+def source(metas, frames, screen: bytes) -> str:
     names = list(metas)
-    lines = [f"ACTORS = {len(frames[0])}", f"FRAME_COUNT = {len(frames)}", f"FLOOR_ROW = {FLOOR_ROW}", "", ".segment \"RODATA\"", "palettes:",
+    lines = [f"ACTORS = {len(frames[0])}", f"FRAME_COUNT = {len(frames)}", "", ".segment \"RODATA\"", "palettes:",
              "  .byte " + ", ".join(f"${b:02X}" for b in PALETTES), "metas_lo:",
              "  .byte " + ", ".join(f"<meta_{n}" for n in names), "metas_hi:",
              "  .byte " + ", ".join(f">meta_{n}" for n in names)]
@@ -151,6 +205,9 @@ def source(metas, frames) -> str:
         for dy, tile, attr, dx in metas[n]:
             lines.append(f"  .byte ${dy & 0xFF:02X}, ${tile:02X}, ${attr:02X}, ${dx:02X}")
         lines.append("  .byte $80")
+    lines.append("nametable:")
+    for i in range(0, len(screen), 32):
+        lines.append("  .byte " + ", ".join(f"${b:02X}" for b in screen[i:i + 32]))
     lines.append("choreography:")
     data = table(frames, names)
     for i in range(0, len(data), 16):
@@ -161,9 +218,9 @@ def source(metas, frames) -> str:
 def build(out: Path) -> Path:
     """Assemble chase.nes into `out`, with ca65 and ld65."""
     out.mkdir(parents=True, exist_ok=True)
-    chr_data, metas = art()
+    chr_data, metas, names = art()
     (out / "chase.chr").write_bytes(chr_data)
-    (out / "data.inc").write_text(source(metas, choreography()))
+    (out / "data.inc").write_text(source(metas, choreography(), names))
     obj, rom = out / "chase.o", out / "chase.nes"
     subprocess.run(["ca65", str(HERE / "chase.s"), "-I", str(out), "--bin-include-dir", str(out), "-o", str(obj)],
                    check=True)
