@@ -13,6 +13,17 @@ voyage, so the first video reads as a first step. It replaces the working
 title, *Inside the Machine*. "NES", "Nintendo" and "Mario" stay out of the
 name (trademarks); the footage and descriptions say what the games are.
 
+**The opening** (`tools/series/opening.py`, Nate 2026-10-30), in place of
+each video's Introduction title: about ten seconds. A thread of light
+enters a glass cartridge, catches three neurons, and leaves split into the
+spectrum, warm above and cool below (the prism of *The Dark Side of the
+Moon*); the series' title and subtitle settle beneath; a pause; the
+episode's title fades in; everything fades to black. Under it, the theme
+(`theme.py`): Glass-like, written for the NES's own voices (two pulses and
+the triangle, at the chip's pitches, through its mixer, by `chiptune.py`):
+A minor, F, C, E in triplets against pairs, growing, then A minor circling
+quieter and fading out with the picture.
+
 ## Why look inside at all?
 
 The series takes the strongest criticism of its subject seriously.

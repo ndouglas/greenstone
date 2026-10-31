@@ -10,6 +10,7 @@ from manim import Dot, FadeIn, ImageMobject, Text, VGroup, tempconfig
 
 from series import style
 from series.credits import PAGE_SECONDS, credits_seconds
+from series.opening import OPENING_SECONDS, SERIES, SUBTITLE, episode_label
 from series.scene import NarratedScene, ScriptOrderError, StoryboardScene
 from series.title import board_tiles, title_card
 from series.script import Section, load_video
@@ -266,16 +267,48 @@ class Chapters(unittest.TestCase):
 
         S.video, S.voices = video, voices
         movie = render(S, d / "media")
-        self.assertAlmostEqual(times[0][0], 4.0, delta=0.05)
+        self.assertAlmostEqual(times[0][0], OPENING_SECONDS, delta=0.1)  # the introduction opens with the opening
         self.assertEqual(times[0][1], 0)
-        # Four titles, six 1 s voices, stillness 2 + 0.5 + 2 + 2 + 2 + 2.
-        self.assertAlmostEqual(float(probe(movie, "format=duration")["format"]["duration"]), 16.0 + 6.0 + 10.5, delta=0.1)
-        # The title screen is silent; the first beat is not.
+        # The opening, three titles, six 1 s voices, stillness 2 + 0.5 + 2 + 2 + 2 + 2.
+        self.assertAlmostEqual(float(probe(movie, "format=duration")["format"]["duration"]),
+                               OPENING_SECONDS + 12.0 + 6.0 + 10.5, delta=0.15)
+        # A chapter's title screen is silent; the beat before it and the beat after it are not.
         pcm = subprocess.run(["ffmpeg", "-v", "error", "-i", str(movie), "-vn", "-ac", "1", "-ar", str(RATE),
                               "-f", "f32le", "-"], capture_output=True, check=True).stdout
         audio = np.frombuffer(pcm, dtype=np.float32)
-        self.assertLess(np.abs(audio[: int(3.9 * RATE)]).max(), 1e-3)
-        self.assertGreater(np.abs(audio[int(4.1 * RATE): int(4.9 * RATE)]).max(), 0.1)
+        title = OPENING_SECONDS + 1.0 + 2.0  # after h and its stillness
+
+        def loudest(a, b):
+            return np.abs(audio[int(a * RATE):int(b * RATE)]).max()
+        self.assertGreater(loudest(OPENING_SECONDS + 0.1, OPENING_SECONDS + 0.9), 0.1)
+        self.assertLess(loudest(title + 0.1, title + 3.9), 1e-3)
+        self.assertGreater(loudest(title + 4.1, title + 4.9), 0.1)
+
+    def test_the_opening_plays_the_theme_under_the_series_title(self):
+        video, voices, d = chapters()
+        texts = []
+
+        class S(NarratedScene):
+            def construct(self):
+                original = self.play
+
+                def play(*animations, **kwargs):
+                    texts.extend(m.text for a in animations for m in a.mobject.get_family() if isinstance(m, Text))
+                    return original(*animations, **kwargs)
+                self.play = play
+                say_all(self)
+
+        S.video, S.voices = video, voices
+        movie = render(S, d / "media")
+        pcm = subprocess.run(["ffmpeg", "-v", "error", "-i", str(movie), "-vn", "-ac", "1", "-ar", str(RATE),
+                              "-f", "f32le", "-"], capture_output=True, check=True).stdout
+        audio = np.frombuffer(pcm, dtype=np.float32)
+        self.assertGreater(np.abs(audio[int(2 * RATE):int(4 * RATE)]).max(), 0.05)  # the theme
+        words = {t.replace(" ", "") for t in texts}
+        self.assertIn(SERIES.replace(" ", ""), words)
+        self.assertIn(SUBTITLE.replace(" ", ""), words)
+        self.assertIn(episode_label(video.title).replace(" ", ""), words)
+        self.assertNotIn("Introduction", words)  # the opening replaces the introduction's card
 
     def test_a_title_screen_starts_from_a_clear_screen(self):
         video, voices, d = chapters()
@@ -361,7 +394,7 @@ class Chapters(unittest.TestCase):
             pass
 
         S.video, S.voices = video, voices
-        expected = 4 * 4.0 + 6 * 0.5 + (0.5 + 5 * 2.0) + credits_seconds(video)
+        expected = OPENING_SECONDS + 3 * 4.0 + 6 * 0.5 + (0.5 + 5 * 2.0) + credits_seconds(video)
         self.assertAlmostEqual(float(probe(render(S, d / "media"), "format=duration")["format"]["duration"]),
                                expected, delta=0.2)
 

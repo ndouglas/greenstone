@@ -4,10 +4,11 @@ import textwrap
 
 from manim import DOWN, LEFT, FadeIn, Mobject, Scene, VGroup, config, linear
 
-from series import style
+from series import style, theme
 from series.exact import ExactScene
 from series.ember import backdrop, serif
 from series.credits import PAGE_SECONDS, credit_pages
+from series.opening import play_opening
 from series.pacing import STILLNESS, TITLE_HOLD
 from series.script import Video
 from series.title import board_tiles, title_card
@@ -43,7 +44,8 @@ class NarratedScene(ExactScene):
 
     def show_title(self, section_id: str, tiles: list[Mobject] | None = None) -> None:
         """A section's title screen, silent, for TITLE_HOLD seconds: the wall
-        drifts left as it holds. Tiles default to the section's boards."""
+        drifts left as it holds. Tiles default to the section's boards. The
+        introduction's is the series' opening instead, with its theme."""
         section = next((s for s in self.video.sections if s.id == section_id), None)
         if section is None:
             raise ScriptOrderError(f"title screen for {section_id!r}, which isn't a section in the script")
@@ -57,13 +59,16 @@ class NarratedScene(ExactScene):
             raise ScriptOrderError(f"{section_id}'s title screen is shown {where}; "
                                    f"it goes just before {section.lines[0].id!r}")
         start = self.time
-        card = title_card(section, board_tiles(section) if tiles is None else tiles)
         # A section starts from a clear screen; the last beat's picture
         # mustn't show through the wall's gaps.
         self.clear()
-        self.add(card)
-        self.play(card[0].animate.shift(LEFT * 0.22 * config.frame_width), run_time=TITLE_HOLD, rate_func=linear)
-        self.remove(card)
+        if section.kind == "introduction":
+            play_opening(self, self.video.title, str(theme.path()))
+        else:
+            card = title_card(section, board_tiles(section) if tiles is None else tiles)
+            self.add(card)
+            self.play(card[0].animate.shift(LEFT * 0.22 * config.frame_width), run_time=TITLE_HOLD, rate_func=linear)
+            self.remove(card)
         self.titled.append(section_id)
         self.section_starts[section_id] = start
         self.section_lengths[section_id] = self.time - start
