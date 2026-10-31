@@ -577,7 +577,7 @@ cite = ["bishop2006"]
 
 [[section.line]]
 id = "one-dot-4"
-text = "Every total is three times what it was: three times a plus number is still plus, three times a minus number still minus, and three times zero is still zero. So every answer stays the same."
+text = "Every total is three times what it was: three times a positive number is still positive, three times a negative number still negative, and three times zero is still zero. So every answer stays the same."
 board = "The shading stays exactly where it was"
 cite = ["bishop2006"]
 
@@ -599,14 +599,14 @@ pause = 3.0
 
 [[section.line]]
 id = "one-dot-5"
-text = "That's true of any neuron of this yes-or-no kind: multiplying all its weights and its bias by the same plus number never changes an answer."
+text = "That's true of any neuron of this yes-or-no kind: multiplying all its weights and its bias by the same positive number never changes an answer."
 board = "Copies of a formula scaled by 2, 3 and 10, each giving the same yes and no"
 cite = ["bishop2006"]
 
 [[section.line]]
 id = "draw-end"
 role = "conclusion"
-text = "So with one input, a neuron is a line, and its setting is where that line crosses zero; scaling its weight and bias by the same plus number changes nothing it says. Next, a neuron that reads two numbers."
+text = "So with one input, a neuron is a line, and its setting is where that line crosses zero; scaling its weight and bias by the same positive number changes nothing it says. Next, a neuron that reads two numbers."
 board = "The graph and its pin; a second input slot fills beside the formula"
 cite = ["bishop2006"]
 
@@ -637,8 +637,8 @@ cite = ["exp001"]
 
 [[section.line]]
 id = "two-inputs"
-text = "This neuron reads his depth and a second number from the game's memory: his falling speed, in pixels per frame. It's a plus number while he falls and a minus number while he rises."
-board = "A second memory square lights up, minus as Mario rises, plus as he falls"
+text = "This neuron reads his depth and a second number from the game's memory: his falling speed, in pixels per frame. It's positive while he falls and negative while he rises."
+board = "A second memory square lights up, negative as Mario rises, positive as he falls"
 cite = ["datacrystal-smb1", "exp001"]
 
 [[section.line]]
@@ -754,7 +754,7 @@ cite = ["exp001"]
 
 [[section.line]]
 id = "the-tilt-2"
-text = "The search's own numbers were long decimals. Just as the graph's crossing stayed put when we tripled everything, multiplying them all by the same plus number doesn't move the border, so we scaled them until the depth's weight was exactly one."
+text = "The search's own numbers were long decimals. Just as the graph's crossing stayed put when we tripled everything, multiplying them all by the same positive number doesn't move the border, so we scaled them until the depth's weight was exactly one."
 board = "The search's decimal weights, scaling up together; the border unmoved"
 cite = ["exp001", "bishop2006"]
 
@@ -839,8 +839,8 @@ framing = true
 
 [[section.line]]
 id = "balance-3"
-text = "A plus number goes in the yes pan, and a minus number in the no pan. The bias is one more block, in the pan its own sign says."
-board = "A plus block drops into the yes pan, a minus block and the bias's block into the no pan"
+text = "A positive number goes in the yes pan, and a negative number in the no pan. The bias is one more block, in the pan its own sign says."
+board = "A positive block drops into the yes pan, a negative block and the bias's block into the no pan"
 framing = true
 
 [[section.line]]
