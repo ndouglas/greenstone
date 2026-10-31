@@ -304,6 +304,15 @@ class TestScreen(unittest.TestCase):
             self.assertEqual(screen.ram()[0], drawn - 1)  # the RAM the picture drawn shows: one frame behind
             self.assertEqual(screen.byte(0), drawn - 1)
 
+    def test_fast_forward_carries_on_from_the_frame_shown(self):
+        with tempconfig(FULL_HD):
+            screen = Screen(self.recording, 10)
+            screen.game.update(0.25)  # 15 frames at normal speed
+            screen.game.speed = 4
+            screen.game.update(0.25)  # then 60 more
+            self.assertEqual(screen.frame(), 85)
+            self.assertEqual(int(screen.game.pixel_array[0, 0, 0]), 85)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -90,14 +90,14 @@ def clip_colour(recording: Recording, start: int) -> np.ndarray:
 
 
 class Footage(GameFootage):
-    """A recording's frames, played as GameFootage plays a take's; averaged down to `size` (w, h) when it is
-    smaller than the NES's picture."""
+    """A recording's frames, played as GameFootage plays a take's, `speed` times as fast (fast-forwarding from
+    the frame shown when it changes); averaged down to `size` (w, h) when it is smaller than the NES's picture."""
 
     def __init__(self, recording: Recording, start: int, size: tuple[int, int] | None = None):
         if not 0 <= start < len(recording):
             raise ValueError(f"{recording.game} has {len(recording)} frames; start {start} is outside it")
         self.frames, self.take, self.size = recording.frames, recording.game, size
-        self.warned, self.start_frame, self.elapsed, self.ahead = False, start, 0.0, False
+        self.warned, self.start_frame, self.elapsed, self.ahead, self.speed = False, start, 0.0, False, 1.0
         ImageMobject.__init__(self, self.picture(start))
         self.set_resampling_algorithm(RESAMPLING_ALGORITHMS["bilinear"] if size else NEAREST)
         self.add_updater(Footage.advance)
@@ -119,7 +119,7 @@ class Footage(GameFootage):
         if self.ahead:  # an ExactScene already moved it on this frame
             self.ahead = False
             return
-        GameFootage.advance(self, dt)  # keeps its clock and its warning past the end
+        GameFootage.advance(self, dt * self.speed)  # keeps its clock and its warning past the end
 
     def advance_first(self, dt: float) -> None:
         """Move on before the scene's other updaters run (see ExactScene); its own updater then stands aside."""
