@@ -214,7 +214,7 @@ framing = true
 
 [[section.line]]
 id = "depth"
-text = "Instead, the neuron reads a different number from the game's memory: Mario's depth, meaning how far down the screen he is, counted in the tiny dots the picture is made of, from near the top. A bigger depth means lower on the screen."
+text = "Instead, the neuron reads a different number from the game's memory: Mario's depth, meaning how far down the screen he is, counted in rows of pixels from near the top. A bigger depth means lower on the screen."
 board = "Footage: a ruler down the screen whose zero starts 32 dots below the top, so its reading at Mario's feet is the game's depth number; it follows him as he jumps"
 cite = ["datacrystal-smb1", "nesdev-oam", "exp001"]
 
@@ -233,7 +233,7 @@ cite = ["exp001"]
 
 [[section.line]]
 id = "frames"
-text = "The NES draws about sixty pictures a second, called frames."
+text = "The NES draws about sixty frames a second."
 board = "A second of play laid out as sixty still pictures"
 cite = ["nesdev-timing"]
 
@@ -530,7 +530,7 @@ cite = ["openstax-linear"]
 
 [[section.line]]
 id = "school-2"
-text = "Now let's draw it. We'll call this picture the graph: depth along the bottom, and the total up the side."
+text = "Now let's draw it as a graph: depth along the bottom, and the total up the side."
 board = "Axes labelled 'the graph': depth along the bottom, the total up the side"
 cite = ["openstax-linear"]
 
@@ -637,7 +637,7 @@ cite = ["exp001"]
 
 [[section.line]]
 id = "two-inputs"
-text = "This neuron reads his depth and a second number from the game's memory: his falling speed, in whole dots per frame. It's a plus number while he falls and a minus number while he rises."
+text = "This neuron reads his depth and a second number from the game's memory: his falling speed, in pixels per frame. It's a plus number while he falls and a minus number while he rises."
 board = "A second memory square lights up, minus as Mario rises, plus as he falls"
 cite = ["datacrystal-smb1", "exp001"]
 
