@@ -134,11 +134,29 @@ class NarratedScene(ExactScene):
             self.said += [line.id for line in section.lines]
             return
         self.show_title(section_id)
+        built = False
         for line in section.lines:
             if line.id in beats:
                 beats[line.id](self)
                 if not self.said or self.said[-1] != line.id:
                     raise ScriptOrderError(f"the beat built for {line.id!r} didn't say it")
+                built = True
+            else:
+                if built:  # a placeholder card stands alone: clear what the built beats left
+                    self.clear()
+                    built = False
+                self.placeholder(line.id)
+
+    def play_rest(self, beats: dict[str, Callable[["NarratedScene"], None]]) -> None:
+        """The lines outside any section (a closing disclaimer, say), built or placeholders; passed over under
+        `only`."""
+        for line in self.video.lines:
+            if line.section is not None:
+                continue
+            if self.only is not None:
+                self.said.append(line.id)
+            elif line.id in beats:
+                beats[line.id](self)
             else:
                 self.placeholder(line.id)
 
@@ -174,7 +192,5 @@ class StoryboardScene(NarratedScene):
     def construct(self):
         for section in self.video.sections:
             self.play_section(section.id, {})
-        for line in self.video.lines:
-            if line.section is None:
-                self.placeholder(line.id)
+        self.play_rest({})
         self.roll_credits()
