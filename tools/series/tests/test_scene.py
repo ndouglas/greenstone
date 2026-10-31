@@ -13,7 +13,8 @@ from series import style
 from series.credits import PAGE_SECONDS, credits_seconds
 from series.opening import OPENING_SECONDS, SERIES, SUBTITLE, episode_label
 from series.scene import NarratedScene, ScriptOrderError, StoryboardScene
-from series.title import board_tiles, section_tiles, title_card
+from series.clips import ClipTile, load_clip, save_clip
+from series.title import board_tiles, section_tiles, title_card, wall
 from series.script import Section, load_video
 from series.voice import Voice
 
@@ -530,6 +531,69 @@ class Sections(unittest.TestCase):
         pixels = np.asarray(Image.open(still).convert("RGB")).reshape(-1, 3)
         self.assertTrue(((pixels[:, 0] > 200) & (pixels[:, 1] < 60)).any())  # the beat's last picture: its dot
         self.assertFalse((d / "stills" / "chapter-1" / "c1.png").exists())  # a placeholder leaves none
+
+    def test_a_built_beat_leaves_a_clip_for_its_title_wall(self):
+        video, voices, d = chapters()
+
+        class S(NarratedScene):
+            only = "chapter-1"
+
+            def construct(self):
+                def i1(scene):
+                    scene.say("i1", FadeIn(Dot(color="#FF0000").scale(8)))
+                for section_id in BEATS:
+                    self.play_section(section_id, {"i1": i1})
+
+        S.video, S.voices, S.stills = video, voices, d / "stills"
+        render(S, d / "media")
+        clip = load_clip(d / "stills" / "chapter-1" / "i1.mp4")
+        self.assertEqual(clip.fps, 30)
+        red = [float(((f[..., 0] > 150) & (f[..., 1] < 90)).mean()) for f in clip.frames]
+        self.assertLess(red[0], red[-1])  # the dot fading in
+        self.assertFalse((d / "stills" / "chapter-1" / "c1.mp4").exists())  # a placeholder leaves none
+
+    def test_a_title_wall_plays_its_clips(self):
+        def title_light(clip):
+            video, voices, d = chapters()
+            (d / "stills" / "chapter-1").mkdir(parents=True)
+            red = np.zeros((36, 64, 3), np.uint8)
+            red[..., 0] = 220
+            if clip:
+                save_clip([red] * 45, 30, d / "stills" / "chapter-1" / "i1.mp4")
+            else:
+                Image.fromarray(red).save(d / "stills" / "chapter-1" / "i1.png")
+
+            class S(NarratedScene):
+                only = "chapter-1"
+
+                def construct(self):
+                    for section_id in BEATS:
+                        self.play_section(section_id, {})
+
+            S.video, S.voices, S.stills = video, voices, d / "stills"
+            movie = render(S, d / "media")
+            raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(movie), "-t", "3.5", "-f", "rawvideo",
+                                  "-pix_fmt", "rgb24", "-"], capture_output=True, check=True).stdout
+            frames = np.frombuffer(raw, np.uint8).reshape(-1, 90, 160, 3)
+            return frames[..., 0].astype(float).mean(axis=(1, 2))
+
+        still, playing = title_light(clip=False), title_light(clip=True)
+        # The clips fade through black at their seams; a still only drifts.
+        self.assertGreater(np.ptp(playing), 2 * np.ptp(still))
+
+    def test_a_title_wall_prefers_a_clip_to_a_still(self):
+        video, _, d = chapters()
+        section = next(s for s in video.sections if s.id == "chapter-1")
+        (d / "stills" / "chapter-1").mkdir(parents=True)
+        Image.new("RGB", (64, 36), (255, 0, 0)).save(d / "stills" / "chapter-1" / "i1.png")
+        save_clip([np.zeros((36, 64, 3), np.uint8)] * 3, 30, d / "stills" / "chapter-1" / "i1.mp4")
+        self.assertIsInstance(section_tiles(section, d / "stills")[0], ClipTile)
+
+    def test_a_wall_starts_its_clips_at_different_points(self):
+        d = Path(tempfile.mkdtemp())
+        save_clip([np.zeros((36, 64, 3), np.uint8)] * 30, 30, d / "c.mp4")
+        tiles = [t for row in wall([ClipTile(load_clip(d / "c.mp4"))]) for _, t in row]
+        self.assertEqual(len({round(t.elapsed, 3) for t in tiles}), len(tiles))
 
     def test_a_title_wall_shows_the_sections_stills_where_they_exist(self):
         video, _, d = chapters()

@@ -7,6 +7,7 @@ from pathlib import Path
 from manim import DOWN, LEFT, Group, ImageMobject, Mobject, Rectangle, RoundedRectangle, Text, VGroup, config
 
 from series import style
+from series.clips import ClipTile, load_clip
 from series.ember import serif
 from series.script import Section
 
@@ -14,6 +15,8 @@ from series.script import Section
 # each row wider than the frame so the wall can drift.
 ROWS = ((0.22, 0.30, 0.18, 0.26, 0.20), (0.16, 0.34, 0.24, 0.22, 0.18), (0.26, 0.20, 0.28, 0.22, 0.24))
 GAP = 0.08
+# How far along its loop each clip tile starts from the last: the golden ratio's fraction, so no two match.
+PHASE = 0.618034
 DIM = 0.55  # how far the wall is darkened toward the ground, so the words lead
 
 
@@ -32,13 +35,15 @@ def board_tiles(section: Section) -> list[Mobject]:
 
 
 def section_tiles(section: Section, stills: Path | None) -> list[Mobject]:
-    """One tile per beat: the still its built beat left at its end, the last time it was rendered (in
-    `stills`/section/line.png), or its board card until it has one."""
+    """One tile per beat, from the last time its built beat was rendered: its clip, looping (in
+    `stills`/section/line.mp4), else the still it left at its end (line.png), else its board card."""
     tiles = []
     for line in section.lines:
-        still = Path(stills) / section.id / f"{line.id}.png" if stills is not None else None
-        if still is not None and still.is_file():
-            tiles.append(ImageMobject(str(still)))
+        kept = Path(stills) / section.id / line.id if stills is not None else None
+        if kept is not None and kept.with_suffix(".mp4").is_file():
+            tiles.append(ClipTile(load_clip(kept.with_suffix(".mp4"))))
+        elif kept is not None and kept.with_suffix(".png").is_file():
+            tiles.append(ImageMobject(str(kept.with_suffix(".png"))))
         elif line.board:
             tiles.append(board_card(line.board))
     return tiles
@@ -57,6 +62,9 @@ def wall(tiles: list[Mobject]) -> Group:
             # scaled evenly to fit inside it, never stretched.
             slot = Rectangle(width=f * width * 1.25, height=row_h, stroke_width=0, fill_opacity=0)
             picture = pool[k % len(pool)].copy()
+            if isinstance(picture, ClipTile):  # each tile its own point in the loop, so the seams ripple
+                picture.elapsed = (k * PHASE % 1) * picture.clip.seconds
+                picture.advance(0)
             k += 1
             picture.scale(min(slot.width / picture.width, slot.height / picture.height) * 0.92)
             row.add(Group(slot, picture.move_to(slot)))

@@ -7,10 +7,11 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
-from manim import DOWN, LEFT, FadeIn, Mobject, Scene, VGroup, config, linear
+from manim import DOWN, LEFT, FadeIn, Mobject, Scene, VGroup, config
 
 from series import style, theme
 from series.exact import ExactScene
+from series.clips import Capture, save_clip
 from series.ember import backdrop, serif
 from series.credits import PAGE_SECONDS, credit_pages
 from series.opening import play_opening
@@ -51,6 +52,16 @@ class NarratedScene(ExactScene):
         # Each section's length as rendered: from its title screen to the end of its last beat.
         self.section_starts: dict[str, float] = {}
         self.section_lengths: dict[str, float] = {}
+        # The beat being built, while its frames are kept for its clip.
+        self.capture: Capture | None = None
+        written = self.renderer.add_frame
+
+        def add_frame(frame, num_frames=1):
+            written(frame, num_frames)
+            if self.capture is not None and not self.renderer.skip_animations:
+                self.capture.add(frame, num_frames)
+
+        self.renderer.add_frame = add_frame
 
     def show_title(self, section_id: str, tiles: list[Mobject] | None = None) -> None:
         """A section's title screen, silent, for TITLE_HOLD seconds: the wall
@@ -76,8 +87,11 @@ class NarratedScene(ExactScene):
             play_opening(self, self.video.title, str(theme.path()))
         else:
             card = title_card(section, section_tiles(section, self.stills) if tiles is None else tiles)
+            # The wall drifts by an updater, not an animation, which would stop its clips playing.
+            drift = LEFT * 0.22 * config.frame_width / TITLE_HOLD
+            card[0].add_updater(lambda wall, dt: wall.shift(drift * dt))
             self.add(card)
-            self.play(card[0].animate.shift(LEFT * 0.22 * config.frame_width), run_time=TITLE_HOLD, rate_func=linear)
+            self.wait(TITLE_HOLD)
             self.remove(card)
         self.titled.append(section_id)
         self.section_starts[section_id] = start
@@ -144,10 +158,12 @@ class NarratedScene(ExactScene):
         built = False
         for line in section.lines:
             if line.id in beats:
+                self.capture = Capture(config.frame_rate) if self.stills is not None else None
                 beats[line.id](self)
                 if not self.said or self.said[-1] != line.id:
                     raise ScriptOrderError(f"the beat built for {line.id!r} didn't say it")
                 self.keep_still(section_id, line.id)
+                self.keep_clip(section_id, line.id)
                 built = True
             else:
                 if built:  # a placeholder card stands alone: clear what the built beats left
@@ -163,6 +179,12 @@ class NarratedScene(ExactScene):
         path = Path(self.stills) / section_id / f"{line_id}.png"
         path.parent.mkdir(parents=True, exist_ok=True)
         frame.resize((frame.width // 3, frame.height // 3), Image.Resampling.BOX).save(path)
+
+    def keep_clip(self, section_id: str, line_id: str) -> None:
+        """Save the beat's busiest stretch as its clip, a quarter of the frame's width."""
+        capture, self.capture = self.capture, None
+        if capture is not None and (frames := capture.frames()):
+            save_clip(frames, capture.rate, Path(self.stills) / section_id / f"{line_id}.mp4")
 
     def play_rest(self, beats: dict[str, Callable[["NarratedScene"], None]]) -> None:
         """The lines outside any section (a closing disclaimer, say), built or placeholders; passed over under
