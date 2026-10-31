@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 import numpy as np
-from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Arc, Circle, Create, DashedLine, Dot, FadeIn, FadeOut,
+from manim import (DOWN, LEFT, RIGHT, UP, Animation, AnimationGroup, Arc, Circle, Create, DashedLine, Dot, FadeIn, FadeOut,
                    Group, ImageMobject, Line, ManimColor, ParametricFunction, Rectangle, ReplacementTransform, Rotate,
                    RoundedRectangle, Square, Succession, Transform, UpdateFromAlphaFunc, ValueTracker, VGroup, VMobject, Wait,
                    config, interpolate_color, linear, smooth)
@@ -31,6 +31,18 @@ def tween(tracker: ValueTracker, start: float, end: float, run_time: float, rate
     """Move a tracker from start to end. (Chained .animate calls on one tracker in a Succession don't all play.)"""
     return UpdateFromAlphaFunc(tracker, lambda m, a: m.set_value(start + (end - start) * a), run_time=run_time,
                                rate_func=rate_func)
+
+
+def wander(tracker: ValueTracker, start: float, waves: list[tuple[float, float, float]], run_time: float,
+           whole: bool = False) -> UpdateFromAlphaFunc:
+    """Move a tracker by a sum of waves (amplitude, cycles per second, phase), each starting at its phase, so
+    the tracker starts at `start` plus the waves' starting values and ends there after whole cycles. With
+    `whole`, the value is rounded."""
+    def at(t: float) -> float:
+        value = start + sum(a * (np.sin(2 * np.pi * f * t + phase) - np.sin(phase)) for a, f, phase in waves)
+        return round(value) if whole else value
+    return UpdateFromAlphaFunc(tracker, lambda m, a: m.set_value(at(a * run_time)), run_time=run_time,
+                               rate_func=linear)
 
 
 class Thermometer(VGroup):
@@ -137,7 +149,9 @@ def thermostat_2(scene) -> None:
         tween(therm.level, 23, 16, 1.4),
         Wait(1.0),
         tween(therm.level, 16, 24, 1.4),
-        Wait(0.8)))
+        Wait(0.8)), pad=0)
+    # Then, after a moment, it wanders back and forth across the setting, the heat following it.
+    scene.play(Succession(Wait(1.0), wander(therm.level, 24, [(3.5, 1.0, np.pi / 2)], 3.0), Wait(0.6)))
     heat.clear_updaters()
     scene.kept["heater"] = Group(heat, word, light)
 
@@ -161,6 +175,7 @@ def simplest_neuron(scene) -> None:
     out = Line(centre + RIGHT * RING, socket.get_left(), stroke_color=style.ASH, stroke_width=1.4)
     dot = Dot(socket.get_center(), radius=0.12, color=style.WARM[1]).set_opacity(0)
     verdict = serif("yes", style.WARM[1], 0.5).next_to(socket, DOWN, buff=0.3).set_opacity(0)
+    answer = VGroup(verdict)
 
     def count(m: VGroup) -> None:
         text = str(round(total.get_value()))
@@ -181,9 +196,34 @@ def simplest_neuron(scene) -> None:
         *[flow(i) for i in range(3)],
         AnimationGroup(FadeIn(setting), Create(out), Create(socket), run_time=0.7),
         AnimationGroup(dot.animate.set_opacity(1), verdict.animate.set_opacity(1), run_time=0.6),
-        Wait(0.8)))
+        Wait(0.8)), pad=0)
     shown.clear_updaters()
-    scene.kept["neuron"] = VGroup(ring, shown, setting, socket, out, dot, verdict, paths, numbers)
+
+    # Then, after a moment, the inputs change, each at its own pace, and the total and the answer follow.
+    inputs = [ValueTracker(v) for v in values]
+    said = [True]
+
+    def follow(_) -> None:
+        now = [round(v.get_value()) for v in inputs]
+        if [int(n.text) for n in numbers] != now:
+            swap(numbers, *[numeral(str(v), style.WARM[0], 0.46).next_to(a, LEFT, buff=0.15) for v, a in zip(now, starts)])
+        total.set_value(sum(now))
+        count(shown)
+        yes = sum(now) > 6
+        dot.set_opacity(1 if yes else 0)
+        if yes != said[0]:
+            said[0] = yes
+            swap(answer, serif("yes" if yes else "no", style.WARM[1] if yes else style.COOL[1], 0.5)
+                 .next_to(socket, DOWN, buff=0.3))
+    live = VGroup(numbers, shown, dot, answer)  # on what they draw: a play draws a mobject with no updater once
+    live.add_updater(follow)
+    scene.add(live)
+    # Amplitude, cycles a second, phase: the answer says yes half the time, flipping about seven times.
+    pace = ((2, 0.7, np.pi), (2, 1.1, np.pi / 2), (2, 0.45, 0.0))
+    scene.play(Succession(Wait(1.0), AnimationGroup(*[wander(v, start, [wave], 4.0, whole=True)
+                                                      for v, start, wave in zip(inputs, values, pace)]), Wait(0.6)))
+    live.clear_updaters()
+    scene.kept["neuron"] = VGroup(ring, shown, setting, socket, out, dot, answer, paths, numbers)
 
 
 def simplest_neuron_2(scene) -> None:
@@ -309,7 +349,9 @@ def drawn_feet(screen: Screen) -> tuple:
         d = drawn.get_value()
         start, end = m.line.get_start(), m.line.get_end()
         m.line.put_start_and_end_on(start, start + (end - start) * max(d, 1e-3))
-        m.label.set_opacity(d)
+        if getattr(m, "drawn_at", None) != d:  # only as it draws: every frame would undo a fade's target
+            m.label.set_opacity(d)
+            m.drawn_at = d
     draw(feet)
     feet.add_updater(draw)
     return feet, drawn
@@ -459,10 +501,18 @@ def recording_2(scene) -> None:
 
 
 def leave(scene, screen: Screen, *others) -> None:
-    """The game departs, with whatever goes with it, before the next line; then it's taken off, its cover
-    with it (the cover is flat, and would show against the ground)."""
-    scene.play(screen.depart(0.6), *[FadeOut(m) for m in others], run_time=0.6)
-    scene.remove(screen)
+    """The game departs, with whatever goes with it, before the next line; then they're taken off."""
+    scene.play(screen.depart(0.6), *[gone(m) for m in others], run_time=0.6)
+    scene.remove(screen, *others)
+
+
+def gone(m) -> Animation:
+    """Fade something out: by its own level if it draws itself by one (a fade's target copy would redraw
+    itself at full strength every frame), else by FadeOut."""
+    level = getattr(m, "level", None)
+    if isinstance(level, ValueTracker):
+        return tween(level, level.get_value(), 0.0, 0.6)
+    return FadeOut(m)
 
 
 def jump_second(recording: Recording, after: int) -> int:
