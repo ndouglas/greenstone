@@ -739,7 +739,7 @@ class Crowd(ImageMobject):
         self.starts = np.linspace(0, len(self.xs), LANES + 1).astype(int)
         self.ground_n, self.air_n = np.zeros((NES_H, NES_W)), np.zeros((NES_H, NES_W))
         self.ground_at, self.air_at = np.zeros(256), np.zeros(256)  # frames counted at each depth so far
-        self.played = 0  # frames into each lane
+        self.played = np.zeros(LANES, dtype=int)  # frames into each lane
         self.shown, self.level = ValueTracker(0.0), ValueTracker(1.0)
         self.add_updater(lambda m: m.draw())
 
@@ -751,22 +751,22 @@ class Crowd(ImageMobject):
         return r0, r1, c0, c1, r0 - top, c0 - left
 
     def draw(self) -> None:
-        lane = np.diff(self.starts).min()
-        played = round(self.shown.get_value() * lane)
-        for start in self.starts[:-1]:
-            for k in range(start + self.played, start + played):
+        lengths = np.diff(self.starts)
+        played = np.maximum(self.played, np.round(self.shown.get_value() * lengths).astype(int))
+        for start, done, now in zip(self.starts[:-1], self.played, played):  # every frame, each lane its own length
+            for k in range(start + done, start + now):
                 (self.air_at if self.airs[k] else self.ground_at)[self.depths[k]] += 1
                 r0, r1, c0, c1, s0, t0 = self.place(k)
                 if r0 < r1 and c0 < c1:
                     (self.air_n if self.airs[k] else self.ground_n)[r0:r1, c0:c1] += \
                         STAMP[s0:s0 + r1 - r0, t0:t0 + c1 - c0]
-        self.played = max(self.played, played)
+        self.played = played
         total = self.ground_n + self.air_n
         colour = np.where((self.air_n >= self.ground_n)[..., None], rgb(style.WARM[0]), rgb(style.COOL[1]))
         alpha = np.minimum(1.0, np.log1p(total) / np.log1p(150)) * 0.35  # trails faint, so the Marios lead
-        if self.played:  # the Marios themselves, where each lane is now
-            for start in self.starts[:-1]:
-                k = start + min(self.played, lane) - 1
+        for start, now in zip(self.starts[:-1], self.played):  # the Marios themselves, where each lane is now
+            if now:
+                k = start + now - 1
                 r0, r1, c0, c1, s0, t0 = self.place(k)
                 if r0 < r1 and c0 < c1:
                     body = STAMP[s0:s0 + r1 - r0, t0:t0 + c1 - c0] > 0
@@ -856,8 +856,9 @@ def choosing(scene) -> None:
     small = tapes.copy()  # where the tapes go: small, in the corner, the third still apart
     small.tapes[2].shift(APART)
     small.scale(0.4).move_to(RIGHT * 5.0 + DOWN * 2.9)
-    training_small = serif("training", style.TEXT, 0.34).next_to(small.tapes[0].strip, UP, buff=0.12,
-                                                                 aligned_edge=LEFT)
+    # Beside the first two, clear of the tally's counts above them.
+    training_small = serif("training", style.TEXT, 0.34).next_to(VGroup(small.tapes[0], small.tapes[1]), LEFT,
+                                                                 buff=0.15)
     test_small = serif("test", style.TEXT, 0.34).next_to(small.tapes[2].strip, DOWN, buff=0.12)
     scene.add(crowd, tally, tally.counts)
     scene.kept.update(screen=screen, line=line, row=row, crowd=crowd, tally=tally, dimmed=dimmed,
