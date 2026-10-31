@@ -7,6 +7,7 @@ CHR tiles and metasprites, and works out every actor's place on every frame; cha
 Usage: cd tools && series/.venv/bin/python -m series.homebrew.chase.make [OUT_DIR] [--phases NAME LOOK CHASE]
 (the three beats' lengths in seconds, voice and stillness)"""
 
+import math
 import subprocess
 import sys
 from pathlib import Path
@@ -32,6 +33,7 @@ NATE_FRAMES = {"stride_a": (117, 1, 134, 23), "stride_b": (139, 1, 156, 23), "pa
                "front": (82, 0, 96, 23), "front_b": (60, 0, 74, 23), "look_back": (45, 0, 55, 23),
                "leap": (69, 47, 87, 70)}  # front: the sheet's fifth frame, his standing pose; front_b, the fourth
 RUN = ("stride_a", "pass", "stride_b", "pass")  # his run to the right, a beat per pose
+NUDGE = {"stride_b": 1}  # pixels right: in the sheet this frame's whole figure sits a pixel left of the others
 CLIP_ART = [  # 10 x 22: X the white wire, x the grey inner loop, W the eyes' whites, K brows and pupils
     "...XXXX...",
     "..X....X..",
@@ -192,7 +194,7 @@ def art():
                 continue
             row, col = divmod(i, cols)
             # From the art's bottom edge, centred in a 24-pixel box, so poses share feet and middle.
-            entries.append((row * 8 - h, len(chr_tiles), palette, col * 8 + (BOX - w) // 2))
+            entries.append((row * 8 - h, len(chr_tiles), palette, col * 8 + (BOX - w) // 2 + NUDGE.get(name, 0)))
             chr_tiles.append(tile)
         metas[name] = entries
     names = nametable(*scenery(), chr_tiles)
@@ -215,13 +217,14 @@ def choreography(phases: tuple[float, float, float] = PHASES) -> list[list[tuple
     arrive = name + engineer + round(0.35 * chase)  # the lead clip reaches him
     notice, leap, run = arrive - 14, arrive, arrive + 32
     first_clip = name + engineer
-    walk = (stop + 24) / (0.8 * name)  # pixels a frame: about one, a walking pace
+    walk = 1 if stop + 24 <= name - 6 else 2  # pixels a frame, whole so every step is the same; two if his name is short
+    arrive_walk = math.ceil((stop + 24) / walk)
     speed = (stop - 20 + 16) / (arrive - first_clip)  # to arrive on time, from just off the left edge
     frames = []
     for f in range(name + engineer + chase):
         y = GROUND
         if f < name:
-            x = min(-24 + round(walk * f), stop)  # a walk, arriving four-fifths into his name
+            x = stop - walk * max(0, arrive_walk - f)  # whole pixels a frame, arriving before his name ends
             pose = "front" if x == stop else RUN[f // 8 % 4]
         elif f < notice:
             x = stop

@@ -23,7 +23,22 @@ class ChaseTest(unittest.TestCase):
             grid = make.clip_grid() if name == "clip" else make.nate_grid(make.NATE_FRAMES[name])
             self.assertEqual(min(dy for dy, *_ in entries), -grid.shape[0], name)  # the art's top row
             lefts = [dx for *_, dx in entries]
-            self.assertEqual(min(lefts), (make.BOX - grid.shape[1]) // 2, name)  # centred in the box
+            self.assertEqual(min(lefts), (make.BOX - grid.shape[1]) // 2 + make.NUDGE.get(name, 0), name)
+
+    def test_his_head_holds_steady_through_the_run(self):
+        _, metas, _ = make.art()
+        centres = set()
+        for pose in make.RUN:
+            g = make.nate_grid(make.NATE_FRAMES[pose])
+            hair = np.nonzero((g[:6] == 1).any(0))[0]
+            left = min(dx for *_, dx in metas[pose])  # where the art's left edge is placed in the box
+            centres.add(left + (hair.min() + hair.max()) / 2)
+        self.assertEqual(len(centres), 1, centres)
+
+    def test_he_walks_in_at_a_steady_pace(self):
+        xs = [actors[0][0] for actors in make.choreography()]
+        steps = {b - a for a, b in zip(xs, xs[1:]) if b != a and xs[0] <= a < 96}
+        self.assertEqual(len(steps), 1, steps)  # the same number of pixels every frame
 
     def test_the_tiles_fit_and_nate_keeps_his_colours(self):
         data, metas, _ = make.art()
