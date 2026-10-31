@@ -2,7 +2,7 @@
 whatever frame is showing."""
 
 import numpy as np
-from manim import ORIGIN, Animation, Group, ImageMobject, Rectangle, ValueTracker, config
+from manim import ORIGIN, Animation, Group, ImageMobject, ValueTracker, config
 from manim.constants import RESAMPLING_ALGORITHMS
 from manim.utils.images import change_to_rgba_array
 from PIL import Image
@@ -91,13 +91,15 @@ def clip_colour(recording: Recording, start: int) -> np.ndarray:
 
 class Footage(GameFootage):
     """A recording's frames, played as GameFootage plays a take's, `speed` times as fast (fast-forwarding from
-    the frame shown when it changes); averaged down to `size` (w, h) when it is smaller than the NES's picture."""
+    the frame shown when it changes), and drawn at `level` (0 to 1) of full strength; averaged down to `size`
+    (w, h) when it is smaller than the NES's picture."""
 
     def __init__(self, recording: Recording, start: int, size: tuple[int, int] | None = None):
         if not 0 <= start < len(recording):
             raise ValueError(f"{recording.game} has {len(recording)} frames; start {start} is outside it")
         self.frames, self.take, self.size = recording.frames, recording.game, size
         self.warned, self.start_frame, self.elapsed, self.ahead, self.speed = False, start, 0.0, False, 1.0
+        self.level = 1.0
         ImageMobject.__init__(self, self.picture(start))
         self.set_resampling_algorithm(RESAMPLING_ALGORITHMS["bilinear"] if size else NEAREST)
         self.add_updater(Footage.advance)
@@ -110,7 +112,14 @@ class Footage(GameFootage):
         frame = np.asarray(self.frames[index])
         if self.size:
             frame = np.asarray(Image.fromarray(frame).resize(self.size, Image.Resampling.BOX))
-        return change_to_rgba_array(frame)
+        picture = change_to_rgba_array(frame)
+        picture[:, :, 3] = round(255 * self.level)
+        return picture
+
+    def set_level(self, level: float) -> None:
+        """Draw this frame and those after it at `level` of full strength."""
+        self.level = level
+        self.pixel_array[:, :, 3] = round(255 * level)
 
     def index(self) -> int:
         return min(self.start_frame + round(self.elapsed * NES_FPS), len(self.frames) - 1)
@@ -172,8 +181,8 @@ class Screen(Group):
         fade_image(self.glow, self.shown)
         self.overlay = placed(ImageMobject(screen_overlay(w, h, self.pixel_scale, behind, self.scanlines)), h)
         self.bloom = placed(ImageMobject(screen_bloom(colour, w, h, self.pixel_scale)), h)
-        self.cover = Rectangle(width=(w + 2) * px, height=(h + 2) * px, stroke_width=0,
-                               fill_color=style.BACKGROUND, fill_opacity=1).move_to(middle)
+        for image in (self.overlay, self.bloom):  # kept on each image, so a copy fades by its own
+            image.full_alpha = image.pixel_array[:, :, 3].astype(float)
         super().__init__(self.glow, self.game, self.overlay, self.bloom)
 
     def frame(self) -> int:
@@ -196,15 +205,23 @@ class Screen(Group):
         """The left edge of NES pixel column `col`."""
         return self.game.get_left()[0] + col * self.game.width / NES_W
 
-    def arrive(self, run_time: float = 0.8) -> Animation:
-        """The game arriving from black: a cover fades off it and the glow fades up, while the footage holds
-        its frame until the arrival ends."""
-        return Arrival(self, run_time=run_time)
+    def arrive(self, run_time: float = 0.8, **kwargs) -> Animation:
+        """The game arriving out of the ground: it fades up, glow and all, while the footage holds its frame
+        until the arrival ends."""
+        return Arrival(self, run_time=run_time, **kwargs)
 
-    def depart(self, run_time: float = 0.8) -> Animation:
-        """The game leaving into black: a cover fades onto it and the glow fades down; then the footage
-        stops."""
-        return Departure(self, run_time=run_time)
+    def depart(self, run_time: float = 0.8, **kwargs) -> Animation:
+        """The game fading into the ground, glow and all; then the footage stops. Nothing is left drawn (a
+        cover would be flat, and show against the ground)."""
+        return Departure(self, run_time=run_time, **kwargs)
+
+    def fade(self, level: float) -> None:
+        """Draw the whole screen at `level` (0 to 1) of full strength, each image's own alpha scaled (set_opacity
+        would flatten the overlay's and bloom's gradients)."""
+        for image in (self.overlay, self.bloom):
+            image.pixel_array[:, :, 3] = np.round(image.full_alpha * level).astype(np.uint8)
+        self.game.set_level(level)
+        self.shown.set_value(level)
 
     def __deepcopy__(self, memo: dict) -> "Screen":
         memo[id(self.recording)] = self.recording  # copies share the recording: it is hundreds of megabytes
@@ -226,22 +243,19 @@ class Arrival(Animation):
 
     def begin(self) -> None:
         self.mobject.game.suspend_updating()
-        self.mobject.add(self.mobject.cover)
         super().begin()
 
     def interpolate_mobject(self, alpha: float) -> None:
-        a = self.rate_func(alpha)
-        self.mobject.cover.set_fill(opacity=1 - a)
-        self.mobject.shown.set_value(a)
+        self.mobject.fade(self.rate_func(alpha))
 
     def finish(self) -> None:
         super().finish()
-        self.mobject.remove(self.mobject.cover)
         self.mobject.game.resume_updating()
 
 
 class Departure(Animation):
-    """Screen.depart's animation: Arrival in reverse, on the screen itself. The cover stays on afterwards."""
+    """Screen.depart's animation: Arrival in reverse, on the screen itself, the footage playing on until it
+    has gone."""
 
     def __init__(self, screen: Screen, **kwargs):
         super().__init__(screen, suspend_mobject_updating=False, **kwargs)
@@ -252,14 +266,8 @@ class Departure(Animation):
     def get_all_mobjects_to_update(self) -> list:
         return []
 
-    def begin(self) -> None:
-        self.mobject.add(self.mobject.cover)
-        super().begin()
-
     def interpolate_mobject(self, alpha: float) -> None:
-        a = self.rate_func(alpha)
-        self.mobject.cover.set_fill(opacity=a)
-        self.mobject.shown.set_value(1 - a)
+        self.mobject.fade(1 - self.rate_func(alpha))
 
     def finish(self) -> None:
         super().finish()

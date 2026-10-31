@@ -175,7 +175,7 @@ class TestScreen(unittest.TestCase):
                     Screen(self.recording, 0, scale=scale)
             self.assertEqual(Screen(self.recording, 0, scale=2.0).pixel_scale, 2)
 
-    def test_departure_covers_the_screen_and_stops_it(self):
+    def test_departure_fades_the_screen_and_stops_it(self):
         recording, seen, screens = self.recording, [], []
 
         class Departure(Scene):
@@ -203,31 +203,42 @@ class TestScreen(unittest.TestCase):
                 copy = fresh.copy()  # copies (as FadeOut makes) share the recording rather than duplicate it
                 self.assertIs(copy.recording, recording)
                 self.assertIs(copy.game.frames, fresh.game.frames)
-        cover = screens[0].cover
-        self.assertIn(cover, screens[0].submobjects)
         self.assertEqual(screens[0].shown.get_value(), 0)
 
-    def test_departure_leaves_the_glow_dark_and_the_cover_opaque(self):
+    def test_departure_leaves_nothing_drawn(self):
+        """No cover: a flat box would show against the ground, which isn't flat."""
         with tempconfig(FULL_HD):
             screen = Screen(self.recording, 0)
             animation = screen.depart()
             animation.begin()
             animation.finish()
             screen.glow.update(0)
-            self.assertEqual(screen.glow.pixel_array[:, :, 3].max(), 0)
-            self.assertEqual(screen.cover.get_fill_opacity(), 1)
-            self.assertIn(screen.cover, screen.submobjects)
+            for image in (screen.glow, screen.game, screen.overlay, screen.bloom):
+                self.assertEqual(image.pixel_array[:, :, 3].max(), 0)
+            self.assertFalse(hasattr(screen, "cover"))
 
-    def test_the_cover_comes_off_when_the_arrival_ends(self):
+    def test_a_departing_picture_stays_faded_as_the_footage_plays(self):
         with tempconfig(FULL_HD):
             screen = Screen(self.recording, 0)
+            overlay = screen.overlay.pixel_array[:, :, 3].astype(int)
+            animation = screen.depart(rate_func=lambda t: t)
+            animation.begin()
+            animation.interpolate(0.5)
+            screen.game.update(1 / 60)  # the footage draws its next frame mid-departure
+            self.assertEqual(int(screen.game.pixel_array[:, :, 3].max()), 128)
+            self.assertTrue(np.allclose(screen.overlay.pixel_array[:, :, 3], overlay * 0.5, atol=1))
+
+    def test_the_arrival_ends_fully_drawn(self):
+        with tempconfig(FULL_HD):
+            screen = Screen(self.recording, 0)
+            overlay = screen.overlay.pixel_array[:, :, 3].copy()
             animation = screen.arrive()
             animation.begin()
-            self.assertIn(screen.cover, screen.submobjects)
+            self.assertEqual(screen.game.pixel_array[:, :, 3].max(), 0)  # nothing yet: no box either
             animation.interpolate(1)
             animation.finish()
-            self.assertNotIn(screen.cover, screen.submobjects)
             self.assertEqual(screen.shown.get_value(), 1)
+            self.assertTrue((screen.overlay.pixel_array[:, :, 3] == overlay).all())
             before = screen.frame()
             screen.game.update(0.5)
             self.assertGreater(screen.frame(), before)  # the footage plays again
