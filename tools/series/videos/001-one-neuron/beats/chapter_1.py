@@ -1,12 +1,17 @@
 """Chapter 1, "Building one neuron": its beats, each a function that says its own line given the scene."""
 
 import numpy as np
-from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Circle, Create, Dot, FadeIn, FadeOut, Group, Line,
+from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Arc, Circle, Create, DashedLine, Dot, FadeIn, FadeOut,
+                   Group, Line, config,
                    ManimColor, ParametricFunction, ReplacementTransform, Rotate, RoundedRectangle, Succession,
                    UpdateFromAlphaFunc, ValueTracker, VGroup, VMobject, Wait, interpolate_color, linear, smooth)
 
 from series import style
 from series.ember import fade_image, glow, numeral, serif, swap
+from series.memory import MemoryGrid
+from series.overlays import feet_line
+from series.recording import Recording
+from series.screen import Screen
 
 RING = 0.55
 CENTRE = np.array([0.0, 0.3, 0.0])
@@ -200,5 +205,110 @@ def simplest_neuron_2(scene) -> None:
                             run_time=0.5)))
 
 
+START = 1247  # seed 1's footage: Mario running, jumping, landing
+AIR, DEPTH = 0x001D, 0x00CE  # SMB1: 0 standing, 1 jumping, 2 falling; Mario's depth (docs/series/games/001.md)
+
+
+def question(scene) -> None:
+    """The game arrives, and the question beside it."""
+    scene.clear()
+    u = config.pixel_height / 1080
+    screen = Screen(Recording("smb1"), START, left_px=round(40 * u))  # 3x at 1080p, vertically centred
+    ask = VGroup(serif("Is Mario", style.TEXT, 0.62), serif("in the air?", style.TEXT, 0.62)).arrange(
+        DOWN, buff=0.2).move_to(RIGHT * 2.9 + UP * 0.2)
+    scene.kept = {"screen": screen}
+    scene.say("question", Succession(screen.arrive(run_time=1.0), FadeIn(ask, run_time=0.8), Wait(1.0)))
+    scene.kept["ask"] = ask
+
+
+def answer_key(scene) -> None:
+    """The game's memory beside it, and one square lit: 0, 1 or 2 as Mario stands, jumps and falls."""
+    screen = scene.kept["screen"]
+    grid = MemoryGrid(screen, width=6.9)
+    grid.move_to([config.frame_width / 2 - 0.35 - grid.image.width / 2, 1.9, 0])
+    scene.kept["grid"] = grid
+    grid.set_level(0.0)
+    scene.add(grid)
+    scene.say("answer-key", Succession(
+        AnimationGroup(FadeOut(scene.kept.pop("ask")), grid.arrive(), run_time=1.0),
+        Wait(1.2),
+        grid.light(AIR, "the answer key", 1, DOWN),
+        Wait(2.0)))
+
+
+def answer_key_2(scene) -> None:
+    """0 on the ground; 1 (jumping) and 2 (falling) slide together under 'in the air'."""
+    y = -0.9
+    digits = VGroup(*[numeral(str(n), style.TEXT, 0.6) for n in (0, 1, 2)])
+    for d, x in zip(digits, (2.3, 3.6, 4.9)):
+        d.move_to([x, y, 0])
+    ground = serif("on the ground", style.COOL[1], 0.42).next_to(digits[0], DOWN, buff=0.3)
+    air = serif("in the air", style.WARM[1], 0.42).move_to([4.6, y - 0.62, 0])
+    scene.kept["legend"] = VGroup(digits, ground, air)
+    scene.say("answer-key-2", Succession(
+        FadeIn(digits, run_time=0.6),
+        AnimationGroup(digits[1].animate.move_to([4.3, y, 0]).set_color(style.WARM[1]),
+                       digits[2].animate.move_to([4.9, y, 0]).set_color(style.WARM[1]),
+                       digits[0].animate.set_color(style.COOL[1]), run_time=1.0),
+        AnimationGroup(FadeIn(air), FadeIn(ground), run_time=0.6)))
+
+
+def padlock(at: np.ndarray) -> VGroup:
+    body = RoundedRectangle(corner_radius=0.04, width=0.32, height=0.24, stroke_color=style.WARM[2], stroke_width=1.4,
+                            fill_color=style.BACKGROUND, fill_opacity=1).move_to(at)
+    shackle = Arc(radius=0.1, start_angle=0, angle=np.pi, stroke_color=style.WARM[2], stroke_width=1.4).move_to(
+        body.get_top() + UP * 0.07)
+    return VGroup(shackle, body)
+
+
+def never_see(scene) -> None:
+    """The answer key is locked: a line from it runs to the scorecard, and the way to the neuron is closed."""
+    grid = scene.kept["grid"]
+    key = grid.lit[AIR].box
+    lock = padlock(key.get_corner(UP + RIGHT) + RIGHT * 0.12)
+    card = VGroup(RoundedRectangle(corner_radius=0.08, width=1.5, height=0.8, stroke_color=style.TEXT, stroke_width=1.2),
+                  serif("score", style.TEXT, 0.42)).move_to(RIGHT * 4.8 + DOWN * 2.6)
+    card[1].move_to(card[0])
+    ring = Circle(radius=0.4, stroke_color=style.ASH, stroke_width=1.2).move_to(RIGHT * 2.4 + DOWN * 2.6)
+    neuron = VGroup(ring, serif("neuron", style.ASH, 0.36).next_to(ring, DOWN, buff=0.15))
+    to_card = Line(key.get_bottom(), card[0].get_top(), stroke_color=style.WARM[1], stroke_width=1.4)
+    toward = key.get_bottom() + (ring.get_top() - key.get_bottom()) * 0.55
+    blocked = VGroup(DashedLine(key.get_bottom(), toward, stroke_color=style.ASH, stroke_width=1.2),
+                     Line(LEFT * 0.16, RIGHT * 0.16, stroke_color=style.ASH, stroke_width=2.0).move_to(toward).rotate(
+                         np.arctan2(*(ring.get_top() - key.get_bottom())[:2][::-1]) + np.pi / 2))
+    scene.kept["lock"] = VGroup(lock, card, neuron, to_card, blocked)
+    scene.say("never-see", Succession(
+        FadeOut(scene.kept.pop("legend"), run_time=0.5),
+        FadeIn(lock, shift=DOWN * 0.1, run_time=0.6),
+        AnimationGroup(FadeIn(card), FadeIn(neuron), run_time=0.6),
+        Create(to_card, run_time=0.8),
+        Create(blocked, run_time=0.8),
+        Wait(1.0)))
+
+
+def depth(scene) -> None:
+    """Instead the neuron reads Mario's depth: a line at his feet, its reading live, and its square lit."""
+    screen, grid = scene.kept["screen"], scene.kept["grid"]
+    feet = feet_line(screen)
+    drawn = ValueTracker(0.0)
+
+    def draw(m) -> None:
+        d = drawn.get_value()
+        start, end = m.line.get_start(), m.line.get_end()
+        m.line.put_start_and_end_on(start, start + (end - start) * max(d, 1e-3))
+        m.label.set_opacity(d)
+    draw(feet)
+    feet.add_updater(draw)
+    scene.add(feet)
+    scene.kept["feet"] = feet
+    scene.say("depth", Succession(
+        AnimationGroup(FadeOut(scene.kept.pop("lock")), grid.lit[AIR].animate.set_opacity(0.35), run_time=0.6),
+        tween(drawn, 0.0, 1.0, 1.0),
+        Wait(1.0),
+        grid.light(DEPTH, "depth", 0, DOWN),
+        Wait(2.0)))
+
+
 BEATS = {"building-intro": building_intro, "thermostat": thermostat, "thermostat-2": thermostat_2,
-         "simplest-neuron": simplest_neuron, "simplest-neuron-2": simplest_neuron_2}
+         "simplest-neuron": simplest_neuron, "simplest-neuron-2": simplest_neuron_2, "question": question,
+         "answer-key": answer_key, "answer-key-2": answer_key_2, "never-see": never_see, "depth": depth}
