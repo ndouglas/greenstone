@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 import numpy as np
-from manim import UP, FadeOut, Mobject, Scene, config, tempconfig
+from manim import UP, Dot, FadeOut, Mobject, Scene, Succession, UpdateFromAlphaFunc, VGroup, Wait, config, tempconfig
 from manim.constants import RESAMPLING_ALGORITHMS
 
 from reservoir_film.model import NES_H, NES_W
@@ -272,6 +272,27 @@ class TestScreen(unittest.TestCase):
         self.assertGreater(len(set(drawn)), 10)
         self.assertEqual(read, [f - 1 for f in drawn])  # the RAM one frame behind the picture actually drawn
         self.assertTrue(issubclass(NarratedScene, ExactScene))
+
+    def test_animating_part_of_something_leaves_it_whole_and_updating(self):
+        ticks = []
+
+        class Part(ExactScene):
+            def construct(self):
+                whole = VGroup(Dot(), Dot())
+                whole.add_updater(lambda m: ticks.append(self.time))
+                self.add(whole)
+                part = whole[0]
+                self.play(Succession(UpdateFromAlphaFunc(part, lambda m, a: m.set_opacity(1 - a / 2)), Wait(0.2)))
+                self.wait(0.2)
+                self.kept = whole in self.mobjects
+
+        with tempfile.TemporaryDirectory() as media:
+            with tempconfig({"pixel_width": 320, "pixel_height": 180, "frame_rate": 30, "media_dir": media,
+                             "disable_caching": True, "verbosity": "ERROR", "progress_bar": "none"}):
+                scene = Part()
+                scene.render()
+        self.assertTrue(scene.kept, "the scene split the group apart around its animated part")
+        self.assertGreater(max(ticks), 1.0, "the group stopped updating once its part was animated")
 
     def test_the_ram_matches_the_picture(self):
         with tempconfig(FULL_HD):
