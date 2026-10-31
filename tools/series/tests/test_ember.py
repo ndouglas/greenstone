@@ -131,3 +131,15 @@ class TestEmber(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestInLine(unittest.TestCase):
+    def test_words_and_numbers_share_a_baseline(self):
+        from manim import VGroup
+        from series.ember import baseline, in_line
+        for word, value in (("depth", "120"), ("setting", "20°"), ("frames", "60")):
+            name, number_ = serif(word, TEXT, 0.5), numeral(value, TEXT, 0.5)
+            row = in_line(name, VGroup(number_), buff=0.12)  # a number may come in a group (swapped live)
+            self.assertAlmostEqual(baseline(name), baseline(number_), places=3)
+            self.assertLess(name.get_right()[0], number_.get_left()[0])
+            self.assertEqual(len(row), 2)

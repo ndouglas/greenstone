@@ -12,7 +12,7 @@ from manim import (DOWN, LEFT, RIGHT, UP, Animation, AnimationGroup, Circle, Gro
                    ValueTracker, VGroup, VMobject)
 
 from series import style
-from series.ember import fade_image, glow, numeral, serif, swap
+from series.ember import fade_image, glow, in_line, numeral, serif, swap
 
 RADIUS = 0.55
 STROKE = 1.4
@@ -121,7 +121,7 @@ class Neuron(Group):
         self.bias_label = VGroup(numeral(sign, colour), numeral(size, colour))
         if bias_name:
             self.bias_label.add(serif(bias_name, colour))
-        self.bias_label.arrange(RIGHT, buff=0.1)
+        in_line(*self.bias_label.submobjects, buff=0.1)
         if not bias_source:  # a number with no place: above the ring, clear of the paths below it
             self.bias_label.next_to(self.ring, UP, buff=0.2)
 
@@ -185,7 +185,7 @@ class Neuron(Group):
             text = figure(put.value())
             if text != self.bare_shown[i]:
                 swap(group, serif(put.label, style.WARM[0]), numeral(text, style.WARM[0]))
-                group.arrange(RIGHT, buff=0.12)
+                in_line(*group.submobjects, buff=0.12)
                 self.bare_shown[i] = text
             group.next_to(self.bare_spots[i], LEFT, buff=0).set_opacity(self.drawn.get_value())
 

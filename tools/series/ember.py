@@ -5,7 +5,7 @@ from typing import Callable
 
 import manimpango
 import numpy as np
-from manim import ITALIC, RIGHT, ImageMobject, Mobject, Text, ValueTracker, config
+from manim import ITALIC, RIGHT, UP, ImageMobject, Mobject, Text, ValueTracker, VGroup, config
 
 from series import style
 
@@ -75,6 +75,27 @@ def serif(text: str, colour: str, size: float = 0.42, italic: bool = True) -> Te
 def numeral(text: str, colour: str, size: float = 0.42) -> Text:
     """A number in the series' serif, upright: the answer, not the quantity."""
     return serif(text, colour, size, italic=False)
+
+
+DESCENDING = set("gjpqy,;()°'\"")  # glyphs whose bottoms aren't on the baseline
+
+
+def baseline(mobject: Mobject) -> float:
+    """The baseline of the first text in a mobject: the middle of its glyphs' bottoms, leaving out those that
+    hang below the line or float above it."""
+    text = next(m for m in mobject.get_family() if isinstance(m, Text))
+    glyphs = [g for g, ch in zip(text.submobjects, text.text.replace(" ", "")) if ch not in DESCENDING]
+    return float(np.median([g.get_bottom()[1] for g in glyphs or text.submobjects]))
+
+
+def in_line(*parts: Mobject, buff: float = 0.12) -> VGroup:
+    """Words and numbers set left to right on one baseline (centring them would lift an italic word with a
+    descender, like "depth", above the number beside it)."""
+    row = VGroup(*parts).arrange(RIGHT, buff=buff)
+    line = baseline(parts[0])
+    for part in parts[1:]:
+        part.shift(UP * (line - baseline(part)))
+    return row
 
 
 def live(mobject: Mobject, place: Callable, shown: ValueTracker) -> Mobject:

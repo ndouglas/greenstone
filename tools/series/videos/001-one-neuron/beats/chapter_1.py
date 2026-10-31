@@ -12,7 +12,7 @@ from manim import (DOWN, LEFT, RIGHT, UP, Animation, AnimationGroup, Arc, Circle
 from PIL import Image
 
 from series import style
-from series.ember import fade_image, glow, numeral, serif, swap
+from series.ember import baseline, fade_image, glow, in_line, numeral, serif, swap
 from series.footage import NES_FPS
 from series.lab.data import load
 from series.lab.exp001 import features, in_play
@@ -61,8 +61,8 @@ class Thermometer(VGroup):
         self.column = Line(ORIGIN3, ORIGIN3, stroke_color=style.WARM[0], stroke_width=9)
         self.mark = Line(LEFT * 0.34, RIGHT * 0.34, stroke_color=style.WARM[2], stroke_width=2.2).move_to(
             self.y_of(SETTING) * UP + self.at[0] * RIGHT)
-        self.mark_label = VGroup(serif("setting", style.WARM[2], 0.36), numeral(f"{SETTING}°", style.WARM[2], 0.36)
-                                 ).arrange(RIGHT, buff=0.1).next_to(self.mark, LEFT, buff=0.18)
+        self.mark_label = in_line(serif("setting", style.WARM[2], 0.36), numeral(f"{SETTING}°", style.WARM[2], 0.36),
+                                  buff=0.1).next_to(self.mark, LEFT, buff=0.18)
         self.reading = VGroup()
         self.shown = None
         self.mark.set_stroke(opacity=0)
@@ -170,8 +170,8 @@ def simplest_neuron(scene) -> None:
     paths = VGroup(*[Line(a, b, stroke_color=style.WARM[0], stroke_width=1.4) for a, b in zip(starts, ends)])
     numbers = VGroup(*[numeral(str(v), style.WARM[0], 0.46).next_to(a, LEFT, buff=0.15) for v, a in zip(values, starts)])
     shown = VGroup(numeral("0", style.TEXT, 0.46).move_to(centre))
-    setting = VGroup(serif("setting", style.WARM[2], 0.38), numeral("6", style.WARM[2], 0.38)).arrange(
-        RIGHT, buff=0.1).next_to(ring, DOWN, buff=0.3)
+    setting = in_line(serif("setting", style.WARM[2], 0.38), numeral("6", style.WARM[2], 0.38), buff=0.1).next_to(
+        ring, DOWN, buff=0.3)
     socket = Circle(radius=0.2, stroke_color=style.ASH, stroke_width=1.4).move_to(centre + RIGHT * 2.45)
     out = Line(centre + RIGHT * RING, socket.get_left(), stroke_color=style.ASH, stroke_width=1.4)
     dot = Dot(socket.get_center(), radius=0.12, color=style.WARM[1]).set_opacity(0)
@@ -373,17 +373,19 @@ def dim(lit, level: float) -> UpdateFromAlphaFunc:
 
 
 def drawn_feet(screen: Screen) -> tuple:
-    """A feet line that draws itself across from the left as its tracker goes from 0 to 1, its label fading up."""
+    """A feet line that draws itself across from the left as its tracker goes from 0 to 1, its label fading up,
+    and undraws itself as it goes back to 0 (it's also the line's `level`, so `gone` takes it away that way:
+    a FadeOut would fight its label, rebuilt at full strength whenever the reading changes)."""
     feet = feet_line(screen)
     drawn = ValueTracker(0.0)
+    feet.level = drawn
 
     def draw(m) -> None:
         d = drawn.get_value()
         start, end = m.line.get_start(), m.line.get_end()
         m.line.put_start_and_end_on(start, start + (end - start) * max(d, 1e-3))
-        if getattr(m, "drawn_at", None) != d:  # only as it draws: every frame would undo a fade's target
+        if d < 1:  # a rebuilt label comes at full strength
             m.label.set_opacity(d)
-            m.drawn_at = d
     draw(feet)
     feet.add_updater(draw)
     return feet, drawn
@@ -508,7 +510,7 @@ def recording(scene) -> None:
     scene.add(pad)
     scene.kept["pad"] = pad
     scene.say("recording", Succession(
-        AnimationGroup(grid_away(grid), FadeOut(feet), run_time=0.8),
+        AnimationGroup(grid_away(grid), gone(feet), run_time=0.8),
         tween(pad.level, 0.0, 1.0, 0.8),
         Wait(1.0)))
     scene.remove(grid)
@@ -572,8 +574,8 @@ def frames(scene) -> None:
         fade_image(thumb, level)
     count = VGroup(numeral("0", style.TEXT, 0.5))
     shown = [0]
-    caption = VGroup(count, serif("frames", style.TEXT, 0.5), serif("in one second", style.ASH, 0.5)).arrange(
-        RIGHT, buff=0.18).next_to(sheet, DOWN, buff=0.45)
+    caption = in_line(count, serif("frames", style.TEXT, 0.5), serif("in one second", style.ASH, 0.5),
+                      buff=0.18).next_to(sheet, DOWN, buff=0.45)
     caption[2].set_opacity(0)
 
     def lay(_, a: float) -> None:
@@ -582,7 +584,7 @@ def frames(scene) -> None:
             level.set_value(min(max(n - k, 0.0), 1.0))
         if round(n) != shown[0]:
             shown[0] = round(n)
-            swap(count, numeral(str(shown[0]), style.TEXT, 0.5).move_to(count, aligned_edge=RIGHT))
+            swap(count, numeral(str(shown[0]), style.TEXT, 0.5).move_to(count, aligned_edge=DOWN + RIGHT))
     leave(scene, screen, scene.kept.pop("pad"), scene.kept.pop("restarts"), scene.kept.pop("fast"))
     scene.add(sheet)
     scene.kept["frames"] = Group(sheet, caption)
@@ -615,7 +617,7 @@ def frames_2(scene) -> None:
             shown[0] = n
             for tape, count in zip(tapes.tapes, counts):
                 swap(count[0], numeral(f"{n:,}", style.TEXT, 0.4))
-                count.arrange(RIGHT, buff=0.14).next_to(tape.strip, RIGHT, buff=0.3)
+                in_line(*count, buff=0.14).next_to(tape.strip, RIGHT, buff=0.3)
     record(None, 0.0)
     scene.kept["tapes"], scene.kept["counts"] = tapes, VGroup(*counts)
     scene.say("frames-2", Succession(
@@ -650,7 +652,7 @@ def frames_3(scene) -> None:
             shown[0] = values
             for tape, count, value in zip(tapes.tapes, counts, values):
                 swap(count[0], numeral(f"{value:,}", style.TEXT, 0.4))
-                count.arrange(RIGHT, buff=0.14).next_to(tape.strip, RIGHT, buff=0.3)
+                in_line(*count, buff=0.14).next_to(tape.strip, RIGHT, buff=0.3)
     scene.say("frames-3", Succession(
         AnimationGroup(*[tapes.grey(i, left_out(s)) for i, s in enumerate(("1", "2", "3"))], run_time=1.6),
         Wait(0.6),
@@ -769,12 +771,13 @@ def the_neuron(scene) -> None:
     rule = numeral(f"< {CUT}", style.TEXT, 0.42).move_to(centre)
     name = serif("depth", style.WARM[0], 0.42)
     reading, shown = VGroup(numeral(str(feet.value()), style.WARM[0], 0.42)), [feet.value()]
-    source = VGroup(name, reading).arrange(RIGHT, buff=0.12).move_to(centre + LEFT * 3.0)
+    source = in_line(name, reading, buff=0.12).move_to(centre + LEFT * 3.0)
 
     def follow(m: VGroup) -> None:
         if feet.value() != shown[0]:
             shown[0] = feet.value()
             swap(m, numeral(str(shown[0]), style.WARM[0], 0.42).next_to(name, RIGHT, buff=0.12))
+            m.shift(UP * (baseline(name) - baseline(m)))
     path = Line(source.get_right() + RIGHT * 0.5, ring.get_left(), stroke_color=style.WARM[0], stroke_width=1.4)
     socket = Circle(radius=0.2, stroke_color=style.ASH, stroke_width=1.4).move_to(centre + RIGHT * 2.0)
     out = Line(ring.get_right(), socket.get_left(), stroke_color=style.ASH, stroke_width=1.4)
