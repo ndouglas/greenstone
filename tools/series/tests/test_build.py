@@ -14,7 +14,7 @@ import soundfile
 from series import pacing
 from series.build import NotNarrated, SectionTooLong, build, mix, room_tone
 from series.credits import credits_seconds
-from series.pacing import STILLNESS
+from series.pacing import STILLNESS, TITLE_HOLD
 from series.script import load_video
 from series.takes import TakeStore
 from series.tests.test_takes import speech
@@ -324,3 +324,16 @@ class Build(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Only(unittest.TestCase):
+    def test_one_section_renders_alone_under_its_own_name(self):
+        root, d = videos(scene=False)
+        (d / "script.toml").write_text(sectioned("Short."))
+        out = Path(tempfile.mkdtemp())
+        with contextlib.redirect_stdout(io.StringIO()):
+            movie = build("001-test", ToneEngine(), draft=True, storyboard=True, only="chapter-1", videos=root,
+                          out_root=out)
+        self.assertEqual(movie.name, "001-test-chapter-1-storyboard.mp4")
+        # Its title, then "Short." and "Done." (ToneEngine: 1/20 s a character), each with its stillness; no credits.
+        self.assertAlmostEqual(duration(movie), TITLE_HOLD + (6 + 5) / 20 + 2 * STILLNESS, delta=0.15)

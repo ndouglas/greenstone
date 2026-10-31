@@ -1,6 +1,7 @@
 """A Manim scene narrated line by line from a video's script."""
 
 import textwrap
+from typing import Callable
 
 from manim import DOWN, LEFT, FadeIn, Mobject, Scene, VGroup, config, linear
 
@@ -27,6 +28,8 @@ class NarratedScene(ExactScene):
     voices: dict[str, Voice]
     # The build sets this, so every finished video must end on the credits.
     require_credits = False
+    # Render only this section (for review): the others are passed over unrendered, and the credits skipped.
+    only: str | None = None
 
     def setup(self):
         self.camera.background_color = style.BACKGROUND
@@ -119,9 +122,32 @@ class NarratedScene(ExactScene):
         self.say(line_id)
         self.remove(card)
 
+    def play_section(self, section_id: str, beats: dict[str, Callable[["NarratedScene"], None]]) -> None:
+        """A section: its title screen, then each beat, built (a function that says its own line, given the
+        scene) where `beats` has one, a placeholder card where it doesn't. Under `only`, another section is
+        passed over unrendered."""
+        section = next((s for s in self.video.sections if s.id == section_id), None)
+        if section is None:
+            raise ScriptOrderError(f"{section_id!r} isn't a section in the script")
+        if self.only is not None and section_id != self.only:
+            self.titled.append(section_id)
+            self.said += [line.id for line in section.lines]
+            return
+        self.show_title(section_id)
+        for line in section.lines:
+            if line.id in beats:
+                beats[line.id](self)
+                if not self.said or self.said[-1] != line.id:
+                    raise ScriptOrderError(f"the beat built for {line.id!r} didn't say it")
+            else:
+                self.placeholder(line.id)
+
     def roll_credits(self) -> None:
         """End on the sources, a page at a time, and the disclaimer, after
         every line. Every video must."""
+        if self.only is not None:
+            self.credits_rolled = True
+            return
         unsaid = [line.id for line in self.video.lines[len(self.said):]]
         if unsaid:
             raise ScriptOrderError(f"credits rolled before {', '.join(unsaid)} was said")
@@ -147,9 +173,7 @@ class StoryboardScene(NarratedScene):
 
     def construct(self):
         for section in self.video.sections:
-            self.show_title(section.id)
-            for line in section.lines:
-                self.placeholder(line.id)
+            self.play_section(section.id, {})
         for line in self.video.lines:
             if line.section is None:
                 self.placeholder(line.id)

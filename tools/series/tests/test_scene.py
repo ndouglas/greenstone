@@ -486,3 +486,53 @@ class Chapters(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Sections(unittest.TestCase):
+    def test_built_beats_play_and_the_rest_are_placeholders(self):
+        video, voices, d = chapters()
+        built, placeheld = [], []
+
+        class S(NarratedScene):
+            def placeholder(self, line_id):
+                placeheld.append(line_id)
+                super().placeholder(line_id)
+
+            def construct(self):
+                def i1(scene):
+                    built.append("i1")
+                    scene.say("i1", FadeIn(Dot()))
+                for section_id in BEATS:
+                    self.play_section(section_id, {"i1": i1} if section_id == "chapter-1" else {})
+
+        S.video, S.voices = video, voices
+        render(S, d / "media")
+        self.assertEqual(built, ["i1"])
+        self.assertEqual(placeheld, ["h", "c1", "i2", "c2", "t"])
+
+    def test_a_built_beat_must_say_its_line(self):
+        video, voices, d = chapters()
+
+        class S(NarratedScene):
+            def construct(self):
+                self.play_section("introduction", {"h": lambda scene: scene.wait(0.1)})
+
+        S.video, S.voices = video, voices
+        with self.assertRaisesRegex(ScriptOrderError, "h"):
+            render(S, d / "media")
+
+    def test_only_one_section_is_rendered(self):
+        video, voices, d = chapters(1.0)
+
+        class S(NarratedScene):
+            only = "chapter-1"
+
+            def construct(self):
+                for section_id in BEATS:
+                    self.play_section(section_id, {})
+                self.roll_credits()
+
+        S.video, S.voices, S.require_credits = video, voices, True
+        movie = render(S, d / "media")
+        # Chapter 1 alone: its title, then i1 (1 s, 0.5 s still) and c1 (1 s, 2 s still); no credits.
+        self.assertAlmostEqual(float(probe(movie, "format=duration")["format"]["duration"]), 4.0 + 1.5 + 3.0, delta=0.1)

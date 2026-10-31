@@ -106,7 +106,8 @@ def room_tone(video, found: dict[str, Voice], out: Path) -> Path | None:
 
 
 def build(name: str, engine: Engine, draft: bool = False, storyboard: bool = False, release: bool = False,
-          videos: Path = VIDEOS, out_root: Path = OUT) -> Path:
+          only: str | None = None, videos: Path = VIDEOS, out_root: Path = OUT) -> Path:
+    """Render a video (or, with `only`, one of its sections, for review), mixed, with its description."""
     video = load_video(Path(videos) / name)
     if video.music is not None and not video.music.exists():
         raise FileNotFoundError(f"{name}'s music, {video.music}, doesn't exist; render it, or remove music from script.toml")
@@ -131,12 +132,14 @@ def build(name: str, engine: Engine, draft: bool = False, storyboard: bool = Fal
         print(f"{section.id} {section.title} {clock(estimate[section.id])}")
     if problems := too_long(video, estimate):
         raise SectionTooLong("; ".join(problems))
-    cls = type(base.__name__, (base,), {"video": video, "voices": found, "require_credits": True})
+    if only is not None and only not in {s.id for s in video.sections}:
+        raise ValueError(f"{name} has no section {only!r}; its sections are {', '.join(s.id for s in video.sections)}")
+    cls = type(base.__name__, (base,), {"video": video, "voices": found, "require_credits": True, "only": only})
     movie, scene = render(cls, out / "media", draft)
     # The scene's own waits and animations count too: check the lengths it really ran.
     if problems := too_long(video, scene.section_lengths):
         raise SectionTooLong("as rendered: " + "; ".join(problems))
-    final = out / f"{name}{'-storyboard' if storyboard else ''}.mp4"
+    final = out / f"{name}{f'-{only}' if only else ''}{'-storyboard' if storyboard else ''}.mp4"
     mix(movie, video.music, final, room_tone(video, found, out), scene.credits_at)
     (out / "description.txt").write_text(description(video))
     print(final)
@@ -150,8 +153,10 @@ def main() -> None:
     parser.add_argument("--storyboard", action="store_true")
     parser.add_argument("--release", action="store_true",
                         help="refuse unless every beat is a current take in Nate's voice")
+    parser.add_argument("--only", metavar="SECTION", help="render just this section (e.g. chapter-1), for review")
     args = parser.parse_args()
-    build(args.name, KokoroEngine(), draft=args.draft, storyboard=args.storyboard, release=args.release)
+    build(args.name, KokoroEngine(), draft=args.draft, storyboard=args.storyboard, release=args.release,
+          only=args.only)
 
 
 if __name__ == "__main__":
