@@ -22,6 +22,9 @@ FPS = 60.0988
 # Douglas." (he walks in), "I'm a software engineer." (he looks around), "And recently, I've begun a move into
 # AI safety and research." (the chase). Estimates until Nate's takes exist; then the build passes the real ones.
 PHASES = (2.4, 2.0, 5.5)
+# The first frame the scene is fully drawn on, filmed from power-on: before it the console is starting up (black
+# while the palettes load, then the sky alone until the picture is switched on between frames). Footage starts here.
+FIRST_DRAWN = 3
 
 # Nate's sheet: three colours, one sprite palette. Frames by their box in nate.png (x0, y0, x1, y1).
 NATE_COLOURS = {(124, 124, 124): 1, (255, 160, 68): 2, (248, 248, 248): 3}

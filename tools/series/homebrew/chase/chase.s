@@ -106,6 +106,9 @@ reset:
   sta row
   lda #>choreography
   sta row + 1
+@vblank3:                 ; switch the picture on only between frames, or the rest of this one is drawn
+  bit PPUSTATUS           ; from wherever loading the scenery left the PPU's address
+  bpl @vblank3
   lda #0
   sta PPUSCROLL
   sta PPUSCROLL
