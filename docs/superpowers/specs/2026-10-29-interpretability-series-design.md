@@ -1,6 +1,6 @@
 # Inside the Machine: a video series on mechanistic interpretability, taught on the NES
 
-(Working title; Nate's to change.)
+(Working title. Nate's chosen title, 2026-10-30: *Through the Glass Cartridge: Journeys in Interpretability*; see the bible.)
 
 ## Intent
 

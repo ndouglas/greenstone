@@ -4,6 +4,15 @@ The living document every video is written against. The design behind it
 is `docs/superpowers/specs/2026-10-29-interpretability-series-design.md`;
 this file is where the series' decisions accumulate as videos are made.
 
+## The title
+
+*Through the Glass Cartridge: Journeys in Interpretability* (Nate,
+2026-10-30). A glass box is the opposite of a black box, and the box here
+is a game cartridge we can see into; "through" and "journeys" promise a
+voyage, so the first video reads as a first step. It replaces the working
+title, *Inside the Machine*. "NES", "Nintendo" and "Mario" stay out of the
+name (trademarks); the footage and descriptions say what the games are.
+
 ## Why look inside at all?
 
 The series takes the strongest criticism of its subject seriously.
