@@ -88,14 +88,3 @@ authors = "C. M. Bishop"
 year = 2006
 url = "https://www.microsoft.com/en-us/research/publication/pattern-recognition-machine-learning/"
 
-[masswerk-6502]
-title = "6502 Instruction Set (Virtual 6502 / mass:werk; accessed 2026): CMP subtracts without keeping the result, setting Z if equal and C if no borrow (A at least the operand); BCS branches on C"
-authors = "N. Landsteiner"
-year = 2026
-url = "https://www.masswerk.at/6502/6502_instruction_set.html"
-
-[smbdis]
-title = "SMBDIS.ASM: a comprehensive Super Mario Bros. disassembly (Start, WBootCheck: lda TopScoreDisplay,x; cmp #10; bcs ColdBoot)"
-authors = "doppelganger"
-year = 2012
-url = "https://gist.github.com/1wErt3r/4048722"

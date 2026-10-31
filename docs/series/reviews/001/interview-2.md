@@ -55,4 +55,20 @@ The series:
 
 ## Answers and changes
 
-(Filled in during the interview.)
+Asked 2026-10-30, after the visual language was built.
+
+1. Cut both. why-zero-3 (the 6502) and why-zero-2b (bias as a weight)
+   are gone, with their two citations (masswerk-6502, smbdis); the
+   balance chapter's "which we treated as a weight on an input that's
+   always one" went with them.
+2. Fine as it was; moot now that why-zero-3 is cut.
+3. Nate: "You're asking me why 0·x = 0?" That is the reason, and
+   one-dot-4 already says it in those terms (three times zero is still
+   zero), so no change.
+4. Yes, add a line. New beat its-mistakes-3, before chapter 2's
+   conclusion: falling speed would get the pipes and blocks right
+   ("in the air" whenever it isn't zero is right 97% of the time), but
+   that's both sides of zero and one neuron draws one line; a puzzle for
+   a later video (004).
+7. Moot: Nate narrates himself.
+10. Moot: the ruler now sits at Mario's feet (the visual language).

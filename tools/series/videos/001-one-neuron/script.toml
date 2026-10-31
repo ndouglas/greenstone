@@ -310,6 +310,13 @@ board = "The setting line sits below his feet; the neuron's answer flashes 'in t
 cite = ["exp001"]
 
 [[section.line]]
+id = "its-mistakes-3"
+text = "His falling speed would get those right: guessing \"in the air\" whenever it isn't zero is right {smb1_speed_not_zero_accuracy} of the time. But \"isn't zero\" means either side of zero, rising or falling, and one neuron draws only one line. That's a puzzle for a later video."
+spoken = "His falling speed would get those right: guessing in the air whenever it isn't zero is right {smb1_speed_not_zero_accuracy_spoken} of the time. But isn't zero means either side of zero, rising or falling, and one neuron draws only one line. That's a puzzle for a later video."
+board = "Mario on the pipe, his speed reading 0; then the number line of falling speed, both sides of zero lit 'in the air', a single line unable to split them"
+cite = ["exp001"]
+
+[[section.line]]
 id = "testing-end"
 role = "conclusion"
 text = "So it goes wrong because all it knows about is the floor. Some questions depth can't answer well at all, and for those we'll want a neuron that reads two numbers."
@@ -398,24 +405,11 @@ board = "The formula shown with '> 100'; the 100 slides across and joins the bia
 cite = ["bishop2006"]
 
 [[section.line]]
-id = "why-zero-3"
-text = "Computers do something similar. To check whether a number is at least 10, the NES's processor takes 10 away and looks at whether it had to go below zero: the comparison becomes a comparison with zero."
-spoken = "Computers do something similar. To check whether a number is at least ten, the NES's processor takes ten away and looks at whether it had to go below zero: the comparison becomes a comparison with zero."
-board = "The NES's chip; 'at least 10?' becomes '− 10: below zero?'; beside it, the real instruction from Super Mario Bros. at $801B, 'cmp #10', checking a digit of the top score"
-cite = ["masswerk-6502", "smbdis", "exp001"]
-
-[[section.line]]
 id = "why-zero-2"
 text = "And with zero, the test has no number of its own: everything is in the total."
 board = "'> 0' alone on the right; everything else gathered on the left"
 cite = ["bishop2006"]
 pause = 1.0
-
-[[section.line]]
-id = "why-zero-2b"
-text = "Since one times the bias is just the bias, the bias can be treated as one more weight, on an input that's always one."
-board = "b becomes a weight on a new input fixed at 1"
-cite = ["bishop2006"]
 
 [[section.line]]
 id = "recipe-end"
@@ -753,7 +747,7 @@ framing = true
 
 [[section.line]]
 id = "balance-3"
-text = "A plus number goes in the yes pan, and a minus number in the no pan. The bias, which we treated as a weight on an input that's always one, is one more block, in the pan its own sign says."
+text = "A plus number goes in the yes pan, and a minus number in the no pan. The bias is one more block, in the pan its own sign says."
 board = "A plus block drops into the yes pan, a minus block and the bias's block into the no pan"
 framing = true
 
