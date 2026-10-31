@@ -1,10 +1,12 @@
 //! Film any ROM with no buttons pressed, for the series: a take of its frames that the video tools read.
 //!
 //! Usage: cargo run --release --example rom_footage -- ROM FRAMES OUT
-//!   writes OUT/footage/game.rgb (256×240 RGB frames) and OUT/footage/take.json
+//!   writes OUT/footage/game.rgb (256×240 RGB frames), OUT/footage/audio.wav (the APU, 44.1 kHz mono)
+//!   and OUT/footage/take.json
 
 use std::path::PathBuf;
 
+use greenstone::nes::apu::render::wav_bytes;
 use greenstone::nes::gym::reservoir::film::TakeWriter;
 use greenstone::nes::gym::NesEmulator;
 use serde_json::json;
@@ -26,10 +28,13 @@ fn main() {
     eprintln!("{}", e);
     std::process::exit(1);
   });
+  let mut audio = Vec::new();
   for _ in 0..frames {
     emu.step_frame(0);
     take.frame("game", emu.framebuffer()).expect("write frame");
+    audio.extend(emu.take_audio_samples());
   }
+  std::fs::write(dir.join("audio.wav"), wav_bytes(&audio)).expect("write audio");
   take.finish(json!({ "rom": args[1] })).expect("finish take");
   println!("{} frames of {} in {}", frames, args[1], dir.display());
 }

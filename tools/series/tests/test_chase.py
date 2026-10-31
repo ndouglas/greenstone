@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
-from series.homebrew.chase import make
+from series.homebrew.chase import make, music
 
 
 class ChaseTest(unittest.TestCase):
@@ -51,6 +51,22 @@ class ChaseTest(unittest.TestCase):
                     if 0 <= x + dx < 256:
                         lines[max(0, y + dy):max(0, y + dy + 8)] += 1
             self.assertLessEqual(lines.max(), 8, f"frame {f}: {lines.max()} sprites on a line, so some flicker")
+
+    def test_the_tune_reads_as_written(self):
+        bars = music.bars((music.HERE / "stures.abc").read_text())
+        self.assertEqual([sum(n[1] for n in bar) for bar in bars[1:8]], [8.0] * 7)  # whole 4/4 bars, in eighths
+        self.assertEqual([n[0] for n in bars[1]][:4], [67, 66, 67, 69])  # G, F sharp (written), G, A
+        self.assertEqual(bars[1][4][0], 70)  # B flat, from the key
+        self.assertEqual(bars[3][0][2], "D")
+        self.assertEqual([n[0] for n in music.excerpt()[-1]], [67, 70, 67, 62])  # home: G, B flat, G, D
+
+    def test_the_music_fits_the_chase_and_uses_two_channels(self):
+        writes = music.writes(make.FRAMES)
+        self.assertEqual(len(writes), make.FRAMES)
+        registers = {r for frame in writes for r, _ in frame}
+        self.assertEqual(registers, {0x4000, 0x4002, 0x4003, 0x4008, 0x400A, 0x400B})
+        self.assertTrue(writes[0])  # the pickup starts at once
+        self.assertEqual(music.pulse_period(69), 253)  # A4 on the chip
 
     @unittest.skipUnless(shutil.which("ca65") and shutil.which("ld65"), "cc65 not installed")
     def test_it_builds_an_nrom_cartridge(self):

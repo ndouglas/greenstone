@@ -1,5 +1,5 @@
 """Build 'chase', the NES ROM behind 001's "who" beat: 8-bit Nate walks on, sees the paperclips, leaps, and runs,
-the swarm hopping after him.
+the paperclips hopping after him, to the opening of Stures schottis (music.py).
 
 The art is Nate's own (nate.png, drawn on pixel-editor.com) and the paperclip below. Python turns them into
 CHR tiles and metasprites, and works out every actor's place on every frame; chase.s plays that table back.
@@ -12,6 +12,8 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
+
+from series.homebrew.chase import music
 
 HERE = Path(__file__).parent
 FRAMES = 420  # 7 s at 60 fps
@@ -208,6 +210,10 @@ def source(metas, frames, screen: bytes) -> str:
     lines.append("nametable:")
     for i in range(0, len(screen), 32):
         lines.append("  .byte " + ", ".join(f"${b:02X}" for b in screen[i:i + 32]))
+    lines.append("notes:")
+    sound = music.table(len(frames))
+    for i in range(0, len(sound), 32):
+        lines.append("  .byte " + ", ".join(f"${b:02X}" for b in sound[i:i + 32]))
     lines.append("choreography:")
     data = table(frames, names)
     for i in range(0, len(data), 16):

@@ -151,6 +151,11 @@ impl NesEmulator {
     self.cpu.get_framebuffer()
   }
 
+  /// Take the audio the APU has made since the last call (mono, 44.1 kHz).
+  pub fn take_audio_samples(&mut self) -> Vec<f32> {
+    self.cpu.take_audio_samples()
+  }
+
   /// Downsample the framebuffer to 84×84 grayscale (standard Atari DQN input).
   /// Uses simple bilinear-ish averaging for speed.
   pub fn framebuffer_grayscale_84x84(&self) -> Vec<u8> {
