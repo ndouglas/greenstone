@@ -4,10 +4,11 @@ import json
 from pathlib import Path
 
 import numpy as np
-from manim import (DOWN, LEFT, RIGHT, UP, Animation, AnimationGroup, Arc, Circle, Create, DashedLine, Dot, FadeIn, FadeOut,
-                   Group, ImageMobject, Line, ManimColor, ParametricFunction, Rectangle, ReplacementTransform, Rotate,
-                   RoundedRectangle, Square, Succession, Transform, UpdateFromAlphaFunc, ValueTracker, VGroup, VMobject, Wait,
-                   config, interpolate_color, linear, smooth)
+from manim import (DOWN, LEFT, RIGHT, UP, Animation, AnimationGroup, Arc, Circle, Create, DashedLine,
+                   DashedVMobject, Dot, FadeIn, FadeOut, Group, ImageMobject, Line, ManimColor, ParametricFunction,
+                   Rectangle, ReplacementTransform, Rotate, RoundedRectangle, Square, Succession, Transform,
+                   UpdateFromAlphaFunc, ValueTracker, VGroup, VMobject, Wait, config, interpolate_color, linear,
+                   smooth)
 from PIL import Image
 
 from series import style
@@ -185,7 +186,8 @@ def simplest_neuron(scene) -> None:
 
     def flow(i: int) -> Succession:
         """A copy of the number runs along its path into the ring, and the total takes it in."""
-        travel = numeral(str(values[i]), style.WARM[1], 0.46)
+        # Hidden at its start until its turn: it's on screen from the line's start, waiting.
+        travel = numeral(str(values[i]), style.WARM[1], 0.46).move_to(starts[i]).set_opacity(0)
 
         def along(m, a: float) -> None:
             m.move_to(starts[i] + (ends[i] - starts[i]) * a).set_opacity(min(1.0, 4 * (1 - a)))
@@ -331,6 +333,36 @@ def never_see(scene) -> None:
         AnimationGroup(FadeIn(card), FadeIn(neuron), run_time=0.6),
         Create(to_card, run_time=0.8),
         Create(blocked, run_time=0.8),
+        Wait(1.0)))
+
+
+def tick(at: np.ndarray, size: float = 0.2) -> VMobject:
+    """A check mark."""
+    return VMobject(stroke_color=style.WARM[1], stroke_width=2.0).set_points_as_corners(
+        [at + size * np.array(p) for p in ((-0.5, 0.0, 0), (-0.15, -0.4, 0), (0.55, 0.45, 0))])
+
+
+def why_key(scene) -> None:
+    """Every answer can be checked: ticks fill under the scorecard. Then a question the memory holds no answer
+    to, beside an empty square."""
+    lock = scene.kept["lock"]
+    card = lock[1][0]
+    ticks = VGroup(*[tick(card.get_bottom() + DOWN * 0.38 + RIGHT * (k - 3.5) * 0.3) for k in range(8)])
+    for t in ticks:
+        t.set_stroke(opacity=0)
+    ask = serif("Will Mario land soon?", style.ASH, 0.44)
+    empty = VGroup(DashedVMobject(Square(0.42, stroke_color=style.ASH, stroke_width=1.2), num_dashes=16),
+                   serif("?", style.ASH, 0.36))
+    future = VGroup(ask, empty).arrange(RIGHT, buff=0.35).move_to(RIGHT * 3.6 + DOWN * 0.9)
+    empty[1].move_to(empty[0])
+    lock.add(ticks, future)
+    scene.add(ticks)
+    scene.say("why-key", Succession(
+        Wait(0.8),
+        *[t.animate(run_time=0.22).set_stroke(opacity=1) for t in ticks],
+        Wait(2.5),
+        FadeIn(ask, run_time=0.8),
+        AnimationGroup(Create(empty[0]), FadeIn(empty[1]), run_time=0.8),
         Wait(1.0)))
 
 
@@ -493,7 +525,7 @@ def recording_2(scene) -> None:
     fast.set_opacity(0)
     restarts.level.set_value(0)
     scene.add(restarts, fast)
-    scene.kept["restarts"] = VGroup(restarts, fast)
+    scene.kept["restarts"], scene.kept["fast"] = restarts, fast
     scene.say("recording-2", Succession(
         AnimationGroup(tween(speed, 1.0, FAST, 1.0), fast.animate.set_opacity(1), tween(restarts.level, 0, 1, 1.0),
                        run_time=1.0),
@@ -551,7 +583,7 @@ def frames(scene) -> None:
         if round(n) != shown[0]:
             shown[0] = round(n)
             swap(count, numeral(str(shown[0]), style.TEXT, 0.5).move_to(count, aligned_edge=RIGHT))
-    leave(scene, screen, scene.kept.pop("pad"), scene.kept.pop("restarts"))
+    leave(scene, screen, scene.kept.pop("pad"), scene.kept.pop("restarts"), scene.kept.pop("fast"))
     scene.add(sheet)
     scene.kept["frames"] = Group(sheet, caption)
     scene.kept["levels"] = levels
@@ -683,15 +715,29 @@ def choosing(scene) -> None:
     follow(trace)  # drawn before it fades in: a fade copies what's there when it starts
     trace.add_updater(follow)
     chart = VGroup(axis, marks, title)
+    # Named as the third slides apart, where the counts were: the first two train, the third tests.
+    first, second = tapes.tapes[0].strip, tapes.tapes[1].strip
+    edge = first.get_right()[0] + 0.35
+    bracket = VMobject(stroke_color=style.ASH, stroke_width=1.2).set_points_as_corners(
+        [[edge, first.get_top()[1], 0], [edge + 0.15, first.get_top()[1], 0],
+         [edge + 0.15, second.get_bottom()[1], 0], [edge, second.get_bottom()[1], 0]])
+    training = serif("training", style.TEXT, 0.42).next_to(bracket, RIGHT, buff=0.2)
+    test = serif("test", style.TEXT, 0.42).next_to(tapes.tapes[2].strip.get_right() + APART, RIGHT, buff=0.5)
     small = tapes.copy()  # where the tapes go: small, in the corner, the third still apart
     small.tapes[2].shift(APART)
     small.scale(0.4).move_to(RIGHT * 5.0 + DOWN * 2.9)
-    aside = serif("to test", style.ASH, 0.34).next_to(small.tapes[2].strip, DOWN, buff=0.12)
-    scene.kept.update(screen=screen, line=line, row=row, chart=VGroup(chart, trace, reading, aside), score=score)
+    training_small = serif("training", style.TEXT, 0.34).next_to(small.tapes[0].strip, UP, buff=0.12,
+                                                                 aligned_edge=LEFT)
+    test_small = serif("test", style.TEXT, 0.34).next_to(small.tapes[2].strip, DOWN, buff=0.12)
+    scene.kept.update(screen=screen, line=line, row=row, score=score,
+                      chart=VGroup(chart, trace, reading, training_small, test_small))
     scene.say("choosing", Succession(
         AnimationGroup(FadeOut(counts), tapes.apart(2), run_time=1.0),
-        AnimationGroup(Transform(tapes, small), screen.arrive(run_time=1.0), run_time=1.0),
-        FadeIn(aside, run_time=0.4),
+        AnimationGroup(Create(bracket), FadeIn(training), FadeIn(test), run_time=0.6),
+        Wait(0.6),
+        AnimationGroup(Transform(tapes, small), ReplacementTransform(training, training_small),
+                       ReplacementTransform(test, test_small), FadeOut(bracket), screen.arrive(run_time=1.0),
+                       run_time=1.0),
         AnimationGroup(FadeIn(line), FadeIn(chart), FadeIn(trace), FadeIn(reading), run_time=0.6),
         tween(row, 0, SWEEP_END, 6.0, rate_func=linear),
         Wait(0.5)))
@@ -780,7 +826,8 @@ def building_end(scene) -> None:
 
 BEATS = {"building-intro": building_intro, "thermostat": thermostat, "thermostat-2": thermostat_2,
          "simplest-neuron": simplest_neuron, "simplest-neuron-2": simplest_neuron_2, "question": question,
-         "answer-key": answer_key, "answer-key-2": answer_key_2, "never-see": never_see, "depth": depth,
+         "answer-key": answer_key, "answer-key-2": answer_key_2, "never-see": never_see, "why-key": why_key,
+         "depth": depth,
          "recording": recording, "recording-2": recording_2, "frames": frames, "frames-2": frames_2,
          "frames-3": frames_3, "choosing": choosing, "choosing-2": choosing_2, "the-neuron": the_neuron,
          "building-end": building_end}

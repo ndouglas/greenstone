@@ -207,6 +207,12 @@ board = "The answer-key square gets a padlock; a line from it runs to a scorecar
 cite = ["exp001"]
 
 [[section.line]]
+id = "why-key"
+text = "Why ask a question the game can already answer? Because then we can check every answer the neuron gives. It's a safe place to see how a neuron works, before we ask it things the game doesn't know, like whether Mario's about to land."
+board = "Ticks fill the scorecard, one for each answer checked; then 'Will Mario land soon?' beside an empty, dashed square: nothing in the memory holds that answer"
+framing = true
+
+[[section.line]]
 id = "depth"
 text = "Instead, the neuron reads a different number from the game's memory: Mario's depth, meaning how far down the screen he is, counted in the tiny dots the picture is made of, from near the top. A bigger depth means lower on the screen."
 board = "Footage: a ruler down the screen whose zero starts 32 dots below the top, so its reading at Mario's feet is the game's depth number; it follows him as he jumps"
