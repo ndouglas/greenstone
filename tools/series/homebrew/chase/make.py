@@ -4,7 +4,8 @@ the paperclips hopping after him, to the opening of Stures schottis (music.py).
 The art is Nate's own (nate.png, drawn on pixel-editor.com) and the paperclip below. Python turns them into
 CHR tiles and metasprites, and works out every actor's place on every frame; chase.s plays that table back.
 
-Usage: cd tools && series/.venv/bin/python -m series.homebrew.chase.make [OUT_DIR]"""
+Usage: cd tools && series/.venv/bin/python -m series.homebrew.chase.make [OUT_DIR] [--phases NAME LOOK CHASE]
+(the three beats' lengths in seconds, voice and stillness)"""
 
 import subprocess
 import sys
@@ -17,7 +18,11 @@ from scipy import ndimage
 from series.homebrew.chase import music
 
 HERE = Path(__file__).parent
-FRAMES = 420  # 7 s at 60 fps
+FPS = 60.0988
+# Seconds for each of the three beats it plays under, each line's voice and its stillness: "My name is Nathan
+# Douglas." (he runs in), "I'm a software engineer." (he looks around), "And recently, I've begun a move into
+# AI safety and research." (the chase). Estimates until Nate's takes exist; then the build passes the real ones.
+PHASES = (2.4, 2.0, 5.5)
 
 # Nate's sheet: three colours, one sprite palette. Frames by their box in nate.png (x0, y0, x1, y1).
 NATE_COLOURS = {(124, 124, 124): 1, (255, 160, 68): 2, (248, 248, 248): 3}
@@ -194,18 +199,37 @@ def art():
     return data + bytes(8192 - len(data)), metas, names
 
 
-def choreography() -> list[list[tuple[int, int, str | None]]]:
-    """Every frame: each actor's (x, y of its feet, sprite frame or None). Actor 0 is Nate, the rest clips."""
-    stop, turn, look, leap, run, clips = 96, 196, 212, 230, 262, 2  # two clips: with him, seven sprites a line
+def frame_counts(phases: tuple[float, float, float] = PHASES) -> tuple[int, int, int]:
+    return tuple(round(seconds * FPS) for seconds in phases)
+
+
+def choreography(phases: tuple[float, float, float] = PHASES) -> list[list[tuple[int, int, str | None]]]:
+    """Every frame: each actor's (x, y of its feet, sprite frame or None). Actor 0 is Nate, the rest clips.
+    In the first phase he runs in and stops; in the second he looks around; in the third the clips hop in
+    behind him, he sees them, leaps, and runs off, and they chase him."""
+    name, engineer, chase = frame_counts(phases)
+    stop, clips = 96, 2  # two clips: with him, seven sprites a line at most
+    looking = (("front", 0.3), ("look_back", 0.25), ("front", 0.2), ("pass", 0.25))
+    arrive = name + engineer + round(0.35 * chase)  # the lead clip reaches him
+    notice, leap, run = arrive - 14, arrive, arrive + 32
+    first_clip = name + engineer
+    speed = (stop - 20 + 16) / (arrive - first_clip)  # to arrive on time, from just off the left edge
     frames = []
-    for f in range(FRAMES):
-        # Nate walks in (a pixel a frame) and stands; the swarm reaches him; he leaps, lands, and runs off.
+    for f in range(name + engineer + chase):
         y = GROUND
-        if f < turn:
-            x = min(-24 + f, stop)
-            pose = "pass" if x == stop else RUN[f // 8 % 4]
+        if f < name:
+            x = min(-24 + 2 * f, stop)
+            pose = "pass" if x == stop else RUN[f // 5 % 4]
+        elif f < notice:
+            x, t, pose = stop, (f - name) / engineer, "pass"
+            for pose, share in looking:  # in the second beat he looks around; then stands, facing on
+                if t < share:
+                    break
+                t -= share
+            if f >= name + engineer:
+                pose = "pass"
         elif f < leap:
-            x, pose = stop, "front" if f < look else "look_back"  # he turns to us, then looks back at them
+            x, pose = stop, "look_back"  # he hears them
         elif f < run:
             x, pose = stop, "leap"
             y = GROUND - round(14 * np.sin(np.pi * (f - leap) / (run - leap)))
@@ -213,16 +237,14 @@ def choreography() -> list[list[tuple[int, int, str | None]]]:
             x = stop + round(2.5 * (f - run))
             pose = RUN[(f - run) // 5 % 4]
         actors = [(x, y, pose if x < 256 else None)]
-        nate_x = x
-        # The clips hop in from the left, one after another, then chase him at his pace.
         for k in range(clips):
-            start = 140 + 22 * k
+            start = first_clip + 22 * k
             t = f - start
-            travelled = max(0, min(f, run) - start) + 2.6 * max(0, f - max(run, start))
+            travelled = speed * max(0, min(f, run) - start) + 2.6 * max(0, f - max(run, start))
             # Follow the leader: never closer than a gap behind him, nor behind the clip ahead.
-            x = min(-16 + round(travelled), nate_x - 20 - 14 * k)
+            cx = min(-16 + round(travelled), x - 20 - 14 * k)
             hop = round(abs(np.sin(np.pi * (t + 7 * k) / 18)) * 6)
-            actors.append((x, GROUND - hop, "clip" if t >= 0 and x < 256 else None))
+            actors.append((cx, GROUND - hop, "clip" if t >= 0 and cx < 256 else None))
         frames.append(actors)
     return frames
 
@@ -261,12 +283,12 @@ def source(metas, frames, screen: bytes) -> str:
     return "\n".join(lines) + "\n"
 
 
-def build(out: Path) -> Path:
-    """Assemble chase.nes into `out`, with ca65 and ld65."""
+def build(out: Path, phases: tuple[float, float, float] = PHASES) -> Path:
+    """Assemble chase.nes into `out`, with ca65 and ld65, its three phases lasting `phases` seconds."""
     out.mkdir(parents=True, exist_ok=True)
     chr_data, metas, names = art()
     (out / "chase.chr").write_bytes(chr_data)
-    (out / "data.inc").write_text(source(metas, choreography(), names))
+    (out / "data.inc").write_text(source(metas, choreography(phases), names))
     obj, rom = out / "chase.o", out / "chase.nes"
     subprocess.run(["ca65", str(HERE / "chase.s"), "-I", str(out), "--bin-include-dir", str(out), "-o", str(obj)],
                    check=True)
@@ -276,4 +298,9 @@ def build(out: Path) -> Path:
 
 if __name__ == "__main__":
     from series.build import OUT
-    print(build(Path(sys.argv[1]) if len(sys.argv) > 1 else OUT / "homebrew" / "chase"))
+    args = sys.argv[1:]
+    phases = PHASES
+    if "--phases" in args:
+        i = args.index("--phases")
+        phases, args = tuple(float(a) for a in args[i + 1:i + 4]), args[:i] + args[i + 4:]
+    print(build(Path(args[0]) if args else OUT / "homebrew" / "chase", phases))

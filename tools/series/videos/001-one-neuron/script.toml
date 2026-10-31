@@ -30,12 +30,26 @@ cite = ["murphy2013"]
 
 [[section.line]]
 id = "who"
-text = "My name is Nathan Douglas. I'm a software engineer, and recently I've begun a move into AI safety and research."
-board = "A real NES ROM running in greenstone: an original 8-bit Nate (grey hair; Mikey-from-The-Goonies proportions, drawn new) walks on, then is chased across the screen by a swarm of 8-bit paperclips"
+text = "My name is Nathan Douglas."
+board = "The chase ROM, running in greenstone (tools/series/homebrew/chase): in a Mario-ish world, 8-bit Nate runs in from the left and stops"
 framing = true
+pause = 0.5
 
 [[section.line]]
 id = "who-2"
+text = "I'm a software engineer."
+board = "The chase ROM, continued: Nate stands and looks around, at us, over his shoulder, ahead"
+framing = true
+pause = 0.5
+
+[[section.line]]
+id = "who-3"
+text = "And recently, I've begun a move into AI safety and research."
+board = "The chase ROM, continued: two mean-browed paperclips hop in behind him; he sees them, leaps, and runs, and they chase him off the screen, to Stures schottis on the NES's own sound chip"
+framing = true
+
+[[section.line]]
+id = "corrections"
 text = "You may already know a lot about neural networks. You might know much more than I do, and if I get anything wrong, please tell me."
 board = "A card: 'Corrections welcome: see link in description' (the description links the video's public errata list); the titles of the papers this video cites drift past behind it"
 framing = true

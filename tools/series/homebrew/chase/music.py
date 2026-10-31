@@ -11,8 +11,8 @@ from pathlib import Path
 HERE = Path(__file__).parent
 CPU = 1789773
 FPS = 60.0988
-BPM = 150  # quarter notes a minute: a brisk schottis, so the opening fits the chase
-EIGHTH = FPS * 60 / BPM / 2  # frames
+BPM = 150  # quarter notes a minute, about: a brisk schottis; the tempo is stretched so the tune fills the chase
+TAIL = 20  # frames of quiet after the last note
 KEY = {"B": -1, "E": -1}  # G minor: B flat, E flat
 STEPS = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
 ROOTS = {"Gm": 7, "D": 2, "D7": 2, "Bb": 10, "F": 5, "Cm7": 0}  # pitch classes of the chord names used
@@ -49,10 +49,21 @@ def bars(abc: str) -> list[list[tuple[int | None, float, str | None]]]:
     return out
 
 
-def excerpt() -> list[list[tuple[int | None, float, str | None]]]:
-    """The pickup, the first three bars, and the first ending, which comes home to G minor."""
+def excerpt(frames: int) -> list[list[tuple[int | None, float, str | None]]]:
+    """The pickup, some of the first part's bars (three, five, six or all seven: places where it can turn for
+    home), and the first ending, which comes home to G minor: as many bars as make `frames` nearest BPM."""
     tune = bars((HERE / "stures.abc").read_text())
-    return [tune[0], tune[1], tune[2], tune[3], tune[8]]
+    k = min((3, 5, 6, 7), key=lambda k: abs(tempo(frames, 2 + 8 * k + 8) - BPM))
+    return [tune[0], *tune[1:1 + k], tune[8]]
+
+
+def eighth(frames: int, eighths: float) -> float:
+    """Frames an eighth note lasts, for `eighths` of them to fill `frames` (less the tail)."""
+    return (frames - TAIL) / eighths
+
+
+def tempo(frames: int, eighths: float) -> float:
+    return FPS * 60 / eighth(frames, eighths) / 2
 
 
 def pulse_period(midi: int) -> int:
@@ -67,13 +78,16 @@ def writes(frames: int) -> list[list[tuple[int, int]]]:
     """For every frame, the (register, value) writes to make: $4000-$4003 the melody, $4008-$400B the bass."""
     out = [[] for _ in range(frames)]
 
+    tune = excerpt(frames)
+    frames_per_eighth = eighth(frames, sum(n[1] for bar in tune for n in bar))
+
     def write(eighths: float, *pairs: tuple[int, int], late: int = 0) -> None:
-        frame = round(eighths * EIGHTH) + late
+        frame = round(eighths * frames_per_eighth) + late
         if frame < frames:
             out[frame] += pairs
 
     t, chord = 0.0, "Gm"
-    for i, bar in enumerate(excerpt()):
+    for i, bar in enumerate(tune):
         start, marks = t, []
         for midi, length, name in bar:
             if name:

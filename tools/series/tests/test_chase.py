@@ -37,7 +37,7 @@ class ChaseTest(unittest.TestCase):
                 if pose is not None and nate[2] is not None:
                     self.assertLess(x, nate[0], f)
         frames = make.choreography()
-        self.assertEqual(frames[make.FRAMES - 1][0][2], None)  # he's gone by the end
+        self.assertEqual(frames[-1][0][2], None)  # he's gone by the end
         self.assertIn("leap", {nate[2] for nate, *_ in frames})
 
     def test_no_line_ever_needs_more_than_eight_sprites(self):
@@ -58,15 +58,33 @@ class ChaseTest(unittest.TestCase):
         self.assertEqual([n[0] for n in bars[1]][:4], [67, 66, 67, 69])  # G, F sharp (written), G, A
         self.assertEqual(bars[1][4][0], 70)  # B flat, from the key
         self.assertEqual(bars[3][0][2], "D")
-        self.assertEqual([n[0] for n in music.excerpt()[-1]], [67, 70, 67, 62])  # home: G, B flat, G, D
+        self.assertEqual([n[0] for n in music.excerpt(600)[-1]], [67, 70, 67, 62])  # home: G, B flat, G, D
+        self.assertEqual(len(music.excerpt(600)), 1 + 5 + 1)  # 10 s: five bars, near 150 a minute
+        self.assertEqual(len(music.excerpt(800)), 1 + 7 + 1)  # 13 s: the whole first part
+        for frames in (400, 600, 800):
+            eighths = sum(n[1] for bar in music.excerpt(frames) for n in bar)
+            self.assertLess(abs(music.tempo(frames, eighths) - music.BPM), 25)
+            last = max(i for i, w in enumerate(music.writes(frames)) if w)
+            self.assertGreater(last, frames - music.TAIL - 30)  # the tune lasts the whole chase
 
     def test_the_music_fits_the_chase_and_uses_two_channels(self):
-        writes = music.writes(make.FRAMES)
-        self.assertEqual(len(writes), make.FRAMES)
+        frames = sum(make.frame_counts())
+        writes = music.writes(frames)
+        self.assertEqual(len(writes), frames)
         registers = {r for frame in writes for r, _ in frame}
         self.assertEqual(registers, {0x4000, 0x4002, 0x4003, 0x4008, 0x400A, 0x400B})
         self.assertTrue(writes[0])  # the pickup starts at once
         self.assertEqual(music.pulse_period(69), 253)  # A4 on the chip
+
+    def test_the_phases_follow_the_beats(self):
+        name, engineer, chase = make.frame_counts((2.0, 3.0, 6.0))
+        frames = make.choreography((2.0, 3.0, 6.0))
+        self.assertEqual(len(frames), name + engineer + chase)
+        poses = [actors[0][2] for actors in frames]
+        self.assertEqual(poses[name - 1], "pass")  # in and stopped by the end of his name
+        self.assertTrue({"front", "look_back"} <= set(poses[name:name + engineer]))  # looking around
+        self.assertTrue(all(c[2] is None for actors in frames[:name + engineer] for c in actors[1:]))  # no clips yet
+        self.assertIn("leap", poses[name + engineer:])
 
     @unittest.skipUnless(shutil.which("ca65") and shutil.which("ld65"), "cc65 not installed")
     def test_it_builds_an_nrom_cartridge(self):
