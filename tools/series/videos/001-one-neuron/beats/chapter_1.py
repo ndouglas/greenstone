@@ -9,13 +9,15 @@ from manim import (DOWN, LEFT, RIGHT, UP, Animation, AnimationGroup, Arc, Circle
                    Rectangle, ReplacementTransform, Rotate, RoundedRectangle, Square, Succession, Transform,
                    UpdateFromAlphaFunc, ValueTracker, VGroup, VMobject, Wait, config, interpolate_color, linear,
                    smooth)
+from manim.constants import RESAMPLING_ALGORITHMS
 from PIL import Image
+from reservoir_film.model import NES_H, NES_W
 
 from series import style
-from series.ember import baseline, fade_image, glow, in_line, numeral, serif, swap
+from series.ember import baseline, fade_image, glow, in_line, numeral, rgb, serif, swap
 from series.footage import NES_FPS
 from series.lab.data import load
-from series.lab.exp001 import features, in_play
+from series.lab.exp001 import features, in_play, label
 from series.memory import MemoryGrid
 from series.overlays import LABEL_INSET, SettingLine, feet_line
 from series.recording import DATA, LAG, Recording
@@ -681,8 +683,140 @@ class Sweep(SettingLine):
         self.label.next_to([self.screen.col_x(256) - LABEL_INSET, self.y(), 0], UP + LEFT, buff=0.06)
 
 
+# Small Mario mid-stride, as the game draws him (taken from session 1's footage, frame 5335, against the sky).
+MARIO = """
+.....#####......
+....#########...
+....#######.....
+...##########...
+...###########..
+...##########...
+.....#######....
+..########......
+###############.
+###.###########.
+##..#######..#..
+...###########..
+..############..
+.#####...#####..
+.###............
+..###...........
+"""
+STAMP = np.array([[c == "#" for c in row] for row in MARIO.split()], dtype=float)
+TALLY_PX, TALLY_W = 360, 3.6  # the tally's width: pixels and frame units
+FRAMES_PER_PX = 2.5  # a bar's length: one pixel for each 2.5 frames
+SCREEN_X = 0x03AD  # Mario's x on screen
+
+
+LANES = 64  # Marios on screen at once, each playing its own stretch of the training frames
+
+
+def training_marios() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Mario's screen x and depth in every frame of sessions 1 and 2 the setting was chosen on (those in play),
+    in order, and whether the answer key said he was in the air."""
+    xs, depths, airs = [], [], []
+    for session in ("1", "2"):
+        ram = load(SESSIONS / session).ram
+        play = in_play("smb1", ram)
+        xs.append(ram[play, SCREEN_X])
+        depths.append(ram[play, DEPTH])
+        airs.append(label("smb1")(ram)[play])
+    x, depth, air = (np.concatenate(v).astype(int) for v in (xs, depths, airs))
+    return x, depth, air.astype(bool)
+
+
+class Crowd(ImageMobject):
+    """The training frames as Marios on the game screen: LANES of them at once, each playing its own stretch of
+    the frames in order (so they run and jump), cool while the answer key says on the ground and warm while in
+    the air, each leaving a faint trail of where it has been. `shown` (0 to 1) is how far they've played, `level`
+    how strongly it's all drawn."""
+
+    def __init__(self, screen: Screen):
+        super().__init__(np.zeros((NES_H, NES_W, 4), np.uint8))
+        self.set_resampling_algorithm(RESAMPLING_ALGORITHMS["nearest"])
+        self.stretch_to_fit_width(screen.game.width).stretch_to_fit_height(screen.game.height).move_to(screen.game)
+        self.xs, self.depths, self.airs = training_marios()  # not .depth: that's Manim's, and rescales
+        self.starts = np.linspace(0, len(self.xs), LANES + 1).astype(int)
+        self.ground_n, self.air_n = np.zeros((NES_H, NES_W)), np.zeros((NES_H, NES_W))
+        self.ground_at, self.air_at = np.zeros(256), np.zeros(256)  # frames counted at each depth so far
+        self.played = 0  # frames into each lane
+        self.shown, self.level = ValueTracker(0.0), ValueTracker(1.0)
+        self.add_updater(lambda m: m.draw())
+
+    def place(self, k: int) -> tuple[int, int, int, int, int, int]:
+        """Where frame k's Mario is, clipped to the screen: rows r0:r1 and columns c0:c1 of the screen, and the
+        stamp's own first row and column."""
+        top, left = self.depths[k] + 17, self.xs[k]
+        r0, r1, c0, c1 = max(top, 0), min(top + 16, NES_H), max(left, 0), min(left + 16, NES_W)
+        return r0, r1, c0, c1, r0 - top, c0 - left
+
+    def draw(self) -> None:
+        lane = np.diff(self.starts).min()
+        played = round(self.shown.get_value() * lane)
+        for start in self.starts[:-1]:
+            for k in range(start + self.played, start + played):
+                (self.air_at if self.airs[k] else self.ground_at)[self.depths[k]] += 1
+                r0, r1, c0, c1, s0, t0 = self.place(k)
+                if r0 < r1 and c0 < c1:
+                    (self.air_n if self.airs[k] else self.ground_n)[r0:r1, c0:c1] += \
+                        STAMP[s0:s0 + r1 - r0, t0:t0 + c1 - c0]
+        self.played = max(self.played, played)
+        total = self.ground_n + self.air_n
+        colour = np.where((self.air_n >= self.ground_n)[..., None], rgb(style.WARM[0]), rgb(style.COOL[1]))
+        alpha = np.minimum(1.0, np.log1p(total) / np.log1p(150)) * 0.35  # trails faint, so the Marios lead
+        if self.played:  # the Marios themselves, where each lane is now
+            for start in self.starts[:-1]:
+                k = start + min(self.played, lane) - 1
+                r0, r1, c0, c1, s0, t0 = self.place(k)
+                if r0 < r1 and c0 < c1:
+                    body = STAMP[s0:s0 + r1 - r0, t0:t0 + c1 - c0] > 0
+                    colour[r0:r1, c0:c1][body] = rgb(style.WARM[0] if self.airs[k] else style.COOL[1])
+                    alpha[r0:r1, c0:c1][body] = 0.95
+        self.pixel_array = np.dstack([colour, alpha * 255 * self.level.get_value()]).round().astype(np.uint8)
+
+
+class Tally(ImageMobject):
+    """Beside the screen, row for row with it, a bar for each depth: how many of the crowd's frames had Mario's
+    feet there, warm (in the air) then cool (on the ground). A bar too long for the space is broken near its end
+    and its count written beside it."""
+
+    def __init__(self, screen: Screen, crowd: Crowd, left: float):
+        super().__init__(np.zeros((NES_H, TALLY_PX, 4), np.uint8))
+        self.set_resampling_algorithm(RESAMPLING_ALGORITHMS["nearest"])
+        self.stretch_to_fit_width(TALLY_W).stretch_to_fit_height(screen.game.height)
+        self.move_to([left + TALLY_W / 2, screen.game.get_center()[1], 0])
+        self.screen, self.crowd = screen, crowd
+        self.level = ValueTracker(1.0)
+        self.counts, self.shown = VGroup(), None
+        self.add_updater(lambda m: m.draw())
+
+    def draw(self) -> None:
+        pixels = np.zeros((NES_H, TALLY_PX, 4))
+        level, long = self.level.get_value(), []
+        for depth in range(SWEEP_END + 1):
+            air, ground = self.crowd.air_at[depth], self.crowd.ground_at[depth]
+            if not air + ground:
+                continue
+            row, a = depth + OFFSET, round(air / FRAMES_PER_PX)
+            end = min(round((air + ground) / FRAMES_PER_PX), TALLY_PX)
+            pixels[row, :min(a, end), :3] = rgb(style.WARM[0])
+            pixels[row, min(a, end):end, :3] = rgb(style.COOL[1])
+            pixels[row, :end, 3] = 255 * level
+            if end == TALLY_PX:  # broken near its end
+                pixels[row, TALLY_PX - 18:TALLY_PX - 12, 3] = 0
+                long.append((depth, int(air + ground)))
+        self.pixel_array = pixels.round().astype(np.uint8)
+        if long != self.shown:
+            self.shown = long
+            swap(self.counts, *[numeral(f"{n:,}", style.COOL[1], 0.32).next_to(
+                [self.get_right()[0], self.screen.row_y(d + OFFSET + 0.5), 0], RIGHT, buff=0.12) for d, n in long])
+        self.counts.set_opacity(level)
+
+
 def choosing(scene) -> None:
-    """The third tape set aside; then a setting sweeps down the game, the score for each traced beside it."""
+    """The third tape set aside; a Mario on the game for every training frame, where he was, and beside it how
+    many were at each depth: cool on the ground, nearly all at one depth. Then a setting sweeps down, its score
+    against the answer key read as it goes."""
     tapes, counts = scene.kept.pop("tapes"), scene.kept.pop("counts")
     u = config.pixel_height / 1080
     screen = Screen(Recording("smb1"), CHOOSE_START, left_px=round(40 * u))
@@ -690,33 +824,27 @@ def choosing(scene) -> None:
     row = ValueTracker(0)
     line = Sweep(screen, 0, "setting", OFFSET)
     line.add_updater(lambda m: (setattr(m, "row", round(row.get_value())), m.refresh()))
-    left, span = screen.game.get_right()[0] + 0.45, 3.4
-
-    def x_of(s: float) -> float:
-        return left + max(s - 0.4, 0.0) / 0.6 * span
-    top, bottom = line.screen.row_y(OFFSET), line.screen.row_y(SWEEP_END + OFFSET)
+    left = screen.game.get_right()[0] + 0.45
+    crowd = Crowd(screen)
+    tally = Tally(screen, crowd, left)
+    top, bottom = screen.row_y(OFFSET), screen.row_y(SWEEP_END + OFFSET + 1)
     axis = Line([left, top, 0], [left, bottom, 0], stroke_color=style.ASH, stroke_width=1.0)
-    marks = VGroup()
-    for s in (0.5, 1.0):
-        marks.add(DashedLine([x_of(s), top, 0], [x_of(s), bottom, 0], stroke_color=style.ASH, stroke_width=0.8,
-                             stroke_opacity=0.5, dash_length=0.06),
-                  numeral(f"{round(s * 100)}%", style.ASH, 0.32).next_to([x_of(s), bottom, 0], DOWN, buff=0.15))
-    title = serif("matched the answer key", style.ASH, 0.38).next_to([left, top, 0], UP + RIGHT, buff=0.15)
-    trace = VMobject(stroke_color=style.WARM[0], stroke_width=2.2)
-    reading, shown, swept = VGroup(), [None], [0]
+    name = serif("frames at each depth", style.ASH, 0.36).next_to([left, bottom, 0], DOWN + RIGHT, buff=0.2)
+    across = Line(LEFT, RIGHT, stroke_color=style.WARM[2], stroke_width=1.2)
+    across.add_updater(lambda m: m.put_start_and_end_on([left, line.y(), 0], [left + TALLY_W, line.y(), 0]))
+    matched, shown = VGroup(numeral("0%", style.WARM[0], 0.42)), [None]
+    reading = in_line(serif("matches the answer key", style.ASH, 0.38), matched, buff=0.15).next_to(
+        [left, screen.game.get_top()[1], 0], DOWN + RIGHT, buff=0.05)
 
-    def follow(m: VMobject) -> None:
+    def follow(m: VGroup) -> None:
         depth = round(row.get_value())
-        swept[0] = max(swept[0], depth)
-        points = [[x_of(score[d]), screen.row_y(d + OFFSET), 0] for d in range(swept[0] + 1)]
-        m.set_points_as_corners(points if len(points) > 1 else points * 2)
         if depth != shown[0]:
             shown[0] = depth
-            swap(reading, numeral(f"{round(score[depth] * 100)}%", style.WARM[0], 0.38))
-        reading.next_to([x_of(score[depth]), screen.row_y(depth + OFFSET), 0], RIGHT, buff=0.15)
-    follow(trace)  # drawn before it fades in: a fade copies what's there when it starts
-    trace.add_updater(follow)
-    chart = VGroup(axis, marks, title)
+            swap(m, numeral(f"{round(score[depth] * 100)}%", style.WARM[0], 0.42).next_to(reading[0], RIGHT, buff=0.15))
+            m.shift(UP * (baseline(reading[0]) - baseline(m)))
+    follow(matched)  # drawn before it fades in: a fade copies what's there when it starts
+    matched.add_updater(follow)
+    dimmed = ValueTracker(1.0)
     # Named as the third slides apart, where the counts were: the first two train, the third tests.
     first, second = tapes.tapes[0].strip, tapes.tapes[1].strip
     edge = first.get_right()[0] + 0.35
@@ -731,8 +859,9 @@ def choosing(scene) -> None:
     training_small = serif("training", style.TEXT, 0.34).next_to(small.tapes[0].strip, UP, buff=0.12,
                                                                  aligned_edge=LEFT)
     test_small = serif("test", style.TEXT, 0.34).next_to(small.tapes[2].strip, DOWN, buff=0.12)
-    scene.kept.update(screen=screen, line=line, row=row, score=score,
-                      chart=VGroup(chart, trace, reading, training_small, test_small))
+    scene.add(crowd, tally, tally.counts)
+    scene.kept.update(screen=screen, line=line, row=row, crowd=crowd, tally=tally, dimmed=dimmed,
+                      chart=VGroup(axis, name, across, reading, training_small, test_small))
     scene.say("choosing", Succession(
         AnimationGroup(FadeOut(counts), tapes.apart(2), run_time=1.0),
         AnimationGroup(Create(bracket), FadeIn(training), FadeIn(test), run_time=0.6),
@@ -740,21 +869,28 @@ def choosing(scene) -> None:
         AnimationGroup(Transform(tapes, small), ReplacementTransform(training, training_small),
                        ReplacementTransform(test, test_small), FadeOut(bracket), screen.arrive(run_time=1.0),
                        run_time=1.0),
-        AnimationGroup(FadeIn(line), FadeIn(chart), FadeIn(trace), FadeIn(reading), run_time=0.6),
-        tween(row, 0, SWEEP_END, 6.0, rate_func=linear),
+        AnimationGroup(UpdateFromAlphaFunc(dimmed, lambda m, a: (m.set_value(1 - 0.65 * a), screen.fade(1 - 0.65 * a))),
+                       Create(axis), FadeIn(name), run_time=0.6),
+        tween(crowd.shown, 0.0, 1.0, 4.0, rate_func=linear),
+        AnimationGroup(FadeIn(line), FadeIn(across), FadeIn(reading), run_time=0.5),
+        tween(row, 0, SWEEP_END, 4.0, rate_func=linear),
         Wait(0.5)))
     scene.kept["tapes"] = tapes
 
 
 def choosing_2(scene) -> None:
-    """The setting settles at 176, the trace's peak, and Mario's feet come down onto it."""
-    screen, line, row, score = scene.kept["screen"], scene.kept["line"], scene.kept["row"], scene.kept["score"]
+    """The setting settles at 176, where nearly all the cool is below it and the warm above; the crowd clears,
+    the game comes back up, and Mario's feet come down onto the setting."""
+    screen, row, crowd = scene.kept["screen"], scene.kept["row"], scene.kept["crowd"]
     feet, drawn = drawn_feet(screen)
     scene.add(feet)
     scene.kept["feet"] = feet
     scene.say("choosing-2", Succession(
         tween(row, SWEEP_END, CUT, 1.4),
         Wait(0.6),
+        AnimationGroup(tween(crowd.level, 1.0, 0.0, 0.8),
+                       UpdateFromAlphaFunc(scene.kept["dimmed"], lambda m, a: screen.fade(0.35 + 0.65 * a)),
+                       run_time=0.8),
         tween(drawn, 0.0, 1.0, 0.8),
         Wait(1.0)))
 
@@ -802,7 +938,8 @@ def the_neuron(scene) -> None:
     scene.add(lamp, answer)
     scene.kept.update(neuron=neuron, source=source, lamp=lamp, answer=answer, sides=VGroup(above, below))
     scene.say("the-neuron", Succession(
-        AnimationGroup(FadeOut(scene.kept.pop("chart")), FadeOut(scene.kept.pop("tapes")), run_time=0.6),
+        AnimationGroup(FadeOut(scene.kept.pop("chart")), gone(scene.kept.pop("tally")), gone(scene.kept.pop("crowd")),
+                       FadeOut(scene.kept.pop("tapes")), run_time=0.6),
         AnimationGroup(FadeIn(above), FadeIn(below), run_time=0.8),
         AnimationGroup(FadeIn(source), FadeIn(neuron), run_time=0.8),
         tween(on, 0.0, 1.0, 0.6),
