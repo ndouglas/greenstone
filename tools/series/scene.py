@@ -1,7 +1,11 @@
 """A Manim scene narrated line by line from a video's script."""
 
 import textwrap
+from pathlib import Path
 from typing import Callable
+
+import numpy as np
+from PIL import Image
 
 from manim import DOWN, LEFT, FadeIn, Mobject, Scene, VGroup, config, linear
 
@@ -12,7 +16,7 @@ from series.credits import PAGE_SECONDS, credit_pages
 from series.opening import play_opening
 from series.pacing import STILLNESS, TITLE_HOLD
 from series.script import Video
-from series.title import board_tiles, title_card
+from series.title import section_tiles, title_card
 from series.voice import Voice
 
 
@@ -30,6 +34,9 @@ class NarratedScene(ExactScene):
     require_credits = False
     # Render only this section (for review): the others are passed over unrendered, and the credits skipped.
     only: str | None = None
+    # Where each built beat leaves a still of its last picture, section by section, for the title walls of
+    # later renders (the build sets it); None keeps none.
+    stills: Path | None = None
 
     def setup(self):
         self.camera.background_color = style.BACKGROUND
@@ -68,7 +75,7 @@ class NarratedScene(ExactScene):
         if section.kind == "introduction":
             play_opening(self, self.video.title, str(theme.path()))
         else:
-            card = title_card(section, board_tiles(section) if tiles is None else tiles)
+            card = title_card(section, section_tiles(section, self.stills) if tiles is None else tiles)
             self.add(card)
             self.play(card[0].animate.shift(LEFT * 0.22 * config.frame_width), run_time=TITLE_HOLD, rate_func=linear)
             self.remove(card)
@@ -140,12 +147,22 @@ class NarratedScene(ExactScene):
                 beats[line.id](self)
                 if not self.said or self.said[-1] != line.id:
                     raise ScriptOrderError(f"the beat built for {line.id!r} didn't say it")
+                self.keep_still(section_id, line.id)
                 built = True
             else:
                 if built:  # a placeholder card stands alone: clear what the built beats left
                     self.clear()
                     built = False
                 self.placeholder(line.id)
+
+    def keep_still(self, section_id: str, line_id: str) -> None:
+        """Save the picture on screen as the beat's still, a third of the frame's width."""
+        if self.stills is None:
+            return
+        frame = Image.fromarray(np.asarray(self.renderer.get_frame())).convert("RGB")
+        path = Path(self.stills) / section_id / f"{line_id}.png"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        frame.resize((frame.width // 3, frame.height // 3), Image.Resampling.BOX).save(path)
 
     def play_rest(self, beats: dict[str, Callable[["NarratedScene"], None]]) -> None:
         """The lines outside any section (a closing disclaimer, say), built or placeholders; passed over under

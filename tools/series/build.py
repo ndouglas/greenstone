@@ -134,7 +134,8 @@ def build(name: str, engine: Engine, draft: bool = False, storyboard: bool = Fal
         raise SectionTooLong("; ".join(problems))
     if only is not None and only not in {s.id for s in video.sections}:
         raise ValueError(f"{name} has no section {only!r}; its sections are {', '.join(s.id for s in video.sections)}")
-    cls = type(base.__name__, (base,), {"video": video, "voices": found, "require_credits": True, "only": only})
+    cls = type(base.__name__, (base,), {"video": video, "voices": found, "require_credits": True, "only": only,
+                                        "stills": out / "stills"})
     movie, scene = render(cls, out / "media", draft)
     # The scene's own waits and animations count too: check the lengths it really ran.
     if problems := too_long(video, scene.section_lengths):

@@ -2,8 +2,9 @@
 its own pictures, drifting slowly one way (the chapters design, option A)."""
 
 import textwrap
+from pathlib import Path
 
-from manim import DOWN, LEFT, Group, Mobject, Rectangle, RoundedRectangle, Text, VGroup, config
+from manim import DOWN, LEFT, Group, ImageMobject, Mobject, Rectangle, RoundedRectangle, Text, VGroup, config
 
 from series import style
 from series.ember import serif
@@ -16,16 +17,30 @@ GAP = 0.08
 DIM = 0.55  # how far the wall is darkened toward the ground, so the words lead
 
 
+def board_card(board: str) -> VGroup:
+    """A beat's board as a card, standing in for its picture until it exists."""
+    words = textwrap.shorten(board, 40, placeholder="…")
+    card = RoundedRectangle(corner_radius=0.08, width=2.0, height=1.2, stroke_width=0,
+                            fill_color=style.WARM[0], fill_opacity=0.10)
+    label = serif(textwrap.fill(words, 18), style.ASH, 0.25)
+    return VGroup(card, label.move_to(card))
+
+
 def board_tiles(section: Section) -> list[Mobject]:
     """One tile per beat with a board, standing in for its picture until it exists."""
+    return [board_card(line.board) for line in section.lines if line.board]
+
+
+def section_tiles(section: Section, stills: Path | None) -> list[Mobject]:
+    """One tile per beat: the still its built beat left at its end, the last time it was rendered (in
+    `stills`/section/line.png), or its board card until it has one."""
     tiles = []
     for line in section.lines:
-        if line.board:
-            words = textwrap.shorten(line.board, 40, placeholder="…")
-            card = RoundedRectangle(corner_radius=0.08, width=2.0, height=1.2, stroke_width=0,
-                                    fill_color=style.WARM[0], fill_opacity=0.10)
-            label = serif(textwrap.fill(words, 18), style.ASH, 0.25)
-            tiles.append(VGroup(card, label.move_to(card)))
+        still = Path(stills) / section.id / f"{line.id}.png" if stills is not None else None
+        if still is not None and still.is_file():
+            tiles.append(ImageMobject(str(still)))
+        elif line.board:
+            tiles.append(board_card(line.board))
     return tiles
 
 

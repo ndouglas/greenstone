@@ -326,6 +326,27 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class Stills(unittest.TestCase):
+    def test_built_beats_leave_stills_beside_the_video(self):
+        root, d = videos(scene=False)
+        (d / "script.toml").write_text(sectioned("Short."))
+        (d / "scene.py").write_text('''
+from manim import Dot, FadeIn
+from series.scene import NarratedScene
+
+
+class VideoScene(NarratedScene):
+    def construct(self):
+        for section in self.video.sections:
+            self.play_section(section.id, {"in": lambda scene: scene.say("in", FadeIn(Dot()))})
+        self.roll_credits()
+''')
+        out = Path(tempfile.mkdtemp())
+        with contextlib.redirect_stdout(io.StringIO()):
+            build("001-test", ToneEngine(), draft=True, videos=root, out_root=out)
+        self.assertEqual([p.name for p in (out / "001-test" / "stills").rglob("*.png")], ["in.png"])
+
+
 class Only(unittest.TestCase):
     def test_one_section_renders_alone_under_its_own_name(self):
         root, d = videos(scene=False)

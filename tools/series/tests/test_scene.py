@@ -6,13 +6,14 @@ from pathlib import Path
 
 import numpy as np
 import soundfile
+from PIL import Image
 from manim import Dot, FadeIn, ImageMobject, Text, VGroup, tempconfig
 
 from series import style
 from series.credits import PAGE_SECONDS, credits_seconds
 from series.opening import OPENING_SECONDS, SERIES, SUBTITLE, episode_label
 from series.scene import NarratedScene, ScriptOrderError, StoryboardScene
-from series.title import board_tiles, title_card
+from series.title import board_tiles, section_tiles, title_card
 from series.script import Section, load_video
 from series.voice import Voice
 
@@ -509,6 +510,37 @@ class Sections(unittest.TestCase):
         render(S, d / "media")
         self.assertEqual(built, ["i1"])
         self.assertEqual(placeheld, ["h", "c1", "i2", "c2", "t"])
+
+    def test_a_built_beat_leaves_a_still_for_its_title_wall(self):
+        video, voices, d = chapters()
+
+        class S(NarratedScene):
+            only = "chapter-1"
+
+            def construct(self):
+                def i1(scene):
+                    scene.say("i1", FadeIn(Dot(color="#FF0000").scale(8)))
+                for section_id in BEATS:
+                    self.play_section(section_id, {"i1": i1})
+
+        S.video, S.voices, S.stills = video, voices, d / "stills"
+        render(S, d / "media")
+        still = d / "stills" / "chapter-1" / "i1.png"
+        self.assertTrue(still.is_file())
+        pixels = np.asarray(Image.open(still).convert("RGB")).reshape(-1, 3)
+        self.assertTrue(((pixels[:, 0] > 200) & (pixels[:, 1] < 60)).any())  # the beat's last picture: its dot
+        self.assertFalse((d / "stills" / "chapter-1" / "c1.png").exists())  # a placeholder leaves none
+
+    def test_a_title_wall_shows_the_sections_stills_where_they_exist(self):
+        video, _, d = chapters()
+        section = next(s for s in video.sections if s.id == "chapter-1")
+        (d / "stills" / "chapter-1").mkdir(parents=True)
+        Image.new("RGB", (64, 36), (255, 0, 0)).save(d / "stills" / "chapter-1" / "i1.png")
+        tiles = section_tiles(section, d / "stills")
+        self.assertIsInstance(tiles[0], ImageMobject)  # i1's still
+        self.assertNotIsInstance(tiles[1], ImageMobject)  # c1 has none yet: its board card
+        self.assertEqual(len(tiles), 2)
+        self.assertEqual(len(section_tiles(section, None)), 2)
 
     def test_a_built_beat_must_say_its_line(self):
         video, voices, d = chapters()
