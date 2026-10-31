@@ -326,22 +326,28 @@ impl Bus {
     let ctrl = self.ppu.control_register.read_u8();
     let mask = self.ppu.mask_register.read_u8();
     let status = self.ppu.status_register.read_u8();
-    eprintln!("PPU CTRL:   0x{:02X}  (NMI={}, BG_table={}, SPR_table={})",
+    eprintln!(
+      "PPU CTRL:   0x{:02X}  (NMI={}, BG_table={}, SPR_table={})",
       ctrl,
       if ctrl & 0x80 != 0 { "ON" } else { "off" },
       if ctrl & 0x10 != 0 { "$1000" } else { "$0000" },
-      if ctrl & 0x08 != 0 { "$1000" } else { "$0000" });
-    eprintln!("PPU MASK:   0x{:02X}  (show_bg={}, show_spr={}, left_bg={}, left_spr={})",
+      if ctrl & 0x08 != 0 { "$1000" } else { "$0000" }
+    );
+    eprintln!(
+      "PPU MASK:   0x{:02X}  (show_bg={}, show_spr={}, left_bg={}, left_spr={})",
       mask,
       self.ppu.mask_register.get_show_background_flag(),
       self.ppu.mask_register.get_show_sprites_flag(),
       self.ppu.mask_register.get_show_background_left_flag(),
-      self.ppu.mask_register.get_show_sprites_left_flag());
-    eprintln!("PPU STATUS: 0x{:02X}  (vblank={}, spr0_hit={}, overflow={})",
+      self.ppu.mask_register.get_show_sprites_left_flag()
+    );
+    eprintln!(
+      "PPU STATUS: 0x{:02X}  (vblank={}, spr0_hit={}, overflow={})",
       status,
       self.ppu.status_register.get_vertical_blank_flag(),
       self.ppu.status_register.get_sprite_zero_hit_flag(),
-      self.ppu.status_register.get_sprite_overflow_flag());
+      self.ppu.status_register.get_sprite_overflow_flag()
+    );
     eprintln!("PPU scan/dot: {}/{}", self.ppu.scanline, self.ppu.dot);
 
     // Palette
@@ -396,7 +402,11 @@ impl Bus {
     }
 
     // Count total non-zero nametable entries
-    let nonzero_count = self.ppu.vram.nametables.iter()
+    let nonzero_count = self
+      .ppu
+      .vram
+      .nametables
+      .iter()
       .take(960) // 32*30 = 960 tiles in one nametable
       .filter(|&&t| t != 0)
       .count();
@@ -430,6 +440,42 @@ impl Bus {
       eprint!("{:02X} ", self.memory[i]);
     }
     eprintln!();
+
+    // Framebuffer sample (check what's actually being displayed)
+    let fb = self.ppu.get_framebuffer();
+    if fb.len() >= 3 {
+      // Sample a few pixels: top-left, center of row 10, center of row 14
+      let tl = (fb[0], fb[1], fb[2]);
+      // Sample at title text: 'S' at row 10, col 6 → pixel (52, 83) (middle of 8px tall tile)
+      let text_s = if fb.len() > (83 * 256 + 52) * 3 + 2 {
+        let i = (83 * 256 + 52) * 3;
+        (fb[i], fb[i + 1], fb[i + 2])
+      } else {
+        (0, 0, 0)
+      };
+      // Sample at 'P' of PRESS START: row 14, col 10 → pixel (84, 115)
+      let text_p = if fb.len() > (115 * 256 + 84) * 3 + 2 {
+        let i = (115 * 256 + 84) * 3;
+        (fb[i], fb[i + 1], fb[i + 2])
+      } else {
+        (0, 0, 0)
+      };
+      eprintln!("Framebuffer samples:");
+      eprintln!("  (0,0): RGB({},{},{})", tl.0, tl.1, tl.2);
+      eprintln!("  S@(52,83): RGB({},{},{})", text_s.0, text_s.1, text_s.2);
+      eprintln!("  P@(84,115): RGB({},{},{})", text_p.0, text_p.1, text_p.2);
+      // Count unique colors
+      let mut black_count = 0u32;
+      let mut nonblack_count = 0u32;
+      for pixel in fb.chunks(3) {
+        if pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0 {
+          black_count += 1;
+        } else {
+          nonblack_count += 1;
+        }
+      }
+      eprintln!("  Black pixels: {}, Non-black: {}", black_count, nonblack_count);
+    }
 
     eprintln!("=== END DEBUG DUMP ===");
   }

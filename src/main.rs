@@ -271,8 +271,8 @@ async fn main() {
     // Check if PPU has rendered a new frame
     if check_ppu_frame_ready(cpu) {
       frame_count += 1;
-      // Auto-dump on first frame for debugging
-      if frame_count == 5 {
+      // Auto-dump for debugging
+      if frame_count == 5 || frame_count == 30 {
         eprintln!("--- Auto debug dump (frame {}) ---", frame_count);
         cpu.debug_dump();
       }
