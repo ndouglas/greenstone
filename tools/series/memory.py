@@ -83,6 +83,7 @@ class MemoryGrid(Group):
         self._font = font()
         self._tiles: dict[int, np.ndarray] = {}
         self.shown = np.full(BYTES, -1, dtype=int)
+        self.brightness = 1.0  # the whole grid's, for fading it in: its own drawing keeps it
         w, h = columns * CELL_PX[0], self.rows * CELL_PX[1]
         pixels = np.zeros((h, w, 4), np.uint8)
         pixels[:, :, :3] = rgb(style.ASH).astype(np.uint8)
@@ -109,8 +110,23 @@ class MemoryGrid(Group):
         cw, ch = self.cell_px
         for address in np.flatnonzero(ram != self.shown):
             r, c = divmod(int(address), self.columns)
-            self.image.pixel_array[r * ch:(r + 1) * ch, c * cw:(c + 1) * cw, 3] = self.tile(int(ram[address]))
+            tile = self.tile(int(ram[address]))
+            if self.brightness < 1:
+                tile = np.round(tile * self.brightness).astype(np.uint8)
+            self.image.pixel_array[r * ch:(r + 1) * ch, c * cw:(c + 1) * cw, 3] = tile
         self.shown = ram
+
+    def set_level(self, level: float) -> "MemoryGrid":
+        """Brighten or dim the whole grid (0 to 1), redrawing every cell. (Not set_opacity: on an image that
+        flattens its alpha.)"""
+        self.brightness = level
+        self.shown = np.full(BYTES, -1, dtype=int)
+        self.refresh()
+        return self
+
+    def arrive(self, run_time: float = 1.0) -> Animation:
+        """The grid fading up from nothing, live all the while."""
+        return UpdateFromAlphaFunc(self, lambda m, a: m.set_level(a), run_time=run_time)
 
     def value(self, address: int) -> int:
         """The number a cell shows now."""

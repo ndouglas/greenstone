@@ -30,6 +30,23 @@ class MemoryGridTest(unittest.TestCase):
     def test_the_grid_draws_its_numbers_in_the_bundled_charter(self):
         self.assertEqual(Path(memory.font().path), ember.ROMAN)
 
+    def test_the_grid_fades_in_by_its_own_drawing(self):
+        with tempconfig(FULL_HD):
+            grid = MemoryGrid(Screen(self.recording, 10), width=6.0)
+            full = int(grid.image.pixel_array[:, :, 3].max())
+            self.assertGreater(full, 0)
+            grid.set_level(0.0)
+            self.assertEqual(int(grid.image.pixel_array[:, :, 3].max()), 0)
+            grid.update(1 / 60)  # its own redraw keeps the level
+            self.assertEqual(int(grid.image.pixel_array[:, :, 3].max()), 0)
+            animation = grid.arrive()
+            animation.begin()
+            animation.interpolate(0.5)
+            self.assertAlmostEqual(int(grid.image.pixel_array[:, :, 3].max()), round(full * 0.5), delta=2)
+            animation.interpolate(1.0)
+            animation.finish()
+            self.assertEqual(int(grid.image.pixel_array[:, :, 3].max()), full)
+
     def test_the_grid_holds_every_byte(self):
         with tempconfig(FULL_HD):
             screen = Screen(self.recording, 40, scale=1)
