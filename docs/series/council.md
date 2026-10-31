@@ -90,5 +90,5 @@ substantial, say so; don't invent findings.
   say what problem it solves, and does its conclusion zoom out: from the
   last chapter's X to this one's Y, why it mattered, what's next? Does
   the Introduction set the video up and the Conclusions TL;DR it? Is
-  every section under four minutes? Does anything arrive before it's set
+  every section under four and a half minutes? Does anything arrive before it's set
   up, and does each beat lead to the next?

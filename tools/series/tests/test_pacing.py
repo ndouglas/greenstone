@@ -16,7 +16,7 @@ class Pacing(unittest.TestCase):
     def test_pacing_defaults(self):
         self.assertEqual(pacing.STILLNESS, 2.0)
         self.assertEqual(pacing.TITLE_HOLD, 4.0)
-        self.assertEqual(pacing.SECTION_LIMIT, 240.0)
+        self.assertEqual(pacing.SECTION_LIMIT, 270.0)
         self.assertEqual(pacing.NARRATION_SPEED, 0.9)
 
 
@@ -27,11 +27,11 @@ class Pacing(unittest.TestCase):
     def test_too_long_names_the_section(self):
         sec, _ = section(("a", 1.0, None), title="Is it any good?")
         video = Video(name="v", dir=Path("."), title="t", music=None, lines=sec.lines, citations={}, sections=(sec,))
-        problems = pacing.too_long(video, {"chapter-1": 256.0})
+        problems = pacing.too_long(video, {"chapter-1": 286.0})
         self.assertEqual(len(problems), 1)
         self.assertIn("chapter-1", problems[0])
         self.assertIn("Is it any good?", problems[0])
-        self.assertIn("4:16", problems[0])
+        self.assertIn("4:46", problems[0])
         self.assertEqual(pacing.too_long(video, {"chapter-1": 60.0}), [])
 
     def test_lengths_estimates_every_section(self):

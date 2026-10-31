@@ -286,7 +286,7 @@ class Build(unittest.TestCase):
 
     def test_a_section_over_the_limit_stops_the_build(self):
         root, d = videos(scene=False)
-        (d / "script.toml").write_text(sectioned("x" * 5000))  # ToneEngine: 250 s
+        (d / "script.toml").write_text(sectioned("x" * 5600))  # ToneEngine: 280 s
         out = Path(tempfile.mkdtemp())
         with contextlib.redirect_stdout(io.StringIO()):
             with self.assertRaises(SectionTooLong) as e:

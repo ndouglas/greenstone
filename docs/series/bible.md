@@ -336,7 +336,8 @@ still as a horizon, so every dot's height above it is its total.
   screen (its number and title over its own pictures, dimmed and
   drifting), an introduction beat (the problem it solves) and a
   conclusion beat (from X to Y, why it mattered, what's next). No section
-  runs over four minutes; a longer one is split (Nate, 2026-10-29).
+  runs over four and a half minutes; a longer one is split (Nate,
+  2026-10-29; four minutes until Nate's own reading ran longer, 2026-10-31).
 - A beat is one thought and one picture; two pictures make two beats.
   Every beat is followed by about two seconds of stillness. The script
   loader refuses a beat without a `board`.
@@ -354,7 +355,7 @@ still as a horizon, so every dot's height above it is its total.
    sections of beats (see the Rules).
 3. **Storyboard:** `python -m series.build NNN-slug --storyboard`, with
    title screens, placeholders, real narration, music and credits, to
-   test pacing; the build refuses a section over four minutes. Its
+   test pacing; the build refuses a section over four and a half minutes. Its
    section lengths go in `docs/series/reviews/NNN/pacing.md`.
 4. **Reviews:** the council (`docs/series/council.md`, including the
    continuity and pacing lens, which reads the storyboard's lengths),
