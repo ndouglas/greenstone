@@ -100,7 +100,7 @@ def art():
 
 def choreography() -> list[list[tuple[int, int, str | None]]]:
     """Every frame: each actor's (x, y of its feet, sprite frame or None). Actor 0 is Nate, the rest clips."""
-    stop, turn, look, leap, run, clips = 96, 196, 212, 230, 262, 5
+    stop, turn, look, leap, run, clips = 96, 196, 212, 230, 262, 2  # two clips: with him, seven sprites a line
     frames = []
     for f in range(FRAMES):
         # Nate walks in (a pixel a frame) and stands; the swarm reaches him; he leaps, lands, and runs off.

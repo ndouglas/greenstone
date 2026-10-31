@@ -40,6 +40,18 @@ class ChaseTest(unittest.TestCase):
         self.assertEqual(frames[make.FRAMES - 1][0][2], None)  # he's gone by the end
         self.assertIn("leap", {nate[2] for nate, *_ in frames})
 
+    def test_no_line_ever_needs_more_than_eight_sprites(self):
+        _, metas = make.art()
+        for f, actors in enumerate(make.choreography()):
+            lines = np.zeros(240, int)
+            for x, y, pose in actors:
+                if pose is None:
+                    continue
+                for dy, _, _, dx in metas[pose]:
+                    if 0 <= x + dx < 256:
+                        lines[max(0, y + dy):max(0, y + dy + 8)] += 1
+            self.assertLessEqual(lines.max(), 8, f"frame {f}: {lines.max()} sprites on a line, so some flicker")
+
     @unittest.skipUnless(shutil.which("ca65") and shutil.which("ld65"), "cc65 not installed")
     def test_it_builds_an_nrom_cartridge(self):
         with tempfile.TemporaryDirectory() as tmp:
