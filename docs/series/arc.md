@@ -1,8 +1,32 @@
-# The arc: a draft for discussion
+# The arc
 
-Status: a draft by Claude (2026-10-31) for Nate to push against, not a
-decision. Nothing here changes the curriculum until Nate says so. The six
-ideonomy passes behind it are in `docs/series/ideonomy/000-series-arc.md`.
+Drafted by Claude (2026-10-31) for Nate to push against; Nate's answers
+to its questions are below, and decide what changed. The six ideonomy
+passes behind it are in `docs/series/ideonomy/000-series-arc.md`.
+
+## Decided (Nate, 2026-10-31)
+
+- **What a viewer should feel at the end:** "the overpowering urge to
+  hire me for AI engineering work." The series is evidence of what Nate
+  can do: rigorous, original, ambitious. That raises the bar on depth
+  (already pushing away from ELI5) and on results nobody else has, which
+  the packing strand and the mad-science experiments supply. The lay
+  viewer stays the test for clarity; the person deciding whether to hire
+  Nate is the test for substance.
+- **It doesn't end.** It runs "for as long as we can think up
+  important, interesting, provocative, bizarre, or cursed things to
+  try." Seasons, with no finale; the finale candidates below become
+  season-enders or episodes.
+- **Safety is a thread**, not the destination.
+- **Nate stays offstage** ("none, unless I become a whole lot sexier"):
+  no personal journey on screen. The mirror reads *a player*, not Nate.
+- **ml-mad-science merges into the series:** the series walks that
+  course's spine in public (below).
+- **How it's made is said plainly** in `docs/series/how-we-work.md`,
+  linked from every video's description beside the corrections list:
+  Nate's goal is to understand the ML and interpretability; much of the
+  machinery (animation, tools, much of 2026's emulator code) is built by
+  the AI, and the line between them is stated honestly as vague.
 
 ## Why this exists
 
@@ -62,11 +86,11 @@ does is ours to understand. It also matches the "corrections welcome"
 stance: a person who looks for their own mistakes on camera.
 
 The mirror can be made literal. The empty cell in pass 2's who-reads-whom
-grid is **a network reading a person**: from a recording of Nate playing,
-find which byte he was trying to raise (inverse reinforcement learning,
-ml-mad-science's motivating negation, already sketched small in
-brain-cartridge). The series spends its length reading machines, then a
-machine reads its narrator.
+grid is **a network reading a person**: from a recording of someone
+playing, find which byte they were trying to raise (inverse
+reinforcement learning, ml-mad-science's motivating negation, already
+sketched small in brain-cartridge). The series spends its length reading
+machines, then a machine reads a player.
 
 ## A proposed shape: seasons
 
@@ -97,12 +121,13 @@ viewer can weigh it, as the bible already says) and the series' answer.
 The viewer learns what's left when the key is gone: the tools, the
 controls, the habit of doubting your own microscope.
 
-**Finale: The glass cartridge.** Three candidates, possibly all three:
+**Then more seasons, for as long as there are things worth trying.** Three
+candidates for season-enders, from the passes:
 
 - **The bookend:** a small transformer, and inside it one neuron that
   draws a line. Found, not built, and known only as far as our tools
   reach.
-- **The mirror:** a network reads Nate's play and says what he wanted.
+- **The mirror:** a network reads a player's play and says what they wanted.
 - **The literal title:** a network that runs on the console itself, a
   6502 program beside the game it plays (brain-cartridge's thesis), read
   down to the instruction: every level from "what it computes" to "which
@@ -111,7 +136,7 @@ controls, the habit of doubting your own microscope.
 The trailer then has a clear home: made at the end of season 1, and
 remade each season.
 
-## Where ml-mad-science fits
+## Where ml-mad-science fits (merged: Nate)
 
 The series has been absorbing it already:
 
@@ -137,10 +162,13 @@ Three ways to settle it:
 3. **Separate:** the course stays a private notebook; the series cites
    it when a result travels.
 
-My lean is 2 for the pilot, then decide on 1 once a few segments show
-whether they help a lay viewer or distract them. The anti-goal that
-matters here is "one narrow idea per video": a grid of all of ML is the
-opposite of narrow.
+Nate chose 1. How it lands without breaking "one narrow idea per video":
+each foundation video is one stop, its pressure test is that stop's
+expansion, and the grid grows on screen one row at a time, only as the
+stops surface dimensions (the course's own rule). Question-mark cells are
+candidates for the "bizarre or cursed" episodes between foundations. The
+course's repository keeps its notebooks; the series is where its spine is
+walked.
 
 ## What would change now if this were adopted
 
@@ -152,14 +180,12 @@ Very little, which is the point of deciding early:
 - 003's cheating byte gets one line pointing at the theme (a shortcut we
   allowed).
 - The trailer is made at the end of season 1.
-- Two things become worth starting early, because they take time: the
-  Punch-Out!! standing-still investigation (season 3's natural flaw) and
-  a recording of Nate playing Super Mario Bros. (the mirror needs his
-  real play, and it is cheap to record now).
+- One thing is worth starting early, because it takes time: the
+  Punch-Out!! standing-still investigation (season 3's natural flaw).
 
-## Questions only Nate can answer
+## The questions, as asked
 
-In order of how much they change the shape:
+Answered above, under "Decided". Kept as asked:
 
 1. **At the end, what should a viewer feel?** Hopeful, sober, urgent,
    capable? (The design's promise is "they can take on the world"; the

@@ -19,6 +19,9 @@ BUFF = 0.35
 # Each video's corrections, kept public in the repo; its description links them ("see link in description").
 ERRATA_DIR = Path(__file__).resolve().parents[2] / "docs" / "series" / "errata"
 ERRATA_URL = "https://github.com/ndouglas/greenstone/blob/main/docs/series/errata/{name}.md"
+# What Nate does, what the AI does, and which parts he has made sure he understands.
+HOW_WE_WORK = ERRATA_DIR.parent / "how-we-work.md"
+HOW_WE_WORK_URL = "https://github.com/ndouglas/greenstone/blob/main/docs/series/how-we-work.md"
 DISCLAIMER = "I'm not an expert, just a guy learning this stuff, in public. If you spot a mistake, please tell me."
 
 
@@ -37,7 +40,7 @@ def errata_url(video: Video) -> str:
 
 
 def description(video: Video) -> str:
-    parts = [video.title, f"Corrections: {errata_url(video)}"]
+    parts = [video.title, f"Corrections: {errata_url(video)}\nHow we work: {HOW_WE_WORK_URL}"]
     sources = cited(video)
     if sources:
         parts.append("Sources:\n" + "\n".join(f"- {reference(c)}" for c in sources))

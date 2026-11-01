@@ -127,6 +127,31 @@ first: a shortcut the neuron takes when we let it.
 Real failures we already have to dissect: the Punch-Out!! brains that
 stand still, the bank brain that does nothing, and the cheat.
 
+## The arc
+
+The series' shape (Nate, 2026-10-31; `docs/series/arc.md`):
+
+- **Spine:** the answer key runs out. Every tool is first practised where
+  the game's memory can check it, then the key is taken away a piece at a
+  time (behind the screen, questions the game can't answer, none), so the
+  viewer arrives where real interpretability works.
+- **Theme:** looking into the machine keeps showing us our own
+  instructions. Most of what a network "shouldn't do" is what we asked
+  for.
+- **Seasons, with no end:** *With the key* (the pilot), *The fork* (the
+  packing strand), *Losing the key*, then more, for as long as there are
+  important, interesting, provocative, bizarre or cursed things to try.
+  Video numbers don't change.
+- **Who it's for, at the end:** the lay viewer is the test for clarity;
+  someone deciding whether to hire Nate for AI engineering is the test
+  for substance.
+- **Safety is a thread.** Nate stays offstage.
+- **ml-mad-science is merged in:** each foundation video is one of that
+  course's stops, its pressure test the stop's expansion, the grid of ML
+  growing on screen a row at a time.
+- **How it's made** is public: `docs/series/how-we-work.md`, linked from
+  every description.
+
 ## Curriculum
 
 The pilot arc. It will be revised as ideas are pressure-tested: an idea
