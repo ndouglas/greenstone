@@ -165,6 +165,15 @@ own reservoir brains. Model organisms are woven through all of it.
 
 ## Videos
 
+### The trailer
+
+The pitch for the whole series (can do, can't do, might do, shouldn't
+do; where it's going; why it's slow) is its own trailer, made last and
+remade as the series grows, showing only results and failures the series
+has really produced. It began as 001's opening and moved out so 001 can
+be finished (Nate, 2026-10-31). Its lines and rules are in
+`docs/series/trailer.md`.
+
 ### 001: One neuron draws a line
 
 The script is `tools/series/videos/001-one-neuron/script.toml`; its
