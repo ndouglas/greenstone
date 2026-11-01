@@ -140,6 +140,10 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     control = rules.train("perceptron", z[split], y[split], RATES["perceptron"], PASSES, 0)
     put("control_score", rules.accuracy(control[-1], z[split], y[split]))
     control_settles = bool(np.array_equal(control[-1].w, control[-2].w) and control[-1].b == control[-2].b)
+    # The last pass in which it still moved.
+    moved = [p + 1 for p in range(1, PASSES) if not (np.array_equal(control[p].w, control[p - 1].w)
+                                                       and control[p].b == control[p - 1].b)]
+    put_int("control_last_moving_pass", max(moved, default=1))
 
     # A step BIGGER times bigger: the same mistakes, so the same nudges,
     # bigger; every weight exactly BIGGER times, after every pass.
@@ -198,7 +202,7 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     # (after it's had time to settle, if it could), for every order: the
     # busiest tenth's share of the nudges, and how many of them search's
     # border gets wrong too.
-    shares, wrong_too, never = [], [], []
+    shares, wrong_too, never, wrong_nudges = [], [], [], []
     wrong = rules.says(search, z) != y
     for seed in range(ORDERS):
         counts = rules.nudges(z, y, RATES["perceptron"], PASSES, seed, count_from=PASSES - LAST + 1)
@@ -206,10 +210,14 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         shares.append(counts[busiest].sum() / counts.sum())
         wrong_too.append(wrong[busiest].mean())
         never.append((counts == 0).mean())
+        wrong_nudges.append(counts[wrong].sum() / counts.sum())
     put("busiest_tenth_share_of_nudges", float(np.median(shares)))
     put("busiest_tenth_wrong_for_search", float(np.median(wrong_too)))
     put("wrong_for_search", wrong.mean())
     put("never_nudged", float(np.median(never)))
+    # The plainer measure: the share of all late nudges caused by moments
+    # search's border gets wrong (no cut-off, so no ties to break).
+    put("wrong_share_of_nudges", float(np.median(wrong_nudges)))
     # How close to zero the perceptron's weights stay, in steps, measured
     # just before each nudge of its last passes: near zero, a full-size
     # nudge swings the border a long way.
@@ -247,6 +255,9 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     put_int("biggest_drop", drops.max())
     flat = np.isclose(squared, 1.0)
     put("bowl_flat", flat.mean())
+    # Which borders are flat: those that get most moments wrong, nearly.
+    put("flat_getting_most_wrong", (mistakes[flat] > 0.5).mean())
+    put("sloped_getting_most_wrong", (mistakes[~flat] > 0.5).mean())
     lows = local_lows(squared, flat)
     maps.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(maps, angles=ANGLES, offsets=OFFSETS, mistakes=mistakes, squared=squared,

@@ -33,10 +33,14 @@
   "busiest_tenth_share_of_nudges_spoken": "forty-seven percent",
   "busiest_tenth_wrong_for_search": "71%",
   "busiest_tenth_wrong_for_search_spoken": "seventy-one percent",
+  "control_last_moving_pass": 3,
+  "control_last_moving_pass_spoken": "three",
   "control_score": "100%",
   "control_score_spoken": "one hundred percent",
   "dropped_moments": 30,
   "dropped_moments_spoken": "thirty",
+  "flat_getting_most_wrong": "95%",
+  "flat_getting_most_wrong_spoken": "ninety-five percent",
   "hinge": "88%",
   "hinge_disagrees_with_search": "4%",
   "hinge_disagrees_with_search_spoken": "four percent",
@@ -138,6 +142,8 @@
   "simple_swing_points": 25,
   "simple_swing_points_spoken": "twenty-five",
   "simple_swing_spoken": "twenty-five percent",
+  "sloped_getting_most_wrong": "4%",
+  "sloped_getting_most_wrong_spoken": "four percent",
   "spot_biggest_change": 292,
   "spot_biggest_change_spoken": "two hundred and ninety-two",
   "spots": 845,
@@ -188,5 +194,7 @@
   "train_moments": 16135,
   "train_moments_spoken": "sixteen thousand one hundred and thirty-five",
   "wrong_for_search": "8%",
-  "wrong_for_search_spoken": "eight percent"
+  "wrong_for_search_spoken": "eight percent",
+  "wrong_share_of_nudges": "39%",
+  "wrong_share_of_nudges_spoken": "thirty-nine percent"
 }
