@@ -312,6 +312,23 @@ class Chapters(unittest.TestCase):
         self.assertIn(episode_label(video.title).replace(" ", ""), words)
         self.assertNotIn("Introduction", words)  # the opening replaces the introduction's card
 
+    def test_the_opening_leaves_the_screen_as_it_found_it(self):
+        video, voices, d = chapters()
+        left = []
+
+        class S(NarratedScene):
+            def construct(self):
+                before = list(self.mobjects)
+
+                def after(section_id):
+                    if section_id == "introduction":
+                        left.extend(m for m in self.mobjects if m not in before)
+                say_all(self, after)
+
+        S.video, S.voices = video, voices
+        render(S, d / "media")
+        self.assertEqual(left, [])
+
     def test_a_title_screen_starts_from_a_clear_screen(self):
         video, voices, d = chapters()
         left = []

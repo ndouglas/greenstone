@@ -53,20 +53,18 @@ def play_opening(scene: Scene, title: str, theme: str | None = None) -> None:
     leave the screen as the scene found it."""
     if theme is not None:
         scene.add_sound(theme)
+    found = list(scene.mobjects)
     left, right = CART[0] - W / 2, CART[0] + W / 2
     nodes = [np.array([left + W * f, BEAM_Y + dy, 0]) for f, dy in NODES]
     leave = np.array([right, BEAM_Y, 0])
     path = [np.array([-config.frame_width / 2 - 0.3, BEAM_Y, 0]), np.array([left, BEAM_Y, 0]), *nodes, leave]
-    shown = []
 
     scene.wait(DARK)
     cart = cartridge()
     scene.play(Create(cart, lag_ratio=0.05), run_time=DRAW)
-    shown.append(cart)
     for k, (a, b) in enumerate(zip(path, path[1:])):
         segment = Line(a, b, stroke_color=style.TEXT, stroke_width=1.4)
         scene.play(Create(segment), run_time=BEAM_IN if k == 0 else STEP, rate_func=linear)
-        shown.append(segment)
         if 1 <= k <= len(nodes):  # the light reaches a neuron, which catches it
             level = ValueTracker(0)
             light = glow(NODE_HUES[k - 1], 0.55).move_to(nodes[k - 1])
@@ -74,13 +72,11 @@ def play_opening(scene: Scene, title: str, theme: str | None = None) -> None:
             dot = RoundedRectangle(corner_radius=0.06, width=0.12, height=0.12, stroke_width=0,
                                    fill_color=style.WARM[2], fill_opacity=1).move_to(nodes[k - 1])
             scene.add(light, dot)
-            shown += [light, dot]
             scene.play(level.animate.set_value(1), FadeIn(dot), run_time=CATCH)
     rays = VGroup(*[Line(leave, leave + 9 * np.array([np.cos(a), np.sin(a), 0]), stroke_color=hue, stroke_width=2.2,
                          stroke_opacity=0.85)
                     for hue, a in zip(RAYS, np.radians(np.linspace(SPREAD, -SPREAD, len(RAYS))))])
     scene.play(*[Create(r) for r in rays], run_time=FAN, rate_func=rate_functions.ease_out_cubic)
-    shown.append(rays)
 
     name = serif(SERIES, style.TEXT, 1.05, italic=False).move_to(DOWN * 1.75)
     sub = serif(SUBTITLE, style.ASH, 0.6).next_to(name, DOWN, buff=0.25)
@@ -96,4 +92,5 @@ def play_opening(scene: Scene, title: str, theme: str | None = None) -> None:
     scene.add(cover)
     scene.play(cover.animate.set_fill(opacity=1), run_time=TO_BLACK, rate_func=linear)
     scene.wait(BLACK)
-    scene.remove(*shown, name, sub, episode, cover)
+    # Everything it added, not only what it made: a play adds each animated part on its own (the rays one by one).
+    scene.remove(*[m for m in scene.mobjects if not any(m is f for f in found)])
