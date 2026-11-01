@@ -73,6 +73,8 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         put(f"{rule}_lowest", min(finals))
         put(f"{rule}_highest", max(finals))
         put(f"{rule}_swing", float(np.median([rules.swing(s, LAST) for s in scores])))
+        # The same swing in percentage points, to be said as "points".
+        put_int(f"{rule}_swing_points", 100 * float(np.median([rules.swing(s, LAST) for s in scores])))
         put_int(f"{rule}_turn_degrees", float(np.median([rules.turn(r[-LAST:]) for r in runs])))
         numbers[f"{rule}_one_run"] = [percent(s)[0] for s in scores[0][-LAST:]]
         for n, score in enumerate(scores[0][-LAST:]):

@@ -15,7 +15,7 @@ framing = true
 
 [[section.line]]
 id = "last-time"
-text = "Last time, we built one artificial neuron. It read two numbers from Super Mario Bros.' memory while Mario was in the air, his depth and his falling speed, and answered whether he'd land within the next ten frames."
+text = "Last time, we built one artificial neuron. It read two numbers from Super Mario Bros.' memory while Mario was in the air, his depth and his falling speed, and answered whether he'd land within the next ten frames: a question where both numbers matter, because at the same depth he might be rising or falling."
 board = "001's map: each moment in the air a dot, placed by depth and falling speed, coloured by whether he landed soon"
 cite = ["exp001"]
 
@@ -189,8 +189,8 @@ cite = ["widrow1960", "douglas-linreg", "rescorla1972", "sutton2018"]
 
 [[section.line]]
 id = "settles"
-text = "Nudges sized by the miss get smaller as the line nears where it fits best. One moment at a time, it shivers: its score moved by about {square_swing} over its last ten passes. Averaging every moment's nudge before each step, it stops completely."
-spoken = "Nudges sized by the miss get smaller as the line nears where it fits best. One moment at a time, it shivers: its score moved by about {square_swing_spoken} over its last ten passes. Averaging every moment's nudge before each step, it stops completely."
+text = "Nudges sized by the miss get smaller as the line nears where it fits best. One moment at a time, it shivers: its score moved by about {square_swing_points} percentage point over its last ten passes. Averaging every moment's nudge before each step, it stops completely."
+spoken = "Nudges sized by the miss get smaller as the line nears where it fits best. One moment at a time, it shivers: its score moved by about {square_swing_points_spoken} percentage point over its last ten passes. Averaging every moment's nudge before each step, it stops completely."
 board = "The square trick's border sliding in and trembling; then, averaged, coming to rest"
 cite = ["exp002", "widrow1960"]
 
