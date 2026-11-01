@@ -52,12 +52,6 @@ authors = "R. A. Rescorla and A. R. Wagner"
 year = 1972
 url = "https://www.worldcat.org/search?q=Classical+Conditioning+II+Black+Prokasy"
 
-[sutton2018]
-title = "Reinforcement Learning: An Introduction, 2nd ed., section 14.2.2 (MIT Press)"
-authors = "R. S. Sutton and A. G. Barto"
-year = 2018
-url = "http://incompleteideas.net/book/RLbook2020.pdf"
-
 [hoffgen1995]
 title = "Robust trainability of single neurons. Journal of Computer and System Sciences, 50(1), 114-125"
 authors = "K.-U. Höffgen, H. U. Simon and K. S. Van Horn"
@@ -93,3 +87,9 @@ title = "This video's experiments: results and code (docs/series/games/002.md, t
 authors = "Greenstone"
 year = 2026
 url = "https://github.com/ndouglas/greenstone/blob/main/docs/series/games/002.md"
+
+[sutton1981]
+title = "Toward a modern theory of adaptive networks: Expectation and prediction. Psychological Review, 88(2), 135-170 (\"the Widrow-Hoff rule is essentially identical to the Rescorla-Wagner equation\")"
+authors = "R. S. Sutton and A. G. Barto"
+year = 1981
+url = "https://doi.org/10.1037/0033-295X.88.2.135"

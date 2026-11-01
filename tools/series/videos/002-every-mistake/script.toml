@@ -191,7 +191,7 @@ cite = ["widrow1960", "bishop2006"]
 id = "square-name"
 text = "Bernard Widrow and Ted Hoff published this rule in nineteen sixty. In my own code for fitting a line, it's the square trick. Psychologists later described something essentially the same for how animals learn what to expect."
 board = "The rule's formula beside the perceptron's; then a dog and a bell, the same formula under them"
-cite = ["widrow1960", "douglas-linreg", "rescorla1972", "sutton2018"]
+cite = ["widrow1960", "douglas-linreg", "rescorla1972", "sutton1981"]
 
 [[section.line]]
 id = "settles"
