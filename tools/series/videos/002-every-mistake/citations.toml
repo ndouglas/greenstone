@@ -1,0 +1,95 @@
+[rosenblatt1958]
+title = "The perceptron: A probabilistic model for information storage and organization in the brain. Psychological Review, 65(6), 386-408"
+authors = "F. Rosenblatt"
+year = 1958
+url = "https://doi.org/10.1037/h0042519"
+
+[rosenblatt1962]
+title = "Principles of Neurodynamics: Perceptrons and the Theory of Brain Mechanisms (Spartan Books; Cornell Aeronautical Laboratory report, 1961)"
+authors = "F. Rosenblatt"
+year = 1962
+url = "https://papers.baulab.info/papers/also/Rosenblatt-1961.pdf"
+
+[widrow1960]
+title = "Adaptive switching circuits. IRE WESCON Convention Record, 4, 96-104"
+authors = "B. Widrow and M. E. Hoff"
+year = 1960
+url = "https://isl.stanford.edu/~widrow/publications.html"
+
+[novikoff1962]
+title = "On convergence proofs on perceptrons. Proceedings of the Symposium on the Mathematical Theory of Automata, 12, 615-622"
+authors = "A. B. J. Novikoff"
+year = 1962
+url = "https://apps.dtic.mil/sti/tr/pdf/AD0298258.pdf"
+
+[freund1999]
+title = "Large margin classification using the perceptron algorithm. Machine Learning, 37(3), 277-296"
+authors = "Y. Freund and R. E. Schapire"
+year = 1999
+url = "https://doi.org/10.1023/A:1007662407062"
+
+[minsky1969]
+title = "Perceptrons: An Introduction to Computational Geometry (MIT Press)"
+authors = "M. Minsky and S. Papert"
+year = 1969
+url = "https://mitpress.mit.edu/9780262630221/perceptrons/"
+
+[block1970]
+title = "On the boundedness of an iterative procedure for solving a system of linear inequalities. Proceedings of the AMS, 26(2), 229-235"
+authors = "H. D. Block and S. A. Levin"
+year = 1970
+url = "https://doi.org/10.1090/S0002-9939-1970-0265383-5"
+
+[gallant1990]
+title = "Perceptron-based learning algorithms. IEEE Transactions on Neural Networks, 1(2), 179-191"
+authors = "S. I. Gallant"
+year = 1990
+url = "https://doi.org/10.1109/72.80230"
+
+[rescorla1972]
+title = "A theory of Pavlovian conditioning: Variations in the effectiveness of reinforcement and nonreinforcement. In Classical Conditioning II, 64-99 (Appleton-Century-Crofts)"
+authors = "R. A. Rescorla and A. R. Wagner"
+year = 1972
+url = "https://www.worldcat.org/search?q=Classical+Conditioning+II+Black+Prokasy"
+
+[sutton2018]
+title = "Reinforcement Learning: An Introduction, 2nd ed., section 14.2.2 (MIT Press)"
+authors = "R. S. Sutton and A. G. Barto"
+year = 2018
+url = "http://incompleteideas.net/book/RLbook2020.pdf"
+
+[hoffgen1995]
+title = "Robust trainability of single neurons. Journal of Computer and System Sciences, 50(1), 114-125"
+authors = "K.-U. Höffgen, H. U. Simon and K. S. Van Horn"
+year = 1995
+url = "https://doi.org/10.1006/jcss.1995.1011"
+
+[serrano2021]
+title = "Grokking Machine Learning (Manning), chapters 3 and 5; code at github.com/luisguiserrano/manning"
+authors = "L. Serrano"
+year = 2021
+url = "https://github.com/luisguiserrano/manning"
+
+[douglas-linreg]
+title = "linear-regression: three ways to fit a line, in Rust"
+authors = "Nathan Douglas"
+year = 2026
+url = "https://github.com/ndouglas/linear-regression"
+
+[bishop2006]
+title = "Pattern Recognition and Machine Learning (Springer), sections 4.1.3 (least squares for classification) and 4.1.7 (the perceptron)"
+authors = "C. M. Bishop"
+year = 2006
+url = "https://www.microsoft.com/en-us/research/publication/pattern-recognition-machine-learning/"
+
+[exp001]
+title = "Video 001's experiments: recordings, results and code (docs/series/games/001.md, tools/series/lab/exp001.py)"
+authors = "Greenstone"
+year = 2026
+url = "https://github.com/ndouglas/greenstone/blob/main/docs/series/games/001.md"
+
+[exp002]
+title = "This video's experiments: results and code (docs/series/games/002.md, tools/series/lab/exp002.py, tools/series/lab/rules.py)"
+authors = "Greenstone"
+year = 2026
+url = "https://github.com/ndouglas/greenstone/blob/main/docs/series/games/002.md"

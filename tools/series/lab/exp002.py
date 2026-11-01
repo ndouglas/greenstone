@@ -48,12 +48,18 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     def put(name: str, value: float) -> None:
         numbers[name], numbers[name + "_spoken"] = percent(value)
 
+    def put_int(name: str, value: float) -> None:
+        """A whole number (halves round up), and how it's said."""
+        n = int(np.floor(value + 0.5))
+        numbers[name], numbers[name + "_spoken"] = n, spoken_number(n)
+
     x, y = land_data([load(data_root / "smb1" / s) for s in ("1", "2")])
     xt, yt = land_data([load(data_root / "smb1" / "3")])
     # Standardized on the moments learned from, so one step size suits both inputs.
     mean, scale = x.mean(0), x.std(0)
     z, zt = (x - mean) / scale, (xt - mean) / scale
-    numbers["train_moments"], numbers["test_moments"] = int(len(y)), int(len(yt))
+    put_int("train_moments", len(y))
+    put_int("test_moments", len(yt))
     put("lands_soon_rate", yt.mean())
 
     w, b, _ = best_line(x, y)
@@ -67,8 +73,10 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         put(f"{rule}_lowest", min(finals))
         put(f"{rule}_highest", max(finals))
         put(f"{rule}_swing", float(np.median([rules.swing(s, LAST) for s in scores])))
-        numbers[f"{rule}_turn_degrees"] = round(float(np.median([rules.turn(r[-LAST:]) for r in runs])), 1)
+        put_int(f"{rule}_turn_degrees", float(np.median([rules.turn(r[-LAST:]) for r in runs])))
         numbers[f"{rule}_one_run"] = [percent(s)[0] for s in scores[0][-LAST:]]
+        for n, score in enumerate(scores[0][-LAST:]):
+            put(f"{rule}_one_run_{PASSES - LAST + n + 1}", score)
 
     # A tiny change: leave out a few moments, keep everything else the same.
     finals = []
@@ -78,7 +86,7 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         finals.append(rules.accuracy(rules.train("perceptron", z[keep], y[keep], RATES["perceptron"], PASSES, 0)[-1], zt, yt))
     put("perceptron_dropped_lowest", min(finals))
     put("perceptron_dropped_highest", max(finals))
-    numbers["dropped_moments"], numbers["dropped_moments_spoken"] = DROPS, spoken_number(DROPS)
+    put_int("dropped_moments", DROPS)
 
     small = rules.train("perceptron", z, y, 0.01, 3, 0)
     large = rules.train("perceptron", z, y, 1.0, 3, 0)
@@ -93,8 +101,8 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     # How differently the settled borders answer from search's, and how far they lean from it.
     put("batch_square_disagrees_with_search", rules.disagreement(batch, search, zt))
     put("logistic_disagrees_with_search", rules.disagreement(logistic, search, zt))
-    numbers["batch_square_lean_from_search_degrees"] = round(rules.turn([batch, search]), 1)
-    numbers["logistic_lean_from_search_degrees"] = round(rules.turn([logistic, search]), 1)
+    put_int("batch_square_lean_from_search_degrees", rules.turn([batch, search]))
+    put_int("logistic_lean_from_search_degrees", rules.turn([logistic, search]))
     # Does the square trick's shortfall depend on the step size chosen?
     for rate in (0.0003, 0.003):
         finals = [rules.accuracy(rules.train("square", z, y, rate, PASSES, s)[-1], zt, yt) for s in range(3)]
@@ -137,7 +145,7 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     bowl_bottom = rules.Line(np.array([np.cos(ANGLES[k]), np.sin(ANGLES[k])]), float(OFFSETS[l]))
     put("stairs_bottom", rules.accuracy(stairs_bottom, zt, yt))
     put("bowl_bottom", rules.accuracy(bowl_bottom, zt, yt))
-    numbers["bottoms_apart_degrees"] = round(rules.turn([stairs_bottom, bowl_bottom]), 1)
+    put_int("bottoms_apart_degrees", rules.turn([stairs_bottom, bowl_bottom]))
     # How flat the staircase is: the share of neighbouring borders (one
     # offset step apart) with exactly the same number of mistakes.
     put("stairs_flat", (np.diff(mistakes, axis=1) == 0).mean())

@@ -1,0 +1,323 @@
+title = "002: Every mistake moves the line"
+
+# Draft 1 (Claude, 2026-11-01), for Nate to push against. Built from
+# docs/series/games/002.md and docs/series/ideonomy/002-every-mistake.md.
+
+[[section]]
+kind = "introduction"
+title = "Introduction"
+
+[[section.line]]
+id = "about"
+text = "This is a series about what really goes on inside neural networks, worked out on games for the Nintendo Entertainment System."
+board = "The series' NES, then Super Mario Bros. on its screen"
+framing = true
+
+[[section.line]]
+id = "last-time"
+text = "Last time, we built one artificial neuron. It read two numbers from Super Mario Bros.' memory while Mario was in the air, his depth and his falling speed, and answered whether he'd land within the next ten frames."
+board = "001's map: each moment in the air a dot, placed by depth and falling speed, coloured by whether he landed soon"
+cite = ["exp001"]
+
+[[section.line]]
+id = "last-time-2"
+text = "Its answer was a straight border across a map of those two numbers. We chose the border by trying every one we could and keeping the best, which was right {search} of the time on play it hadn't seen."
+spoken = "Its answer was a straight border across a map of those two numbers. We chose the border by trying every one we could and keeping the best, which was right {search_spoken} of the time on play it hadn't seen."
+board = "Borders sweep across the map, one after another; the best one stays, its bar at {search}"
+cite = ["exp001", "exp002"]
+
+[[section.line]]
+id = "too-many"
+text = "That only works because there were two numbers. A neuron reading more of the console's two thousand and forty-eight would have far too many borders to try, and in general, no known method finds the one with the fewest mistakes quickly."
+board = "The map's two axes multiply into a crowd of axes; the sweeping borders blur into too many to draw"
+cite = ["hoffgen1995"]
+
+[[section.line]]
+id = "learn"
+text = "So a neuron has to find its own border: start anywhere, and move the line a little every time it makes a mistake."
+board = "A border appears at random on the map and twitches toward a wrong dot"
+cite = ["rosenblatt1958"]
+
+[[section.line]]
+id = "this-video"
+text = "This video watches that happen, on the same question, and finds out why it never quite settles down, and what learning does about that."
+board = "The twitching border, never still"
+framing = true
+
+[[section]]
+kind = "chapter"
+title = "Every mistake moves the line"
+
+[[section.line]]
+id = "rule-intro"
+role = "intro"
+text = "First, the rule. The neuron gets to see one moment at a time, and the answer key says whether Mario really landed soon."
+board = "One dot lights up on the map; beside it, the answer key's verdict"
+cite = ["rosenblatt1958", "exp001"]
+
+[[section.line]]
+id = "rule-right"
+text = "If the neuron's answer was right, nothing changes."
+board = "The dot is on the right side; the border stays still"
+cite = ["rosenblatt1958", "serrano2021"]
+
+[[section.line]]
+id = "rule-wrong"
+text = "If it was wrong, each weight moves a small step, by its input's number: up if the answer should have been yes, down if it should have been no. The bias moves one small step the same way."
+board = "The formula from 001: the weights' dials turn by the wrong dot's numbers, the bias by one step"
+cite = ["rosenblatt1958", "serrano2021"]
+
+[[section.line]]
+id = "rule-why"
+text = "Moving that way always pushes that moment's total toward the side it belongs on. The border swings toward the dot, and may jump past it."
+board = "The wrong dot's total rises toward zero; the border tilts toward the dot and over it"
+cite = ["bishop2006"]
+
+[[section.line]]
+id = "rule-name"
+text = "That's the perceptron's learning rule, from Frank Rosenblatt in nineteen fifty-eight. His Mark One Perceptron machine learned it with electric motors turning dials."
+board = "A photo-like drawing of the Mark I Perceptron's racks of motor-driven dials, beside the formula's dials"
+cite = ["rosenblatt1958", "rosenblatt1962"]
+
+[[section.line]]
+id = "step-size"
+text = "You might expect the size of the step to matter. Starting from zero, it doesn't: a bigger step scales every weight and the bias by the same factor, and as we saw last time, that doesn't move the border at all."
+board = "Two runs side by side, one with ten times the step: their weights differ, their borders are the same line"
+cite = ["exp002", "exp001"]
+
+[[section.line]]
+id = "guarantee"
+text = "If some straight border puts every yes on one side and every no on the other, the rule is proven to stop, after a limited number of mistakes."
+board = "A tidy cloud of two colours with a gap between; the border twitches a few times and stops"
+cite = ["novikoff1962", "freund1999"]
+
+[[section.line]]
+id = "rule-outro"
+role = "conclusion"
+text = "So we've gone from choosing the border ourselves to a rule that moves it, one mistake at a time. But Mario's moments aren't a tidy cloud."
+board = "The tidy cloud becomes Mario's real map, its colours overlapping near the border"
+cite = ["exp001"]
+
+[[section]]
+kind = "chapter"
+title = "It never settles"
+
+[[section.line]]
+id = "never-intro"
+role = "intro"
+text = "No straight border gets every one of Mario's moments right. The best we found is right {search} of the time, and wrong on the rest."
+spoken = "No straight border gets every one of Mario's moments right. The best we found is right {search_spoken} of the time, and wrong on the rest."
+board = "The best border on Mario's map, its wrong dots ringed"
+cite = ["exp001", "exp002"]
+
+[[section.line]]
+id = "always-wrong"
+text = "So wherever the line goes, some moment is wrong, and the rule moves it again."
+board = "The border nudges at a ringed dot, and a new dot becomes wrong"
+cite = ["rosenblatt1958", "exp002"]
+
+[[section.line]]
+id = "one-run"
+text = "We let it learn from {train_moments} moments in the air, visiting each once per pass in a shuffled order, and scored it after every pass on play it hadn't learned from. After passes twenty-one to thirty: {perceptron_one_run_21}, {perceptron_one_run_22}, {perceptron_one_run_23}, {perceptron_one_run_24}, {perceptron_one_run_25}, {perceptron_one_run_26}, {perceptron_one_run_27}, {perceptron_one_run_28}, {perceptron_one_run_29}, {perceptron_one_run_30}."
+spoken = "We let it learn from {train_moments_spoken} moments in the air, visiting each once per pass in a shuffled order, and scored it after every pass on play it hadn't learned from. After passes twenty-one to thirty: {perceptron_one_run_21_spoken}, {perceptron_one_run_22_spoken}, {perceptron_one_run_23_spoken}, {perceptron_one_run_24_spoken}, {perceptron_one_run_25_spoken}, {perceptron_one_run_26_spoken}, {perceptron_one_run_27_spoken}, {perceptron_one_run_28_spoken}, {perceptron_one_run_29_spoken}, {perceptron_one_run_30_spoken}."
+board = "The border swinging across the map pass after pass; a score bar jumping with it"
+cite = ["exp002"]
+
+[[section.line]]
+id = "swing"
+text = "Over those last ten passes, the border turned through about {perceptron_turn_degrees} degrees."
+spoken = "Over those last ten passes, the border turned through about {perceptron_turn_degrees_spoken} degrees."
+board = "The last ten borders drawn over each other, fanning across the map"
+cite = ["exp002"]
+
+[[section.line]]
+id = "order"
+text = "Where it stops depends on chance. With only the order of the moments changed, it ended anywhere from {perceptron_lowest} to {perceptron_highest}. Leaving out {dropped_moments} moments of the {train_moments}, it ended anywhere from {perceptron_dropped_lowest} to {perceptron_dropped_highest}."
+spoken = "Where it stops depends on chance. With only the order of the moments changed, it ended anywhere from {perceptron_lowest_spoken} to {perceptron_highest_spoken}. Leaving out {dropped_moments_spoken} moments of the {train_moments_spoken}, it ended anywhere from {perceptron_dropped_lowest_spoken} to {perceptron_dropped_highest_spoken}."
+board = "Ten final borders from ten orders, scattered; their bars spread from {perceptron_lowest} to {perceptron_highest}"
+cite = ["exp002"]
+
+[[section.line]]
+id = "bounded"
+text = "This was known early on: when no line splits the answers cleanly, the weights stay within bounds, but never stop moving."
+board = "The weights' dials wandering inside a ring, never leaving it, never still"
+cite = ["minsky1969", "block1970"]
+
+[[section.line]]
+id = "who-moves-it"
+text = "Looking inside the learning shows who keeps it moving. The busiest tenth of the moments caused {busiest_tenth_share_of_nudges} of all its nudges, and {never_nudged} of moments never caused one."
+spoken = "Looking inside the learning shows who keeps it moving. The busiest tenth of the moments caused {busiest_tenth_share_of_nudges_spoken} of all its nudges, and {never_nudged_spoken} of moments never caused one."
+board = "Each dot sized by how many nudges it caused: a band of big dots along the border, small ones far from it"
+cite = ["exp002"]
+
+[[section.line]]
+id = "remember"
+text = "One cheap fix is to remember: keep the best line it passed through, or the average of all of them. They scored {averaged_lowest} to {pocket_highest}, close to the {search} of the best line, but the rule itself is still moving."
+spoken = "One cheap fix is to remember: keep the best line it passed through, or the average of all of them. They scored {averaged_lowest_spoken} to {pocket_highest_spoken}, close to the {search_spoken} of the best line, but the rule itself is still moving."
+board = "The swinging border, with a still copy left behind where it scored best"
+cite = ["gallant1990", "freund1999", "exp002"]
+
+[[section.line]]
+id = "never-outro"
+role = "conclusion"
+text = "So the perceptron's rule aims at the right thing, fewer mistakes, but on real play it can't stop. It reacts only to being wrong, and here something is always wrong."
+board = "The border still swinging, never still"
+cite = ["exp002", "block1970"]
+
+[[section]]
+kind = "chapter"
+title = "How wrong was it?"
+
+[[section.line]]
+id = "square-intro"
+role = "intro"
+text = "The perceptron's rule takes the same size of step for a moment that was barely wrong as for one that was wildly wrong. A different rule asks how wrong."
+board = "Two wrong dots, one near the border and one far; the same size of nudge for each"
+cite = ["rosenblatt1958", "widrow1960"]
+
+[[section.line]]
+id = "target"
+text = "Give every moment a target for the neuron's total: plus one for yes, minus one for no. After every moment, right or wrong, each weight moves by its input times how far the total missed its target."
+board = "The total's dial with a target mark at plus one; the gap between them sets the size of the nudge"
+cite = ["widrow1960", "bishop2006"]
+
+[[section.line]]
+id = "square-name"
+text = "Bernard Widrow and Ted Hoff published this rule in nineteen sixty. In my own code for fitting a line, it's the square trick. Psychologists later described something essentially the same for how animals learn what to expect."
+board = "The rule's formula beside the perceptron's; then a dog and a bell, the same formula under them"
+cite = ["widrow1960", "douglas-linreg", "rescorla1972", "sutton2018"]
+
+[[section.line]]
+id = "settles"
+text = "Nudges sized by the miss get smaller as the line nears where it fits best. One moment at a time, it shivers: its score moved by about {square_swing} over its last ten passes. Averaging every moment's nudge before each step, it stops completely."
+spoken = "Nudges sized by the miss get smaller as the line nears where it fits best. One moment at a time, it shivers: its score moved by about {square_swing_spoken} over its last ten passes. Averaging every moment's nudge before each step, it stops completely."
+board = "The square trick's border sliding in and trembling; then, averaged, coming to rest"
+cite = ["exp002", "widrow1960"]
+
+[[section.line]]
+id = "short"
+text = "But where it stops scores {batch_square}, not {search}. Its border leans about {batch_square_lean_from_search_degrees} degrees away from the best one, and answers differently on {batch_square_disagrees_with_search} of moments."
+spoken = "But where it stops scores {batch_square_spoken}, not {search_spoken}. Its border leans about {batch_square_lean_from_search_degrees_spoken} degrees away from the best one, and answers differently on {batch_square_disagrees_with_search_spoken} of moments."
+board = "The square trick's resting border and the best border on the same map, the wedge between them shaded"
+cite = ["exp002"]
+
+[[section.line]]
+id = "too-right"
+text = "The reason is in the rule. A moment answered right, but with a total far past its target, still counts as a miss, and still pulls the line toward it."
+board = "A dot deep on the correct side, its total overshooting the target; a thread pulls the border toward it"
+cite = ["bishop2006", "widrow1960"]
+
+[[section.line]]
+id = "too-right-2"
+text = "{right_by_too_much} of Mario's moments were right by too much like that, and {right_by_too_much_rising} of those were moments when he was still rising."
+spoken = "{right_by_too_much_spoken} of Mario's moments were right by too much like that, and {right_by_too_much_rising_spoken} of those were moments when he was still rising."
+board = "The overshooting dots lit: nearly all in the rising half of the map"
+cite = ["exp002"]
+
+[[section.line]]
+id = "square-outro"
+role = "conclusion"
+text = "So the square trick settles, but on something slightly different from what we wanted. It fits the targets, which isn't quite the same as making the fewest mistakes."
+board = "The two borders, one still and one swinging, side by side"
+cite = ["exp002", "bishop2006"]
+
+[[section]]
+kind = "chapter"
+title = "A staircase and a bowl"
+
+[[section.line]]
+id = "map-intro"
+role = "intro"
+text = "One picture shows why each rule does what it does. Every possible border can be drawn as a single point on a new map."
+board = "A border on Mario's map shrinks into a single dot on a blank square"
+framing = true
+
+[[section.line]]
+id = "map-axes"
+text = "Because scaling the weights doesn't move a border, all that matters is which way it faces and how far it sits from the middle. Those are the new map's two directions."
+board = "The border turning (across the new map) and sliding (up it); its dot moving to match"
+cite = ["exp001", "exp002"]
+
+[[section.line]]
+id = "staircase"
+text = "Colour each point by how many mistakes that border makes, and the map is a staircase: flat ledges with sudden drops. The count only changes when the border crosses a moment, and since the game stores depth and speed as whole numbers, many moments share a spot, so some drops are big."
+board = "The mistakes map, shaded by count: hard-edged terraces, a narrow best ledge with a cliff along one side"
+cite = ["exp002", "exp001"]
+
+[[section.line]]
+id = "no-slope"
+text = "On a ledge, nothing says which way is better, so there's no slope for a rule to follow. The perceptron's rule doesn't try: all it has to go on is the one moment it just got wrong."
+board = "A marker hops from ledge to ledge across the terraces, never resting"
+cite = ["exp002", "bishop2006"]
+
+[[section.line]]
+id = "bowl"
+text = "Colour the same map by the square trick's misses instead, and it's a smooth bowl, sloping everywhere toward one lowest point. Step downhill from anywhere and you get there."
+board = "The squared-miss map: a smooth glow toward one bottom; a marker rolls in and stops"
+cite = ["exp002", "bishop2006"]
+
+[[section.line]]
+id = "two-bottoms"
+text = "But the bottom of the bowl and the lowest ledge of the staircase are in different places, about {bottoms_apart_degrees} degrees apart, scoring {bowl_bottom} and {stairs_bottom}."
+spoken = "But the bottom of the bowl and the lowest ledge of the staircase are in different places, about {bottoms_apart_degrees_spoken} degrees apart, scoring {bowl_bottom_spoken} and {stairs_bottom_spoken}."
+board = "The two maps laid over each other: the bowl's bottom and the staircase's lowest ledge, marked apart"
+cite = ["exp002"]
+
+[[section.line]]
+id = "not-batching"
+text = "It isn't about how many moments are used at once. Averaging every mistake's nudge into one step, the perceptron's rule still swung between {batch_perceptron_lowest} and {batch_perceptron_highest}. A staircase has no slope, however many moments you use to look for one."
+spoken = "It isn't about how many moments are used at once. Averaging every mistake's nudge into one step, the perceptron's rule still swung between {batch_perceptron_lowest_spoken} and {batch_perceptron_highest_spoken}. A staircase has no slope, however many moments you use to look for one."
+board = "The marker on the staircase, now moved by many dots at once, still hopping"
+cite = ["exp002"]
+
+[[section.line]]
+id = "why-bowls"
+text = "With two numbers, we could search the staircase ourselves. With many, nobody can, so learning almost always aims at a smooth score with a slope instead, and accepts that its lowest point isn't quite the lowest ledge."
+board = "The staircase map fades into fog; the bowl stays clear"
+cite = ["hoffgen1995", "bishop2006"]
+
+[[section.line]]
+id = "map-outro"
+role = "conclusion"
+text = "So the choice was never between a good rule and a bad one. One aims at the right thing and can't stop; the other stops, but aims slightly off."
+board = "Staircase and bowl side by side, each with its marker"
+cite = ["exp002"]
+
+[[section]]
+kind = "conclusions"
+title = "Conclusions"
+
+[[section.line]]
+id = "tldr"
+text = "In short: a neuron can learn its own border by moving it after each mistake. On Mario's moments, which no line splits cleanly, that rule never settles: the same learning ended anywhere from {perceptron_lowest} to {perceptron_highest}, depending only on the order it saw them."
+spoken = "In short: a neuron can learn its own border by moving it after each mistake. On Mario's moments, which no line splits cleanly, that rule never settles: the same learning ended anywhere from {perceptron_lowest_spoken} to {perceptron_highest_spoken}, depending only on the order it saw them."
+board = "The swinging border and its spread of scores"
+cite = ["rosenblatt1958", "exp002"]
+pause = 3.0
+
+[[section.line]]
+id = "tldr-2"
+text = "Moving it by how wrong each moment was settles, at {batch_square}, because its misses form a bowl with a slope. It aims at fitting targets, not at fewest mistakes, so it stops short of the best line's {search}."
+spoken = "Moving it by how wrong each moment was settles, at {batch_square_spoken}, because its misses form a bowl with a slope. It aims at fitting targets, not at fewest mistakes, so it stops short of the best line's {search_spoken}."
+board = "The bowl and the staircase, their bottoms apart"
+cite = ["widrow1960", "exp002"]
+pause = 3.0
+
+[[section.line]]
+id = "inside"
+text = "Even for one neuron, the line we end up with is one stop on a walk that could have stopped somewhere else. That's worth remembering whenever we look inside a network that learned."
+board = "The fan of borders from many runs, one of them picked out"
+cite = ["exp002"]
+
+[[section.line]]
+id = "next"
+text = "Next time, the line meets data that breaks the assumptions a single neuron quietly makes, including one byte that lets it cheat."
+board = "The border on a new map, with a suspiciously perfect split"
+framing = true
+
+[[line]]
+id = "disclaimer"
+text = "I'm not an expert, just someone learning this in public. If you spot a mistake, please tell me."
+board = "Plain card"
+framing = true
+closing = true
