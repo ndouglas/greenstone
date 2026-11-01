@@ -50,31 +50,49 @@ def step(rule: str, line: Line, x: np.ndarray, y: int, rate: float) -> Line:
     raise ValueError(rule)
 
 
-def train(rule: str, x: np.ndarray, y: np.ndarray, rate: float, passes: int, seed: int) -> list[Line]:
+def train(rule: str, x: np.ndarray, y: np.ndarray, rate: float, passes: int, seed: int,
+          skip: np.ndarray | None = None) -> list[Line]:
     """Start at zero; each pass visits every moment once, in a shuffled
-    order. Returns the line after each pass."""
+    order. Moments marked in `skip` are left out without changing the
+    order the others come in. Returns the line after each pass."""
     rng = np.random.default_rng(seed)
     line = Line(np.zeros(x.shape[1]), 0.0)
     after = []
     for _ in range(passes):
         for i in rng.permutation(len(y)):
-            line = step(rule, line, x[i], int(y[i]), rate)
+            if skip is None or not skip[i]:
+                line = step(rule, line, x[i], int(y[i]), rate)
         after.append(line)
     return after
 
 
-
-def nudges(x: np.ndarray, y: np.ndarray, rate: float, passes: int, seed: int) -> np.ndarray:
+def nudges(x: np.ndarray, y: np.ndarray, rate: float, passes: int, seed: int, count_from: int = 1) -> np.ndarray:
     """How many times each moment moved the perceptron's line, over a run
-    like `train`'s."""
+    like `train`'s, counting from pass `count_from` (1 is the first)."""
     rng = np.random.default_rng(seed)
     line, counts = Line(np.zeros(x.shape[1]), 0.0), np.zeros(len(y), dtype=int)
-    for _ in range(passes):
+    for p in range(1, passes + 1):
         for i in rng.permutation(len(y)):
             after = step("perceptron", line, x[i], int(y[i]), rate)
-            counts[i] += after is not line
+            if p >= count_from:
+                counts[i] += after is not line
             line = after
     return counts
+
+
+def sizes_before_nudges(x: np.ndarray, y: np.ndarray, rate: float, passes: int, seed: int,
+                        count_from: int = 1) -> np.ndarray:
+    """The size of the perceptron's weights and bias, in steps, just
+    before each nudge from pass `count_from` on, over a run like `train`'s."""
+    rng = np.random.default_rng(seed)
+    line, sizes = Line(np.zeros(x.shape[1]), 0.0), []
+    for p in range(1, passes + 1):
+        for i in rng.permutation(len(y)):
+            after = step("perceptron", line, x[i], int(y[i]), rate)
+            if after is not line and p >= count_from:
+                sizes.append(np.linalg.norm(np.r_[line.w, line.b]) / rate)
+            line = after
+    return np.array(sizes)
 
 
 def averaged_perceptron(x: np.ndarray, y: np.ndarray, rate: float, passes: int, seed: int) -> Line:
@@ -116,6 +134,19 @@ def batch_square(x: np.ndarray, y: np.ndarray, rate: float, steps: int) -> Line:
     xb, v = _with_bias(x), np.zeros(x.shape[1] + 1)
     for _ in range(steps):
         v = v + rate * xb.T @ (t - xb @ v) / len(t)
+    return Line(v[:-1], float(v[-1]))
+
+
+def batch_squared_hinge(x: np.ndarray, y: np.ndarray, rate: float, steps: int, start: Line | None = None) -> Line:
+    """The batch square trick, except that a moment already past its
+    target pulls nothing: no pull for being right by too much."""
+    t = np.where(y == 1, CODES[1], CODES[0])
+    xb = _with_bias(x)
+    v = np.zeros(x.shape[1] + 1) if start is None else np.r_[start.w, start.b]
+    for _ in range(steps):
+        out = xb @ v
+        short = t * out < 1
+        v = v + rate * xb[short].T @ (t[short] - out[short]) / len(t)
     return Line(v[:-1], float(v[-1]))
 
 

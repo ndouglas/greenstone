@@ -22,12 +22,6 @@ authors = "A. B. J. Novikoff"
 year = 1962
 url = "https://apps.dtic.mil/sti/tr/pdf/AD0298258.pdf"
 
-[freund1999]
-title = "Large margin classification using the perceptron algorithm. Machine Learning, 37(3), 277-296"
-authors = "Y. Freund and R. E. Schapire"
-year = 1999
-url = "https://doi.org/10.1023/A:1007662407062"
-
 [minsky1969]
 title = "Perceptrons: An Introduction to Computational Geometry (MIT Press)"
 authors = "M. Minsky and S. Papert"

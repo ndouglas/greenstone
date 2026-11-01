@@ -53,8 +53,46 @@ class PerMoment(unittest.TestCase):
         np.testing.assert_array_equal(a[-1].w, b[-1].w)
         self.assertFalse(np.allclose(a[-1].w, c[-1].w))
 
+    def test_leaving_moments_out_keeps_everyone_elses_order(self):
+        x, y = mostly(200)
+        none = np.zeros(len(y), bool)
+        np.testing.assert_array_equal(rules.train("perceptron", x, y, 0.1, 3, 5, skip=none)[-1].w,
+                                      rules.train("perceptron", x, y, 0.1, 3, 5)[-1].w)
+        # Skipping a moment is the same as visiting it when it can't move the line.
+        skip = np.zeros(len(y), bool)
+        skip[7] = True
+        by_hand, line = rules.Line(np.zeros(2), 0.0), None
+        rng = np.random.default_rng(5)
+        for _ in range(3):
+            for i in rng.permutation(len(y)):
+                if i != 7:
+                    by_hand = rules.step("perceptron", by_hand, x[i], int(y[i]), 0.1)
+        np.testing.assert_array_equal(rules.train("perceptron", x, y, 0.1, 3, 5, skip=skip)[-1].w, by_hand.w)
+
+    def test_nudges_can_be_counted_from_a_later_pass(self):
+        x, y = mostly()
+        every = rules.nudges(x, y, rate=0.1, passes=6, seed=0)
+        late = rules.nudges(x, y, rate=0.1, passes=6, seed=0, count_from=4)
+        self.assertLess(late.sum(), every.sum())
+        self.assertTrue((late <= every).all())
+
+    def test_sizes_are_measured_in_steps_before_each_nudge(self):
+        x = np.array([[1.0, 0.0]])
+        y = np.array([1])
+        # From zero the first visit is a mistake (the total isn't above
+        # zero): one nudge, taken at size zero; then it's right.
+        self.assertEqual(rules.sizes_before_nudges(x, y, rate=0.5, passes=2, seed=0).tolist(), [0.0])
+
 
 class Batch(unittest.TestCase):
+    def test_no_pull_past_the_target(self):
+        x = np.array([[3.0, 0.0], [-3.0, 0.0]])
+        y = np.array([1, 0])
+        # Both moments are already past their targets with w = (1, 0): nothing moves.
+        line = rules.batch_squared_hinge(x, y, rate=0.1, steps=5, start=rules.Line(np.array([1.0, 0.0]), 0.0))
+        np.testing.assert_array_equal(line.w, [1.0, 0.0])
+        self.assertEqual(line.b, 0.0)
+
     def test_the_batch_square_trick_reaches_least_squares(self):
         x, y = mostly()
         line = rules.batch_square(x, y, rate=0.1, steps=3000)
@@ -156,6 +194,8 @@ class Experiment(unittest.TestCase):
         for failing in ((False, True, True), (True, False, True), (True, True, False)):
             with self.assertRaises(AssertionError):
                 check_claims(*failing)
+        with self.assertRaises(AssertionError):
+            check_claims(True, True, True, control_settles=False)
 
 
 if __name__ == "__main__":

@@ -275,6 +275,15 @@ reported as "84%" (as 001's notes once did) hides that the next pass
 might have said 73%. That's the lesson for interpretability later: a
 network is one stop on a walk, and the walk could have stopped elsewhere.
 
+## Corrected after council round 1
+
+Pass 2's staircase was the right picture of what we *want*, but not of
+what the perceptron does: it follows its own sloped score (how far its
+wrong moments are on the wrong side), lowest at zero weights on data no
+line splits. And "right by too much" (pass 3) isn't the cause of the
+square trick's shortfall: a rule without that pull lands in the same
+place. See `games/002.md` and `reviews/002/round-1.md`.
+
 ## What the passes add up to
 
 - **A correction, first.** Batching isn't what makes the square trick

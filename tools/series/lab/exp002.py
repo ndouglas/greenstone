@@ -30,7 +30,7 @@ RATES = {"simple": 0.01, "perceptron": 0.01, "square": 0.001}
 
 
 def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes_agree: bool,
-                 bowl_is_least_squares: bool = True) -> None:
+                 bowl_is_least_squares: bool = True, control_settles: bool = True) -> None:
     """Things the script will rest on; refuse to write numbers if any fails."""
     if not perceptron_rate_free:
         raise AssertionError("the perceptron's border changed with its step size")
@@ -40,6 +40,8 @@ def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes
         raise AssertionError("the square trick's border depends on how the answers are coded")
     if not bowl_is_least_squares:
         raise AssertionError("the bowl's lowest point isn't the least-squares border")
+    if not control_settles:
+        raise AssertionError("the perceptron didn't stop on moments a line can split")
 
 
 def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
@@ -75,20 +77,30 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         put(f"{rule}_swing", float(np.median([rules.swing(s, LAST) for s in scores])))
         # The same swing in percentage points, to be said as "points".
         put_int(f"{rule}_swing_points", 100 * float(np.median([rules.swing(s, LAST) for s in scores])))
-        put_int(f"{rule}_turn_degrees", float(np.median([rules.turn(r[-LAST:]) for r in runs])))
+        # One run's last passes, to show (the first order; its swing is
+        # checked against the median above in the notes).
         numbers[f"{rule}_one_run"] = [percent(s)[0] for s in scores[0][-LAST:]]
-        for n, score in enumerate(scores[0][-LAST:]):
-            put(f"{rule}_one_run_{PASSES - LAST + n + 1}", score)
+        put(f"{rule}_one_run_lowest", min(scores[0][-LAST:]))
+        put(f"{rule}_one_run_highest", max(scores[0][-LAST:]))
 
-    # A tiny change: leave out a few moments, keep everything else the same.
+    # A tiny change: leave out a few moments, and keep everything else,
+    # the order of the rest included, the same.
+    put("perceptron_undropped", rules.accuracy(rules.train("perceptron", z, y, RATES["perceptron"], PASSES, 0)[-1], zt, yt))
     finals = []
     for k in range(ORDERS):
-        keep = np.ones(len(y), bool)
-        keep[np.random.default_rng(100 + k).choice(len(y), DROPS, replace=False)] = False
-        finals.append(rules.accuracy(rules.train("perceptron", z[keep], y[keep], RATES["perceptron"], PASSES, 0)[-1], zt, yt))
+        skip = np.zeros(len(y), bool)
+        skip[np.random.default_rng(100 + k).choice(len(y), DROPS, replace=False)] = True
+        finals.append(rules.accuracy(rules.train("perceptron", z, y, RATES["perceptron"], PASSES, 0, skip=skip)[-1], zt, yt))
     put("perceptron_dropped_lowest", min(finals))
     put("perceptron_dropped_highest", max(finals))
     put_int("dropped_moments", DROPS)
+
+    # The control: on only the moments search's border gets right, a line
+    # does split them, and the rule should stop.
+    split = rules.says(search, z) == y
+    control = rules.train("perceptron", z[split], y[split], RATES["perceptron"], PASSES, 0)
+    put("control_score", rules.accuracy(control[-1], z[split], y[split]))
+    control_settles = bool(np.array_equal(control[-1].w, control[-2].w) and control[-1].b == control[-2].b)
 
     small = rules.train("perceptron", z, y, 0.01, 3, 0)
     large = rules.train("perceptron", z, y, 1.0, 3, 0)
@@ -103,8 +115,11 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     # How differently the settled borders answer from search's, and how far they lean from it.
     put("batch_square_disagrees_with_search", rules.disagreement(batch, search, zt))
     put("logistic_disagrees_with_search", rules.disagreement(logistic, search, zt))
-    put_int("batch_square_lean_from_search_degrees", rules.turn([batch, search]))
-    put_int("logistic_lean_from_search_degrees", rules.turn([logistic, search]))
+    # Every smooth score lands near search's border but not on it: even one
+    # that stops pulling once a moment is past its target.
+    hinge = rules.batch_squared_hinge(z, y, rate=0.1, steps=5000)
+    put("hinge", rules.accuracy(hinge, zt, yt))
+    put("hinge_disagrees_with_search", rules.disagreement(hinge, search, zt))
     # Does the square trick's shortfall depend on the step size chosen?
     for rate in (0.0003, 0.003):
         finals = [rules.accuracy(rules.train("square", z, y, rate, PASSES, s)[-1], zt, yt) for s in range(3)]
@@ -113,9 +128,15 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
 
     # Batching doesn't stop the perceptron wobbling: every mistake's nudge
     # at once, averaged into one step.
-    batched = [rules.accuracy(l, zt, yt) for l in rules.batch_perceptron(z, y, rate=0.1, steps=300)]
-    put("batch_perceptron_lowest", min(batched[-100:]))
-    put("batch_perceptron_highest", max(batched[-100:]))
+    lines = rules.batch_perceptron(z, y, rate=0.1, steps=300)
+    batched = [rules.accuracy(l, zt, yt) for l in lines[-100:]]
+    put("batch_perceptron_lowest", min(batched))
+    put("batch_perceptron_highest", max(batched))
+    put("batch_perceptron_median", float(np.median(batched)))
+    put("batch_perceptron_low_tenth", float(np.percentile(batched, 10)))
+    # Its weights stay near zero, where its own score (how far wrong the
+    # wrong moments are) is lowest when no line splits the moments.
+    numbers["batch_perceptron_largest_weights"] = round(max(float(np.linalg.norm(l.w)) for l in lines), 4)
     # Remembering instead of settling: the best line a run passed through
     # (judged on the moments learned from), or the average of all of them.
     runs = [rules.train("perceptron", z, y, RATES["perceptron"], PASSES, seed) for seed in range(ORDERS)]
@@ -123,14 +144,30 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     put("pocket_lowest", min(pockets))
     put("pocket_highest", max(pockets))
     averaged = [rules.accuracy(rules.averaged_perceptron(z, y, RATES["perceptron"], PASSES, seed), zt, yt)
-                for seed in range(3)]
+                for seed in range(ORDERS)]
     put("averaged_lowest", min(averaged))
     put("averaged_highest", max(averaged))
-    # Which moments keep the perceptron moving: the share of all nudges
-    # made by the busiest tenth of moments.
-    counts = np.sort(rules.nudges(z, y, RATES["perceptron"], PASSES, 0))[::-1]
-    put("busiest_tenth_share_of_nudges", counts[: len(counts) // 10].sum() / counts.sum())
-    put("never_nudged", (counts == 0).mean())
+    # Which moments keep the perceptron moving, over the last passes
+    # (after it's had time to settle, if it could), for every order: the
+    # busiest tenth's share of the nudges, and how many of them search's
+    # border gets wrong too.
+    shares, wrong_too, never = [], [], []
+    wrong = rules.says(search, z) != y
+    for seed in range(ORDERS):
+        counts = rules.nudges(z, y, RATES["perceptron"], PASSES, seed, count_from=PASSES - LAST + 1)
+        busiest = np.argsort(counts)[::-1][: len(counts) // 10]
+        shares.append(counts[busiest].sum() / counts.sum())
+        wrong_too.append(wrong[busiest].mean())
+        never.append((counts == 0).mean())
+    put("busiest_tenth_share_of_nudges", float(np.median(shares)))
+    put("busiest_tenth_wrong_for_search", float(np.median(wrong_too)))
+    put("wrong_for_search", wrong.mean())
+    put("never_nudged", float(np.median(never)))
+    # How close to zero the perceptron's weights stay, in steps, measured
+    # just before each nudge of its last passes: near zero, a full-size
+    # nudge swings the border a long way.
+    put_int("perceptron_steps_from_zero", float(np.median(rules.sizes_before_nudges(
+        z, y, RATES["perceptron"], PASSES, 0, count_from=PASSES - LAST + 1))))
     # The square trick listens to moments it already gets right, by too much.
     far = rules.right_by_too_much(exact, z, y)
     put("right_by_too_much", far.mean())
@@ -138,6 +175,7 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     numbers["right_by_too_much_median_speed"] = float(np.median(x[far, 1]))
     numbers["median_depth"], numbers["median_speed"] = float(np.median(x[:, 0])), float(np.median(x[:, 1]))
     put("right_by_too_much_rising", (x[far, 1] < 0).mean())
+    put("rising", (x[:, 1] < 0).mean())
 
     # The two maps of every border: mistakes (a staircase), squared error (a bowl).
     mistakes, squared = rules.landscape(z, y, ANGLES, OFFSETS)
@@ -147,16 +185,20 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     bowl_bottom = rules.Line(np.array([np.cos(ANGLES[k]), np.sin(ANGLES[k])]), float(OFFSETS[l]))
     put("stairs_bottom", rules.accuracy(stairs_bottom, zt, yt))
     put("bowl_bottom", rules.accuracy(bowl_bottom, zt, yt))
-    put_int("bottoms_apart_degrees", rules.turn([stairs_bottom, bowl_bottom]))
-    # How flat the staircase is: the share of neighbouring borders (one
-    # offset step apart) with exactly the same number of mistakes.
-    put("stairs_flat", (np.diff(mistakes, axis=1) == 0).mean())
+    # Why some of the staircase's drops are big: the game keeps depth and
+    # speed as whole numbers, so many moments share exactly one spot.
+    spots, per_spot = np.unique(x, axis=0, return_counts=True)
+    put_int("spots", len(spots))
+    put_int("most_in_one_spot", per_spot.max())
+    owner = np.unique(x, axis=0, return_inverse=True)[1].ravel()
+    put("in_crowded_spots", (per_spot[owner] >= 50).mean())
     maps.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(maps, angles=ANGLES, offsets=OFFSETS, mistakes=mistakes, squared=squared,
                         mean=mean, scale=scale)
 
     check_claims(
         bowl_is_least_squares=rules.turn([bowl_bottom, exact]) < 1.0,
+        control_settles=control_settles,
         perceptron_rate_free=rate_free,
         batch_is_least_squares=bool(np.allclose(np.r_[batch.w, batch.b], np.r_[exact.w, exact.b], atol=1e-6)),
         codes_agree=bool((rules.says(exact, zt) == rules.says(zero_one, zt)).all()),
