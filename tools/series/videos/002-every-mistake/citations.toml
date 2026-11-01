@@ -65,7 +65,7 @@ year = 2026
 url = "https://github.com/ndouglas/linear-regression"
 
 [bishop2006]
-title = "Pattern Recognition and Machine Learning (Springer), sections 4.1.3 (least squares for classification) and 4.1.7 (the perceptron)"
+title = "Pattern Recognition and Machine Learning (Springer), sections 3.1.3 (sequential learning: the least-mean-squares rule), 4.1.3 (least squares for classification) and 4.1.7 (the perceptron)"
 authors = "C. M. Bishop"
 year = 2006
 url = "https://www.microsoft.com/en-us/research/publication/pattern-recognition-machine-learning/"

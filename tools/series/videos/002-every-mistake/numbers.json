@@ -12,6 +12,7 @@
   "batch_perceptron_lowest_spoken": "forty-three percent",
   "batch_perceptron_median": "84%",
   "batch_perceptron_median_spoken": "eighty-four percent",
+  "batch_perceptron_steps_without_moving": 0,
   "batch_perceptron_weights_in_nudges": 1.9,
   "batch_square": "87%",
   "batch_square_disagrees_with_search": "6%",

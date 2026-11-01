@@ -186,6 +186,8 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     # The same, in its own nudges: a direction-only rule's weights mean
     # something only against the size of the steps it takes.
     v = np.array([np.r_[l.w, l.b] for l in lines])
+    # Added together, its pulls never cancel: it moves on every step.
+    numbers["batch_perceptron_steps_without_moving"] = int((np.linalg.norm(np.diff(v, axis=0), axis=1) == 0).sum())
     numbers["batch_perceptron_weights_in_nudges"] = round(float(
         np.median(np.linalg.norm(v[1:], axis=1)) / np.median(np.linalg.norm(np.diff(v, axis=0), axis=1))), 1)
     # Remembering instead of settling: the best line a run passed through
