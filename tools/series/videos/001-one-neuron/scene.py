@@ -5,11 +5,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from beats import chapter_1  # noqa: E402
+from beats import chapter_1, introduction  # noqa: E402
 
 from series.scene import NarratedScene  # noqa: E402
 
-BEATS = {"chapter-1": chapter_1.BEATS}
+BEATS = {"introduction": introduction.BEATS, "chapter-1": chapter_1.BEATS}
 
 
 class VideoScene(NarratedScene):

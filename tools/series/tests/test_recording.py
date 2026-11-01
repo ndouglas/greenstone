@@ -7,7 +7,7 @@ import numpy as np
 
 from reservoir_film.model import NES_H, NES_W
 from series.build import OUT
-from series.recording import BYTE_LAG, LAG, MARIO_RED, MARIO_SHOE, Recording, measure_lag, smb1_sprite_bottom
+from series.recording import BYTE_LAG, LAG, MARIO_RED, MARIO_SHOE, Film, Recording, measure_lag, smb1_sprite_bottom
 from series.tests.test_screen import synthetic as screen_synthetic
 
 DATA = OUT / "001-one-neuron" / "data"
@@ -32,6 +32,17 @@ def bottom(frame: np.ndarray) -> int | None:
 
 
 class TestRecording(unittest.TestCase):
+    def test_a_film_has_frames_and_no_memory(self):
+        root = Path(tempfile.mkdtemp())
+        frames = np.zeros((3, NES_H, NES_W, 3), np.uint8)
+        (root / "footage").mkdir()
+        frames.tofile(root / "footage" / "game.rgb")
+        (root / "footage" / "take.json").write_text(json.dumps({"streams": {"game": 3}}))
+        film = Film("chase", root)
+        self.assertEqual(len(film), 3)
+        with self.assertRaisesRegex(ValueError, "no memory"):
+            film.ram_at(0)
+
     def test_a_span_outside_the_data_is_refused(self):
         frames, ram = synthetic()
         for span in (range(0, 20), range(2, 20), range(10, 41), range(10, 1000)):

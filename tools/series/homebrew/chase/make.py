@@ -294,6 +294,23 @@ def build(out: Path, phases: tuple[float, float, float] = PHASES) -> Path:
     return rom
 
 
+def record(rom: Path, frames: int, out: Path) -> None:
+    """Film `rom` from power-on for `frames` frames into `out`/footage, with greenstone."""
+    repo = HERE.parents[3]
+    subprocess.run(["cargo", "run", "--quiet", "--release", "--example", "rom_footage", "--", str(rom), str(frames),
+                    str(out)], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+
+
+def film(phases: tuple[float, float, float], root: Path, recorder=record) -> Path:
+    """The chase built and filmed for these phases, once: the directory holding its footage take. The film runs
+    from power-on to the end of the chase, and a second more."""
+    out = Path(root) / "-".join(f"{p:.2f}" for p in phases)
+    if not (out / "footage" / "take.json").exists():
+        rom = build(out, phases)
+        recorder(rom, FIRST_DRAWN + sum(frame_counts(phases)) + round(FPS), out)
+    return out
+
+
 if __name__ == "__main__":
     from series.build import OUT
     args = sys.argv[1:]

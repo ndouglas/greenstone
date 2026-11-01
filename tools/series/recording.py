@@ -56,6 +56,24 @@ class Recording:
         return int(self.ram[max(frame - lag, 0)][address])
 
 
+class Film:
+    """Footage with no memory beside it (a homebrew ROM filmed for its picture alone): a Recording to a Screen,
+    as long as nothing asks for its RAM."""
+
+    def __init__(self, name: str, root: Path):
+        self.game = name
+        self.frames = Takes(Path(root), "make it with its film() function")["footage"].frames("game")
+
+    def __len__(self) -> int:
+        return len(self.frames)
+
+    def ram_at(self, frame: int) -> np.ndarray:
+        raise ValueError(f"{self.game} is footage alone: there's no memory to read")
+
+    def byte_at(self, frame: int, address: int) -> int:
+        return int(self.ram_at(frame)[address])
+
+
 def measure_lag(frames, ram: np.ndarray, sprite_bottom: Callable[[np.ndarray], int | None],
                 byte: int, offset: int, max_lag: int = 3, span: range | None = None) -> tuple[int, float]:
     """The lag (in frames) at which the sprite's bottom row best equals

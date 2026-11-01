@@ -85,6 +85,26 @@ class ChaseTest(unittest.TestCase):
         self.assertEqual((rom[4], rom[5], rom[6] >> 4), (2, 1, 0))  # 32 KB program, 8 KB tiles, mapper 0
         self.assertEqual(len(rom), 16 + 32768 + 8192)
 
+    def test_a_film_is_made_once_for_its_phases(self):
+        calls = []
+
+        def record(rom: Path, frames: int, out: Path) -> None:
+            calls.append((rom, frames))
+            (out / "footage").mkdir(parents=True)
+            (out / "footage" / "take.json").write_text("{}")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            first = make.film((2.0, 1.5, 4.25), Path(tmp), record)
+            again = make.film((2.0, 1.5, 4.25), Path(tmp), record)
+            other = make.film((2.0, 1.5, 5.0), Path(tmp), record)
+            self.assertEqual(first, again)
+            self.assertNotEqual(first, other)
+            self.assertEqual(len(calls), 2)
+            rom, frames = calls[0]
+            self.assertEqual(rom.read_bytes()[:4], b"NES\x1a")
+            # From power-on to the end of the chase, and a second more.
+            self.assertEqual(frames, make.FIRST_DRAWN + sum(make.frame_counts((2.0, 1.5, 4.25))) + round(make.FPS))
+
 
 if __name__ == "__main__":
     unittest.main()
