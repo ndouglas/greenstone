@@ -12,9 +12,9 @@ ml-mad-science's stop 1 expansion
 (`../ml-mad-science/spine/01-linear-regression/expansion.md`), which this
 video absorbs as its pressure test (arc: "merged").
 
-Numbers marked *(scratch)* come from a throwaway run on the same data
-(2026-11-01), not yet in `exp002.py`. Citations marked *(to check)* are
-from memory.
+Numbers are from `exp002.py` (first seen in a scratch run the same day;
+some moved slightly). Citations were checked 2026-11-01; sources are in
+`games/002.md`.
 
 ## Pass 1: a tree of what a nudge can be
 
@@ -31,7 +31,7 @@ and how the amount depends on it.
     - Fixed amount, sign of the input only: **simple trick**
     - Only when wrong *by too little*, i.e. too close to the line:
       perceptron with a margin, hinge loss (support vector machines,
-      Cortes & Vapnik 1995 *(to check)*)
+      Cortes & Vapnik 1995)
   - Moves always (the signal is a size: "how far from the target")
     - In proportion to the error: **square trick** (Widrow–Hoff)
     - In proportion to a squashed error that stops caring once it's
@@ -43,16 +43,16 @@ and how the amount depends on it.
     - Move toward the nearest cluster: k-means (ml-mad-science stop 3)
 
 Reversibility: every perceptron nudge is undone by an equal and opposite
-mistake later. On data no line splits, that's why it cycles: the
-perceptron cycling theorem says its weights stay bounded but never stop
-(Block & Levin 1970 *(to check)*). The square trick's nudges are not
+mistake later. On data no line splits, that's why it never stops: its weights stay
+bounded but keep moving (stated by Minsky & Papert 1969; proved by Block
+& Levin 1970; "bounded" is what's proven, not a repeating cycle). The square trick's nudges are not
 mirror images (their size depends on where the line is), so they can
 cancel to zero: a resting point.
 
-Naturalness: the square trick is the same equation as the
+Naturalness: the square trick is essentially the same rule as the
 Rescorla–Wagner model of how animals learn to expect a reward (1972), a
-correspondence Sutton & Barto pointed out (1981 *(to check)*). The rule
-that settles was found twice, once for machines and once for rats.
+near identity first recognised by Sutton & Barto (1981). The rule that
+settles was found twice, once for machines and once for animals.
 
 Polarity: a mistake has two signs, a false alarm and a miss. The
 perceptron weighs them equally; with landings only 25% of moments, the
@@ -93,18 +93,17 @@ it moves after a mistake         | after every moment             | the square t
 a teacher says what's right      | no teacher                     | Hebb, k-means (stop 3)
                                  | the teacher lies sometimes     | label noise (pass 4)
 one moment at a time             | all moments at once            | batch: tested below
-a fixed step                     | a shrinking step               | Robbins–Monro (1951 (to check));
+a fixed step                     | a shrinking step               | Robbins–Monro (1951);
                                  |                                | the perceptron then stops, somewhere
-it forgets where it's been       | it remembers its best          | the pocket algorithm (Gallant 1990
-                                 |                                | (to check)): 90% (scratch)
-                                 | it averages where it's been    | averaged perceptron (Freund &
-                                 |                                | Schapire 1999 (to check)): 89%
-                                 |                                | (scratch)
+it forgets where it's been       | it remembers its best          | the pocket algorithm (Gallant
+                                 |                                | 1990): 89–90%
+                                 | it averages where it's been    | voted/averaged perceptron
+                                 |                                | (Freund & Schapire 1999): 89%
 ```
 
-Batch, tested *(scratch)*: computing every mistake's nudge at once and
+Batch, tested (in `exp002.py`): computing every mistake's nudge at once and
 taking one averaged step (the batch perceptron) **still wobbles**,
-between 57% and 90% over its last 100 steps. So batching isn't what makes
+between 43% and 90% over its last 100 steps. So batching isn't what makes
 the square trick settle. What does is that its nudges shrink as it nears
 its target. **This corrects what Claude told Nate** (and
 `games/002.md`'s spine): the perceptron can be run on a GPU too. What the
@@ -115,8 +114,8 @@ because a hard yes/no passes no slope back through it.
 
 Age: the perceptron (1958) and Widrow–Hoff (1960) are the same age; the
 staircase problem has a modern name, too: finding the fewest-mistakes
-line is NP-hard in general (Höffgen, Simon & Van Horn 1995 *(to
-check)*). In two inputs, search can try every line (001 did); with 2,048
+line is NP-hard in general (Höffgen, Simon & Van Horn 1995), with
+the number of inputs part of the problem. In two inputs, search can try every line (001 did); with 2,048
 inputs it can't. That's *why* everyone aims at a bowl instead of the
 staircase.
 
@@ -139,8 +138,8 @@ connectivity, modularity, decomposability.
   error, if it's right by too little *or by too much*.
 - **Right by too much:** the square trick pulls the line toward moments
   it already answers right, if their sum overshoots the target. 16% of
-  the moments learned from are like this *(scratch)*: mostly high and
-  rising (median speed −3 against −1 overall). A defensible guess for
+  the moments learned from are like this: 97% of them rising
+  (median speed −3 against −1 overall). A defensible guess for
   the 35° lean, to test.
 - **Loss / landscape:** a score for every possible line; the staircase
   (mistakes) and the bowl (squared error) are two.
@@ -202,8 +201,7 @@ Substitution on the order (source of the moments):
   whatever Mario did recently. With levels beyond 1-1 (underground,
   water, castles) the line could visibly drift as the level changes:
   learning, then forgetting. Needs recordings past 1-1.
-- **Easy moments first:** curriculum learning (Bengio et al. 2009 *(to
-  check)*).
+- **Easy moments first:** curriculum learning (Bengio et al. 2009).
 - **Chosen by an adversary:** the order that makes the perceptron end
   worst. How bad can it get on our data?
 
@@ -230,9 +228,10 @@ Nothing named sits between "only when wrong" and "always": hinge and
 logistic do. Each step right buys settling and costs listening to
 moments that don't matter for mistakes.
 
-Materiality: the 1958 Mark I Perceptron learned by motors turning
-potentiometers, and Widrow and Hoff's ADALINE used electrochemical
-"memistors" *(to check both)*. Learning was a knob being turned. 001's
+Materiality: the Mark I Perceptron learned by motors turning
+potentiometers (Rosenblatt 1961/62); the first ADALINE had hand-turned
+knobs, later ones electrochemical "memistors" (Widrow 1960; the order
+rests on Wikipedia). Learning was a knob being turned. 001's
 neuron already has dials on screen; a nudge can be a turn of them.
 
 Autonomy: substitute the console as the learner. The simple trick needs
@@ -280,7 +279,7 @@ network is one stop on a walk, and the walk could have stopped elsewhere.
 
 - **A correction, first.** Batching isn't what makes the square trick
   settle, and it isn't what the perceptron lacks: the batch perceptron
-  still wobbles *(scratch)*. What the settling family has is a *slope*:
+  still wobbles (43–90%). What the settling family has is a *slope*:
   its nudges shrink near its target. "Why the settling kind won" becomes:
   a slope can be followed through many layers, and the mistakes count
   has none.
@@ -304,9 +303,10 @@ network is one stop on a walk, and the walk could have stopped elsewhere.
      with the level (Nate's idea; needs recordings past 1-1).
   4. A lying teacher: flip some answers; which rule suffers more?
   5. Which moments keep the perceptron moving: count nudges per moment.
-  6. Remember the best (pocket) or the average: 90% and 89%
-     *(scratch)*, nearly search's 91%. The cheapest fix for the wobble.
+  6. Remember the best (pocket) or the average: 89–90% and 89%,
+     nearly search's 91%. The cheapest fix for the wobble.
 - **Cross-domain:** bang-bang vs proportional steering; the square trick
-  is also Rescorla–Wagner, how animals learn to expect.
+  is essentially Rescorla–Wagner, how animals learn to expect.
 - **A seed for the arc:** the crudest rule (sign-only nudges) fits on a
-  6502: a neuron that learns on the cartridge while you play.
+  6502 (Nate's repo's simple trick: a fixed step by the input's sign;
+  Serrano's simple trick uses small random steps instead): a neuron that learns on the cartridge while you play.
