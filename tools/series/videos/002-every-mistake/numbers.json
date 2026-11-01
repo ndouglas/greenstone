@@ -62,6 +62,8 @@
   "median_speed": -1.0,
   "most_in_one_spot": 292,
   "most_in_one_spot_spoken": "two hundred and ninety-two",
+  "most_wrong_flat": "96%",
+  "most_wrong_flat_spoken": "ninety-six percent",
   "never_nudged": "47%",
   "never_nudged_spoken": "forty-seven percent",
   "perceptron_dropped_highest": "90%",

@@ -22,6 +22,12 @@ authors = "A. B. J. Novikoff"
 year = 1962
 url = "https://apps.dtic.mil/sti/tr/pdf/AD0298258.pdf"
 
+[nesdev-memory]
+title = "CPU memory map (NESdev Wiki; accessed 2026)"
+authors = "NESdev Wiki contributors"
+year = 2026
+url = "https://www.nesdev.org/wiki/CPU_memory_map"
+
 [minsky1969]
 title = "Perceptrons: An Introduction to Computational Geometry (MIT Press)"
 authors = "M. Minsky and S. Papert"

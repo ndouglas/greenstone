@@ -261,6 +261,8 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     # Which borders are flat: those that get most moments wrong, nearly.
     put("flat_getting_most_wrong", (mistakes[flat] > 0.5).mean())
     put("sloped_getting_most_wrong", (mistakes[~flat] > 0.5).mean())
+    # And the other way round: of the borders that get most wrong, how many are flat.
+    put("most_wrong_flat", flat[mistakes > 0.5].mean())
     lows = local_lows(squared, flat)
     maps.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(maps, angles=ANGLES, offsets=OFFSETS, mistakes=mistakes, squared=squared,

@@ -44,6 +44,18 @@ class PerMoment(unittest.TestCase):
             after = rules.step(rule, start, x[0], y[0], rate=0.1)
             self.assertEqual(not np.allclose(after.w, start.w), moves, rule)
 
+    def test_every_perceptron_nudge_points_partly_back_toward_zero(self):
+        x, y = mostly(300)
+        rng = np.random.default_rng(4)
+        for _ in range(20):
+            line = rules.Line(rng.normal(size=2), float(rng.normal()))
+            before = np.r_[line.w, line.b]
+            for xi, yi in zip(x, y):
+                after = rules.step("perceptron", line, xi, yi, rate=0.1)
+                nudge = np.r_[after.w, after.b] - before
+                if nudge.any():
+                    self.assertLess(nudge @ before, 0)
+
     def test_a_pass_visits_every_moment_once_in_its_own_order(self):
         x, y = mostly(200)
         a = rules.train("perceptron", x, y, rate=0.1, passes=3, seed=1)

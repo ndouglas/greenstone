@@ -165,7 +165,7 @@ up. Numbers are plain whole numbers, never sub-numbered.
 | 003 | When the line lies: the assumptions a single neuron makes | ID bytes, BCD scores (Tetris), a wrapping frame counter, the "cheating" byte; place value (moved from 001): Mario's score digits read by weights of a million down to ten, and why Tetris's two-digits-per-byte breaks it |
 | 004 | Some questions no single line can answer | Mario's speed says "in the air" only when it isn't zero, on either side: two cuts, 97% (from 001's experiments), which no one neuron can draw |
 | 005 | Bends and layers: hidden neurons redraw the space | Solving 004's question |
-| 006 | Learning is rolling downhill (loss and gradients) | The landscape of 005's network |
+| 006 | Learning is rolling downhill (loss and gradients) | The landscape of 005's network; calls back to 002, which pictured one neuron's total squared miss as ground over its weights and the square trick's added-up nudge as pointing downhill on it |
 | 007 | A neuron's weights are a picture of what it wants | A neuron that sees screen pixels |
 | 008 | Check a neuron's meaning against the answer key (probing) | Does a neuron track Mario's speed in RAM? |
 | 009 | Play a neuron backwards: what excites it most | Dataset examples vs. synthesized inputs |
