@@ -20,6 +20,12 @@ board = "001's map: each moment in the air a dot, placed by depth and falling sp
 cite = ["exp001"]
 
 [[section.line]]
+id = "test-question"
+text = "It's only a test question. Knowing the answer wouldn't help anyone play, or tell us much about the game. Its value is that the answer is in the recording, a few frames later, so every answer the neuron gives can be checked."
+board = "Mario mid-jump with 'Will he land soon?' beside him; the recording scrubs ahead and a tick appears"
+framing = true
+
+[[section.line]]
 id = "last-time-2"
 text = "Its answer was a straight border across a map of those two numbers. We chose the border by trying every one we could and keeping the best, which was right {search} of the time on play it hadn't seen."
 spoken = "Its answer was a straight border across a map of those two numbers. We chose the border by trying every one we could and keeping the best, which was right {search_spoken} of the time on play it hadn't seen."
