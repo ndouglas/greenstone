@@ -91,6 +91,64 @@ class Measures(unittest.TestCase):
         self.assertEqual(rules.disagreement(a, b, x), 0.5)
 
 
+class Remembering(unittest.TestCase):
+    def test_the_batch_perceptron_returns_its_line_after_every_step(self):
+        x, y = mostly()
+        lines = rules.batch_perceptron(x, y, rate=0.1, steps=7)
+        self.assertEqual(len(lines), 7)
+
+    def test_the_pocket_keeps_the_line_with_fewest_mistakes(self):
+        x, y = separable()
+        bad = rules.Line(np.array([1.0, 0.0]), 0.0)
+        good = rules.train("perceptron", x, y, rate=0.1, passes=50, seed=0)[-1]
+        self.assertIs(rules.pocket([bad, good, bad], x, y), good)
+
+    def test_the_averaged_perceptron_is_the_mean_of_every_line_it_passed_through(self):
+        x = np.array([[1.0, 0.0], [0.0, 1.0]])
+        y = np.array([1, 0])
+        # Visits (in this seed's order) move the line, and the average is
+        # taken after every visit; checked against doing it by hand.
+        order = np.random.default_rng(0).permutation(2)
+        line, total = rules.Line(np.zeros(2), 0.0), np.zeros(3)
+        for i in order:
+            line = rules.step("perceptron", line, x[i], int(y[i]), 1.0)
+            total += np.r_[line.w, line.b]
+        avg = rules.averaged_perceptron(x, y, rate=1.0, passes=1, seed=0)
+        np.testing.assert_allclose(np.r_[avg.w, avg.b], total / 2)
+
+    def test_nudges_are_counted_per_moment(self):
+        x, y = separable()
+        counts = rules.nudges(x, y, rate=0.1, passes=50, seed=0)
+        self.assertEqual(len(counts), len(y))
+        self.assertGreater(counts.sum(), 0)
+        x, y = mostly()
+        self.assertGreater(rules.nudges(x, y, rate=0.1, passes=5, seed=0).max(), 1)
+
+
+class Landscapes(unittest.TestCase):
+    def test_a_border_is_scored_by_its_mistakes(self):
+        x = np.array([[1.0, 0.0], [-1.0, 0.0], [2.0, 0.0]])
+        y = np.array([1, 0, 0])
+        mistakes, _ = rules.landscape(x, y, angles=np.array([0.0]), offsets=np.array([0.0]))
+        self.assertAlmostEqual(mistakes[0, 0], 1 / 3)
+
+    def test_the_bowls_bottom_is_the_least_squares_border(self):
+        x, y = mostly()
+        angles = np.radians(np.arange(0, 360, 0.5))
+        offsets = np.linspace(-2, 2, 401)
+        _, squared = rules.landscape(x, y, angles, offsets)
+        i, j = np.unravel_index(np.argmin(squared), squared.shape)
+        exact = rules.least_squares(x, y)
+        self.assertLess(rules.turn([exact, rules.Line(np.array([np.cos(angles[i]), np.sin(angles[i])]), 0.0)]), 1.0)
+        self.assertAlmostEqual(offsets[j], exact.b / np.linalg.norm(exact.w), delta=0.02)
+
+    def test_right_by_too_much_counts_right_answers_past_their_target(self):
+        x = np.array([[3.0], [0.5], [-3.0], [-0.5]])
+        y = np.array([1, 1, 1, 0])
+        line = rules.Line(np.array([1.0]), 0.0)
+        self.assertEqual(rules.right_by_too_much(line, x, y).tolist(), [True, False, False, False])
+
+
 class Experiment(unittest.TestCase):
     def test_numbers_are_refused_if_a_claim_fails(self):
         from series.lab.exp002 import check_claims

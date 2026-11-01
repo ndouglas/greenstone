@@ -63,6 +63,49 @@ def train(rule: str, x: np.ndarray, y: np.ndarray, rate: float, passes: int, see
     return after
 
 
+
+def nudges(x: np.ndarray, y: np.ndarray, rate: float, passes: int, seed: int) -> np.ndarray:
+    """How many times each moment moved the perceptron's line, over a run
+    like `train`'s."""
+    rng = np.random.default_rng(seed)
+    line, counts = Line(np.zeros(x.shape[1]), 0.0), np.zeros(len(y), dtype=int)
+    for _ in range(passes):
+        for i in rng.permutation(len(y)):
+            after = step("perceptron", line, x[i], int(y[i]), rate)
+            counts[i] += after is not line
+            line = after
+    return counts
+
+
+def averaged_perceptron(x: np.ndarray, y: np.ndarray, rate: float, passes: int, seed: int) -> Line:
+    """The perceptron, answering with the average of every line it passed
+    through (one after each moment visited), not the last."""
+    rng = np.random.default_rng(seed)
+    line, total, n = Line(np.zeros(x.shape[1]), 0.0), np.zeros(x.shape[1] + 1), 0
+    for _ in range(passes):
+        for i in rng.permutation(len(y)):
+            line = step("perceptron", line, x[i], int(y[i]), rate)
+            total, n = total + np.r_[line.w, line.b], n + 1
+    return Line(total[:-1] / n, float(total[-1] / n))
+
+
+def pocket(lines: list[Line], x: np.ndarray, y: np.ndarray) -> Line:
+    """Of the lines a run passed through, the one with fewest mistakes on
+    the moments learned from."""
+    return max(lines, key=lambda l: accuracy(l, x, y))
+
+
+def batch_perceptron(x: np.ndarray, y: np.ndarray, rate: float, steps: int) -> list[Line]:
+    """The perceptron on the whole batch: every mistake's nudge averaged
+    into one step. Returns the line after each step."""
+    sign = np.where(y == 1, 1.0, -1.0)
+    xb, v, after = _with_bias(x), np.zeros(x.shape[1] + 1), []
+    for _ in range(steps):
+        wrong = (xb @ v > 0).astype(int) != y
+        v = v + rate * (xb[wrong] * sign[wrong, None]).sum(0) / len(y)
+        after.append(Line(v[:-1], float(v[-1])))
+    return after
+
 def _with_bias(x: np.ndarray) -> np.ndarray:
     return np.c_[x, np.ones(len(x))]
 
@@ -92,6 +135,30 @@ def batch_logistic(x: np.ndarray, y: np.ndarray, rate: float, steps: int) -> Lin
         p = 1 / (1 + np.exp(-(xb @ v)))
         v = v + rate * xb.T @ (y - p) / len(y)
     return Line(v[:-1], float(v[-1]))
+
+
+def landscape(x: np.ndarray, y: np.ndarray, angles: np.ndarray, offsets: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Every border of two inputs, as (angle, offset): w = (cos, sin), and
+    the border where w·x + offset = 0. Scores each by its share of
+    mistakes and by the square trick's error at its best scale (a border
+    doesn't fix how big the weights are; the square trick's error does
+    depend on it, so each border gets the size that suits it best)."""
+    t = np.where(y == 1, CODES[1], CODES[0])
+    mistakes = np.empty((len(angles), len(offsets)))
+    squared = np.empty_like(mistakes)
+    for i, a in enumerate(angles):
+        f = (x @ np.array([np.cos(a), np.sin(a)]))[None, :] + offsets[:, None]
+        mistakes[i] = ((f > 0).astype(int) != y).mean(1)
+        scale = np.maximum((f * t).sum(1) / (f * f).sum(1), 0.0)
+        squared[i] = ((t - scale[:, None] * f) ** 2).mean(1)
+    return mistakes, squared
+
+
+def right_by_too_much(line: Line, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+    """Moments the line answers right, but whose sum overshoots the square
+    trick's target: the square trick still pulls the line toward them."""
+    out = x @ line.w + line.b
+    return (says(line, x) == y) & (np.abs(out) > max(abs(c) for c in CODES))
 
 
 def swing(scores: list[float], last: int) -> float:
