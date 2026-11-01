@@ -198,5 +198,17 @@ class Experiment(unittest.TestCase):
             check_claims(True, True, True, control_settles=False)
 
 
+    def test_low_points_are_counted_where_the_map_slopes(self):
+        from series.lab.exp002 import local_lows
+        a, o = np.meshgrid(np.linspace(-1, 1, 20), np.linspace(-1, 1, 15), indexing="ij")
+        bowl = a ** 2 + o ** 2
+        none = np.zeros(bowl.shape, bool)
+        self.assertEqual(local_lows(bowl, none), 1)
+        two = np.minimum((a - 0.5) ** 2, (a + 0.5) ** 2 + 0.1) + o ** 2
+        self.assertEqual(local_lows(two, none), 2)
+        flat = a > 0.4
+        self.assertEqual(local_lows(two, flat), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

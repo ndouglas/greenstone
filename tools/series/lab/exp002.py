@@ -26,11 +26,16 @@ PASSES = 30
 ORDERS = 10  # each rule is run with this many shuffled orders
 LAST = 10  # how settled a rule is: its swing over the last passes
 DROPS = 30  # moments left out, to see how much a tiny change moves the end
-RATES = {"simple": 0.01, "perceptron": 0.01, "square": 0.001}
+# The perceptron's step is a power of two, so that a step 8 times bigger
+# scales every weight exactly, with no rounding, and the claim that the
+# step doesn't matter can be checked exactly over a whole run.
+RATES = {"simple": 0.01, "perceptron": 2.0 ** -7, "square": 0.001}
+BIGGER = 8
 
 
 def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes_agree: bool,
-                 bowl_is_least_squares: bool = True, control_settles: bool = True) -> None:
+                 bowl_is_least_squares: bool = True, control_settles: bool = True,
+                 one_hollow: bool = True) -> None:
     """Things the script will rest on; refuse to write numbers if any fails."""
     if not perceptron_rate_free:
         raise AssertionError("the perceptron's border changed with its step size")
@@ -42,6 +47,20 @@ def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes
         raise AssertionError("the bowl's lowest point isn't the least-squares border")
     if not control_settles:
         raise AssertionError("the perceptron didn't stop on moments a line can split")
+    if not one_hollow:
+        raise AssertionError("the square trick's map has more than one low point where it slopes")
+
+
+def local_lows(height: np.ndarray, flat: np.ndarray) -> int:
+    """Spots on a map (angle across, wrapping round; offset up) lower than
+    or level with all eight neighbours, leaving out the flat part."""
+    low = np.ones(height.shape, bool)
+    padded = np.pad(height, ((0, 0), (1, 1)), mode="edge")
+    for da in (-1, 0, 1):
+        for do in (-1, 0, 1):
+            if da or do:
+                low &= height <= np.roll(padded, da, axis=0)[:, 1 + do : padded.shape[1] - 1 + do]
+    return int((low & ~flat).sum())
 
 
 def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
@@ -68,6 +87,23 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     search = rules.Line(w * scale, float(b + w @ mean))
     put("search", rules.accuracy(search, zt, yt))
 
+    # Why no border can be perfect: the game keeps depth and speed as whole
+    # numbers, and many spots on Mario's map hold moments with both answers.
+    spots, owner, per_spot = np.unique(x, axis=0, return_inverse=True, return_counts=True)
+    owner = owner.ravel()
+    landed = np.bincount(owner, weights=y, minlength=len(spots))
+    both = (landed > 0) & (landed < per_spot)
+    put_int("spots", len(spots))
+    put_int("spots_with_both", both.sum())
+    put("in_spots_with_both", both[owner].mean())
+    # The best any answer could do on these moments: each spot's commoner answer.
+    put("best_possible", np.maximum(landed, per_spot - landed).sum() / len(y))
+    put_int("most_in_one_spot", per_spot.max())
+    put("in_crowded_spots", (per_spot[owner] >= 50).mean())
+    # Crossing one spot changes a border's mistakes by the difference
+    # between that spot's landings and non-landings.
+    put_int("spot_biggest_change", np.abs(2 * landed - per_spot).max())
+
     for rule, rate in RATES.items():
         runs = [rules.train(rule, z, y, rate, PASSES, seed) for seed in range(ORDERS)]
         scores = [[rules.accuracy(l, zt, yt) for l in r] for r in runs]
@@ -82,6 +118,9 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         numbers[f"{rule}_one_run"] = [percent(s)[0] for s in scores[0][-LAST:]]
         put(f"{rule}_one_run_lowest", min(scores[0][-LAST:]))
         put(f"{rule}_one_run_highest", max(scores[0][-LAST:]))
+        # Every order, every one of the last passes.
+        put(f"{rule}_late_lowest", min(min(s[-LAST:]) for s in scores))
+        put(f"{rule}_late_highest", max(max(s[-LAST:]) for s in scores))
 
     # A tiny change: leave out a few moments, and keep everything else,
     # the order of the rest included, the same.
@@ -102,9 +141,12 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     put("control_score", rules.accuracy(control[-1], z[split], y[split]))
     control_settles = bool(np.array_equal(control[-1].w, control[-2].w) and control[-1].b == control[-2].b)
 
-    small = rules.train("perceptron", z, y, 0.01, 3, 0)
-    large = rules.train("perceptron", z, y, 1.0, 3, 0)
-    rate_free = all((rules.says(a, zt) == rules.says(c, zt)).all() for a, c in zip(small, large))
+    # A step BIGGER times bigger: the same mistakes, so the same nudges,
+    # bigger; every weight exactly BIGGER times, after every pass.
+    small = rules.train("perceptron", z, y, RATES["perceptron"], PASSES, 0)
+    large = rules.train("perceptron", z, y, BIGGER * RATES["perceptron"], PASSES, 0)
+    rate_free = all(np.array_equal(BIGGER * a.w, c.w) and BIGGER * a.b == c.b for a, c in zip(small, large))
+    put_int("bigger_step", BIGGER)
 
     batch = rules.batch_square(z, y, rate=0.1, steps=2000)
     exact = rules.least_squares(z, y)
@@ -137,6 +179,11 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     # Its weights stay near zero, where its own score (how far wrong the
     # wrong moments are) is lowest when no line splits the moments.
     numbers["batch_perceptron_largest_weights"] = round(max(float(np.linalg.norm(l.w)) for l in lines), 4)
+    # The same, in its own nudges: a direction-only rule's weights mean
+    # something only against the size of the steps it takes.
+    v = np.array([np.r_[l.w, l.b] for l in lines])
+    numbers["batch_perceptron_weights_in_nudges"] = round(float(
+        np.median(np.linalg.norm(v[1:], axis=1)) / np.median(np.linalg.norm(np.diff(v, axis=0), axis=1))), 1)
     # Remembering instead of settling: the best line a run passed through
     # (judged on the moments learned from), or the average of all of them.
     runs = [rules.train("perceptron", z, y, RATES["perceptron"], PASSES, seed) for seed in range(ORDERS)]
@@ -155,7 +202,7 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     wrong = rules.says(search, z) != y
     for seed in range(ORDERS):
         counts = rules.nudges(z, y, RATES["perceptron"], PASSES, seed, count_from=PASSES - LAST + 1)
-        busiest = np.argsort(counts)[::-1][: len(counts) // 10]
+        busiest = np.argsort(-counts, kind="stable")[: len(counts) // 10]
         shares.append(counts[busiest].sum() / counts.sum())
         wrong_too.append(wrong[busiest].mean())
         never.append((counts == 0).mean())
@@ -166,8 +213,16 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     # How close to zero the perceptron's weights stay, in steps, measured
     # just before each nudge of its last passes: near zero, a full-size
     # nudge swings the border a long way.
-    put_int("perceptron_steps_from_zero", float(np.median(rules.sizes_before_nudges(
-        z, y, RATES["perceptron"], PASSES, 0, count_from=PASSES - LAST + 1))))
+    sizes = rules.sizes_before_nudges(z, y, RATES["perceptron"], PASSES, 0, count_from=PASSES - LAST + 1)
+    put_int("perceptron_steps_from_zero", float(np.median(sizes)))
+    # A nudge's own length, in steps, is the length of its moment's numbers
+    # with the bias's 1: so the weights are this many nudges from zero.
+    counts = rules.nudges(z, y, RATES["perceptron"], PASSES, 0, count_from=PASSES - LAST + 1)
+    lengths = np.repeat(np.linalg.norm(np.c_[z, np.ones(len(z))], axis=1), counts)
+    numbers["perceptron_nudge_in_steps"] = round(float(np.median(lengths)), 2)
+    put_int("perceptron_nudges_from_zero", float(np.median(sizes)) / float(np.median(lengths)))
+    # For comparison: the settled square trick's weights, in the perceptron's steps.
+    numbers["square_steps_from_zero"] = round(float(np.linalg.norm(np.r_[exact.w, exact.b]) / RATES["perceptron"]), 1)
     # The square trick listens to moments it already gets right, by too much.
     far = rules.right_by_too_much(exact, z, y)
     put("right_by_too_much", far.mean())
@@ -185,13 +240,14 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     bowl_bottom = rules.Line(np.array([np.cos(ANGLES[k]), np.sin(ANGLES[k])]), float(OFFSETS[l]))
     put("stairs_bottom", rules.accuracy(stairs_bottom, zt, yt))
     put("bowl_bottom", rules.accuracy(bowl_bottom, zt, yt))
-    # Why some of the staircase's drops are big: the game keeps depth and
-    # speed as whole numbers, so many moments share exactly one spot.
-    spots, per_spot = np.unique(x, axis=0, return_counts=True)
-    put_int("spots", len(spots))
-    put_int("most_in_one_spot", per_spot.max())
-    owner = np.unique(x, axis=0, return_inverse=True)[1].ravel()
-    put("in_crowded_spots", (per_spot[owner] >= 50).mean())
+    # Big drops: neighbouring borders (one offset step apart) whose
+    # mistakes differ by fifty moments or more.
+    drops = np.abs(np.diff(mistakes, axis=1)) * len(y)
+    put("big_drops", (drops >= 50).mean())
+    put_int("biggest_drop", drops.max())
+    flat = np.isclose(squared, 1.0)
+    put("bowl_flat", flat.mean())
+    lows = local_lows(squared, flat)
     maps.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(maps, angles=ANGLES, offsets=OFFSETS, mistakes=mistakes, squared=squared,
                         mean=mean, scale=scale)
@@ -199,6 +255,7 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     check_claims(
         bowl_is_least_squares=rules.turn([bowl_bottom, exact]) < 1.0,
         control_settles=control_settles,
+        one_hollow=lows == 1,
         perceptron_rate_free=rate_free,
         batch_is_least_squares=bool(np.allclose(np.r_[batch.w, batch.b], np.r_[exact.w, exact.b], atol=1e-6)),
         codes_agree=bool((rules.says(exact, zt) == rules.says(zero_one, zt)).all()),
