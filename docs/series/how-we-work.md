@@ -1,5 +1,8 @@
 # How we work
 
+I shouldn't say, and the screen shouldn't show, anything I don't or can't
+believe, understand, or defend.
+
 *Through the Glass Cartridge* is made by me, Nathan Douglas, with a lot of
 help from an AI: Claude, made by Anthropic. This page says who does what,
 and which parts I've made sure I understand. Like the
