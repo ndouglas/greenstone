@@ -50,7 +50,7 @@ cite = ["exp001"]
 
 [[section.line]]
 id = "too-many"
-text = "Trying every border only works because there were two numbers. A neuron reading more of the two thousand and forty-eight numbers in the console's memory would have far too many borders to try."
+text = "Trying every border only works because there were only a few numbers. A neuron reading more of the two thousand and forty-eight numbers in the console's memory would have far too many borders to try."
 board = "The map's two axes multiply into a crowd of axes; the sweeping borders blur into too many to draw"
 cite = ["exp001", "nesdev-memory"]
 
@@ -76,7 +76,7 @@ cite = ["rosenblatt1962", "exp002"]
 id = "this-video"
 text = "This video watches that happen, on the same question, and finds out why it never settles down, and what learning does instead."
 board = "The twitching border, never still"
-framing = true
+cite = ["exp002"]
 pause = 1.0
 
 [[section]]
@@ -256,8 +256,8 @@ pause = 3.0
 
 [[section.line]]
 id = "remember"
-text = "One cheap fix is to remember. In a version of an idea called the pocket algorithm, of the lines it ended each pass with, we kept the one that did best on the moments it learned from. That scored {pocket_lowest} to {pocket_highest} whatever the order."
-spoken = "One cheap fix is to remember. In a version of an idea called the pocket algorithm, of the lines it ended each pass with, we kept the one that did best on the moments it learned from. That scored {pocket_lowest_spoken} to {pocket_highest_spoken} whatever the order."
+text = "One cheap fix is to remember. In a version of an idea called the pocket algorithm, of the lines it ended each pass with, we kept the one that did best on the moments it learned from. That scored {pocket_lowest} to {pocket_highest} in all ten orders."
+spoken = "One cheap fix is to remember. In a version of an idea called the pocket algorithm, of the lines it ended each pass with, we kept the one that did best on the moments it learned from. That scored {pocket_lowest_spoken} to {pocket_highest_spoken} in all ten orders."
 board = "The swinging border, with a still copy left behind where it did best; its bar steady across ten orders"
 cite = ["gallant1990", "exp002"]
 
@@ -319,7 +319,7 @@ cite = ["bishop2006"]
 
 [[section.line]]
 id = "square-name"
-text = "This rule is known as the Widrow-Hoff rule, or least mean squares: Bernard Widrow and Ted Hoff published it in nineteen sixty. One textbook calls it the square trick."
+text = "This rule is known as the Widrow-Hoff rule, or least mean squares: Bernard Widrow and Ted Hoff published it in nineteen sixty. One textbook, using it to fit lines through points, calls it the square trick."
 board = "The rule's formula beside the perceptron's, with Widrow and Hoff's names and the year"
 cite = ["widrow1960", "bishop2006", "serrano2021"]
 
@@ -384,14 +384,14 @@ pause = 3.0
 
 [[section.line]]
 id = "why-short"
-text = "Is that because it pulls on moments it already gets right by plenty? We tried a version that stops pulling once a moment is past its target. It scored {hinge}: a little closer, but still not the best border."
-spoken = "Is that because it pulls on moments it already gets right by plenty? We tried a version that stops pulling once a moment is past its target. It scored {hinge_spoken}: a little closer, but still not the best border."
+text = "Is that because it pulls on moments it already gets right by plenty? We tried a version that stops pulling once a moment is past its target. It scored {hinge}: a little closer, but still not the best border. We didn't find the whole reason."
+spoken = "Is that because it pulls on moments it already gets right by plenty? We tried a version that stops pulling once a moment is past its target. It scored {hinge_spoken}: a little closer, but still not the best border. We didn't find the whole reason."
 board = "A dot deep on its correct side, its pull cut; the border barely moves"
 cite = ["exp002"]
 
 [[section.line]]
 id = "how-far"
-text = "So that isn't the whole reason, and we didn't find why. All we can say is that neither version counts mistakes. Both add up squared misses, the second leaving out moments past their target, and their lowest points land close to, but not on, the border with the fewest mistakes."
+text = "What we can say is that neither version counts mistakes. Both add up squared misses, the second leaving out moments past their target, and their lowest points land close to, but not on, the border with the fewest mistakes."
 board = "Two borders side by side: one judged by adding up squared misses, one by counting wrong dots"
 cite = ["exp002", "bishop2006"]
 
@@ -536,7 +536,7 @@ cite = ["exp002", "bishop2006"]
 
 [[section.line]]
 id = "no-shelf"
-text = "The shelf belongs to this picture, not to the rule. The rule moves the weights themselves, and there, the total squared miss slopes everywhere but at its very bottom, including at zero, where the rule starts."
+text = "The rule starts at zero, right on that shelf. But the shelf belongs to this picture, not to the rule. The rule moves the weights themselves, and there, the total squared miss slopes everywhere but at its very bottom, zero included."
 board = "The sheet set aside; the rule's dials, and a smooth slope under them with no flat part"
 cite = ["bishop2006", "exp002"]
 
@@ -550,7 +550,7 @@ pause = 3.0
 
 [[section.line]]
 id = "why-bowls"
-text = "With two numbers, we could search the staircase ourselves. With many, we can't, so learning aims at a measure with a slope instead. Here, that's a bowl, and its lowest point isn't the lowest step."
+text = "With two numbers, we could search the staircase ourselves. With many, nobody knows a fast way to, so learning aims at a measure with a slope instead. Here, that's a bowl, and its lowest point isn't the lowest step."
 board = "The staircase fades into fog; the bowl stays clear"
 cite = ["hoffgen1995", "bishop2006", "exp002"]
 
@@ -575,8 +575,8 @@ pause = 3.0
 
 [[section.line]]
 id = "tldr-2"
-text = "Nudging to shrink the total squared miss instead, with its nudges added up before each step, settles, at {batch_square}, because its added-up pull fades smoothly to nothing at one spot, the bottom of its bowl, where the moments' pulls balance."
-spoken = "Nudging to shrink the total squared miss instead, with its nudges added up before each step, settles, at {batch_square_spoken}, because its added-up pull fades smoothly to nothing at one spot, the bottom of its bowl, where the moments' pulls balance."
+text = "Nudging to shrink the total squared miss instead, with its nudges added up before each step, settles, at {batch_square}, because its added-up pull fades smoothly to nothing at one spot, the lowest point of the ground over its weights, which is the bowl's lowest border, where the moments' pulls balance."
+spoken = "Nudging to shrink the total squared miss instead, with its nudges added up before each step, settles, at {batch_square_spoken}, because its added-up pull fades smoothly to nothing at one spot, the lowest point of the ground over its weights, which is the bowl's lowest border, where the moments' pulls balance."
 board = "The bowl, with the square trick resting at its bottom"
 cite = ["widrow1960", "exp002"]
 pause = 3.0
