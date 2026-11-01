@@ -269,6 +269,28 @@ def best_line(x: np.ndarray, y: np.ndarray, angles: int = 360) -> tuple[np.ndarr
     return w, float(-cut - w @ mean), a
 
 
+def land_moments(r):
+    """The moments in the air, during play, and whether each lands soon."""
+    air = label("smb1")(r.ram)
+    keep, lands = landing(air, r.meta.get("restart_frames", []), LAND_WITHIN)
+    play = in_play("smb1", r.ram)[keep]
+    return air, keep[play], lands[play]
+
+
+def land_data(recs):
+    """Each moment in the air as (depth, vertical speed), and whether he lands soon."""
+    xs, ys = [], []
+    for r in recs:
+        check_recording("smb1", r)
+        air, keep, lands = land_moments(r)
+        h = r.ram[keep, 0x00CE].astype(float)
+        vy = r.ram[keep, 0x009F].astype(float)
+        xs.append(np.stack([h, np.where(vy > 127, vy - 256, vy)], 1))
+        ys.append(lands)
+    check_rate(np.concatenate(ys))
+    return np.concatenate(xs), np.concatenate(ys)
+
+
 def run(data_root: Path = DATA, out: Path = OUT) -> dict:
     numbers: dict[str, str | int | float] = {}
     raw: dict[str, dict[str, float]] = {}
@@ -336,25 +358,6 @@ def run(data_root: Path = DATA, out: Path = OUT) -> dict:
 
     # Two numbers that both matter: Mario is in the air; will he land in
     # the next LAND_WITHIN frames? (Low and falling fast means soon.)
-    def land_moments(r):
-        """The moments in the air, during play, and whether each lands soon."""
-        air = label("smb1")(r.ram)
-        keep, lands = landing(air, r.meta.get("restart_frames", []), LAND_WITHIN)
-        play = in_play("smb1", r.ram)[keep]
-        return air, keep[play], lands[play]
-
-    def land_data(recs):
-        xs, ys = [], []
-        for r in recs:
-            check_recording("smb1", r)
-            air, keep, lands = land_moments(r)
-            h = r.ram[keep, 0x00CE].astype(float)
-            vy = r.ram[keep, 0x009F].astype(float)
-            xs.append(np.stack([h, np.where(vy > 127, vy - 256, vy)], 1))
-            ys.append(lands)
-        check_rate(np.concatenate(ys))
-        return np.concatenate(xs), np.concatenate(ys)
-
     train = [load(data_root / "smb1" / s) for s in ("1", "2")]
     test = [load(data_root / "smb1" / "3")]
     x, y = land_data(train)
