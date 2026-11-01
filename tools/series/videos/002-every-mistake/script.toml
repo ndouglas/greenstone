@@ -1,7 +1,7 @@
 title = "002: Every mistake moves the line"
 
-# Draft 5 (Claude, 2026-11-01), after council rounds 1 to 3, the pacing
-# lens and the first two adversarial reviews (docs/series/reviews/002/).
+# Draft 6 (Claude, 2026-11-01), after council rounds 1 to 3, the pacing
+# lens and two rounds of adversarial review (docs/series/reviews/002/).
 # Spine (Nate): the perceptron's rule only reacts to mistakes, and its
 # pulls never cancel, so it never stops; the square trick shrinks the
 # total squared miss, its pulls cancel, and it settles near the
@@ -56,7 +56,7 @@ cite = ["rosenblatt1962", "exp002"]
 
 [[section.line]]
 id = "this-video"
-text = "This video watches that happen, on the same question, and finds out why it never quite settles down, and what learning does instead."
+text = "This video watches that happen, on the same question, and finds out why it never settles down, and what learning does instead."
 board = "The twitching border, never still"
 framing = true
 pause = 1.0
@@ -92,7 +92,7 @@ cite = ["rosenblatt1962", "serrano2021"]
 
 [[section.line]]
 id = "rule-bias"
-text = "The bias turns up one small step too. If he hadn't landed, everything would turn down instead. Either way, that moment's total moves toward the side it belongs on, and the border swings a little toward getting that moment right."
+text = "The bias turns up one small step too. If he hadn't landed, everything would turn down instead. Either way, that moment's total moves toward the side it belongs on, and the border swings toward getting that moment right."
 board = "The bias dial ticks up; the wrong dot's total climbs toward zero; the border tilts toward the dot"
 cite = ["serrano2021", "bishop2006"]
 
@@ -110,8 +110,8 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "step-size"
-text = "How small should the step be? Starting from zero, it doesn't matter. A neuron with {bigger_step} times the step makes exactly the same mistakes, so it takes the same nudges, {bigger_step} times bigger. We checked: after every pass, its weights were exactly {bigger_step} times the other's."
-spoken = "How small should the step be? Starting from zero, it doesn't matter. A neuron with {bigger_step_spoken} times the step makes exactly the same mistakes, so it takes the same nudges, {bigger_step_spoken} times bigger. We checked: after every pass, its weights were exactly {bigger_step_spoken} times the other's."
+text = "How small should the step be? For this rule, starting from zero, it doesn't matter. A neuron with {bigger_step} times the step makes exactly the same mistakes, so it takes the same nudges, {bigger_step} times bigger. We checked: after every pass, its weights were exactly {bigger_step} times the other's."
+spoken = "How small should the step be? For this rule, starting from zero, it doesn't matter. A neuron with {bigger_step_spoken} times the step makes exactly the same mistakes, so it takes the same nudges, {bigger_step_spoken} times bigger. We checked: after every pass, its weights were exactly {bigger_step_spoken} times the other's."
 board = "Two runs side by side, one with {bigger_step} times the step: their dials read {bigger_step} times apart"
 cite = ["exp002"]
 
@@ -125,7 +125,7 @@ pause = 1.0
 [[section.line]]
 id = "guarantee"
 text = "If some straight border puts every yes on one side and every no on the other, the rule is proven to stop, after a limited number of mistakes."
-board = "A border that splits two colours cleanly; the rule's border twitches a few times and stops on it"
+board = "Two colours a straight border can split; the rule's border twitches a few times and stops on one that splits them"
 cite = ["novikoff1962"]
 
 [[section.line]]
@@ -215,8 +215,8 @@ pause = 3.0
 
 [[section.line]]
 id = "remember"
-text = "One cheap fix is to remember: of the lines it ended each pass with, keep the one that did best on the moments it learned from. That scored {pocket_lowest} to {pocket_highest} whatever the order. But that's a patch: the rule itself never stops."
-spoken = "One cheap fix is to remember: of the lines it ended each pass with, keep the one that did best on the moments it learned from. That scored {pocket_lowest_spoken} to {pocket_highest_spoken} whatever the order. But that's a patch: the rule itself never stops."
+text = "One cheap fix is to remember. In a version of an idea called the pocket algorithm, of the lines it ended each pass with, we kept the one that did best on the moments it learned from. That scored {pocket_lowest} to {pocket_highest} whatever the order. But that's a patch: the rule itself never stops."
+spoken = "One cheap fix is to remember. In a version of an idea called the pocket algorithm, of the lines it ended each pass with, we kept the one that did best on the moments it learned from. That scored {pocket_lowest_spoken} to {pocket_highest_spoken} whatever the order. But that's a patch: the rule itself never stops."
 board = "The swinging border, with a still copy left behind where it did best; its bar steady across ten orders"
 cite = ["gallant1990", "exp002"]
 
@@ -235,33 +235,39 @@ title = "How wrong was it?"
 [[section.line]]
 id = "square-intro"
 role = "intro"
-text = "The perceptron's rule ignores how wrong a moment was. A barely wrong moment and a wildly wrong one get the same kind of nudge. A different rule asks how far off each moment was. It's known as the Widrow-Hoff rule, and one textbook calls it the square trick."
-board = "Two wrong dots, one just over the border and one far over; the same size of nudge for each"
-cite = ["widrow1960", "serrano2021"]
+text = "The perceptron's rule ignores how wrong a moment was: a moment just over the border and one far over it get the same kind of nudge, sized only by their numbers. A different rule asks how far off each moment was."
+board = "Two wrong dots, one just over the border and one far over; each nudge sized by the dot's numbers, not by how far over it is"
+cite = ["rosenblatt1962", "widrow1960"]
 
 [[section.line]]
 id = "target"
-text = "Give every moment a target for its total: plus one if Mario landed soon, minus one if he didn't. Then after every moment, right or wrong, each weight moves in proportion to three things: a small step, its own number, and how far the total missed the target, in the direction that closes the gap. The bias moves the same way."
-board = "The total's dial with a target mark at plus one; the gap between them sets the size and direction of the nudge"
+text = "Give every moment a target for its total: plus one if Mario landed soon, minus one if he didn't."
+board = "The total's dial with a target mark at plus one, and another dial with its mark at minus one"
+cite = ["widrow1960", "bishop2006"]
+
+[[section.line]]
+id = "target-rule"
+text = "Then after every moment, right or wrong, each weight moves in proportion to three things: a small step, its own number, and how far the total missed the target, in the direction that closes the gap. The bias moves the same way."
+board = "The gap between total and target sets the size and direction of the nudge to each dial"
 cite = ["widrow1960", "bishop2006"]
 
 [[section.line]]
 id = "target-example"
-text = "If a moment's target is plus one and its total was a fifth, it fell short by four fifths, and the weights move up by four fifths of a step times its numbers. A total of three is right, by plenty, but it overshot its target by two, so the weights move back down, two and a half times as hard."
+text = "If a moment's target is plus one and its total was a fifth, it fell short by four fifths, and each weight moves by four fifths of a step times its number, pulling the total up toward the target. A total of three is right, by plenty, but it overshot its target by two, so the weights move to pull it back down, two and a half times as hard."
 board = "Two totals against the target plus one: 0.2, short by 0.8, pulled up; 3, over by 2, pulled back down; their nudges drawn to scale"
 cite = ["widrow1960", "bishop2006"]
 pause = 3.0
 
 [[section.line]]
 id = "square-why"
-text = "Each nudge shrinks that moment's miss. Over all the moments, on average, it shrinks one number: every moment's miss, multiplied by itself, then all added up. Call it the total squared miss. That's where the name square trick comes from."
+text = "Each nudge shrinks that moment's miss. Over all the moments, on average, it shrinks one number: every moment's miss, multiplied by itself, then all added up. Call it the total squared miss. It's why one textbook calls this rule the square trick."
 board = "Each moment's miss drawn as a square, the squares piling up into one total that shrinks as the border moves"
-cite = ["widrow1960", "bishop2006"]
+cite = ["widrow1960", "bishop2006", "serrano2021"]
 
 [[section.line]]
 id = "settles"
-text = "Moments that fall short pull the weights one way, and moments that overshoot pull them the other. Near where the total squared miss is lowest, those pulls cancel out, like a tug of war, so added together, they come to nothing."
-board = "Pulls from short and overshooting moments drawn as arrows, evening out as the border slides in"
+text = "Every moment pulls its own total toward its own target: moments where he landed pull the weights one way, and moments where he didn't pull them the other. Near where the total squared miss is lowest, those pulls cancel out, like a tug of war, so added together, they come to nothing."
+board = "Arrows from landed moments and from not-landed moments, pulling against each other and evening out as the border slides in"
 cite = ["widrow1960", "bishop2006"]
 
 [[section.line]]
@@ -301,9 +307,15 @@ cite = ["exp002", "bishop2006"]
 
 [[section.line]]
 id = "square-name"
-text = "Bernard Widrow and Ted Hoff published this rule in nineteen sixty. A version of it, for fitting a line through points, is one of three I wrote while learning all this."
+text = "This rule is usually called the Widrow-Hoff rule: Bernard Widrow and Ted Hoff published it in nineteen sixty."
 board = "The rule's formula beside the perceptron's, with Widrow and Hoff's names and the year"
-cite = ["widrow1960", "douglas-linreg"]
+cite = ["widrow1960"]
+
+[[section.line]]
+id = "my-version"
+text = "A version of it, for fitting a line through points, is one of three I wrote while learning all this."
+board = "A line fitted through a scatter of points, nudged into place"
+cite = ["douglas-linreg"]
 
 [[section.line]]
 id = "animals"
@@ -332,8 +344,14 @@ framing = true
 
 [[section.line]]
 id = "map-axes"
-text = "Picture a border on Mario's map as a ruler laid across it, with a yes side and a no side. You can turn the ruler, all the way round if you like, which swaps its sides, or slide it nearer to or further from the middle. Now picture a flat sheet where every spot is one whole border: moving left or right on the sheet turns the ruler, and moving up or down slides it."
-board = "A ruler-like border on Mario's map turning and sliding; a single spot on the border sheet moving to match"
+text = "Picture a border on Mario's map as a ruler laid across it, with a yes side and a no side. You can turn the ruler, and half way round, its sides swap; or you can slide it nearer to or further from the middle."
+board = "A ruler-like border on Mario's map turning, its yes side swapping at half a turn, and sliding"
+cite = ["exp001", "exp002"]
+
+[[section.line]]
+id = "sheet"
+text = "Now picture a flat sheet where every spot is one whole border: moving left or right on the sheet turns the ruler, and moving up or down slides it."
+board = "A single spot on the border sheet moving, the ruler on Mario's map moving to match"
 cite = ["exp001", "exp002"]
 
 [[section.line]]
@@ -357,28 +375,41 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "no-slope"
-text = "Standing on a flat step, every direction looks the same. Only a drop tells you which way is down, and you find it by falling off. So no rule can simply walk down this staircase."
+text = "Standing on a flat step, every direction looks the same. Only a drop tells you which way is down, and you find it by falling off. So no rule that follows a slope can walk down this staircase."
 board = "A marker on a ledge, looking every way; all directions level"
 cite = ["exp002", "bishop2006"]
 
 [[section.line]]
 id = "perceptron-score"
-text = "The perceptron's rule doesn't walk it either. It has a measure of its own: add up how far its wrong moments sit on the wrong side. With every weight at zero, every total is zero, so no mistake costs anything, and that's its lowest point."
-board = "A different picture, of the weights themselves rather than borders: a slope down to a sharp point where every dial reads zero"
+text = "The perceptron's rule doesn't walk it either. It follows a measure of its own: add up how far its wrong moments sit on the wrong side. With every weight at zero, every total is zero, so no mistake costs anything, and that's the measure's lowest point."
+board = "The formula's dials, all at zero; the wrong moments' distances shrinking to nothing as the dials near zero"
 cite = ["bishop2006"]
 
 [[section.line]]
 id = "perceptron-hover"
-text = "So its weights hover close to zero, about {perceptron_nudges_from_zero} nudges away. That close in, each nudge changes the weights by about half their own size, so the border, and the score, keep jumping. And even added together, its pulls never cancel out."
-spoken = "So its weights hover close to zero, about {perceptron_nudges_from_zero_spoken} nudges away. That close in, each nudge changes the weights by about half their own size, so the border, and the score, keep jumping. And even added together, its pulls never cancel out."
-board = "A marker hopping around the sharp point, never landing"
-cite = ["exp002"]
+text = "But it can't rest there. At zero, the neuron says no to everything, so every moment where Mario landed is wrong, and pushes it back out at full size. So its weights hover close to zero, about {perceptron_nudges_from_zero} nudges away, where each nudge changes them by about half their own size, and the border, and the score, keep jumping."
+spoken = "But it can't rest there. At zero, the neuron says no to everything, so every moment where Mario landed is wrong, and pushes it back out at full size. So its weights hover close to zero, about {perceptron_nudges_from_zero_spoken} nudges away, where each nudge changes them by about half their own size, and the border, and the score, keep jumping."
+board = "The dials hovering near zero, each nudge a big swing; the border jumping on Mario's map"
+cite = ["exp002", "bishop2006"]
 pause = 3.0
 
 [[section.line]]
+id = "batch"
+text = "We also tried adding up all its nudges before each step, as the square trick can. It still moved on every one of {batch_perceptron_steps} steps, and its score kept swinging, mostly between {batch_perceptron_low_tenth} and {batch_perceptron_highest}. Its pulls don't cancel out."
+spoken = "We also tried adding up all its nudges before each step, as the square trick can. It still moved on every one of {batch_perceptron_steps_spoken} steps, and its score kept swinging, mostly between {batch_perceptron_low_tenth_spoken} and {batch_perceptron_highest_spoken}. Its pulls don't cancel out."
+board = "All the perceptron's nudges added into one, step after step; the border still jumping, its bar swinging"
+cite = ["exp002"]
+
+[[section.line]]
 id = "bowl"
-text = "Now give the border sheet a different height: each border's total squared miss, with the weights that suit that border best. For a border that gets most moments wrong, the best weights are nothing at all, so every total is zero and every miss is one: the ground there is high and flat. Elsewhere, it curves smoothly down into one bowl, with one lowest point."
-board = "The same border sheet, now raised by total squared miss: a high flat shelf to one side, and one smooth bowl"
+text = "Now give the border sheet a different height: each border's total squared miss, with the weights that suit that border best. For nearly every border that gets most moments wrong, the best weights are nothing at all, so every total is zero and every miss is one: the ground there is a high, flat shelf."
+board = "The same border sheet, now raised by total squared miss: a high flat shelf to one side"
+cite = ["exp002", "bishop2006"]
+
+[[section.line]]
+id = "bowl-2"
+text = "Everywhere else, the ground curves smoothly down into one bowl, with one lowest point, and that's the border where the square trick comes to rest."
+board = "Beside the shelf, one smooth bowl; the square trick's resting border marked at its bottom"
 cite = ["exp002", "bishop2006"]
 
 [[section.line]]
@@ -398,7 +429,7 @@ cite = ["hoffgen1995", "bishop2006"]
 [[section.line]]
 id = "map-outro"
 role = "conclusion"
-text = "Each rule pays for what it gets. The perceptron's pulls never cancel out, so it can't stop. The square trick's do, so it settles, but slightly off."
+text = "The perceptron's pulls never cancel out, so it can't stop. The square trick's do, so it settles, but slightly off."
 board = "The staircase and the bowl side by side, each with its marker"
 cite = ["exp002"]
 
@@ -416,8 +447,8 @@ pause = 3.0
 
 [[section.line]]
 id = "tldr-2"
-text = "Nudging to shrink the total squared miss instead settles, at {batch_square}, because near the bottom of its bowl the pulls cancel out. Fewest mistakes would be better, but it's a staircase with no slope to follow, so the square trick stops short of the best border's {search}."
-spoken = "Nudging to shrink the total squared miss instead settles, at {batch_square_spoken}, because near the bottom of its bowl the pulls cancel out. Fewest mistakes would be better, but it's a staircase with no slope to follow, so the square trick stops short of the best border's {search_spoken}."
+text = "Nudging to shrink the total squared miss instead settles, at {batch_square}, because near the bottom of its bowl the pulls cancel out. Fewest mistakes would be better, but it's a staircase with no slope to follow, so learning aims at the bowl instead, and the bowl's bottom isn't the lowest step, the best border's {search}."
+spoken = "Nudging to shrink the total squared miss instead settles, at {batch_square_spoken}, because near the bottom of its bowl the pulls cancel out. Fewest mistakes would be better, but it's a staircase with no slope to follow, so learning aims at the bowl instead, and the bowl's bottom isn't the lowest step, the best border's {search_spoken}."
 board = "The staircase and the bowl, their lowest points apart"
 cite = ["widrow1960", "exp002"]
 pause = 3.0
