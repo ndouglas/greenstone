@@ -1,6 +1,6 @@
 title = "002: Every mistake moves the line"
 
-# Draft 19 (Claude, 2026-11-02), after adversarial reviews Q-V;
+# Draft 20 (Claude, 2026-11-02), after adversarial reviews Q-X;
 # drafts 14-16 answered council rounds 4-6, the first on the scrolling
 # question. Draft 13 rewrote 002 on new data after Nate's
 # interview: the landing question's numbers pointed the wrong way (depth
@@ -99,7 +99,7 @@ cite = ["exp002"]
 id = "search-2"
 # From search_cut_blocks and search_cut_walking_blocks in numbers.json
 # (checked in the run to fit these words).
-text = "The best straight border is a compromise. It says yes from about four blocks in when he's standing still, and from about one and a half at full walking speed."
+text = "The best straight border is a compromise: it gets some moments wrong to get more right. It says yes from about four blocks in when he's standing still, and from about one and a half at full walking speed."
 board = "The best border on the map, from about four blocks at standing still down to about one and a half at walking speed; the yes side to its upper right"
 cite = ["exp002"]
 
@@ -295,8 +295,8 @@ pause = 3.0
 
 [[section.line]]
 id = "dropped"
-text = "A tiny change to the moments moves it too. Starting from the run that fell to {perceptron_lowest}, leaving out just {dropped_moments} moments of more than ten thousand, a different {dropped_moments} each time, moved its final score anywhere from {perceptron_dropped_lowest} to {perceptron_dropped_highest}."
-spoken = "A tiny change to the moments moves it too. Starting from the run that fell to {perceptron_lowest_spoken}, leaving out just {dropped_moments_spoken} moments of more than ten thousand, a different {dropped_moments_spoken} each time, moved its final score anywhere from {perceptron_dropped_lowest_spoken} to {perceptron_dropped_highest_spoken}."
+text = "A tiny change to the moments moves it too. Take the run that fell to {perceptron_lowest}. Leaving out just {dropped_moments} of its more than ten thousand moments, a different {dropped_moments} each time, moved its final score anywhere from {perceptron_dropped_lowest} to {perceptron_dropped_highest}."
+spoken = "A tiny change to the moments moves it too. Take the run that fell to {perceptron_lowest_spoken}. Leaving out just {dropped_moments_spoken} of its more than ten thousand moments, a different {dropped_moments_spoken} each time, moved its final score anywhere from {perceptron_dropped_lowest_spoken} to {perceptron_dropped_highest_spoken}."
 board = "Thirty dots fade out of ten thousand; the final border lands somewhere else, ten times"
 cite = ["exp002"]
 pause = 3.0
@@ -312,7 +312,7 @@ pause = 3.0
 [[section.line]]
 id = "never-outro"
 role = "conclusion"
-text = "So the perceptron's rule only reacts to mistakes, and on Mario's moments, something is always wrong, so it never stops. A rule can only come to rest where its nudges, added up, come to nothing. What would a rule need, for that to happen?"
+text = "So the perceptron's rule only reacts to mistakes, and on Mario's moments, something is always wrong, so it never stops. A rule whose step stays the same size can only come to rest where its nudges, added up, come to nothing. What would a rule need, for that to happen?"
 board = "The border still swinging, never still"
 cite = ["exp002"]
 pause = 1.0
@@ -448,7 +448,7 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "how-far"
-text = "What we can say is that neither version counts mistakes. Both add up squared misses, the second leaving out moments beyond their target. Their scores land close to the fewest-mistakes border's, but the borders themselves lean quite differently."
+text = "What we can say is that neither version counts mistakes. Both add up squared misses, the second leaving out moments beyond their target. Their scores land close to the fewest-mistakes border's, though, as we saw, the square trick's border leans quite differently."
 board = "Two borders side by side: one judged by adding up squared misses, one by counting wrong dots"
 cite = ["exp002", "bishop2006"]
 
@@ -569,8 +569,14 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "perceptron-rest-2"
-text = "But its last hundred steps were all about the same size, while the square trick's shrink toward nothing. Added up, its pulls never came near cancelling: at every one of those steps, they kept more than three quarters of their size."
-board = "Two lines of step sizes: the perceptron's flat, the square trick's falling toward nothing; beside them, the perceptron's pulls adding up to an arrow most of their length"
+text = "But its last hundred steps were all about the same size, while the square trick's shrink toward nothing."
+board = "Two lines of step sizes: the perceptron's flat, the square trick's falling toward nothing"
+cite = ["exp002"]
+
+[[section.line]]
+id = "perceptron-rest-3"
+text = "Over those last hundred steps, its added-up pulls never came near cancelling: they always kept more than three quarters of their size."
+board = "At each of the last hundred steps, the perceptron's pulls added head to tail into an arrow most of their combined length"
 cite = ["exp002"]
 pause = 3.0
 
@@ -587,8 +593,8 @@ title = "Conclusions"
 
 [[section.line]]
 id = "tldr"
-text = "In short: a learning rule can only come to rest where its added-up pulls cancel out. On Mario's moments, which no border can split, the perceptron's pulls never did. In nine orders out of ten it ended between {perceptron_second_lowest} and {perceptron_highest}, and in the tenth, at {perceptron_lowest}."
-spoken = "In short: a learning rule can only come to rest where its added-up pulls cancel out. On Mario's moments, which no border can split, the perceptron's pulls never did. In nine orders out of ten it ended between {perceptron_second_lowest_spoken} and {perceptron_highest_spoken}, and in the tenth, at {perceptron_lowest_spoken}."
+text = "In short: a learning rule whose step stays the same size can only come to rest where its added-up pulls cancel out. On Mario's moments, which no border can split, the perceptron's pulls never did. In nine orders out of ten it ended between {perceptron_second_lowest} and {perceptron_highest}, and in the tenth, at {perceptron_lowest}."
+spoken = "In short: a learning rule whose step stays the same size can only come to rest where its added-up pulls cancel out. On Mario's moments, which no border can split, the perceptron's pulls never did. In nine orders out of ten it ended between {perceptron_second_lowest_spoken} and {perceptron_highest_spoken}, and in the tenth, at {perceptron_lowest_spoken}."
 board = "The swinging border and its spread of scores"
 cite = ["exp002"]
 pause = 3.0
@@ -617,7 +623,7 @@ pause = 3.0
 
 [[section.line]]
 id = "inside"
-text = "So even for one neuron, what it learned depends on how it learned. The perceptron's pulls never cancel, so its border is one of many it could have ended on. The square trick's pulls cancel in one place, so its border is nearly the same every time, but that place is set by the squared miss we gave it."
+text = "So even for one neuron, what it learned depends on how it learned. On Mario's moments, the perceptron's pulls never cancelled, so its border is one of many it could have ended on. The square trick's pulls cancel in one place, so its border is nearly the same every time, but that place is set by the squared miss we gave it."
 board = "The fan of perceptron borders from many runs; the square trick's single still border among them"
 cite = ["exp002"]
 pause = 3.0
