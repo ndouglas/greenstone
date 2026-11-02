@@ -28,3 +28,30 @@ says what the compromise is ("it gets some moments wrong to get more
 right"). Not taken: too-big's two sentences (the reason and the
 overshoot share one picture, the ball on the U; the numbers are already
 their own beat).
+
+# Adversarial review Y (draft 20, commit 0421f70)
+
+One substantial finding.
+1. inside / tldr tied the perceptron's spread of endings to its pulls
+   never cancelling, but that was measured only on the batch run (one
+   ending, no order); in the one-at-a-time runs, whose 67–90% spread is
+   being explained, each late pass's nudges add to about 0.1% of their
+   length. → both now say what was seen: "the perceptron never came to
+   rest".
+Minor, taken: too-big "decides whether it gets there at all" (any small
+enough step ends at the same border); settles-3 "makes one small move,
+and does that over and over" (it takes about 2,000).
+
+# Adversarial review Z (draft 20, commit 0421f70)
+
+One substantial finding.
+1. "step" meant both the step size and one added-up move, so just
+   before tldr's "a rule whose step stays the same size", the viewer
+   heard that the square trick's steps shrink: the backwards reading.
+   → "step" is only the size we set; each added-up update is a "move"
+   (settles-3, too-big, too-big-2, perceptron-rest to -3, tldr-2); the
+   header's word rule updated; perceptron-rest-2 adds "with the same
+   step size throughout".
+Minor, taken: step-size "seeing the moments in the same order";
+square-outro "adding up its nudges, settles in one place" (the batch
+version; the per-moment one doesn't settle).

@@ -1,6 +1,6 @@
 title = "002: Every mistake moves the line"
 
-# Draft 20 (Claude, 2026-11-02), after adversarial reviews Q-X;
+# Draft 21 (Claude, 2026-11-02), after adversarial reviews Q-Z;
 # drafts 14-16 answered council rounds 4-6, the first on the scrolling
 # question. Draft 13 rewrote 002 on new data after Nate's
 # interview: the landing question's numbers pointed the wrong way (depth
@@ -14,7 +14,7 @@ title = "002: Every mistake moves the line"
 # fewest-mistakes border but not on it; fewest mistakes is a staircase.
 # Words: "the mark" is where the screen starts to follow Mario; "line"
 # and "border" are only ever the neuron's. Stairs have "ledges"; "step"
-# is the size of a nudge, or one added-up move; a "point" is a place on
+# is only the step size we set; one added-up update is a "move"; a "point" is a place on
 # Mario's map, never a share of a score; the "ruler" is a border.
 
 [[section]]
@@ -197,8 +197,8 @@ cite = ["exp001", "exp002"]
 
 [[section.line]]
 id = "step-size"
-text = "So a neuron with {bigger_step} times the step has the same border after every nudge, makes exactly the same mistakes, and takes the same nudges, {bigger_step} times bigger. We checked: after every pass, its weights were exactly {bigger_step} times the other's."
-spoken = "So a neuron with {bigger_step_spoken} times the step has the same border after every nudge, makes exactly the same mistakes, and takes the same nudges, {bigger_step_spoken} times bigger. We checked: after every pass, its weights were exactly {bigger_step_spoken} times the other's."
+text = "So, seeing the moments in the same order, a neuron with {bigger_step} times the step has the same border after every nudge, makes exactly the same mistakes, and takes the same nudges, {bigger_step} times bigger. We checked: after every pass, its weights were exactly {bigger_step} times the other's."
+spoken = "So, seeing the moments in the same order, a neuron with {bigger_step_spoken} times the step has the same border after every nudge, makes exactly the same mistakes, and takes the same nudges, {bigger_step_spoken} times bigger. We checked: after every pass, its weights were exactly {bigger_step_spoken} times the other's."
 board = "Two runs side by side, one with {bigger_step} times the step: their knobs read {bigger_step} times apart, their borders the same"
 cite = ["exp002"]
 
@@ -393,21 +393,21 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "settles-3"
-text = "If it adds up every moment's nudge first, then takes one small step, it comes to rest."
+text = "If it adds up every moment's nudge first, then makes one small move, and does that over and over, it comes to rest."
 board = "All the nudges added into one; the border still"
 cite = ["exp002", "bishop2006"]
 pause = 3.0
 
 [[section.line]]
 id = "too-big"
-text = "Here, the size of the step does matter. The targets stay at plus and minus one, so doubling the step can't just double everything, the way it did for the perceptron. Too big, and each step jumps clean over the bottom of the U and lands higher up its other side."
+text = "Here, the size of the step decides whether it gets there at all. The targets stay at plus and minus one, so doubling the step can't just double everything, the way it did for the perceptron. Too big, and each move jumps clean over the bottom of the U and lands higher up its other side."
 board = "A ball on the U, each jump crossing the bottom and landing higher up the other side. (The step that settled also crosses the bottom along the steepest way, but lands lower each time: don't draw it as a smooth roll.)"
 cite = ["exp002", "bishop2006"]
 
 [[section.line]]
 id = "too-big-2"
-text = "With {too_big_step} times the step size that settled, the total squared miss grew after each of {too_big_steps} steps, to {too_big_growth} times where it started."
-spoken = "With {too_big_step_spoken} times the step size that settled, the total squared miss grew after each of {too_big_steps_spoken} steps, to {too_big_growth_spoken} times where it started."
+text = "With {too_big_step} times the step size that settled, the total squared miss grew after each of {too_big_steps} moves, to {too_big_growth} times where it started."
+spoken = "With {too_big_step_spoken} times the step size that settled, the total squared miss grew after each of {too_big_steps_spoken} moves, to {too_big_growth_spoken} times where it started."
 board = "The total squared miss climbing, step by step, to {too_big_growth} times where it started"
 cite = ["exp002"]
 pause = 3.0
@@ -454,7 +454,7 @@ cite = ["exp002", "bishop2006"]
 
 [[section.line]]
 id = "square-outro"
-text = "So the square trick settles, in nearly the same place every time, but that place was chosen by the squared misses we gave it, not by the count of mistakes we wanted. So why not aim straight at the fewest mistakes?"
+text = "So the square trick, adding up its nudges, settles in one place, but that place was chosen by the squared misses we gave it, not by the count of mistakes we wanted. So why not aim straight at the fewest mistakes?"
 board = "The square trick's still border beside the fewest-mistakes border, also still, a gap between them"
 cite = ["exp002", "bishop2006", "hoffgen1995"]
 
@@ -562,21 +562,21 @@ cite = ["hoffgen1995", "bishop2006", "exp002"]
 
 [[section.line]]
 id = "perceptron-rest"
-text = "And the perceptron? Add up all its nudges before each step, as the square trick can, and its score calms: over its last hundred steps, it stayed between {batch_perceptron_lowest} and {batch_perceptron_highest}."
-spoken = "And the perceptron? Add up all its nudges before each step, as the square trick can, and its score calms: over its last hundred steps, it stayed between {batch_perceptron_lowest_spoken} and {batch_perceptron_highest_spoken}."
+text = "And the perceptron? Add up all its nudges before each move, as the square trick can, and its score calms: over its last hundred moves, it stayed between {batch_perceptron_lowest} and {batch_perceptron_highest}."
+spoken = "And the perceptron? Add up all its nudges before each move, as the square trick can, and its score calms: over its last hundred moves, it stayed between {batch_perceptron_lowest_spoken} and {batch_perceptron_highest_spoken}."
 board = "All the perceptron's nudges added into one, step after step; its score bar steadier"
 cite = ["exp002"]
 
 [[section.line]]
 id = "perceptron-rest-2"
-text = "But its last hundred steps were all about the same size, while the square trick's shrink toward nothing."
-board = "Two lines of step sizes: the perceptron's flat, the square trick's falling toward nothing"
+text = "But its last hundred moves were all about the same size, with the same step size throughout, while the square trick's moves shrink toward nothing."
+board = "Two lines of move sizes: the perceptron's flat, the square trick's falling toward nothing"
 cite = ["exp002"]
 
 [[section.line]]
 id = "perceptron-rest-3"
-text = "Over those last hundred steps, its added-up pulls never came near cancelling: they always kept more than three quarters of their size."
-board = "At each of the last hundred steps, the perceptron's pulls added head to tail into an arrow most of their combined length"
+text = "Over those last hundred moves, its added-up pulls never came near cancelling: they always kept more than three quarters of their size."
+board = "At each of the last hundred moves, the perceptron's pulls added head to tail into an arrow most of their combined length"
 cite = ["exp002"]
 pause = 3.0
 
@@ -593,16 +593,16 @@ title = "Conclusions"
 
 [[section.line]]
 id = "tldr"
-text = "In short: a learning rule whose step stays the same size can only come to rest where its added-up pulls cancel out. On Mario's moments, which no border can split, the perceptron's pulls never did. In nine orders out of ten it ended between {perceptron_second_lowest} and {perceptron_highest}, and in the tenth, at {perceptron_lowest}."
-spoken = "In short: a learning rule whose step stays the same size can only come to rest where its added-up pulls cancel out. On Mario's moments, which no border can split, the perceptron's pulls never did. In nine orders out of ten it ended between {perceptron_second_lowest_spoken} and {perceptron_highest_spoken}, and in the tenth, at {perceptron_lowest_spoken}."
+text = "In short: a learning rule whose step stays the same size can only come to rest where its added-up pulls cancel out. On Mario's moments, which no border can split, the perceptron never came to rest. In nine orders out of ten it ended between {perceptron_second_lowest} and {perceptron_highest}, and in the tenth, at {perceptron_lowest}."
+spoken = "In short: a learning rule whose step stays the same size can only come to rest where its added-up pulls cancel out. On Mario's moments, which no border can split, the perceptron never came to rest. In nine orders out of ten it ended between {perceptron_second_lowest_spoken} and {perceptron_highest_spoken}, and in the tenth, at {perceptron_lowest_spoken}."
 board = "The swinging border and its spread of scores"
 cite = ["exp002"]
 pause = 3.0
 
 [[section.line]]
 id = "tldr-2"
-text = "The square trick weighs how far off each moment is. Its pulls cancel at the bottom of a bowl. Adding up its nudges before each step, it settles there, at {batch_square}."
-spoken = "The square trick weighs how far off each moment is. Its pulls cancel at the bottom of a bowl. Adding up its nudges before each step, it settles there, at {batch_square_spoken}."
+text = "The square trick weighs how far off each moment is. Its pulls cancel at the bottom of a bowl. Adding up its nudges before each move, it settles there, at {batch_square}."
+spoken = "The square trick weighs how far off each moment is. Its pulls cancel at the bottom of a bowl. Adding up its nudges before each move, it settles there, at {batch_square_spoken}."
 board = "The bowl, with the square trick resting at its bottom"
 cite = ["widrow1960", "exp002"]
 pause = 3.0
@@ -623,7 +623,7 @@ pause = 3.0
 
 [[section.line]]
 id = "inside"
-text = "So even for one neuron, what it learned depends on how it learned. On Mario's moments, the perceptron's pulls never cancelled, so its border is one of many it could have ended on. The square trick's pulls cancel in one place, so its border is nearly the same every time, but that place is set by the squared miss we gave it."
+text = "So even for one neuron, what it learned depends on how it learned. On Mario's moments, the perceptron never came to rest, so its border is one of many it could have ended on. The square trick's pulls cancel in one place, so it settles on one border, but that place is set by the squared miss we gave it."
 board = "The fan of perceptron borders from many runs; the square trick's single still border among them"
 cite = ["exp002"]
 pause = 3.0
