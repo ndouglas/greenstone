@@ -91,6 +91,15 @@ pub mod smb1 {
   pub const VY: u16 = 0x009F;
   /// Six BCD digits, one per byte, millions down to tens.
   pub const SCORE_DIGITS: u16 = 0x07DD;
+  /// Mario's horizontal position on screen, as the scroll code reads it
+  /// (`Player_Pos_ForScroll` in doppelganger's SMBDIS.ASM).
+  pub const POS_FOR_SCROLL: u16 = 0x0755;
+  /// Horizontal speed, signed, in sixteenths of a pixel per frame
+  /// (`Player_X_Speed`); at most 24 walking and 40 running (`MaxRightXSpdData`).
+  pub const X_SPEED: u16 = 0x0057;
+  /// Pixels the screen scrolled this frame (`ScrollAmount`); the scroll code
+  /// moves the screen only once `POS_FOR_SCROLL` is at least 80 (`cmp #$50`).
+  pub const SCROLL_AMOUNT: u16 = 0x0775;
 }
 
 /// Super Mario Bros. 3, per Data Crystal's "Super Mario Bros. 3/RAM map".
@@ -192,7 +201,7 @@ pub fn smb1_score(emu: &mut NesEmulator) -> u32 {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::nes::bus::BUTTON_A;
+  use crate::nes::bus::{BUTTON_A, BUTTON_B, BUTTON_LEFT};
   use crate::nes::gym::reservoir::rom_or_skip;
 
   fn jump_and_land(game: &Game) {
@@ -283,6 +292,52 @@ mod tests {
     let lowest = ys.iter().copied().filter(|&y| y < 0xEF).max().unwrap();
     assert_eq!(depth, 176, "Mario isn't standing on the floor");
     assert_eq!(lowest + 8, depth + 32);
+  }
+
+  #[test]
+  fn smb1_the_screen_moves_only_once_mario_is_80_dots_in() {
+    let Some(rom) = rom_or_skip(SMB1.rom) else { return };
+    let mut emu = SMB1.boot(&rom).unwrap();
+    assert_eq!(emu.ram_read(smb1::X_SPEED), 0);
+    assert!(emu.ram_read(smb1::POS_FOR_SCROLL) < 80);
+    let (mut fastest, mut scrolled_before_80, mut scrolled) = (0u8, false, false);
+    for _ in 0..240 {
+      let before = emu.ram_read(smb1::POS_FOR_SCROLL);
+      emu.step_frame(BUTTON_RIGHT);
+      fastest = fastest.max(emu.ram_read(smb1::X_SPEED));
+      let moved = emu.ram_read(smb1::SCROLL_AMOUNT) != 0;
+      scrolled_before_80 |= moved && before < 80;
+      scrolled |= moved;
+    }
+    assert_eq!(fastest, 24, "walking right tops out at 24 sixteenths");
+    assert!(scrolled, "the screen never moved");
+    assert!(!scrolled_before_80, "the screen moved before Mario reached 80");
+    let pos = emu.ram_read(smb1::POS_FOR_SCROLL);
+    // Between 80 and 112 the screen scrolls a little slower than Mario moves
+    // (`cmp #$70`), so he drifts right until 112.
+    assert!((80..=112).contains(&pos), "Mario at {} once the screen follows", pos);
+  }
+
+  #[test]
+  fn smb1_running_tops_out_at_40() {
+    let Some(rom) = rom_or_skip(SMB1.rom) else { return };
+    let mut emu = SMB1.boot(&rom).unwrap();
+    let mut fastest = 0u8;
+    for _ in 0..60 {
+      emu.step_frame(BUTTON_RIGHT | BUTTON_B);
+      fastest = fastest.max(emu.ram_read(smb1::X_SPEED));
+    }
+    assert_eq!(fastest, 40);
+  }
+
+  #[test]
+  fn smb1_walking_left_is_a_negative_speed() {
+    let Some(rom) = rom_or_skip(SMB1.rom) else { return };
+    let mut emu = SMB1.boot(&rom).unwrap();
+    for _ in 0..20 {
+      emu.step_frame(BUTTON_LEFT);
+    }
+    assert!((emu.ram_read(smb1::X_SPEED) as i8) < 0);
   }
 
   #[test]

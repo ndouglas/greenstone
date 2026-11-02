@@ -1,7 +1,9 @@
-"""Video 002's experiments: 001's landing neuron (depth and vertical speed;
-will Mario land within 10 frames?) learning its own border, by each rule
-in `rules.py`, against the border 001 found by search. Learned on
-recordings 1-2, scored on recording 3.
+"""Video 002's experiments: a neuron learning its own border, by each rule
+in `rules.py`, against the best border found by search. The question:
+Mario is left of the line where the screen starts to follow him; will the
+screen move within half a second? It reads how far right he is (in
+blocks) and how fast he's going right (in pixels a frame). Learned on
+recordings 1, 2, 4 and 5, scored on 3 and 6.
 
 Usage: cd tools && series/.venv/bin/python -m series.lab.exp002
 """
@@ -13,7 +15,8 @@ import numpy as np
 
 from series.lab import rules
 from series.lab.data import load
-from series.lab.exp001 import DATA, best_line, land_data, percent, spoken_number
+from series.lab.data import Recording, check_rate
+from series.lab.exp001 import DATA, best_line, check_recording, percent, spoken_number
 from series.script import REPO, VIDEOS
 
 OUT = VIDEOS / "002-every-mistake" / "numbers.json"
@@ -22,7 +25,21 @@ MAPS = REPO / "target" / "series" / "002-every-mistake" / "maps.npz"
 ANGLES = np.radians(np.arange(0, 360, 0.5))
 OFFSETS = np.linspace(-3, 3, 601)
 
+TRAIN, TEST = ("1", "2", "4", "5"), ("3", "6")
+# Super Mario Bros. (verified in src/nes/gym/series/ram.rs): the player
+# state, Mario's position on screen as the scroll code reads it, his speed
+# to the right, and how far the screen moved this frame. The screen moves
+# only once the position is at least LINE.
+PLAY, POSITION, SPEED, SCROLL = 0x000E, 0x0755, 0x0057, 0x0775
+LINE = 80
+SOON = 30  # frames: half a second
+# Both bytes counted in sixteenths: a block is 16 pixels, and the speed is
+# in sixteenths of a pixel a frame.
+SIXTEENTHS = 16.0
+
 PASSES = 30
+# The control is given longer: it stops, but its two sides are close together.
+CONTROL_PASSES = 300
 ORDERS = 10  # each rule is run with this many shuffled orders
 LAST = 10  # how settled a rule is: its swing over the last passes
 DROPS = 30  # moments left out, to see how much a tiny change moves the end
@@ -31,9 +48,10 @@ DROPS = 30  # moments left out, to see how much a tiny change moves the end
 # step doesn't matter can be checked exactly over a whole run.
 RATES = {"simple": 0.01, "perceptron": 2.0 ** -7, "square": 0.001}
 BIGGER = 8
-# Too big a step for the batch square trick: this many times its own.
-TOO_BIG = 20
-TOO_BIG_STEPS = 60
+# The batch square trick's step, and too big a one: this many times it.
+BATCH_RATE = 0.1
+TOO_BIG = 2
+TOO_BIG_STEPS = 10
 
 
 def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes_agree: bool,
@@ -54,6 +72,43 @@ def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes
         raise AssertionError("the square trick's map has more than one low point where it slopes")
     if not too_big_grows:
         raise AssertionError("the square trick's miss didn't grow at every step with too big a step")
+
+
+def scroll_moments(r: Recording) -> tuple[np.ndarray, np.ndarray]:
+    """The moments the question is about, and whether the screen moved
+    within SOON frames of each. A moment is kept if Mario is left of the
+    line and not walking left, and the game is in play from it to the end
+    of its window, with no restart inside the window."""
+    ram, n = r.ram, len(r.ram)
+    play = ram[:, PLAY] == 0x08
+    moved = ram[:, SCROLL] != 0
+    restart = np.zeros(n, bool)
+    restart[[f for f in r.meta.get("restart_frames", []) if f < n]] = True
+    speed = ram[:, SPEED].astype(np.int8)
+    keep, soon = [], []
+    for i in range(n - SOON):
+        window = slice(i + 1, i + SOON + 1)
+        if (play[i] and ram[i, POSITION] < LINE and speed[i] >= 0
+                and play[window].all() and not restart[window].any()):
+            keep.append(i)
+            soon.append(moved[window].any())
+    return np.array(keep, int), np.array(soon, int)
+
+
+def scroll_data(recs: list[Recording]) -> tuple[np.ndarray, np.ndarray]:
+    """Each moment as (blocks from the left of the screen, pixels a frame
+    to the right), and whether the screen moved soon after."""
+    xs, ys = [], []
+    for r in recs:
+        check_recording("smb1", r)
+        keep, soon = scroll_moments(r)
+        position = r.ram[keep, POSITION].astype(float)
+        speed = r.ram[keep, SPEED].astype(np.int8).astype(float)
+        xs.append(np.stack([position, speed], 1) / SIXTEENTHS)
+        ys.append(soon)
+    y = np.concatenate(ys)
+    check_rate(y)
+    return np.concatenate(xs), y
 
 
 def local_lows(height: np.ndarray, flat: np.ndarray) -> int:
@@ -79,21 +134,27 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         n = int(np.floor(value + 0.5))
         numbers[name], numbers[name + "_spoken"] = n, spoken_number(n)
 
-    x, y = land_data([load(data_root / "smb1" / s) for s in ("1", "2")])
-    xt, yt = land_data([load(data_root / "smb1" / "3")])
-    # Standardized on the moments learned from, so one step size suits both inputs.
-    mean, scale = x.mean(0), x.std(0)
-    z, zt = (x - mean) / scale, (xt - mean) / scale
+    x, y = scroll_data([load(data_root / "smb1" / s) for s in TRAIN])
+    xt, yt = scroll_data([load(data_root / "smb1" / s) for s in TEST])
+    # Not standardized: both numbers stay what the game means by them, never
+    # negative, bigger meaning sooner.
+    z, zt = x, xt
     put_int("train_moments", len(y))
     put_int("test_moments", len(yt))
-    put("lands_soon_rate", yt.mean())
+    put("scrolls_soon_rate", yt.mean())
+    put_int("line", LINE)
+    numbers["line_blocks"] = LINE / SIXTEENTHS
+    put_int("soon_frames", SOON)
 
     w, b, _ = best_line(x, y)
-    search = rules.Line(w * scale, float(b + w @ mean))
+    search = rules.Line(w, b)
     put("search", rules.accuracy(search, zt, yt))
+    # The best border, written as blocks + k × speed > c.
+    numbers["search_speed_per_block"] = round(float(w[1] / w[0]), 2)
+    numbers["search_cut_blocks"] = round(float(-b / w[0]), 2)
 
-    # Why no border can be perfect: the game keeps depth and speed as whole
-    # numbers, and many spots on Mario's map hold moments with both answers.
+    # Why no border can be perfect: the game keeps position and speed as
+    # whole numbers, and many spots on Mario's map hold moments with both answers.
     spots, owner, per_spot = np.unique(x, axis=0, return_inverse=True, return_counts=True)
     owner = owner.ravel()
     landed = np.bincount(owner, weights=y, minlength=len(spots))
@@ -142,13 +203,18 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     # The control: on only the moments search's border gets right, a line
     # does split them, and the rule should stop.
     split = rules.says(search, z) == y
-    control = rules.train("perceptron", z[split], y[split], RATES["perceptron"], PASSES, 0)
+    control = rules.train("perceptron", z[split], y[split], RATES["perceptron"], CONTROL_PASSES, 0)
     put("control_score", rules.accuracy(control[-1], z[split], y[split]))
     control_settles = bool(np.array_equal(control[-1].w, control[-2].w) and control[-1].b == control[-2].b)
     # The last pass in which it still moved.
-    moved = [p + 1 for p in range(1, PASSES) if not (np.array_equal(control[p].w, control[p - 1].w)
+    moved = [p + 1 for p in range(1, CONTROL_PASSES) if not (np.array_equal(control[p].w, control[p - 1].w)
                                                        and control[p].b == control[p - 1].b)]
     put_int("control_last_moving_pass", max(moved, default=1))
+    put_int("control_passes", CONTROL_PASSES)
+    # How close together its two sides come: the narrowest gap from the
+    # best border to a moment, in blocks along the map.
+    totals = z[split] @ search.w + search.b
+    numbers["control_gap_blocks"] = round(float(np.abs(totals).min() / np.linalg.norm(search.w)), 4)
 
     # A step BIGGER times bigger: the same mistakes, so the same nudges,
     # bigger; every weight exactly BIGGER times, after every pass.
@@ -157,14 +223,14 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     rate_free = all(np.array_equal(BIGGER * a.w, c.w) and BIGGER * a.b == c.b for a, c in zip(small, large))
     put_int("bigger_step", BIGGER)
 
-    batch = rules.batch_square(z, y, rate=0.1, steps=2000)
+    batch = rules.batch_square(z, y, rate=BATCH_RATE, steps=2000)
     exact = rules.least_squares(z, y)
     zero_one = rules.least_squares(z, y, codes=(0.0, 1.0))
     logistic = rules.batch_logistic(z, y, rate=0.5, steps=5000)
     put("batch_square", rules.accuracy(batch, zt, yt))
     put("logistic", rules.accuracy(logistic, zt, yt))
     # Too big a step: each nudge overshoots by more than the miss it closes.
-    too_big = rules.batch_square_misses(z, y, rate=TOO_BIG * 0.1, steps=TOO_BIG_STEPS)
+    too_big = rules.batch_square_misses(z, y, rate=TOO_BIG * BATCH_RATE, steps=TOO_BIG_STEPS)
     put_int("too_big_step", TOO_BIG)
     put_int("too_big_steps", TOO_BIG_STEPS)
     put_int("too_big_growth", too_big[-1] / too_big[0])
@@ -247,20 +313,24 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     # The square trick listens to moments it already gets right, by too much.
     far = rules.right_by_too_much(exact, z, y)
     put("right_by_too_much", far.mean())
-    numbers["right_by_too_much_median_depth"] = float(np.median(x[far, 0]))
+    numbers["right_by_too_much_median_blocks"] = float(np.median(x[far, 0]))
     numbers["right_by_too_much_median_speed"] = float(np.median(x[far, 1]))
-    numbers["median_depth"], numbers["median_speed"] = float(np.median(x[:, 0])), float(np.median(x[:, 1]))
-    put("right_by_too_much_rising", (x[far, 1] < 0).mean())
-    put("rising", (x[:, 1] < 0).mean())
+    numbers["median_blocks"], numbers["median_speed"] = float(np.median(x[:, 0])), float(np.median(x[:, 1]))
 
-    # The two maps of every border: mistakes (a staircase), squared error (a bowl).
-    mistakes, squared = rules.landscape(z, y, ANGLES, OFFSETS)
+    # The two maps of every border: mistakes (a staircase), squared error (a
+    # bowl). Each border is a direction and a distance from the middle of
+    # Mario's map (the middle of what he can reach: up to the line, and up
+    # to running speed), so the sheet is the same whatever the numbers' units.
+    middle = np.array([LINE / SIXTEENTHS, z[:, 1].max()]) / 2
+    numbers["map_middle"] = middle.tolist()
+    mistakes, squared = rules.landscape(z - middle, y, ANGLES, OFFSETS)
     i, j = np.unravel_index(np.argmin(mistakes), mistakes.shape)
     k, l = np.unravel_index(np.argmin(squared), squared.shape)
     stairs_bottom = rules.Line(np.array([np.cos(ANGLES[i]), np.sin(ANGLES[i])]), float(OFFSETS[j]))
     bowl_bottom = rules.Line(np.array([np.cos(ANGLES[k]), np.sin(ANGLES[k])]), float(OFFSETS[l]))
-    put("stairs_bottom", rules.accuracy(stairs_bottom, zt, yt))
-    put("bowl_bottom", rules.accuracy(bowl_bottom, zt, yt))
+    put("stairs_bottom", rules.accuracy(stairs_bottom, zt - middle, yt))
+    put("bowl_bottom", rules.accuracy(bowl_bottom, zt - middle, yt))
+    exact_from_middle = rules.least_squares(z - middle, y)
     # Big drops: neighbouring borders (one offset step apart) whose
     # mistakes differ by fifty moments or more.
     drops = np.abs(np.diff(mistakes, axis=1)) * len(y)
@@ -276,10 +346,10 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     lows = local_lows(squared, flat)
     maps.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(maps, angles=ANGLES, offsets=OFFSETS, mistakes=mistakes, squared=squared,
-                        mean=mean, scale=scale)
+                        middle=middle)
 
     check_claims(
-        bowl_is_least_squares=rules.turn([bowl_bottom, exact]) < 1.0,
+        bowl_is_least_squares=rules.turn([bowl_bottom, exact_from_middle]) < 1.0,
         control_settles=control_settles,
         one_hollow=lows == 1,
         perceptron_rate_free=rate_free,

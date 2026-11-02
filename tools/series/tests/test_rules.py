@@ -232,6 +232,30 @@ class Experiment(unittest.TestCase):
         flat = a > 0.4
         self.assertEqual(local_lows(two, flat), 1)
 
+    def test_scroll_moments_keep_only_the_moments_the_question_is_about(self):
+        from series.lab.data import Recording
+        from series.lab.exp002 import SOON, scroll_moments
+        n = 200
+        ram = np.zeros((n, 2048), np.uint8)
+        ram[:, 0x000E] = 8  # play
+        ram[:, 0x0755] = 40  # left of the line
+        ram[:, 0x0057] = 16  # one pixel a frame, to the right
+        ram[100, 0x0775] = 1  # the screen moves once, at frame 100
+        ram[10, 0x0755] = 90  # past the line
+        ram[20, 0x0057] = 0xF0  # walking left
+        ram[150:155, 0x000E] = 6  # not play
+        rec = Recording(ram=ram, buttons=np.zeros(n, np.uint8), meta={"restart_frames": [60]})
+        keep, soon = scroll_moments(rec)
+        kept = set(keep.tolist())
+        self.assertNotIn(10, kept)
+        self.assertNotIn(20, kept)
+        self.assertFalse(kept & set(range(60 - SOON, 60)), "a window crossed a restart")
+        self.assertFalse(kept & set(range(150 - SOON, 155)), "a window left play")
+        self.assertTrue(all(i < n - SOON for i in kept))
+        by_frame = dict(zip(keep.tolist(), soon.tolist()))
+        self.assertTrue(by_frame[100 - SOON] and by_frame[99])
+        self.assertFalse(by_frame[100] or by_frame[100 - SOON - 1])
+
 
 if __name__ == "__main__":
     unittest.main()
