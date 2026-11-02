@@ -51,21 +51,17 @@ def step(rule: str, line: Line, x: np.ndarray, y: int, rate: float) -> Line:
 
 
 def train(rule: str, x: np.ndarray, y: np.ndarray, rate: float, passes: int, seed: int,
-          skip: np.ndarray | None = None, shrink: str | None = None) -> list[Line]:
+          skip: np.ndarray | None = None) -> list[Line]:
     """Start at zero; each pass visits every moment once, in a shuffled
     order. Moments marked in `skip` are left out without changing the
-    order the others come in. With `shrink`, the step shrinks: "moment",
-    rate / k at the k-th moment visited; "pass", rate / p in the p-th
-    pass. Returns the line after each pass."""
+    order the others come in. Returns the line after each pass."""
     rng = np.random.default_rng(seed)
     line = Line(np.zeros(x.shape[1]), 0.0)
-    after, seen = [], 0
-    for p in range(1, passes + 1):
+    after = []
+    for _ in range(passes):
         for i in rng.permutation(len(y)):
             if skip is None or not skip[i]:
-                seen += 1
-                size = {None: rate, "moment": rate / seen, "pass": rate / p}[shrink]
-                line = step(rule, line, x[i], int(y[i]), size)
+                line = step(rule, line, x[i], int(y[i]), rate)
         after.append(line)
     return after
 

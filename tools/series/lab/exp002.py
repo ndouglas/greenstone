@@ -22,9 +22,9 @@ from series.script import REPO, VIDEOS
 OUT = VIDEOS / "002-every-mistake" / "numbers.json"
 # The two maps of every border, for the animations (large; not committed).
 MAPS = REPO / "target" / "series" / "002-every-mistake" / "maps.npz"
-# The sheet's left edge is at 300°, so the bowl is one piece on the left
+# The sheet's left edge is at 310°, so the bowl is one piece on the left
 # and the flat shelf (borders facing the wrong way) is to its right.
-ANGLES = np.radians(np.arange(300, 660, 0.5))
+ANGLES = np.radians(np.arange(310, 670, 0.5))
 OFFSETS = np.linspace(-3, 3, 601)
 
 TRAIN, TEST = ("1", "2", "4", "5"), ("3", "6")
@@ -39,6 +39,8 @@ BUTTON_RIGHT = 0x80
 # Both bytes counted in sixteenths: a block is 16 pixels, and the speed is
 # in sixteenths of a pixel a frame.
 SIXTEENTHS = 16.0
+# Top speeds, in pixels a frame (verified in ram.rs: 24 and 40 sixteenths).
+WALKING, RUNNING = 1.5, 2.5
 
 PASSES = 30
 # The control is given longer: it stops, but its two sides are close together.
@@ -60,8 +62,8 @@ TOO_BIG_STEPS = 10
 def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes_agree: bool,
                  bowl_is_least_squares: bool = True, control_settles: bool = True,
                  one_hollow: bool = True, too_big_grows: bool = True,
-                 one_run_ends_lowest: bool = True, shrinking_calms: bool = True,
-                 gentle_shrinking_swings: bool = True, search_words_fit: bool = True) -> None:
+                 one_run_ends_lowest: bool = True, search_words_fit: bool = True,
+                 pulls_lean_back: bool = True, sheet_edges_sloped: bool = True) -> None:
     """Things the script will rest on; refuse to write numbers if any fails."""
     if not perceptron_rate_free:
         raise AssertionError("the perceptron's border changed with its step size")
@@ -79,12 +81,12 @@ def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes
         raise AssertionError("the square trick's miss didn't grow at every step with too big a step")
     if not one_run_ends_lowest:
         raise AssertionError("the run shown doesn't end on its lowest score, lowest of all the orders")
-    if not shrinking_calms:
-        raise AssertionError("a shrinking step didn't calm the perceptron to under a point")
-    if not gentle_shrinking_swings:
-        raise AssertionError("a step shrinking once a pass calmed the perceptron too")
     if not search_words_fit:
-        raise AssertionError("the best border no longer fits 'about four blocks; about one and a half walking'")
+        raise AssertionError("the borders no longer fit the words search-2 and short describe them with")
+    if not pulls_lean_back:
+        raise AssertionError("a perceptron nudge didn't lean back toward zero")
+    if not sheet_edges_sloped:
+        raise AssertionError("the border sheet's edges cut through the flat shelf")
 
 
 def scroll_moments(r: Recording) -> tuple[np.ndarray, np.ndarray]:
@@ -173,8 +175,8 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     # The best border, written as blocks + k × speed > c.
     numbers["search_speed_per_block"] = round(float(w[1] / w[0]), 2)
     numbers["search_cut_blocks"] = round(float(-b / w[0]), 2)
-    # Where it says yes from, at full walking speed (1.5 pixels a frame).
-    numbers["search_cut_walking_blocks"] = round(float((-b - 1.5 * w[1]) / w[0]), 2)
+    # Where it says yes from, at full walking speed.
+    numbers["search_cut_walking_blocks"] = round(float((-b - WALKING * w[1]) / w[0]), 2)
     search_words_fit = (3.5 < numbers["search_cut_blocks"] < 4.5
                         and 1.25 < numbers["search_cut_walking_blocks"] < 1.75)
 
@@ -229,18 +231,6 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         put(f"{rule}_late_lowest", min(min(s[-LAST:]) for s in scores))
         put(f"{rule}_late_highest", max(max(s[-LAST:]) for s in scores))
 
-    # A step that shrinks as it goes (rate / k at the k-th moment) calms
-    # the perceptron: a schedule imposed on the rule, not part of it.
-    # Shrinking it only once a pass doesn't: within a pass, the step's
-    # size doesn't matter to this rule.
-    def shrinking_swing(how: str) -> float:
-        scores = [[rules.accuracy(l, zt, yt) for l in rules.train("perceptron", z, y, RATES["perceptron"], PASSES,
-                                                                  seed, shrink=how)] for seed in range(ORDERS)]
-        return float(np.median([rules.swing(s, LAST) for s in scores]))
-    moment_swing, pass_swing = shrinking_swing("moment"), shrinking_swing("pass")
-    numbers["perceptron_shrinking_swing_points"] = round(100 * moment_swing, 2)
-    put_int("perceptron_pass_shrinking_swing_points", 100 * pass_swing)
-
     # A tiny change: leave out a few moments, and keep everything else,
     # the order of the rest included, the same.
     put("perceptron_undropped", rules.accuracy(rules.train("perceptron", z, y, RATES["perceptron"], PASSES, 0)[-1], zt, yt))
@@ -281,6 +271,9 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     zero_one = rules.least_squares(z, y, codes=(0.0, 1.0))
     logistic = rules.batch_logistic(z, y, rate=0.5, steps=5000)
     put("batch_square", rules.accuracy(batch, zt, yt))
+    # Where the square trick's border says yes from, standing still and walking.
+    numbers["batch_square_cut_blocks"] = round(float(-batch.b / batch.w[0]), 2)
+    numbers["batch_square_cut_walking_blocks"] = round(float((-batch.b - WALKING * batch.w[1]) / batch.w[0]), 2)
     put("logistic", rules.accuracy(logistic, zt, yt))
     # Too big a step: each step goes past the bottom of the bowl and up the
     # other side, further each time.
@@ -369,6 +362,9 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     put("position_weight_change_per_nudge", float(np.median(change[:, 0] / np.abs(before[:, 0]))))
     put("speed_weight_change_per_nudge", float(np.median(change[:, 1] / np.abs(before[:, 1]))))
     put_int("position_weight_nudges_from_zero", float(np.median(np.abs(before[:, 0])) / np.median(change[:, 0])))
+    # Each nudge takes back part of the weights that got its moment wrong:
+    # it points partly back toward zero (never away), so added up they can't cancel.
+    pulls_lean_back = bool((((after - before) * before).sum(1) <= 1e-12).all())
     # For comparison: the settled square trick's weights, in the perceptron's steps.
     numbers["square_steps_from_zero"] = round(float(np.linalg.norm(np.r_[exact.w, exact.b]) / RATES["perceptron"]), 1)
     # The square trick listens to moments it already gets right, by too much.
@@ -418,9 +414,12 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         codes_agree=bool((rules.says(exact, zt) == rules.says(zero_one, zt)).all()),
         too_big_grows=all(b > a for a, b in zip(too_big, too_big[1:])),
         one_run_ends_lowest=one_run_ends_lowest,
-        shrinking_calms=moment_swing < 0.01,
-        gentle_shrinking_swings=pass_swing > 0.05,
-        search_words_fit=search_words_fit,
+        pulls_lean_back=pulls_lean_back,
+        sheet_edges_sloped=bool(flat[0].mean() < 0.05 and flat[-1].mean() < 0.05),
+        # And the square trick's: "standing still, never before the mark;
+        # walking, from almost the left edge".
+        search_words_fit=(search_words_fit and numbers["batch_square_cut_blocks"] > LINE / SIXTEENTHS
+                          and numbers["batch_square_cut_walking_blocks"] < 1.0),
     )
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(numbers, indent=2, sort_keys=True) + "\n")
