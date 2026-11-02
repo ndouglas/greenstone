@@ -33,6 +33,9 @@ TRAIN, TEST = ("1", "2", "4", "5"), ("3", "6")
 # to the right, and how far the screen moved this frame. The screen moves
 # only once the position is at least LINE.
 PLAY, POSITION, SPEED, SCROLL = 0x000E, 0x0755, 0x0057, 0x0775
+# The finer part of Mario's position the two bytes don't show
+# (SprObject_X_MoveForce in SMBDIS: sixteenths of a pixel).
+FRACTION = 0x0400
 LINE = 80
 SOON = 30  # frames: half a second
 BUTTON_RIGHT = 0x80
@@ -63,7 +66,8 @@ def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes
                  bowl_is_least_squares: bool = True, control_settles: bool = True,
                  one_hollow: bool = True, too_big_grows: bool = True,
                  one_run_ends_lowest: bool = True, search_words_fit: bool = True,
-                 pulls_lean_back: bool = True, sheet_edges_sloped: bool = True) -> None:
+                 pulls_lean_back: bool = True, sheet_edges_sloped: bool = True,
+                 hidden_fraction: bool = True, batch_steps_differ: bool = True) -> None:
     """Things the script will rest on; refuse to write numbers if any fails."""
     if not perceptron_rate_free:
         raise AssertionError("the perceptron's border changed with its step size")
@@ -87,6 +91,10 @@ def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes
         raise AssertionError("a perceptron nudge didn't lean back toward zero")
     if not sheet_edges_sloped:
         raise AssertionError("the border sheet's edges cut through the flat shelf")
+    if not hidden_fraction:
+        raise AssertionError("the game's finer part of Mario's position didn't vary at a point")
+    if not batch_steps_differ:
+        raise AssertionError("the batch perceptron's steps shrank, or the batch square trick's didn't")
 
 
 def scroll_moments(r: Recording) -> tuple[np.ndarray, np.ndarray]:
@@ -189,6 +197,14 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     put("right_ahead_true_yes", ahead[(said == 1) & (yt == 1)].mean())
     put("right_ahead_false_yes", ahead[(said == 1) & (yt == 0)].mean())
     put("right_ahead_missed_yes", ahead[(said == 0) & (yt == 1)].mean())
+    # The same, at the test points that hold both answers: the same two
+    # numbers, the screen moving or not.
+    _, at, count = np.unique(xt, axis=0, return_inverse=True, return_counts=True)
+    at = at.ravel()
+    moved = np.bincount(at, weights=yt, minlength=len(count))
+    mixed = ((moved > 0) & (moved < count))[at]
+    put("right_ahead_mixed_yes", ahead[mixed & (yt == 1)].mean())
+    put("right_ahead_mixed_no", ahead[mixed & (yt == 0)].mean())
 
     # Why no border can be perfect: the game keeps position and speed as
     # whole numbers, and many spots on Mario's map hold moments with both answers.
@@ -206,6 +222,14 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     # Crossing one spot changes a border's mistakes by the difference
     # between that spot's landings and non-landings.
     put_int("spot_biggest_change", np.abs(2 * landed - per_spot).max())
+    # The game keeps a finer part of the position that the two bytes don't
+    # show: at points where Mario is moving, how often it differs between
+    # moments at the same point.
+    fraction = np.concatenate([r.ram[scroll_moments(r)[0], FRACTION] for r in [load(data_root / "smb1" / s) for s in TRAIN]])
+    moving = x[:, 1] > 0
+    varies = [len(np.unique(fraction[moving][owner[moving] == k])) > 1 for k in np.unique(owner[moving])]
+    hidden = float(np.mean(varies))
+    put("points_with_hidden_fraction", hidden)
 
     for rule, rate in RATES.items():
         runs = [rules.train(rule, z, y, rate, PASSES, seed) for seed in range(ORDERS)]
@@ -312,6 +336,15 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     # Added together, its pulls never cancel: it moves on every step.
     put_int("batch_perceptron_steps", len(lines))
     numbers["batch_perceptron_steps_without_moving"] = int((np.linalg.norm(np.diff(v, axis=0), axis=1) == 0).sum())
+    # Both move on every step; the difference is the steps' size. The
+    # perceptron's last hundred stay about as big as each other; the
+    # square trick's shrink toward nothing.
+    perceptron_steps = np.linalg.norm(np.diff(v, axis=0), axis=1)[-100:]
+    square_steps = rules.batch_square_step_sizes(z, y, rate=BATCH_RATE, steps=2000)
+    numbers["batch_perceptron_last_steps_smallest_to_median"] = round(float(perceptron_steps.min() / np.median(perceptron_steps)), 2)
+    numbers["batch_square_last_step_to_first"] = float(f"{square_steps[-1] / square_steps[0]:.1e}")
+    batch_steps_differ = bool(perceptron_steps.min() > 0.5 * np.median(perceptron_steps)
+                              and square_steps[-1] < 1e-6 * square_steps[0])
     numbers["batch_perceptron_weights_in_nudges"] = round(float(
         np.median(np.linalg.norm(v[1:], axis=1)) / np.median(np.linalg.norm(np.diff(v, axis=0), axis=1))), 1)
     # Remembering instead of settling: the best line a run passed through
@@ -416,6 +449,8 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         one_run_ends_lowest=one_run_ends_lowest,
         pulls_lean_back=pulls_lean_back,
         sheet_edges_sloped=bool(flat[0].mean() < 0.05 and flat[-1].mean() < 0.05),
+        hidden_fraction=hidden > 0.5,
+        batch_steps_differ=batch_steps_differ,
         # And the square trick's: "standing still, never before the mark;
         # walking, from almost the left edge".
         search_words_fit=(search_words_fit and numbers["batch_square_cut_blocks"] > LINE / SIXTEENTHS

@@ -154,6 +154,18 @@ def batch_square(x: np.ndarray, y: np.ndarray, rate: float, steps: int) -> Line:
     return Line(v[:-1], float(v[-1]))
 
 
+def batch_square_step_sizes(x: np.ndarray, y: np.ndarray, rate: float, steps: int) -> list[float]:
+    """The batch square trick from zero: how far each step moves the
+    weights and bias."""
+    t = np.where(y == 1, CODES[1], CODES[0])
+    xb, v, sizes = _with_bias(x), np.zeros(x.shape[1] + 1), []
+    for _ in range(steps):
+        move = rate * xb.T @ (t - xb @ v) / len(t)
+        sizes.append(float(np.linalg.norm(move)))
+        v = v + move
+    return sizes
+
+
 def batch_square_misses(x: np.ndarray, y: np.ndarray, rate: float, steps: int) -> list[float]:
     """The batch square trick from zero, returning the total squared miss
     (averaged over the moments) before the first step and after each."""

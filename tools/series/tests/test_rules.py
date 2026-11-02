@@ -123,6 +123,12 @@ class Batch(unittest.TestCase):
         np.testing.assert_allclose(line.w, exact.w, atol=1e-6)
         self.assertAlmostEqual(line.b, exact.b, places=6)
 
+    def test_batch_steps_are_returned_one_per_step(self):
+        x, y = mostly()
+        sizes = rules.batch_square_step_sizes(x, y, rate=0.1, steps=50)
+        self.assertEqual(len(sizes), 50)
+        self.assertTrue(all(b < a for a, b in zip(sizes, sizes[1:])))
+
     def test_a_small_step_shrinks_the_miss_and_a_big_one_grows_it(self):
         x, y = mostly()
         small = rules.batch_square_misses(x, y, rate=0.1, steps=30)
@@ -237,6 +243,10 @@ class Experiment(unittest.TestCase):
             check_claims(True, True, True, pulls_lean_back=False)
         with self.assertRaises(AssertionError):
             check_claims(True, True, True, sheet_edges_sloped=False)
+        with self.assertRaises(AssertionError):
+            check_claims(True, True, True, hidden_fraction=False)
+        with self.assertRaises(AssertionError):
+            check_claims(True, True, True, batch_steps_differ=False)
         with self.assertRaises(AssertionError):
             check_claims(True, True, True, search_words_fit=False)
 

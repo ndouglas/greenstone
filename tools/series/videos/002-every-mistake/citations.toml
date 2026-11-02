@@ -40,6 +40,12 @@ authors = "NESdev Wiki contributors"
 year = 2026
 url = "https://www.nesdev.org/wiki/CPU_memory_map"
 
+[nesdev-ppu]
+title = "PPU rendering (NESdev Wiki; accessed 2026): \"a picture region of 256x240 pixels\", so 16 blocks of 16 across"
+authors = "NESdev Wiki contributors"
+year = 2026
+url = "https://www.nesdev.org/wiki/PPU_rendering"
+
 [minsky1969]
 title = "Perceptrons: An Introduction to Computational Geometry (MIT Press)"
 authors = "M. Minsky and S. Papert"
