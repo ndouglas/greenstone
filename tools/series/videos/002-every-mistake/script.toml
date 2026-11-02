@@ -1,6 +1,6 @@
 title = "002: Every mistake moves the line"
 
-# Draft 22 (Claude, 2026-11-02), after adversarial reviews Q-BB;
+# Draft 23 (Claude, 2026-11-02), after adversarial reviews Q-DD;
 # drafts 14-16 answered council rounds 4-6, the first on the scrolling
 # question. Draft 13 rewrote 002 on new data after Nate's
 # interview: the landing question's numbers pointed the wrong way (depth
@@ -68,7 +68,7 @@ cite = ["datacrystal-smb1", "smbdis"]
 id = "numbers-2"
 text = "Remember, the game runs about sixty frames a second. Walking, he tops out at one and a half pixels a frame; running, with the B button held, at two and a half."
 board = "The speed readout climbing to 1.5 as he walks, then to 2.5 as B is held"
-cite = ["exp001", "smbdis"]
+cite = ["exp001", "nesdev-timing", "smbdis"]
 
 [[section.line]]
 id = "only-these"
@@ -386,14 +386,14 @@ cite = ["bishop2006", "exp002"]
 
 [[section.line]]
 id = "settles-2"
-text = "Single moments still tug. If it learns one moment at a time, its score still moves around over its last ten passes, by about {square_swing_points} in a hundred; the perceptron's typically by {perceptron_swing_points}."
-spoken = "Single moments still tug. If it learns one moment at a time, its score still moves around over its last ten passes, by about {square_swing_points_spoken} in a hundred; the perceptron's typically by {perceptron_swing_points_spoken}."
+text = "If it learns one moment at a time, with the small step we gave it, its score still moves around over its last ten passes, by about {square_swing_points} in a hundred; the perceptron's typically by {perceptron_swing_points}."
+spoken = "If it learns one moment at a time, with the small step we gave it, its score still moves around over its last ten passes, by about {square_swing_points_spoken} in a hundred; the perceptron's typically by {perceptron_swing_points_spoken}."
 board = "The border trembling, one moment at a time; beside it, the perceptron's border swinging much further"
 cite = ["exp002"]
 
 [[section.line]]
 id = "settles-3"
-text = "If it adds up every moment's nudge first, then makes one small move, and does that over and over, it comes to rest."
+text = "If it adds up every moment's nudge first, then makes small moves, it comes to rest."
 board = "All the nudges added into one; the border still"
 cite = ["exp002", "bishop2006"]
 pause = 3.0
@@ -499,14 +499,14 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "no-slope"
-text = "Standing on a flat ledge, every direction looks the same. Only a drop tells you which way is down, and you find it by falling off. So a rule that follows a slope, like the square trick, can't walk down this staircase to the lowest ledge, where the best border we found sits."
+text = "Standing on a flat ledge, every direction looks the same. Only a drop tells you which way is down, and you find it by falling off. So a rule that follows a slope, like the square trick, can't walk down this staircase to the lowest ledge, around the best border we found."
 board = "A marker on a ledge, looking every way; all directions level"
 cite = ["exp002", "bishop2006"]
 
 [[section.line]]
 id = "staircase-outro"
 role = "conclusion"
-text = "So from a rule that settles a few points short, we've come to the thing we actually want, the count of mistakes, and found a staircase no slope-following rule can walk down. So where does the square trick's slope lead, on this sheet? And what about the perceptron?"
+text = "So from a rule that settles about three in a hundred short, we've come to the thing we actually want, the count of mistakes, and found a staircase no slope-following rule can walk down. So where does the square trick's slope lead, on this sheet? And what about the perceptron?"
 board = "The staircase, and the square trick's border, still, somewhere off its lowest ledge"
 cite = ["exp002", "bishop2006"]
 pause = 1.0
@@ -530,7 +530,7 @@ cite = ["exp002", "bishop2006"]
 
 [[section.line]]
 id = "shelf"
-text = "A border that, on balance, faces the wrong way does best by shrinking to nothing: any size above zero makes its misses bigger."
+text = "Some borders do best by shrinking to nothing: any size above zero makes their misses bigger. Mostly, though not always, they're borders that get most moments wrong."
 board = "A backwards border shrinking its weights to nothing, its squared miss falling as it shrinks"
 cite = ["exp002"]
 
@@ -569,7 +569,7 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "perceptron-rest-2"
-text = "But it never settles. Over its last hundred moves, it rocked back and forth between two borders, each move almost undoing the one before."
+text = "But it didn't settle. Over its last hundred moves, it rocked back and forth between two borders, each move almost undoing the one before."
 board = "Two borders on Mario's map, the border flipping between them every move (standing still, one says yes from about {batch_perceptron_rocking_cuts} blocks); the score bar flicking between them"
 cite = ["exp002"]
 pause = 3.0
@@ -593,24 +593,24 @@ title = "Conclusions"
 
 [[section.line]]
 id = "tldr"
-text = "In short: adding up its nudges, a learning rule with a fixed step can only come to rest where they cancel out. On Mario's moments, which no border can split, the perceptron never came to rest, one moment at a time or added up. In nine orders out of ten it ended between {perceptron_second_lowest} and {perceptron_highest}, and in the tenth, at {perceptron_lowest}."
-spoken = "In short: adding up its nudges, a learning rule with a fixed step can only come to rest where they cancel out. On Mario's moments, which no border can split, the perceptron never came to rest, one moment at a time or added up. In nine orders out of ten it ended between {perceptron_second_lowest_spoken} and {perceptron_highest_spoken}, and in the tenth, at {perceptron_lowest_spoken}."
+text = "In short: on Mario's moments, which no border can split, the perceptron never came to rest, one moment at a time or added up. In nine orders out of ten it ended between {perceptron_second_lowest} and {perceptron_highest}, and in the tenth, at {perceptron_lowest}."
+spoken = "In short: on Mario's moments, which no border can split, the perceptron never came to rest, one moment at a time or added up. In nine orders out of ten it ended between {perceptron_second_lowest_spoken} and {perceptron_highest_spoken}, and in the tenth, at {perceptron_lowest_spoken}."
 board = "The swinging border and its spread of scores"
 cite = ["exp002"]
 pause = 3.0
 
 [[section.line]]
 id = "tldr-2"
-text = "The square trick weighs how far off each moment is. Its pulls cancel at the bottom of a bowl. Adding up its nudges before each move, it settles there, at {batch_square}."
-spoken = "The square trick weighs how far off each moment is. Its pulls cancel at the bottom of a bowl. Adding up its nudges before each move, it settles there, at {batch_square_spoken}."
+text = "The square trick weighs how far off each moment is. Adding up its nudges, a rule with a fixed step can only come to rest where they cancel out, and the square trick's cancel at the bottom of a bowl. It settles there, at {batch_square}."
+spoken = "The square trick weighs how far off each moment is. Adding up its nudges, a rule with a fixed step can only come to rest where they cancel out, and the square trick's cancel at the bottom of a bowl. It settles there, at {batch_square_spoken}."
 board = "The bowl, with the square trick resting at its bottom"
 cite = ["widrow1960", "exp002"]
 pause = 3.0
 
 [[section.line]]
 id = "tldr-3"
-text = "Fewest mistakes did as well as anything here. The perceptron matched it by remembering its best pass, which meant scoring every pass on every moment: a search of its own."
-board = "The best border's bar, and the pocket perceptron's beside it, a point apart; behind the pocket, every pass being scored"
+text = "Fewest mistakes did as well as anything here. The perceptron came within about one in a hundred of it by remembering its best pass, which meant scoring every pass on every moment: a search of its own."
+board = "The best border's bar, and the pocket perceptron's beside it, about one in a hundred apart; behind the pocket, every pass being scored"
 cite = ["exp002", "gallant1990"]
 
 [[section.line]]

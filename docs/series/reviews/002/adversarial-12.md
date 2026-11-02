@@ -35,3 +35,35 @@ number multiplies the borders to try"; tldr-3 drops "most reliably"
 before); the "So" openers (most are outros, whose format asks for it);
 remember's "about ninety percent" hardcoded (pocket_lowest and
 pocket_highest are 90% and 91%; the board shows both).
+
+# Adversarial review CC (draft 22, commit 7b485c5)
+
+Two substantial findings.
+1. staircase-outro's "a few points short" (and tldr-3's board, "a point
+   apart") used "point" for a share of the score, against the word rule.
+   → "about three in a hundred short"; "about one in a hundred apart".
+2. shelf: "on balance faces the wrong way" is heard as "gets most moments
+   wrong", true of only 82% of the shelf. → "Some borders do best by
+   shrinking to nothing… Mostly, though not always, they're borders that
+   get most moments wrong."
+Minor, taken: no-slope "around the best border we found" (search's
+border makes one training mistake fewer than the sheet's lowest grid
+spot; both score 91%).
+
+# Adversarial review DD (draft 22, commit 7b485c5)
+
+Two substantial findings.
+1. settles-2: the square trick's small wobble comes mostly from the
+   small step chosen (3.6 to 11.4 points at bigger steps that still
+   converge). → "with the small step we gave it"; the measurements are in
+   games/002.md.
+2. perceptron-rest-2's "it never settles" goes past 300 measured moves.
+   → "it didn't settle".
+Minor, taken: tldr's law sat beside the one-at-a-time runs it doesn't
+explain; it moves to tldr-2, with the square trick ("Adding up its
+nudges, a rule with a fixed step can only come to rest where they
+cancel out, and the square trick's cancel at the bottom of a bowl");
+numbers-2 cites nesdev-timing for sixty frames a second, as 001 did;
+tldr-3 "came within about one in a hundred of it" (not "matched").
+Not taken: "Mark One" against "the mark" (fifteen beats apart, said
+once).
