@@ -1,6 +1,6 @@
 title = "002: Every mistake moves the line"
 
-# Draft 21 (Claude, 2026-11-02), after adversarial reviews Q-Z;
+# Draft 22 (Claude, 2026-11-02), after adversarial reviews Q-BB;
 # drafts 14-16 answered council rounds 4-6, the first on the scrolling
 # question. Draft 13 rewrote 002 on new data after Nate's
 # interview: the landing question's numbers pointed the wrong way (depth
@@ -105,7 +105,7 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "too-many"
-text = "Trying borders like that only works because there were only two numbers. A neuron reading more of the two thousand and forty-eight numbers in the console's memory would have far too many borders to try."
+text = "Trying borders like that only works easily with two numbers; each extra number multiplies the borders to try. A neuron reading more of the two thousand and forty-eight numbers in the console's memory would have far too many borders to try."
 board = "The map's two axes multiply into a crowd of axes; the sweeping borders blur into too many to draw"
 cite = ["exp001", "nesdev-memory"]
 
@@ -312,7 +312,7 @@ pause = 3.0
 [[section.line]]
 id = "never-outro"
 role = "conclusion"
-text = "So the perceptron's rule only reacts to mistakes, and on Mario's moments, something is always wrong, so it never stops. A rule whose step stays the same size can only come to rest where its nudges, added up, come to nothing. What would a rule need, for that to happen?"
+text = "So the perceptron's rule only reacts to mistakes, and on Mario's moments, something is always wrong, so it never stops. What would a rule need, to come to rest?"
 board = "The border still swinging, never still"
 cite = ["exp002"]
 pause = 1.0
@@ -467,7 +467,7 @@ pause = 1.0
 
 [[section.line]]
 id = "map-axes"
-text = "Picture a border on Mario's map as a ruler laid across it, with a yes side and a no side. You can turn the ruler, and half way round, it's the same line, but saying yes where it said no; or you can slide it nearer to or further from the middle of the map."
+text = "Picture a border on Mario's map as a ruler laid across it, with a yes side and a no side. You can turn the ruler around the middle of the map, and half way round, its yes and no sides have swapped; or you can slide it nearer to or further from the middle."
 board = "A ruler-like border on Mario's map turning, its yes side swapping at half a turn, and sliding"
 cite = ["exp001", "exp002"]
 
@@ -506,7 +506,7 @@ cite = ["exp002", "bishop2006"]
 [[section.line]]
 id = "staircase-outro"
 role = "conclusion"
-text = "So from a rule that settles slightly off, we've come to the thing we actually want, the count of mistakes, and found a staircase no slope-following rule can walk down. So where does the square trick's slope lead, on this sheet? And what about the perceptron?"
+text = "So from a rule that settles a few points short, we've come to the thing we actually want, the count of mistakes, and found a staircase no slope-following rule can walk down. So where does the square trick's slope lead, on this sheet? And what about the perceptron?"
 board = "The staircase, and the square trick's border, still, somewhere off its lowest ledge"
 cite = ["exp002", "bishop2006"]
 pause = 1.0
@@ -524,7 +524,7 @@ cite = ["exp002", "bishop2006"]
 
 [[section.line]]
 id = "best-size"
-text = "One border can come with bigger or smaller weights: doubling them all doesn't move it. But it does change the squared miss. So each border gets whichever size gives it the least."
+text = "One border can come with bigger or smaller weights: doubling them all, and the bias, doesn't move it. But it does change the squared miss. So each border gets whichever size gives it the least."
 board = "One border shown with small, medium and large weights; the size with the least squared miss picked"
 cite = ["exp002", "bishop2006"]
 
@@ -536,7 +536,7 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "shelf-2"
-text = "Then every total is zero, every moment misses by exactly one, and all those borders sit at the same height: a high, flat shelf, filling the side of the sheet where the ruler has turned round to face the wrong way."
+text = "Then every total is zero, every moment misses by exactly one, and all those borders sit at the same height: a high, flat shelf, filling the side of the sheet where the ruler mostly faces the wrong way."
 board = "Their spots on the sheet joining a high flat shelf, on the side where the ruler faces the wrong way"
 cite = ["exp002"]
 
@@ -569,16 +569,16 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "perceptron-rest-2"
-text = "But its last hundred moves were all about the same size, with the same step size throughout, while the square trick's moves shrink toward nothing."
-board = "Two lines of move sizes: the perceptron's flat, the square trick's falling toward nothing"
+text = "But it never settles. Over its last hundred moves, it rocked back and forth between two borders, each move almost undoing the one before."
+board = "Two borders on Mario's map, the border flipping between them every move (standing still, one says yes from about {batch_perceptron_rocking_cuts} blocks); the score bar flicking between them"
 cite = ["exp002"]
+pause = 3.0
 
 [[section.line]]
 id = "perceptron-rest-3"
-text = "Over those last hundred moves, its added-up pulls never came near cancelling: they always kept more than three quarters of their size."
-board = "At each of the last hundred moves, the perceptron's pulls added head to tail into an arrow most of their combined length"
+text = "Its moves stay the same size, rocking, while the square trick's shrink toward nothing."
+board = "Two lines of move sizes: the perceptron's flat, the square trick's falling toward nothing"
 cite = ["exp002"]
-pause = 3.0
 
 [[section.line]]
 id = "map-outro"
@@ -593,8 +593,8 @@ title = "Conclusions"
 
 [[section.line]]
 id = "tldr"
-text = "In short: a learning rule whose step stays the same size can only come to rest where its added-up pulls cancel out. On Mario's moments, which no border can split, the perceptron never came to rest. In nine orders out of ten it ended between {perceptron_second_lowest} and {perceptron_highest}, and in the tenth, at {perceptron_lowest}."
-spoken = "In short: a learning rule whose step stays the same size can only come to rest where its added-up pulls cancel out. On Mario's moments, which no border can split, the perceptron never came to rest. In nine orders out of ten it ended between {perceptron_second_lowest_spoken} and {perceptron_highest_spoken}, and in the tenth, at {perceptron_lowest_spoken}."
+text = "In short: adding up its nudges, a learning rule with a fixed step can only come to rest where they cancel out. On Mario's moments, which no border can split, the perceptron never came to rest, one moment at a time or added up. In nine orders out of ten it ended between {perceptron_second_lowest} and {perceptron_highest}, and in the tenth, at {perceptron_lowest}."
+spoken = "In short: adding up its nudges, a learning rule with a fixed step can only come to rest where they cancel out. On Mario's moments, which no border can split, the perceptron never came to rest, one moment at a time or added up. In nine orders out of ten it ended between {perceptron_second_lowest_spoken} and {perceptron_highest_spoken}, and in the tenth, at {perceptron_lowest_spoken}."
 board = "The swinging border and its spread of scores"
 cite = ["exp002"]
 pause = 3.0
@@ -609,7 +609,7 @@ pause = 3.0
 
 [[section.line]]
 id = "tldr-3"
-text = "Fewest mistakes did as well as anything here. The perceptron matched it most reliably by remembering its best pass, which meant scoring every pass on every moment: a search of its own."
+text = "Fewest mistakes did as well as anything here. The perceptron matched it by remembering its best pass, which meant scoring every pass on every moment: a search of its own."
 board = "The best border's bar, and the pocket perceptron's beside it, a point apart; behind the pocket, every pass being scored"
 cite = ["exp002", "gallant1990"]
 

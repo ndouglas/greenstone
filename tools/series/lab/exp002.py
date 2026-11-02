@@ -356,6 +356,15 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         shares.append(np.linalg.norm(pulls.sum(0)) / np.linalg.norm(pulls, axis=1).sum())
     numbers["batch_perceptron_pull_share_lowest"] = round(float(min(shares)), 2)
     batch_steps_differ = batch_steps_differ and min(shares) > 0.5
+    # It rocks: over its last hundred moves, each move almost undoes the
+    # one before (two moves cover far less than one), between two borders.
+    last = v[-101:]
+    one = np.linalg.norm(np.diff(last, axis=0), axis=1)
+    two = np.linalg.norm(last[2:] - last[:-2], axis=1)
+    numbers["batch_perceptron_two_moves_to_one"] = round(float(np.median(two) / np.median(one)), 3)
+    cuts = -last[:, 2] / last[:, 0]  # where it says yes from, standing still, in blocks
+    numbers["batch_perceptron_rocking_cuts"] = [round(float(np.median(cuts[0::2])), 1), round(float(np.median(cuts[1::2])), 1)]
+    batch_steps_differ = batch_steps_differ and np.median(two) < 0.1 * np.median(one)
     numbers["batch_perceptron_weights_in_nudges"] = round(float(
         np.median(np.linalg.norm(v[1:], axis=1)) / np.median(np.linalg.norm(np.diff(v, axis=0), axis=1))), 1)
     # Remembering instead of settling: the best line a run passed through
