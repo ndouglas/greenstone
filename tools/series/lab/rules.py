@@ -137,6 +137,18 @@ def batch_square(x: np.ndarray, y: np.ndarray, rate: float, steps: int) -> Line:
     return Line(v[:-1], float(v[-1]))
 
 
+def batch_square_misses(x: np.ndarray, y: np.ndarray, rate: float, steps: int) -> list[float]:
+    """The batch square trick from zero, returning the total squared miss
+    (averaged over the moments) before each step."""
+    t = np.where(y == 1, CODES[1], CODES[0])
+    xb, v = _with_bias(x), np.zeros(x.shape[1] + 1)
+    misses = []
+    for _ in range(steps):
+        misses.append(float(((t - xb @ v) ** 2).mean()))
+        v = v + rate * xb.T @ (t - xb @ v) / len(t)
+    return misses
+
+
 def batch_squared_hinge(x: np.ndarray, y: np.ndarray, rate: float, steps: int, start: Line | None = None) -> Line:
     """The batch square trick, except that a moment already past its
     target pulls nothing: no pull for being right by too much."""

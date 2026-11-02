@@ -112,6 +112,15 @@ class Batch(unittest.TestCase):
         np.testing.assert_allclose(line.w, exact.w, atol=1e-6)
         self.assertAlmostEqual(line.b, exact.b, places=6)
 
+    def test_a_small_step_shrinks_the_miss_and_a_big_one_grows_it(self):
+        x, y = mostly()
+        small = rules.batch_square_misses(x, y, rate=0.1, steps=30)
+        big = rules.batch_square_misses(x, y, rate=10.0, steps=30)
+        self.assertEqual(len(small), 30)
+        self.assertTrue(all(b < a for a, b in zip(small, small[1:])))
+        self.assertTrue(all(b > a for a, b in zip(big, big[1:])))
+        self.assertEqual(small[0], 1.0)  # from zero, every total misses by one
+
     def test_square_borders_ignore_how_the_answers_are_coded(self):
         x, y = mostly()
         a = rules.least_squares(x, y, codes=(-1.0, 1.0))
@@ -208,6 +217,8 @@ class Experiment(unittest.TestCase):
                 check_claims(*failing)
         with self.assertRaises(AssertionError):
             check_claims(True, True, True, control_settles=False)
+        with self.assertRaises(AssertionError):
+            check_claims(True, True, True, too_big_grows=False)
 
 
     def test_low_points_are_counted_where_the_map_slopes(self):

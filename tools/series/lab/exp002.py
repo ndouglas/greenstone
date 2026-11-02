@@ -31,11 +31,14 @@ DROPS = 30  # moments left out, to see how much a tiny change moves the end
 # step doesn't matter can be checked exactly over a whole run.
 RATES = {"simple": 0.01, "perceptron": 2.0 ** -7, "square": 0.001}
 BIGGER = 8
+# Too big a step for the batch square trick: this many times its own.
+TOO_BIG = 20
+TOO_BIG_STEPS = 60
 
 
 def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes_agree: bool,
                  bowl_is_least_squares: bool = True, control_settles: bool = True,
-                 one_hollow: bool = True) -> None:
+                 one_hollow: bool = True, too_big_grows: bool = True) -> None:
     """Things the script will rest on; refuse to write numbers if any fails."""
     if not perceptron_rate_free:
         raise AssertionError("the perceptron's border changed with its step size")
@@ -49,6 +52,8 @@ def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes
         raise AssertionError("the perceptron didn't stop on moments a line can split")
     if not one_hollow:
         raise AssertionError("the square trick's map has more than one low point where it slopes")
+    if not too_big_grows:
+        raise AssertionError("the square trick's miss didn't grow at every step with too big a step")
 
 
 def local_lows(height: np.ndarray, flat: np.ndarray) -> int:
@@ -158,6 +163,11 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     logistic = rules.batch_logistic(z, y, rate=0.5, steps=5000)
     put("batch_square", rules.accuracy(batch, zt, yt))
     put("logistic", rules.accuracy(logistic, zt, yt))
+    # Too big a step: each nudge overshoots by more than the miss it closes.
+    too_big = rules.batch_square_misses(z, y, rate=TOO_BIG * 0.1, steps=TOO_BIG_STEPS)
+    put_int("too_big_step", TOO_BIG)
+    put_int("too_big_steps", TOO_BIG_STEPS)
+    put_int("too_big_growth", too_big[-1] / too_big[0])
     # How differently the settled borders answer from search's, and how far they lean from it.
     put("batch_square_disagrees_with_search", rules.disagreement(batch, search, zt))
     put("logistic_disagrees_with_search", rules.disagreement(logistic, search, zt))
@@ -275,6 +285,7 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         perceptron_rate_free=rate_free,
         batch_is_least_squares=bool(np.allclose(np.r_[batch.w, batch.b], np.r_[exact.w, exact.b], atol=1e-6)),
         codes_agree=bool((rules.says(exact, zt) == rules.says(zero_one, zt)).all()),
+        too_big_grows=all(b > a for a, b in zip(too_big, too_big[1:])),
     )
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(numbers, indent=2, sort_keys=True) + "\n")

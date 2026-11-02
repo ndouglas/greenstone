@@ -121,6 +121,12 @@ board = "The same dot, now coloured as not landed; every dial turns down"
 cite = ["rosenblatt1962", "serrano2021"]
 
 [[section.line]]
+id = "rule-signs"
+text = "A number below its average counts as negative, and that turns its weight the other way. Say Mario was high and rising, below average on both, and the neuron said yes, but he didn't land. Both weights turn up, not down, because a bigger weight times a negative number makes the total smaller."
+board = "The moment's total shown beside the dials; a high, rising dot: both dials turn up, and the total drops toward no"
+cite = ["rosenblatt1962", "bishop2006"]
+
+[[section.line]]
 id = "rule-why"
 text = "Either way, that moment's total moves toward the side it belongs on, and the border swings toward getting that moment right."
 board = "The wrong dot's total climbs toward zero; the border tilts toward the dot"
@@ -146,7 +152,7 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "step-size-2"
-text = "How big should the step be? For this rule, starting from zero, it doesn't matter. Remember from last time: multiplying every weight and the bias by the same positive amount doesn't move the border at all."
+text = "How big should the step be? For this rule, starting from zero, it doesn't matter. Its weights are only its nudges, added up, so a bigger step makes every weight and the bias bigger by the same amount. Remember from last time: that doesn't move the border at all."
 board = "One border, its dials doubled, then halved: the line doesn't move"
 cite = ["exp001", "exp002"]
 
@@ -362,6 +368,13 @@ cite = ["exp002", "bishop2006"]
 pause = 3.0
 
 [[section.line]]
+id = "too-big"
+text = "Here, the size of the step does matter. Too big, and each nudge overshoots, pushing the totals past their targets by more than they were missing. With {too_big_step} times the step, the total squared miss grew at every one of its {too_big_steps} steps, to {too_big_growth} times where it started."
+spoken = "Here, the size of the step does matter. Too big, and each nudge overshoots, pushing the totals past their targets by more than they were missing. With {too_big_step_spoken} times the step, the total squared miss grew at every one of its {too_big_steps_spoken} steps, to {too_big_growth_spoken} times where it started."
+board = "A total swinging back and forth across its target, each swing wider; beside it, the total squared miss climbing"
+cite = ["exp002", "bishop2006"]
+
+[[section.line]]
 id = "rest-outro"
 role = "conclusion"
 text = "So from a rule that only reacts to mistakes, we've come to one that weighs how far off every moment is, and that can come to rest. But where does it rest?"
@@ -397,19 +410,13 @@ cite = ["exp002", "bishop2006"]
 
 [[section.line]]
 id = "square-outro"
-role = "conclusion"
 text = "So the square trick settles, in nearly the same place every time, but that place was chosen by the squared misses we gave it, not by the count of mistakes we wanted. So why not aim straight at the fewest mistakes?"
 board = "The square trick's still border beside the fewest-mistakes border, also still, a gap between them"
 cite = ["exp002", "bishop2006"]
 pause = 1.0
 
-[[section]]
-kind = "chapter"
-title = "A staircase"
-
 [[section.line]]
 id = "map-intro"
-role = "intro"
 text = "To see why not, we need a new picture: a sheet of borders."
 board = "Mario's map, with its border; beside it, a blank sheet labelled 'borders'"
 framing = true
