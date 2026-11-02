@@ -51,17 +51,19 @@ def step(rule: str, line: Line, x: np.ndarray, y: int, rate: float) -> Line:
 
 
 def train(rule: str, x: np.ndarray, y: np.ndarray, rate: float, passes: int, seed: int,
-          skip: np.ndarray | None = None) -> list[Line]:
+          skip: np.ndarray | None = None, shrink: bool = False) -> list[Line]:
     """Start at zero; each pass visits every moment once, in a shuffled
     order. Moments marked in `skip` are left out without changing the
-    order the others come in. Returns the line after each pass."""
+    order the others come in. With `shrink`, the step at the k-th moment
+    visited is rate / k. Returns the line after each pass."""
     rng = np.random.default_rng(seed)
     line = Line(np.zeros(x.shape[1]), 0.0)
-    after = []
+    after, seen = [], 0
     for _ in range(passes):
         for i in rng.permutation(len(y)):
             if skip is None or not skip[i]:
-                line = step(rule, line, x[i], int(y[i]), rate)
+                seen += 1
+                line = step(rule, line, x[i], int(y[i]), rate / seen if shrink else rate)
         after.append(line)
     return after
 
@@ -156,13 +158,13 @@ def batch_square(x: np.ndarray, y: np.ndarray, rate: float, steps: int) -> Line:
 
 def batch_square_misses(x: np.ndarray, y: np.ndarray, rate: float, steps: int) -> list[float]:
     """The batch square trick from zero, returning the total squared miss
-    (averaged over the moments) before each step."""
+    (averaged over the moments) before the first step and after each."""
     t = np.where(y == 1, CODES[1], CODES[0])
     xb, v = _with_bias(x), np.zeros(x.shape[1] + 1)
-    misses = []
+    misses = [float((t ** 2).mean())]
     for _ in range(steps):
-        misses.append(float(((t - xb @ v) ** 2).mean()))
         v = v + rate * xb.T @ (t - xb @ v) / len(t)
+        misses.append(float(((t - xb @ v) ** 2).mean()))
     return misses
 
 

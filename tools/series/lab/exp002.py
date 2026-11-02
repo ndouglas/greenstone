@@ -57,7 +57,8 @@ TOO_BIG_STEPS = 10
 
 def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes_agree: bool,
                  bowl_is_least_squares: bool = True, control_settles: bool = True,
-                 one_hollow: bool = True, too_big_grows: bool = True) -> None:
+                 one_hollow: bool = True, too_big_grows: bool = True,
+                 one_run_ends_lowest: bool = True, shrinking_calms: bool = True) -> None:
     """Things the script will rest on; refuse to write numbers if any fails."""
     if not perceptron_rate_free:
         raise AssertionError("the perceptron's border changed with its step size")
@@ -73,6 +74,10 @@ def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes
         raise AssertionError("the square trick's map has more than one low point where it slopes")
     if not too_big_grows:
         raise AssertionError("the square trick's miss didn't grow at every step with too big a step")
+    if not one_run_ends_lowest:
+        raise AssertionError("the run shown doesn't end on its lowest score, lowest of all the orders")
+    if not shrinking_calms:
+        raise AssertionError("a shrinking step didn't calm the perceptron to under a point")
 
 
 def scroll_moments(r: Recording) -> tuple[np.ndarray, np.ndarray]:
@@ -168,6 +173,7 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     ahead = np.concatenate([right_ahead(r, scroll_moments(r)[0]) for r in tests])
     said = rules.says(search, zt)
     put("right_ahead_when_right", ahead[said == yt].mean())
+    put("right_ahead_true_yes", ahead[(said == 1) & (yt == 1)].mean())
     put("right_ahead_false_yes", ahead[(said == 1) & (yt == 0)].mean())
     put("right_ahead_missed_yes", ahead[(said == 0) & (yt == 1)].mean())
 
@@ -194,6 +200,12 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         finals = [s[-1] for s in scores]
         put(f"{rule}_lowest", min(finals))
         put(f"{rule}_highest", max(finals))
+        # Where all but the lowest of the orders ended.
+        put(f"{rule}_second_lowest", sorted(finals)[1])
+        if rule == "perceptron":
+            # The run shown (the first order) ends on its lowest pass, and
+            # lowest of all the orders: the script says so.
+            one_run_ends_lowest = scores[0][-1] == min(scores[0][-LAST:]) == min(finals)
         put(f"{rule}_swing", float(np.median([rules.swing(s, LAST) for s in scores])))
         # The same swing in percentage points, to be said as "points".
         put_int(f"{rule}_swing_points", 100 * float(np.median([rules.swing(s, LAST) for s in scores])))
@@ -205,6 +217,13 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         # Every order, every one of the last passes.
         put(f"{rule}_late_lowest", min(min(s[-LAST:]) for s in scores))
         put(f"{rule}_late_highest", max(max(s[-LAST:]) for s in scores))
+
+    # A step that shrinks as it goes (rate / k at the k-th moment) calms
+    # the perceptron: a schedule imposed on the rule, not part of it.
+    shrunk = [[rules.accuracy(l, zt, yt) for l in rules.train("perceptron", z, y, RATES["perceptron"], PASSES, seed,
+                                                              shrink=True)] for seed in range(ORDERS)]
+    shrinking_swing = float(np.median([rules.swing(s, LAST) for s in shrunk]))
+    numbers["perceptron_shrinking_swing_points"] = round(100 * shrinking_swing, 2)
 
     # A tiny change: leave out a few moments, and keep everything else,
     # the order of the rest included, the same.
@@ -247,11 +266,12 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     logistic = rules.batch_logistic(z, y, rate=0.5, steps=5000)
     put("batch_square", rules.accuracy(batch, zt, yt))
     put("logistic", rules.accuracy(logistic, zt, yt))
-    # Too big a step: each nudge overshoots by more than the miss it closes.
+    # Too big a step: each step goes past the bottom of the bowl and up the
+    # other side, further each time.
     too_big = rules.batch_square_misses(z, y, rate=TOO_BIG * BATCH_RATE, steps=TOO_BIG_STEPS)
     put_int("too_big_step", TOO_BIG)
     put_int("too_big_steps", TOO_BIG_STEPS)
-    put_int("too_big_growth", too_big[-1] / too_big[0])
+    put_int("too_big_growth", too_big[-1] / too_big[0])  # after the last step
     # How differently the settled borders answer from search's, and how far they lean from it.
     put("batch_square_disagrees_with_search", rules.disagreement(batch, search, zt))
     put("logistic_disagrees_with_search", rules.disagreement(logistic, search, zt))
@@ -381,6 +401,8 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         batch_is_least_squares=bool(np.allclose(np.r_[batch.w, batch.b], np.r_[exact.w, exact.b], atol=1e-6)),
         codes_agree=bool((rules.says(exact, zt) == rules.says(zero_one, zt)).all()),
         too_big_grows=all(b > a for a, b in zip(too_big, too_big[1:])),
+        one_run_ends_lowest=one_run_ends_lowest,
+        shrinking_calms=shrinking_swing < 0.01,
     )
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(numbers, indent=2, sort_keys=True) + "\n")

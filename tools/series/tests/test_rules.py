@@ -36,6 +36,16 @@ class PerMoment(unittest.TestCase):
             np.testing.assert_allclose(a.w * 100, b.w)
             np.testing.assert_array_equal(rules.says(a, x), rules.says(b, x))
 
+    def test_a_shrinking_step_divides_each_nudge_by_the_moments_seen(self):
+        x, y = mostly(n=200)
+        line, seen = rules.Line(np.zeros(2), 0.0), 0
+        for i in np.random.default_rng(4).permutation(len(y)):
+            seen += 1
+            line = rules.step("perceptron", line, x[i], int(y[i]), 0.5 / seen)
+        shrunk = rules.train("perceptron", x, y, rate=0.5, passes=1, seed=4, shrink=True)[-1]
+        np.testing.assert_allclose(shrunk.w, line.w)
+        self.assertAlmostEqual(shrunk.b, line.b)
+
     def test_only_the_square_trick_moves_on_a_right_answer(self):
         x = np.array([[1.0, 0.5]])
         y = np.array([1])
@@ -127,7 +137,8 @@ class Batch(unittest.TestCase):
         x, y = mostly()
         small = rules.batch_square_misses(x, y, rate=0.1, steps=30)
         big = rules.batch_square_misses(x, y, rate=10.0, steps=30)
-        self.assertEqual(len(small), 30)
+        # The miss before the first step, then after every step.
+        self.assertEqual(len(small), 31)
         self.assertTrue(all(b < a for a, b in zip(small, small[1:])))
         self.assertTrue(all(b > a for a, b in zip(big, big[1:])))
         self.assertEqual(small[0], 1.0)  # from zero, every total misses by one
@@ -230,6 +241,10 @@ class Experiment(unittest.TestCase):
             check_claims(True, True, True, control_settles=False)
         with self.assertRaises(AssertionError):
             check_claims(True, True, True, too_big_grows=False)
+        with self.assertRaises(AssertionError):
+            check_claims(True, True, True, one_run_ends_lowest=False)
+        with self.assertRaises(AssertionError):
+            check_claims(True, True, True, shrinking_calms=False)
 
 
     def test_low_points_are_counted_where_the_map_slopes(self):

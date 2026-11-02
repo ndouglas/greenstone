@@ -52,6 +52,12 @@ authors = "H. D. Block and S. A. Levin"
 year = 1970
 url = "https://doi.org/10.1090/S0002-9939-1970-0265383-5"
 
+[robbins1951]
+title = "A stochastic approximation method. The Annals of Mathematical Statistics, 22(3), 400-407"
+authors = "H. Robbins and S. Monro"
+year = 1951
+url = "https://doi.org/10.1214/aoms/1177729586"
+
 [gallant1990]
 title = "Perceptron-based learning algorithms. IEEE Transactions on Neural Networks, 1(2), 179-191"
 authors = "S. I. Gallant"
