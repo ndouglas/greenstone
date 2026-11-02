@@ -43,12 +43,13 @@ class PointMap(Group):
     def __init__(self, points: np.ndarray, moved: np.ndarray, still: np.ndarray, x_range=(0.0, 5.0),
                  y_range=(0.0, 2.6), width: float = 7.6, height: float = 4.6, at: np.ndarray = None,
                  line: np.ndarray | None = None, x_label: str = "blocks from the left edge",
-                 y_label: str = "pixels a frame, right", mark: bool = True):
+                 y_label: str = "pixels a frame, right", mark: bool = True, radii: tuple = (SMALLEST, LARGEST)):
         super().__init__()
         self.where = np.asarray(points, float)
         self.moved, self.still = np.asarray(moved, int), np.asarray(still, int)
         self.x_range, self.y_range = x_range, y_range
         self.size, self.at = (width, height), np.zeros(3) if at is None else np.asarray(at, float)
+        self.radii = radii
         self.level = np.ones(len(self.where))  # each point's brightness, 0 to 1, for fading some out
         self.ring = np.zeros(len(self.where), bool)  # points circled in parchment
         self.v = np.zeros(3) if line is None else np.asarray(line, float)
@@ -184,7 +185,8 @@ class PointMap(Group):
     def radius(self) -> np.ndarray:
         n = self.moved + self.still
         top = max(int(n.max()), 2)
-        return SMALLEST + (LARGEST - SMALLEST) * np.log(n) / math.log(top)
+        small, large = self.radii
+        return small + (large - small) * np.log(n) / math.log(top)
 
     def redraw(self) -> None:
         self._lay()
