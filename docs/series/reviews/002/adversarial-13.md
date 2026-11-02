@@ -28,3 +28,29 @@ Two substantial findings.
 2. settles-2 (EE1).
 Minor, taken: remember's "One cheap fix" against tldr-3's "a search of
 its own": now "One fix".
+
+# Adversarial review GG (draft 24, commit 1b8b0a3)
+
+Nothing substantial; every number re-derived from the recordings holds.
+Minor, taken: no-shelf put the all-zero start "right on that shelf",
+but zero weights aren't a border (only the shelf's height), and the
+beat sat before bowl-2, whose "Everywhere else" then pointed past it;
+both fixed with HH1. Not taken: tldr-3's search framing (the averaged
+perceptron, also 90%, isn't in the script); step-size-2's order
+(step-size now gives the reason, HH2).
+
+# Adversarial review HH (draft 24, commit 1b8b0a3)
+
+One substantial finding.
+1. no-shelf: "it moves its weights, not this sheet" invited the viewer
+   to think the staircase's flatness doesn't bind a rule that moves its
+   weights either, undoing no-slope. → now only what's true and needed:
+   "The square trick starts with every weight at zero, which has the
+   shelf's height. But turn its weights a little the right way from zero, and its
+   total squared miss falls, so it isn't stuck there." Moved after
+   bowl-2.
+Minor, taken: step-size gives the missing step ("starts at the same
+zero, makes the same first mistake, and takes the same nudge, 8 times
+bigger, so it keeps the same border; and so on"); too-big's failure is
+landing higher, not crossing ("overshoots the bottom of the U so far
+that it lands higher up the other side").

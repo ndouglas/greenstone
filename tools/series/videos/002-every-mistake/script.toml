@@ -1,6 +1,6 @@
 title = "002: Every mistake moves the line"
 
-# Draft 24 (Claude, 2026-11-02), after adversarial reviews Q-FF;
+# Draft 25 (Claude, 2026-11-02), after adversarial reviews Q-HH;
 # drafts 14-16 answered council rounds 4-6, the first on the scrolling
 # question. Draft 13 rewrote 002 on new data after Nate's
 # interview: the landing question's numbers pointed the wrong way (depth
@@ -197,8 +197,8 @@ cite = ["exp001", "exp002"]
 
 [[section.line]]
 id = "step-size"
-text = "So, seeing the moments in the same order, a neuron with {bigger_step} times the step has the same border after every nudge, makes exactly the same mistakes, and takes the same nudges, {bigger_step} times bigger. We checked: after every pass, its weights were exactly {bigger_step} times the other's."
-spoken = "So, seeing the moments in the same order, a neuron with {bigger_step_spoken} times the step has the same border after every nudge, makes exactly the same mistakes, and takes the same nudges, {bigger_step_spoken} times bigger. We checked: after every pass, its weights were exactly {bigger_step_spoken} times the other's."
+text = "Seeing the moments in the same order, a neuron with {bigger_step} times the step starts at the same zero, makes the same first mistake, and takes the same nudge, {bigger_step} times bigger, so it keeps the same border; and so on, nudge after nudge. We checked: after every pass, its weights were exactly {bigger_step} times the other's."
+spoken = "Seeing the moments in the same order, a neuron with {bigger_step_spoken} times the step starts at the same zero, makes the same first mistake, and takes the same nudge, {bigger_step_spoken} times bigger, so it keeps the same border; and so on, nudge after nudge. We checked: after every pass, its weights were exactly {bigger_step_spoken} times the other's."
 board = "Two runs side by side, one with {bigger_step} times the step: their knobs read {bigger_step} times apart, their borders the same"
 cite = ["exp002"]
 
@@ -400,7 +400,7 @@ pause = 3.0
 
 [[section.line]]
 id = "too-big"
-text = "Here, the size of the step decides whether it gets there at all. The targets stay at plus and minus one, so doubling the step can't just double everything, the way it did for the perceptron. Too big, and each move jumps clean over the bottom of the U and lands higher up its other side."
+text = "Here, the size of the step decides whether it gets there at all. The targets stay at plus and minus one, so doubling the step can't just double everything, the way it did for the perceptron. Too big, and each move overshoots the bottom of the U so far that it lands higher up the other side."
 board = "A ball on the U, each jump crossing the bottom and landing higher up the other side. (The step that settled also crosses the bottom along the steepest way, but lands lower each time: don't draw it as a smooth roll.)"
 cite = ["exp002", "bishop2006"]
 
@@ -541,16 +541,16 @@ board = "Their spots on the sheet joining a high flat shelf, on the side where t
 cite = ["exp002"]
 
 [[section.line]]
-id = "no-shelf"
-text = "The square trick starts with every weight at zero, right on that shelf. But it isn't stuck there: it moves its weights, not this sheet, and in its valley over the weights, zero sits on a slope."
-board = "The shelf, with the starting point marked; then the valley over the knobs, the same starting point on its side, an arrow pointing downhill"
-cite = ["bishop2006", "exp002"]
-
-[[section.line]]
 id = "bowl-2"
 text = "Everywhere else, the ground curves smoothly down into one bowl, with one lowest spot, and that's the border where the square trick comes to rest."
 board = "Beside the shelf, one smooth bowl; the square trick's resting border marked at its bottom"
 cite = ["exp002", "bishop2006"]
+
+[[section.line]]
+id = "no-shelf"
+text = "The square trick starts with every weight at zero, which has the shelf's height. But turn its weights a little the right way from zero, and its total squared miss falls, so it isn't stuck there."
+board = "The starting neuron, all knobs at zero, at the shelf's height; a small turn of the knobs, and the squared miss dropping"
+cite = ["bishop2006", "exp002"]
 
 [[section.line]]
 id = "two-bottoms"
