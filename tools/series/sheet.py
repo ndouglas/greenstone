@@ -110,7 +110,7 @@ class Sheet:
         light = glowing * LOW + (1 - glowing) * HIGH
         light = light * (1 - flat) + FLAT * flat
         if glow is not None:
-            light = np.where(glow[..., None], light * 0.4 + rgb(style.WARM[0]) * 0.6, light)
+            light = np.where(glow[..., None], light * 0.7 + rgb(style.WARM[0]) * 0.3, light)
         z = h * lift * TALL
         up, toward = np.array([0.0, 0.0, 1.0]), np.array([0.0, -1.0, 0.0])
         # back to front: far rows first; within a row, from the edges in toward the middle (the camera's x)
