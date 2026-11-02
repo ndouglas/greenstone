@@ -207,3 +207,45 @@ Animation:
 
 The series:
 - R22. Does `next` set up 003 the way you want?
+
+### Round 5: R1–R3
+
+**R1 (control set against all moments).** Nate: the full set can't be
+divided into yes and no by a single straight line. Correct; the step
+left unsaid (a border that splits them makes no mistakes, so no nudges)
+is in `guarantee`.
+
+**R2 (no border of any shape).** Nate: at those points the neuron's
+answer is sometimes right and sometimes wrong, so the line never
+stabilizes. That is `always-wrong`'s consequence, not the reason. The
+reason: a border, of any shape, gives one answer per point on the map;
+at a point where both outcomes happened, either answer is wrong about
+some of its moments. Finding: the script never says it. `never-intro`
+claims "no border of any shape" before `spots` shows the points, and
+`spots` stops at the evidence without the step from it. Follow-up asked.
+
+**R3 (total squared miss; why it rests).** Nate: the sum of the squares
+of how far right or wrong each moment is; there's a border where no
+adjustment lowers it, and that's where it rests. Mostly right. The miss
+is measured from the target (plus or minus one), so "too right" counts
+too (`target-over`). Not said: why the rule stops there (the added-up
+pulls cancel at the bottom, `balance`), and the perceptron half.
+Follow-up asked.
+
+**R2a (follow-up: a border at a point where both happened).** Nate:
+didn't know how to answer; "the border cannot separate a point." That
+sentence is the answer, but the step after it (so every moment at that
+point gets the same answer, and some are wrong) didn't come from the
+script. Confirms the finding. Proposed: `never-intro` asks whether any
+border, even a curved one, could get every moment right; `spots` ends
+"A border can't split a point: whatever its shape, every moment at one
+of those points gets the same answer, so some of them are wrong." On
+screen, one point holding both colours, and a curved border that can
+only put it on one side.
+
+**R3a (what the added-up pull comes to at the bottom).** Nate: it
+balances at zero, so it isn't pulled either way. Correct.
+
+**R3b (the batch perceptron).** Nate: it keeps moving. Right; the
+measured detail (`perceptron-rest-2`): it rocks between two borders,
+each move almost undoing the last, and its moves don't shrink.
