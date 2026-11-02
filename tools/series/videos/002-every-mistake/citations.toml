@@ -22,6 +22,18 @@ authors = "A. B. J. Novikoff"
 year = 1962
 url = "https://apps.dtic.mil/sti/tr/pdf/AD0298258.pdf"
 
+[datacrystal-smb1]
+title = "Super Mario Bros./RAM map (Data Crystal, revision 70369)"
+authors = "Data Crystal contributors"
+year = 2026
+url = "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros./RAM_map"
+
+[smbdis]
+title = "A comprehensive Super Mario Bros. disassembly (SMBDIS.ASM): ScrollHandler (Player_Pos_ForScroll, cmp #$50), Player_X_Speed, MaxRightXSpdData, ScrollAmount; as posted to GitHub Gist. The addresses are verified in Greenstone by tests in src/nes/gym/series/ram.rs"
+authors = "doppelganger"
+year = 2012
+url = "https://gist.github.com/1wErt3r/4048722"
+
 [nesdev-memory]
 title = "CPU memory map (NESdev Wiki; accessed 2026)"
 authors = "NESdev Wiki contributors"

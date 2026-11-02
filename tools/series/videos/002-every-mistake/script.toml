@@ -1,7 +1,11 @@
 title = "002: Every mistake moves the line"
 
-# Draft 9 (Claude, 2026-11-01), after council rounds 1 to 3, the pacing
-# lens and five rounds of adversarial review (docs/series/reviews/002/).
+# Draft 13 (Claude, 2026-11-01), rewritten on new data after Nate's
+# interview: the landing question's numbers pointed the wrong way (depth
+# grows downward, rising is negative, standardizing made below-average
+# numbers negative), so the nudges were sign puzzles. Now: will the
+# screen start to move soon, from Mario's position and speed, both never
+# negative, bigger meaning sooner, not standardized.
 # Spine (Nate): the perceptron's rule only reacts to mistakes, and its
 # pulls never cancel, so it never stops; the square trick shrinks the
 # total squared miss, its pulls cancel, and it settles near the
@@ -19,34 +23,65 @@ framing = true
 
 [[section.line]]
 id = "last-time"
-text = "Last time, we built one artificial neuron. While Mario was in the air, it read two numbers from the game's memory, his depth and his falling speed, and answered one question: will he land within the next ten frames?"
-board = "Mario mid-jump; his depth and falling speed read out beside him; the question beneath"
-cite = ["exp001"]
-
-[[section.line]]
-id = "both-matter"
-text = "Both numbers matter, because at the same depth he might be rising or falling."
-board = "Two Marios at the same height, one rising, one falling"
-cite = ["exp001"]
-
-[[section.line]]
-id = "the-map"
-text = "On a map with depth along one side and speed along the other, each moment in the air is a dot, and the neuron's answer is a straight border across the map."
-board = "001's map: each moment a dot, placed by depth and falling speed, coloured by whether he landed soon; a straight border across it"
+text = "Last time, we built an artificial neuron that read two numbers from the game's memory, put them on a map, one dot per moment, and answered a yes-or-no question with a straight border across that map."
+board = "001's landing map: dots, and a straight border across it"
 cite = ["exp001"]
 
 [[section.line]]
 id = "last-time-2"
-text = "We chose that border ourselves, by trying every one we could and keeping the best. It was right {search} of the time, on play it hadn't seen."
-spoken = "We chose that border ourselves, by trying every one we could and keeping the best. It was right {search_spoken} of the time, on play it hadn't seen."
-board = "Borders sweep across the map, one after another; the best one stays, its bar at {search}"
-cite = ["exp001", "exp002"]
+text = "We chose that border ourselves, by trying every one we could and keeping the best."
+board = "Borders sweep across the map, one after another; the best one stays"
+cite = ["exp001"]
+
+[[section.line]]
+id = "learn"
+text = "This time, the neuron finds its own border. It has to find its own weights, how much each number counts, and its own bias, which together set where the border goes."
+board = "The formula's dials, unset, and a map with no border on it yet"
+cite = ["rosenblatt1962"]
+
+[[section.line]]
+id = "the-line"
+text = "We'll need a new question. In Super Mario Bros., the screen doesn't follow Mario until he's {line_blocks} blocks from its left edge. Until then, he walks across a screen that stays still."
+spoken = "We'll need a new question. In Super Mario Bros., the screen doesn't follow Mario until he's {line_blocks_spoken} blocks from its left edge. Until then, he walks across a screen that stays still."
+board = "Mario walking right across a still screen; a faint line five blocks in; as he reaches it, the screen starts to move"
+cite = ["smbdis", "exp002"]
+
+[[section.line]]
+id = "question"
+text = "So the question is: while he's short of that line, will the screen start to move within the next half second?"
+board = "Mario short of the line, the question beside him, a half-second timer"
+cite = ["exp002"]
 
 [[section.line]]
 id = "test-question"
-text = "It's only a test question. Knowing the answer wouldn't help anyone play. Its value is that the recording shows whether he landed within those ten frames, so every answer the neuron gives can be checked."
-board = "Mario mid-jump with 'Will he land soon?' beside him; the recording scrubs ahead and a tick appears"
-cite = ["exp001"]
+text = "It's only a test question. Knowing the answer wouldn't help anyone play. Its value is that the recording shows whether the screen moved, so every answer the neuron gives can be checked."
+board = "The recording scrubs half a second ahead; the screen moves, and a tick appears"
+cite = ["exp002"]
+
+[[section.line]]
+id = "numbers"
+text = "The neuron reads two numbers: how far right Mario is on the screen, counted in blocks, and how fast he's moving right, in pixels each frame. The further right he is, and the faster he's going, the sooner he'll reach the line."
+board = "Mario with two readouts: blocks from the left edge, and pixels a frame; both grow as he walks right and speeds up"
+cite = ["datacrystal-smb1", "smbdis"]
+
+[[section.line]]
+id = "only-these"
+text = "We only ask while he isn't walking left. Walking left, the screen never moves, and there's nothing to learn."
+board = "Mario turning to walk left; the question fades out"
+cite = ["smbdis", "exp002"]
+
+[[section.line]]
+id = "the-map"
+text = "On a map with how far right he is along the bottom and his speed up the side, each moment is a dot, coloured by whether the screen moved soon after."
+board = "The new map: position along the bottom, speed up the side; dots coloured by whether the screen moved soon"
+cite = ["exp002"]
+
+[[section.line]]
+id = "search"
+text = "Trying every border, as last time, the best one was right {search} of the time, on play it hadn't seen."
+spoken = "Trying every border, as last time, the best one was right {search_spoken} of the time, on play it hadn't seen."
+board = "Borders sweep across the new map; the best one stays, its bar at {search}"
+cite = ["exp002"]
 
 [[section.line]]
 id = "too-many"
@@ -61,20 +96,14 @@ board = "A clock spinning beside the crowd of borders"
 cite = ["hoffgen1995"]
 
 [[section.line]]
-id = "learn"
-text = "So a neuron has to find its own weights, how much each number counts, and its own bias, which together set its border."
-board = "The formula's dials, unset, and a border on the map that isn't there yet"
-cite = ["rosenblatt1962"]
-
-[[section.line]]
 id = "learn-2"
-text = "Ours starts with all of them at zero, and moves them every time it makes a mistake."
+text = "So ours starts with all its weights and its bias at zero, and moves them every time it makes a mistake."
 board = "The dials all at zero; then a border appears on the map and twitches toward a wrong dot"
 cite = ["rosenblatt1962", "exp002"]
 
 [[section.line]]
 id = "this-video"
-text = "This video watches that happen, on the same question, and finds out why it never settles down, and what learning does instead."
+text = "This video watches that happen, and finds out why it never settles down, and what learning does instead."
 board = "The twitching border, never still"
 cite = ["exp002"]
 pause = 1.0
@@ -87,25 +116,19 @@ title = "Every mistake moves the line"
 id = "rule-intro"
 role = "intro"
 text = "First, the rule. Remember how the neuron works: it multiplies each number by a weight, adds them up along with the bias, a fixed amount that slides its border, and if that total is above zero, it says yes."
-board = "The formula from 001: depth and speed into their dials, the bias, the total against zero"
+board = "The formula from 001: position and speed into their dials, the bias, the total against zero"
 cite = ["exp001", "bishop2006"]
 
 [[section.line]]
-id = "same-scale"
-text = "Depth and speed are measured on very different scales, so first we put them on the same one, so that a step means the same for both: how far each is from its average, counted in its own typical spread, a bit like grading on a curve."
-board = "Depth's long axis and speed's short one shrink and stretch until they're the same length, centred on their averages"
-cite = ["exp002"]
-
-[[section.line]]
 id = "one-at-a-time"
-text = "Now it sees one moment at a time, and the recording says whether Mario really landed soon. If the neuron was right, nothing changes."
+text = "Now it sees one moment at a time, and the recording says whether the screen really moved. If the neuron was right, nothing changes."
 board = "One dot lights up on the map; beside it, the recording's verdict; the dot is on the right side and the border stays still"
 cite = ["rosenblatt1962", "serrano2021"]
 
 [[section.line]]
 id = "rule-wrong"
-text = "If it was wrong, the weights move. Say Mario was low and falling fast, and the neuron said not yet, but he landed. His depth, which grows as he gets lower, and his falling speed are both above average, so both weights turn up, each by a fixed step times its own number: the bigger the number, the bigger the turn."
-board = "The wrong dot's two numbers feed the dials: each dial turns up in proportion to its number"
+text = "If it was wrong, the weights move. Say Mario was four blocks in, moving at two pixels a frame, and the neuron said no, but the screen moved. Both weights turn up, each by a fixed step times its own number: the bigger the number, the bigger the turn."
+board = "The wrong dot's two numbers, 4 and 2, feed the dials: each dial turns up in proportion to its number, the position dial twice as far"
 cite = ["rosenblatt1962", "serrano2021"]
 
 [[section.line]]
@@ -116,20 +139,14 @@ cite = ["serrano2021"]
 
 [[section.line]]
 id = "rule-flip"
-text = "For that same moment, if he hadn't landed, everything would turn down instead."
-board = "The same dot, now coloured as not landed; every dial turns down"
+text = "If instead it had said yes, and the screen didn't move, everything would turn down."
+board = "A dot where the neuron said yes and the screen stayed still; every dial turns down"
 cite = ["rosenblatt1962", "serrano2021"]
-
-[[section.line]]
-id = "rule-signs"
-text = "A number below its average counts as negative, and that turns its weight the other way. Say Mario was high and rising, below average on both, and the neuron said yes, but he didn't land. Both weights turn up, not down, because a bigger weight times a negative number makes the total smaller."
-board = "The moment's total shown beside the dials; a high, rising dot: both dials turn up, and the total drops toward no"
-cite = ["rosenblatt1962", "bishop2006"]
 
 [[section.line]]
 id = "rule-why"
 text = "Either way, that moment's total moves toward the side it belongs on, and the border swings toward getting that moment right."
-board = "The wrong dot's total climbs toward zero; the border tilts toward the dot"
+board = "The moment's total, shown as a bar beside the dials, moves toward its side of zero; the border tilts toward the dot"
 cite = ["bishop2006"]
 
 [[section.line]]
@@ -165,15 +182,15 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "guarantee"
-text = "If some straight border puts every yes on one side and every no on the other, the rule is proven to stop, after a limited number of mistakes."
+text = "If some straight border puts every yes on one side and every no on the other, the rule is proven to stop, after a limited number of mistakes. The closer the two sides come to each other, the more mistakes that can take."
 board = "Two colours a straight border can split; the rule's border twitches a few times and stops on one that splits them"
 cite = ["novikoff1962"]
 
 [[section.line]]
 id = "guarantee-check"
-text = "We checked that on Mario, to see the rule at its best. We removed the troublemakers, the moments the best border gets wrong, so that a line does split the rest. The rule got every one of them right, and stopped moving after {control_last_moving_pass} passes."
-spoken = "We checked that on Mario, to see the rule at its best. We removed the troublemakers, the moments the best border gets wrong, so that a line does split the rest. The rule got every one of them right, and stopped moving after {control_last_moving_pass_spoken} passes."
-board = "Mario's map with the best border's wrong dots removed; the border moves for {control_last_moving_pass} passes, then stays still, every dot on its side"
+text = "We checked that on Mario, to see the rule at its best. We removed the troublemakers, the moments the best border gets wrong, so that a line does split the rest. The rule got every one of them right, and stopped moving after {control_last_moving_pass} passes: the two sides come very close."
+spoken = "We checked that on Mario, to see the rule at its best. We removed the troublemakers, the moments the best border gets wrong, so that a line does split the rest. The rule got every one of them right, and stopped moving after {control_last_moving_pass_spoken} passes: the two sides come very close."
+board = "Mario's map with the best border's wrong dots removed; the border moves for {control_last_moving_pass} passes, then stays still, every dot on its side, the nearest dots almost touching it"
 cite = ["exp002"]
 pause = 3.0
 
@@ -182,7 +199,7 @@ id = "rule-outro"
 role = "conclusion"
 text = "So we've gone from choosing the border ourselves to a rule that moves it, one mistake at a time. But put the troublemakers back, and no straight border splits Mario's moments."
 board = "The removed dots return, overlapping near the border"
-cite = ["exp001", "exp002"]
+cite = ["exp002"]
 pause = 1.0
 
 [[section]]
@@ -198,16 +215,17 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "spots"
-text = "The two numbers we read are whole numbers, so the moments it learns from sit on just {spots} spots of Mario's map. At {spots_with_both} of those spots, the very same depth and speed sometimes landed and sometimes didn't."
-spoken = "The two numbers we read are whole numbers, so the moments it learns from sit on just {spots_spoken} spots of Mario's map. At {spots_with_both_spoken} of those spots, the very same depth and speed sometimes landed and sometimes didn't."
-board = "Mario's map zoomed in: dots stacked on a grid of whole numbers; the spots holding both colours outlined"
-cite = ["exp002", "exp001"]
+text = "The game keeps both numbers as whole numbers of its own small units, so the moments sit on just {spots} spots of the map. At {spots_with_both} of those spots, the very same position and speed sometimes led to the screen moving, and sometimes didn't."
+spoken = "The game keeps both numbers as whole numbers of its own small units, so the moments sit on just {spots_spoken} spots of the map. At {spots_with_both_spoken} of those spots, the very same position and speed sometimes led to the screen moving, and sometimes didn't."
+board = "Mario's map zoomed in: dots stacked on a grid; the spots holding both colours outlined"
+cite = ["exp002", "datacrystal-smb1"]
 
 [[section.line]]
 id = "unseen"
-text = "That's because the neuron can't see everything that matters. Neither number says what's under Mario, and last time, most of the best border's mistakes were landings on something raised, bounces off enemies, and falls into pits."
-board = "Two Marios at the same depth and speed: one above a pipe, one above a pit"
-cite = ["exp001"]
+text = "That's because the neuron can't see what the player will press next. When the best border wrongly said yes, the player held Right for only {right_ahead_false_yes} of the next half second, against {right_ahead_when_right} when it was right."
+spoken = "That's because the neuron can't see what the player will press next. When the best border wrongly said yes, the player held Right for only {right_ahead_false_yes_spoken} of the next half second, against {right_ahead_when_right_spoken} when it was right."
+board = "Two Marios at the same spot: one keeps holding Right and reaches the line, one lets go and stops short"
+cite = ["exp002"]
 pause = 3.0
 
 [[section.line]]
@@ -224,8 +242,8 @@ cite = ["minsky1969", "block1970"]
 
 [[section.line]]
 id = "exam"
-text = "After every pass, we scored it on a recording it never learned from, like an exam it hasn't seen."
-board = "A separate recording waits; after each pass, the border is scored on it"
+text = "After every pass, we scored it on recordings it never learned from, like an exam it hasn't seen."
+board = "Separate recordings wait; after each pass, the border is scored on them"
 cite = ["exp002"]
 
 [[section.line]]
@@ -248,7 +266,7 @@ pause = 3.0
 id = "dropped"
 text = "A tiny change does it too. Keeping the order the same, but leaving out just {dropped_moments} of the {train_moments} moments, left it anywhere between {perceptron_dropped_lowest} and {perceptron_dropped_highest}."
 spoken = "A tiny change does it too. Keeping the order the same, but leaving out just {dropped_moments_spoken} of the {train_moments_spoken} moments, left it anywhere between {perceptron_dropped_lowest_spoken} and {perceptron_dropped_highest_spoken}."
-board = "Thirty dots fade out of sixteen thousand; the final border lands somewhere else"
+board = "Thirty dots fade out of ten thousand; the final border lands somewhere else"
 cite = ["exp002"]
 pause = 3.0
 
@@ -288,7 +306,7 @@ cite = ["rosenblatt1962", "widrow1960"]
 
 [[section.line]]
 id = "target"
-text = "Give every moment a target for its total: plus one if Mario landed soon, minus one if he didn't. The neuron still says yes above zero, and the targets sit one on either side of it."
+text = "Give every moment a target for its total: plus one if the screen moved soon, minus one if it didn't. The neuron still says yes above zero, and the targets sit one on either side of it."
 board = "The total's dial with a target mark at plus one, and another dial with its mark at minus one"
 cite = ["widrow1960", "bishop2006"]
 
@@ -355,8 +373,8 @@ cite = ["bishop2006", "exp002"]
 
 [[section.line]]
 id = "settles-2"
-text = "Single moments still tug. If it learns one moment at a time, its score wobbles, by about {square_swing_points} point."
-spoken = "Single moments still tug. If it learns one moment at a time, its score wobbles, by about {square_swing_points_spoken} point."
+text = "Single moments still tug. If it learns one moment at a time, its score wobbles, by about {square_swing_points} points."
+spoken = "Single moments still tug. If it learns one moment at a time, its score wobbles, by about {square_swing_points_spoken} points."
 board = "The border trembling, one moment at a time"
 cite = ["exp002"]
 
@@ -423,7 +441,7 @@ framing = true
 
 [[section.line]]
 id = "map-axes"
-text = "Picture a border on Mario's map as a ruler laid across it, with a yes side and a no side. You can turn the ruler, and half way round, its sides swap; or you can slide it nearer to or further from the middle, where depth and speed are both at their averages."
+text = "Picture a border on Mario's map as a ruler laid across it, with a yes side and a no side. You can turn the ruler, and half way round, its sides swap; or you can slide it nearer to or further from the middle of the map."
 board = "A ruler-like border on Mario's map turning, its yes side swapping at half a turn, and sliding"
 cite = ["exp001", "exp002"]
 
@@ -447,9 +465,9 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "big-drops"
-text = "And because so many moments share a spot, some of the drops are big: crossing a single spot can change the count by {spot_biggest_change} moments at once."
-spoken = "And because so many moments share a spot, some of the drops are big: crossing a single spot can change the count by {spot_biggest_change_spoken} moments at once."
-board = "A border crossing one crowded spot; the mistake count jumps"
+text = "And because so many moments share a spot, some of the drops are big. {spot_biggest_change} moments sit on a single spot, Mario standing still where each life starts, so a border crossing it changes its count by all of them at once."
+spoken = "And because so many moments share a spot, some of the drops are big. {spot_biggest_change_spoken} moments sit on a single spot, Mario standing still where each life starts, so a border crossing it changes its count by all of them at once."
+board = "A border crossing one crowded spot, the standing start; the mistake count jumps"
 cite = ["exp002"]
 
 [[section.line]]
@@ -472,23 +490,23 @@ cite = ["bishop2006"]
 
 [[section.line]]
 id = "perceptron-hover"
-text = "But it can't rest there. At zero, the neuron says no to everything, so every moment where Mario landed is wrong, and pushes it back out at full size."
-board = "The dials at zero; every landed dot lit as wrong, each shoving the dials outward"
+text = "But it can't rest there. At zero, the neuron says no to everything, so every moment where the screen moved is wrong, and pushes it back out at full size."
+board = "The dials at zero; every dot where the screen moved lit as wrong, each shoving the dials outward"
 cite = ["exp002", "bishop2006"]
 
 [[section.line]]
 id = "perceptron-hover-2"
-text = "So its weights hover close to zero, about {perceptron_nudges_from_zero} nudges away, where each nudge changes them by about half their own size, and the border, and the score, keep jumping."
-spoken = "So its weights hover close to zero, about {perceptron_nudges_from_zero_spoken} nudges away, where each nudge changes them by about half their own size, and the border, and the score, keep jumping."
-board = "The dials hovering near zero, each nudge a big swing; the border jumping on Mario's map"
+text = "So its weights stay small. The weight on position stays smallest of all, about {position_weight_nudges_from_zero} nudges from zero, so each nudge changes it by about {position_weight_change_per_nudge}, and the border's tilt, and the score, keep jumping."
+spoken = "So its weights stay small. The weight on position stays smallest of all, about {position_weight_nudges_from_zero_spoken} nudges from zero, so each nudge changes it by about {position_weight_change_per_nudge_spoken}, and the border's tilt, and the score, keep jumping."
+board = "The position dial near zero, each nudge a big swing of it; the border tilting back and forth on Mario's map"
 cite = ["exp002"]
 pause = 3.0
 
 [[section.line]]
 id = "batch"
-text = "We also tried adding up all its nudges before each step, as the square trick can. It still moved on every one of {batch_perceptron_steps} steps, and over its last hundred steps, its score kept swinging, mostly between {batch_perceptron_low_tenth} and {batch_perceptron_highest}."
-spoken = "We also tried adding up all its nudges before each step, as the square trick can. It still moved on every one of {batch_perceptron_steps_spoken} steps, and over its last hundred steps, its score kept swinging, mostly between {batch_perceptron_low_tenth_spoken} and {batch_perceptron_highest_spoken}."
-board = "All the perceptron's nudges added into one, step after step; the border still jumping, its bar swinging"
+text = "We also tried adding up all its nudges before each step, as the square trick can. It still moved on every one of {batch_perceptron_steps} steps."
+spoken = "We also tried adding up all its nudges before each step, as the square trick can. It still moved on every one of {batch_perceptron_steps_spoken} steps."
+board = "All the perceptron's nudges added into one, step after step; the border still moving"
 cite = ["exp002"]
 
 [[section.line]]
@@ -500,8 +518,8 @@ cite = ["bishop2006", "exp002"]
 [[section.line]]
 id = "staircase-outro"
 role = "conclusion"
-text = "So the count of mistakes, the thing we actually want, is a staircase no slope-following rule can walk down, and the perceptron's own measure keeps it hopping near zero. The square trick's measure has a very different shape."
-board = "The staircase, and the dials hopping near zero"
+text = "So the count of mistakes, the thing we actually want, is a staircase no slope-following rule can walk down, and the perceptron's own measure keeps its weights small and moving. The square trick's measure has a very different shape."
+board = "The staircase, and the dials moving near zero"
 cite = ["exp002", "bishop2006"]
 pause = 1.0
 
@@ -530,8 +548,8 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "shelf-2"
-text = "For nearly all the borders that get most moments wrong, {most_wrong_flat} of them, any size adds more miss than it takes away, so their best is to shrink to nothing, where every total is zero and every miss is one. On this sheet, that's a high, flat shelf."
-spoken = "For nearly all the borders that get most moments wrong, {most_wrong_flat_spoken} of them, any size adds more miss than it takes away, so their best is to shrink to nothing, where every total is zero and every miss is one. On this sheet, that's a high, flat shelf."
+text = "For most of the borders that get most moments wrong, {most_wrong_flat} of them, any size adds more miss than it takes away, so their best is to shrink to nothing, where every total is zero and every miss is one. On this sheet, that's a high, flat shelf."
+spoken = "For most of the borders that get most moments wrong, {most_wrong_flat_spoken} of them, any size adds more miss than it takes away, so their best is to shrink to nothing, where every total is zero and every miss is one. On this sheet, that's a high, flat shelf."
 board = "A backwards border shrinking its weights to nothing; its spot on the sheet joining a high flat shelf"
 cite = ["exp002"]
 

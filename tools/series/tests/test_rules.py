@@ -56,6 +56,17 @@ class PerMoment(unittest.TestCase):
                 if nudge.any():
                     self.assertLess(nudge @ before, 0)
 
+    def test_the_weights_around_each_nudge_differ_by_that_nudge(self):
+        x, y = mostly(300)
+        before, after = rules.weights_around_nudges(x, y, rate=0.1, passes=4, seed=2, count_from=3)
+        counts = rules.nudges(x, y, rate=0.1, passes=4, seed=2, count_from=3)
+        self.assertEqual(len(before), counts.sum())
+        self.assertEqual(before.shape[1], 3)
+        steps = np.linalg.norm(after - before, axis=1)
+        sizes = np.linalg.norm(np.c_[x, np.ones(len(x))], axis=1) * 0.1
+        for s in steps:
+            self.assertTrue(np.isclose(sizes, s).any())
+
     def test_a_pass_visits_every_moment_once_in_its_own_order(self):
         x, y = mostly(200)
         a = rules.train("perceptron", x, y, rate=0.1, passes=3, seed=1)

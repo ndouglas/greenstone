@@ -95,6 +95,23 @@ def sizes_before_nudges(x: np.ndarray, y: np.ndarray, rate: float, passes: int, 
     return np.array(sizes)
 
 
+def weights_around_nudges(x: np.ndarray, y: np.ndarray, rate: float, passes: int, seed: int,
+                          count_from: int = 1) -> tuple[np.ndarray, np.ndarray]:
+    """The perceptron's weights and bias (as rows: weights, then bias) just
+    before and just after each nudge from pass `count_from` on, over a run
+    like `train`'s."""
+    rng = np.random.default_rng(seed)
+    line, before, after = Line(np.zeros(x.shape[1]), 0.0), [], []
+    for p in range(1, passes + 1):
+        for i in rng.permutation(len(y)):
+            moved = step("perceptron", line, x[i], int(y[i]), rate)
+            if moved is not line and p >= count_from:
+                before.append(np.r_[line.w, line.b])
+                after.append(np.r_[moved.w, moved.b])
+            line = moved
+    return np.array(before), np.array(after)
+
+
 def averaged_perceptron(x: np.ndarray, y: np.ndarray, rate: float, passes: int, seed: int) -> Line:
     """The perceptron, answering with the average of every line it passed
     through (one after each moment visited), not the last."""

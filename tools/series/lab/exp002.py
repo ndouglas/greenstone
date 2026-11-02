@@ -33,6 +33,7 @@ TRAIN, TEST = ("1", "2", "4", "5"), ("3", "6")
 PLAY, POSITION, SPEED, SCROLL = 0x000E, 0x0755, 0x0057, 0x0775
 LINE = 80
 SOON = 30  # frames: half a second
+BUTTON_RIGHT = 0x80
 # Both bytes counted in sixteenths: a block is 16 pixels, and the speed is
 # in sixteenths of a pixel a frame.
 SIXTEENTHS = 16.0
@@ -95,6 +96,13 @@ def scroll_moments(r: Recording) -> tuple[np.ndarray, np.ndarray]:
     return np.array(keep, int), np.array(soon, int)
 
 
+def right_ahead(r: Recording, keep: np.ndarray) -> np.ndarray:
+    """For each kept moment, the share of the next SOON frames in which the
+    player held Right: what he did next, which the neuron can't see."""
+    held = (r.buttons & BUTTON_RIGHT) != 0
+    return np.array([held[i + 1 : i + SOON + 1].mean() for i in keep])
+
+
 def scroll_data(recs: list[Recording]) -> tuple[np.ndarray, np.ndarray]:
     """Each moment as (blocks from the left of the screen, pixels a frame
     to the right), and whether the screen moved soon after."""
@@ -134,8 +142,9 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         n = int(np.floor(value + 0.5))
         numbers[name], numbers[name + "_spoken"] = n, spoken_number(n)
 
+    tests = [load(data_root / "smb1" / s) for s in TEST]
     x, y = scroll_data([load(data_root / "smb1" / s) for s in TRAIN])
-    xt, yt = scroll_data([load(data_root / "smb1" / s) for s in TEST])
+    xt, yt = scroll_data(tests)
     # Not standardized: both numbers stay what the game means by them, never
     # negative, bigger meaning sooner.
     z, zt = x, xt
@@ -143,7 +152,7 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     put_int("test_moments", len(yt))
     put("scrolls_soon_rate", yt.mean())
     put_int("line", LINE)
-    numbers["line_blocks"] = LINE / SIXTEENTHS
+    put_int("line_blocks", LINE / SIXTEENTHS)
     put_int("soon_frames", SOON)
 
     w, b, _ = best_line(x, y)
@@ -152,6 +161,15 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     # The best border, written as blocks + k × speed > c.
     numbers["search_speed_per_block"] = round(float(w[1] / w[0]), 2)
     numbers["search_cut_blocks"] = round(float(-b / w[0]), 2)
+
+    # What the neuron can't see: what the player does next. How much of the
+    # next half second he held Right, for the moments search's border gets
+    # right, says yes to wrongly, and misses.
+    ahead = np.concatenate([right_ahead(r, scroll_moments(r)[0]) for r in tests])
+    said = rules.says(search, zt)
+    put("right_ahead_when_right", ahead[said == yt].mean())
+    put("right_ahead_false_yes", ahead[(said == 1) & (yt == 0)].mean())
+    put("right_ahead_missed_yes", ahead[(said == 0) & (yt == 1)].mean())
 
     # Why no border can be perfect: the game keeps position and speed as
     # whole numbers, and many spots on Mario's map hold moments with both answers.
@@ -308,6 +326,13 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     lengths = np.repeat(np.linalg.norm(np.c_[z, np.ones(len(z))], axis=1), counts)
     numbers["perceptron_nudge_in_steps"] = round(float(np.median(lengths)), 2)
     put_int("perceptron_nudges_from_zero", float(np.median(sizes)) / float(np.median(lengths)))
+    # The position weight is the smallest, so a nudge changes it by the
+    # most, for its size: the border's tilt keeps changing.
+    before, after = rules.weights_around_nudges(z, y, RATES["perceptron"], PASSES, 0, count_from=PASSES - LAST + 1)
+    change = np.abs(after - before)
+    put("position_weight_change_per_nudge", float(np.median(change[:, 0] / np.abs(before[:, 0]))))
+    put("speed_weight_change_per_nudge", float(np.median(change[:, 1] / np.abs(before[:, 1]))))
+    put_int("position_weight_nudges_from_zero", float(np.median(np.abs(before[:, 0])) / np.median(change[:, 0])))
     # For comparison: the settled square trick's weights, in the perceptron's steps.
     numbers["square_steps_from_zero"] = round(float(np.linalg.norm(np.r_[exact.w, exact.b]) / RATES["perceptron"]), 1)
     # The square trick listens to moments it already gets right, by too much.
