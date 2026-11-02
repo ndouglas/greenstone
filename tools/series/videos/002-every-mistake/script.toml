@@ -1,6 +1,6 @@
 title = "002: Every mistake moves the line"
 
-# Draft 23 (Claude, 2026-11-02), after adversarial reviews Q-DD;
+# Draft 24 (Claude, 2026-11-02), after adversarial reviews Q-FF;
 # drafts 14-16 answered council rounds 4-6, the first on the scrolling
 # question. Draft 13 rewrote 002 on new data after Nate's
 # interview: the landing question's numbers pointed the wrong way (depth
@@ -60,7 +60,7 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "numbers"
-text = "The neuron reads two numbers: how far right Mario is on the screen, counted in blocks to the nearest pixel, and how fast he's moving right, in pixels each frame. The further right he is, and the faster he's going, the sooner he'll reach the mark."
+text = "The neuron reads two numbers: how far right Mario is on the screen, counted in blocks of sixteen pixels, and how fast he's moving right, in pixels each frame. The further right he is, and the faster he's going, the sooner he'll reach the mark."
 board = "Mario with two readouts: blocks from the left edge, and pixels a frame; both grow as he walks right and speeds up"
 cite = ["datacrystal-smb1", "smbdis"]
 
@@ -303,8 +303,8 @@ pause = 3.0
 
 [[section.line]]
 id = "remember"
-text = "One cheap fix is to remember. After each pass, we kept its border if it beat every earlier one on the moments it learned from: a version of the pocket algorithm. Over the ten orders, that scored about ninety percent every time. But that's the rule plus a memory; the rule itself still never settles."
-spoken = "One cheap fix is to remember. After each pass, we kept its border if it beat every earlier one on the moments it learned from: a version of the pocket algorithm. Over the ten orders, that scored about ninety percent every time. But that's the rule plus a memory; the rule itself still never settles."
+text = "One fix is to remember. After each pass, we kept its border if it beat every earlier one on the moments it learned from: a version of the pocket algorithm. Over the ten orders, that scored about ninety percent every time. But that's the rule plus a memory; the rule itself still never settles."
+spoken = "One fix is to remember. After each pass, we kept its border if it beat every earlier one on the moments it learned from: a version of the pocket algorithm. Over the ten orders, that scored about ninety percent every time. But that's the rule plus a memory; the rule itself still never settles."
 board = "The swinging border, with a still copy left behind where it did best; its bar steady across ten orders"
 cite = ["gallant1990", "exp002"]
 pause = 3.0
@@ -386,8 +386,8 @@ cite = ["bishop2006", "exp002"]
 
 [[section.line]]
 id = "settles-2"
-text = "If it learns one moment at a time, with the small step we gave it, its score still moves around over its last ten passes, by about {square_swing_points} in a hundred; the perceptron's typically by {perceptron_swing_points}."
-spoken = "If it learns one moment at a time, with the small step we gave it, its score still moves around over its last ten passes, by about {square_swing_points_spoken} in a hundred; the perceptron's typically by {perceptron_swing_points_spoken}."
+text = "Only the sum is nothing; each moment's own pull isn't. So if it learns one moment at a time, with the small step we gave it, its score still moves around over its last ten passes, by about {square_swing_points} in a hundred; the perceptron's typically by {perceptron_swing_points}."
+spoken = "Only the sum is nothing; each moment's own pull isn't. So if it learns one moment at a time, with the small step we gave it, its score still moves around over its last ten passes, by about {square_swing_points_spoken} in a hundred; the perceptron's typically by {perceptron_swing_points_spoken}."
 board = "The border trembling, one moment at a time; beside it, the perceptron's border swinging much further"
 cite = ["exp002"]
 
@@ -541,6 +541,12 @@ board = "Their spots on the sheet joining a high flat shelf, on the side where t
 cite = ["exp002"]
 
 [[section.line]]
+id = "no-shelf"
+text = "The square trick starts with every weight at zero, right on that shelf. But it isn't stuck there: it moves its weights, not this sheet, and in its valley over the weights, zero sits on a slope."
+board = "The shelf, with the starting point marked; then the valley over the knobs, the same starting point on its side, an arrow pointing downhill"
+cite = ["bishop2006", "exp002"]
+
+[[section.line]]
 id = "bowl-2"
 text = "Everywhere else, the ground curves smoothly down into one bowl, with one lowest spot, and that's the border where the square trick comes to rest."
 board = "Beside the shelf, one smooth bowl; the square trick's resting border marked at its bottom"
@@ -601,8 +607,8 @@ pause = 3.0
 
 [[section.line]]
 id = "tldr-2"
-text = "The square trick weighs how far off each moment is. Adding up its nudges, a rule with a fixed step can only come to rest where they cancel out, and the square trick's cancel at the bottom of a bowl. It settles there, at {batch_square}."
-spoken = "The square trick weighs how far off each moment is. Adding up its nudges, a rule with a fixed step can only come to rest where they cancel out, and the square trick's cancel at the bottom of a bowl. It settles there, at {batch_square_spoken}."
+text = "The square trick weighs how far off each moment is. Added up, its pulls cancel at the bottom of a bowl, and it settles there, at {batch_square}."
+spoken = "The square trick weighs how far off each moment is. Added up, its pulls cancel at the bottom of a bowl, and it settles there, at {batch_square_spoken}."
 board = "The bowl, with the square trick resting at its bottom"
 cite = ["widrow1960", "exp002"]
 pause = 3.0
