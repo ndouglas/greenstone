@@ -113,4 +113,33 @@ Applied (Nate approved):
 **Q4b (asked again: low but rising, said not yet, landed).** Nate: depth
 weight up, speed weight down, bias up; the total goes up. Correct.
 
-**Q5b (asked again: steps of 1 and 3).** Open.
+**Q5b (asked again: steps of 1 and 3).** Nate: three times the weights,
+the same border; for the square trick, the bigger step moves it more
+dramatically. The perceptron half is right. The square-trick half is
+true but misses why the scaling breaks (the targets don't triple, so the
+misses, and so the nudges, differ). Follow-up asked.
+
+**Q5c (follow-up: why the square trick's weights stop being three times
+apart).** Nate: because the targets stay at plus and minus one. Correct.
+
+### Round 3 (paused)
+
+**`rule-signs` (Nate, reading it).** Too many negations to follow.
+Finding: the inputs' meanings fight the examples. Depth grows as Mario
+gets *lower* (high = small depth) and speed is *falling* speed (rising =
+negative), so any nudge example told by Mario's position and motion makes
+the viewer flip each word before the rule starts; `rule-wrong` has the
+same problem ("his depth, which grows as he gets lower"). Proposed, not
+yet applied: tell the nudge examples in the numbers ("both numbers above
+average, he landed: both weights turn up"), replace `rule-signs` with the
+rule stated by its effect ("each weight turns whichever way pushes this
+moment's total toward the right answer, and further the further its
+number is from average"), and drop the high-and-rising example. The
+board shows the moment's total moving toward its side beside the dials.
+
+**Chapter length.** The merged "Close, but not quite" is 4:29 on the
+narrator's voice (storyboard of commit 8949166; whole video 21:18).
+Proposed: move `perceptron-score` to `batch-2` (about 1:30) to open the
+bowl chapter, retitled (e.g. "Two measures").
+
+Still to ask: Q6 to Q22.
