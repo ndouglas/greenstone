@@ -143,3 +143,67 @@ Proposed: move `perceptron-score` to `batch-2` (about 1:30) to open the
 bowl chapter, retitled (e.g. "Two measures").
 
 Still to ask: Q6 to Q22.
+
+### Round 4: the questions, re-asked on draft 25
+
+Draft 13 changed the question (will the screen scroll soon?), and
+drafts 14–25 went through the council and adversarial reviews. Q1–Q5
+stand as answered. Round 3's `rule-signs` finding is moot: both numbers
+now count up toward the mark (position in blocks, rightward speed), so
+no sign ever flips. Q14 and Q15 went with the beats they were about
+(the animals and `perceptron-score` were cut). The rest, rewritten for
+draft 25 (commit b047c80), with the minor notes from adversarial-14:
+
+Concepts (pedagogy):
+- R1. Why does the perceptron stop on the control set but never on all
+  of Mario's moments? (`guarantee-check`, `never-intro`)
+- R2. `spots`: why can no border, of any shape, get both answers right
+  at one of the points where both happened?
+- R3. What is the total squared miss, and why does the square trick,
+  added up, come to rest where the perceptron doesn't?
+- R4. Why does the square trick pull back on a total of three, which is
+  right? (`target-over`)
+- R5. Why does the square trick one moment at a time still move around,
+  when added up it rests? (`settles-2`)
+- R6. Why does too big a step make the square trick worse, not just
+  faster, when the perceptron didn't care? (`too-big`)
+
+The claims (cross-examiner, skepticism, empiricism):
+- R7. The square trick rests at 88%, not 91%. Someone asks why. What do
+  you say, and what did we test? (`why-short`)
+- R8. What would make "the perceptron never came to rest" false, one
+  moment at a time and added up? How do you know its wobble isn't just
+  a step that's too big?
+- R9. `no-fast-way`: what do Höffgen, Simon and Van Horn show, and what
+  don't they?
+- R10. `bounded`: what did Minsky and Papert, and Block and Levin,
+  prove?
+- R11. `tldr-3`: why is the pocket version "a search of its own"?
+- R12. (minor) `too-many`: "each extra number multiplies the borders to
+  try". Can you defend it from counting alone?
+- R13. (minor) `how-far` says "close to" the best border; the chapter is
+  "Close, but not quite". 88% against 91% is about a third more
+  mistakes. Which do you mean?
+- R14. (minor) `search-2` calls the best border "a compromise" before
+  `rule-outro` says no straight border splits the moments. Fine, or out
+  of order?
+
+Hearing it (lay viewer, blind listener):
+- R15. Describe the sheet of borders out loud: what turning and sliding
+  mean, and what the staircase, the shelf and the bowl are.
+- R16. (minor) `too-big` has two thoughts (why the step matters; the
+  overshoot), and the first has no picture. One beat or two?
+- R17. (minor) "Mark One" a beat after "the mark". Does it trip a
+  listener?
+
+Animation:
+- R18. How do we show that one spot on the sheet is one ruler on
+  Mario's map?
+- R19. Two surfaces: the U over one weight (`downhill`) and the sheet
+  of borders (staircase, bowl). How do we keep them apart on screen?
+- R20. Which beats need game footage (`the-line`, `unseen`, `big-drops`'
+  start point), and which are diagrams?
+- R21. The Mark I: a period photo, or a drawing?
+
+The series:
+- R22. Does `next` set up 003 the way you want?
