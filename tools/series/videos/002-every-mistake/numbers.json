@@ -106,6 +106,8 @@
   "perceptron_one_run_highest_spoken": "ninety percent",
   "perceptron_one_run_lowest": "67%",
   "perceptron_one_run_lowest_spoken": "sixty-seven percent",
+  "perceptron_pass_shrinking_swing_points": 12,
+  "perceptron_pass_shrinking_swing_points_spoken": "twelve",
   "perceptron_second_lowest": "82%",
   "perceptron_second_lowest_spoken": "eighty-two percent",
   "perceptron_shrinking_swing_points": 0.16,
@@ -141,6 +143,7 @@
   "scrolls_soon_rate_spoken": "fifty-one percent",
   "search": "91%",
   "search_cut_blocks": 3.98,
+  "search_cut_walking_blocks": 1.56,
   "search_speed_per_block": 1.61,
   "search_spoken": "ninety-one percent",
   "simple_highest": "86%",
@@ -238,8 +241,6 @@
   "train_moments_spoken": "ten thousand seven hundred and twenty",
   "wrong_for_search": "8%",
   "wrong_for_search_spoken": "eight percent",
-  "wrong_nudges_times_share": 6,
-  "wrong_nudges_times_share_spoken": "six",
   "wrong_share_of_nudges": "43%",
   "wrong_share_of_nudges_spoken": "forty-three percent"
 }

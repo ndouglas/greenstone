@@ -42,7 +42,17 @@ class PerMoment(unittest.TestCase):
         for i in np.random.default_rng(4).permutation(len(y)):
             seen += 1
             line = rules.step("perceptron", line, x[i], int(y[i]), 0.5 / seen)
-        shrunk = rules.train("perceptron", x, y, rate=0.5, passes=1, seed=4, shrink=True)[-1]
+        shrunk = rules.train("perceptron", x, y, rate=0.5, passes=1, seed=4, shrink="moment")[-1]
+        np.testing.assert_allclose(shrunk.w, line.w)
+        self.assertAlmostEqual(shrunk.b, line.b)
+
+    def test_a_step_shrinking_once_a_pass_divides_by_the_pass(self):
+        x, y = mostly(n=200)
+        rng, line = np.random.default_rng(4), rules.Line(np.zeros(2), 0.0)
+        for p in (1, 2):
+            for i in rng.permutation(len(y)):
+                line = rules.step("perceptron", line, x[i], int(y[i]), 0.5 / p)
+        shrunk = rules.train("perceptron", x, y, rate=0.5, passes=2, seed=4, shrink="pass")[-1]
         np.testing.assert_allclose(shrunk.w, line.w)
         self.assertAlmostEqual(shrunk.b, line.b)
 
@@ -245,6 +255,10 @@ class Experiment(unittest.TestCase):
             check_claims(True, True, True, one_run_ends_lowest=False)
         with self.assertRaises(AssertionError):
             check_claims(True, True, True, shrinking_calms=False)
+        with self.assertRaises(AssertionError):
+            check_claims(True, True, True, gentle_shrinking_swings=False)
+        with self.assertRaises(AssertionError):
+            check_claims(True, True, True, search_words_fit=False)
 
 
     def test_low_points_are_counted_where_the_map_slopes(self):

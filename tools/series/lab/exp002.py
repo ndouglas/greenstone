@@ -22,7 +22,9 @@ from series.script import REPO, VIDEOS
 OUT = VIDEOS / "002-every-mistake" / "numbers.json"
 # The two maps of every border, for the animations (large; not committed).
 MAPS = REPO / "target" / "series" / "002-every-mistake" / "maps.npz"
-ANGLES = np.radians(np.arange(0, 360, 0.5))
+# The sheet's left edge is at 300°, so the bowl is one piece on the left
+# and the flat shelf (borders facing the wrong way) is to its right.
+ANGLES = np.radians(np.arange(300, 660, 0.5))
 OFFSETS = np.linspace(-3, 3, 601)
 
 TRAIN, TEST = ("1", "2", "4", "5"), ("3", "6")
@@ -58,7 +60,8 @@ TOO_BIG_STEPS = 10
 def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes_agree: bool,
                  bowl_is_least_squares: bool = True, control_settles: bool = True,
                  one_hollow: bool = True, too_big_grows: bool = True,
-                 one_run_ends_lowest: bool = True, shrinking_calms: bool = True) -> None:
+                 one_run_ends_lowest: bool = True, shrinking_calms: bool = True,
+                 gentle_shrinking_swings: bool = True, search_words_fit: bool = True) -> None:
     """Things the script will rest on; refuse to write numbers if any fails."""
     if not perceptron_rate_free:
         raise AssertionError("the perceptron's border changed with its step size")
@@ -78,6 +81,10 @@ def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes
         raise AssertionError("the run shown doesn't end on its lowest score, lowest of all the orders")
     if not shrinking_calms:
         raise AssertionError("a shrinking step didn't calm the perceptron to under a point")
+    if not gentle_shrinking_swings:
+        raise AssertionError("a step shrinking once a pass calmed the perceptron too")
+    if not search_words_fit:
+        raise AssertionError("the best border no longer fits 'about four blocks; about one and a half walking'")
 
 
 def scroll_moments(r: Recording) -> tuple[np.ndarray, np.ndarray]:
@@ -166,6 +173,10 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     # The best border, written as blocks + k × speed > c.
     numbers["search_speed_per_block"] = round(float(w[1] / w[0]), 2)
     numbers["search_cut_blocks"] = round(float(-b / w[0]), 2)
+    # Where it says yes from, at full walking speed (1.5 pixels a frame).
+    numbers["search_cut_walking_blocks"] = round(float((-b - 1.5 * w[1]) / w[0]), 2)
+    search_words_fit = (3.5 < numbers["search_cut_blocks"] < 4.5
+                        and 1.25 < numbers["search_cut_walking_blocks"] < 1.75)
 
     # What the neuron can't see: what the player does next. How much of the
     # next half second he held Right, for the moments search's border gets
@@ -220,10 +231,15 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
 
     # A step that shrinks as it goes (rate / k at the k-th moment) calms
     # the perceptron: a schedule imposed on the rule, not part of it.
-    shrunk = [[rules.accuracy(l, zt, yt) for l in rules.train("perceptron", z, y, RATES["perceptron"], PASSES, seed,
-                                                              shrink=True)] for seed in range(ORDERS)]
-    shrinking_swing = float(np.median([rules.swing(s, LAST) for s in shrunk]))
-    numbers["perceptron_shrinking_swing_points"] = round(100 * shrinking_swing, 2)
+    # Shrinking it only once a pass doesn't: within a pass, the step's
+    # size doesn't matter to this rule.
+    def shrinking_swing(how: str) -> float:
+        scores = [[rules.accuracy(l, zt, yt) for l in rules.train("perceptron", z, y, RATES["perceptron"], PASSES,
+                                                                  seed, shrink=how)] for seed in range(ORDERS)]
+        return float(np.median([rules.swing(s, LAST) for s in scores]))
+    moment_swing, pass_swing = shrinking_swing("moment"), shrinking_swing("pass")
+    numbers["perceptron_shrinking_swing_points"] = round(100 * moment_swing, 2)
+    put_int("perceptron_pass_shrinking_swing_points", 100 * pass_swing)
 
     # A tiny change: leave out a few moments, and keep everything else,
     # the order of the rest included, the same.
@@ -402,7 +418,9 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
         codes_agree=bool((rules.says(exact, zt) == rules.says(zero_one, zt)).all()),
         too_big_grows=all(b > a for a, b in zip(too_big, too_big[1:])),
         one_run_ends_lowest=one_run_ends_lowest,
-        shrinking_calms=shrinking_swing < 0.01,
+        shrinking_calms=moment_swing < 0.01,
+        gentle_shrinking_swings=pass_swing > 0.05,
+        search_words_fit=search_words_fit,
     )
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(numbers, indent=2, sort_keys=True) + "\n")
