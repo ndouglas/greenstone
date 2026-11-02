@@ -15,8 +15,8 @@ BUTTON_A, BUTTON_B, BUTTON_UP, BUTTON_DOWN, BUTTON_LEFT, BUTTON_RIGHT = 0x01, 0x
 
 def nes(at: np.ndarray, width: float = 3.2) -> VGroup:
     """The front-loading console (NES-001) in hairlines, seen from in front and a little above and to the right, as
-    in its photographs: a light upper half with the cartridge door's lip across most of it, a darker lower band with
-    the power light and the POWER and RESET buttons, the dark strip with the two controller ports, and on top the
+    in its photographs: a light upper half with the cartridge door's lip across most of it, a darker lower band,
+    tucked in toward the bottom at the front and the side, with the power light and the POWER and RESET buttons, the dark strip with the two controller ports, and on top the
     door and the ridged strip behind its end caps."""
     k = width / 3.2
     w, h = 3.2 * k, 1.12 * k  # the front: 254 by 89 mm
@@ -33,12 +33,27 @@ def nes(at: np.ndarray, width: float = 3.2) -> VGroup:
         return Polygon(*points, stroke_color=colour, stroke_width=width_, fill_color=fill or colour, fill_opacity=opacity)
 
     dark, black = "#2C2427", "#151112"
-    front = shape([p(0, 0), p(w, 0), p(w, h), p(0, h)], width_=1.4)
-    band = shape([p(0.02 * w, 0), p(0.98 * w, 0), p(w, split), p(0, split)], fill=dark, opacity=0.9, width_=1.0)
+    # Below the light upper half the body tucks in: the dark band slopes back and in, at the front and the side,
+    # so the bottom is smaller than the top.
+    inset, back = 0.035 * w, 0.1  # how far the bottom edge is in from each side, and back from the front
+
+    def low(x: float, y: float, side: bool = False) -> np.ndarray:
+        """A point on the sloping band, x across the front (or, on the side, x of the way back), y up from the
+        bottom: where the slope from the band's top edge down to the tucked-in bottom edge is at that height."""
+        t = y / split
+        if side:
+            return p(w, split, x) * t + p(w - inset, 0, back + x * (1 - 2 * back)) * (1 - t)
+        return p(x, split) * t + p(inset + x * (w - 2 * inset) / w, 0, back) * (1 - t)
+
+    upper = shape([p(0, split), p(w, split), p(w, h), p(0, h)], width_=1.4)
+    band = shape([low(0, split), low(w, split), low(w, 0), low(0, 0)], fill=dark, opacity=0.9, width_=1.2)
+    front = VGroup(upper, band)
     top = shape([p(0, h), p(w, h), p(w, h, 1), p(0, h, 1)], width_=1.4)
-    side = shape([p(w, 0), p(w, 0, 1), p(w, h, 1), p(w, h)], width_=1.4)
-    side_band = shape([p(w, 0), p(w, 0, 1), p(w, split, 1), p(w, split)], fill=dark, opacity=0.9, width_=1.0)
-    front_strip = shape([p(strip[0], 0), p(strip[1], 0), p(strip[1], h), p(strip[0], h)], fill=black, opacity=0.95, width_=1.0)
+    side = shape([p(w, split), p(w, split, 1), p(w, h, 1), p(w, h)], width_=1.4)
+    side_band = shape([low(0, split, True), low(1, split, True), low(1, 0, True), low(0, 0, True)], fill=dark, opacity=0.9,
+                      width_=1.2)
+    front_strip = VGroup(shape([p(strip[0], split), p(strip[1], split), p(strip[1], h), p(strip[0], h)], fill=black, opacity=0.95, width_=1.0),
+                         shape([low(strip[0], split), low(strip[1], split), low(strip[1], 0), low(strip[0], 0)], fill=black, opacity=0.95, width_=1.0))
     # On top: the door over the front of the left part; the strip running back, dark caps at each end, ridged between.
     door = shape([p(0.03 * w, h, 0.0), p(0.62 * w, h, 0.0), p(0.62 * w, h, 0.45), p(0.03 * w, h, 0.45)], width_=1.0)
     lip = Line(p(0.03 * w, h - 0.06 * h), p(0.62 * w, h - 0.06 * h), stroke_color=style.ASH, stroke_width=0.9)
@@ -46,11 +61,11 @@ def nes(at: np.ndarray, width: float = 3.2) -> VGroup:
                   shape([p(strip[0], h, 0.8), p(strip[1], h, 0.8), p(strip[1], h, 1), p(strip[0], h, 1)], fill=black, opacity=0.95, width_=1.0))
     ridges = VGroup(*[Line(p(strip[0], h, d), p(strip[1], h, d), stroke_color=style.ASH, stroke_width=0.7)
                       for d in np.linspace(0.2, 0.76, 12)])
-    led = Rectangle(width=0.035 * k, height=0.035 * k, stroke_width=0, fill_color=style.WARM[4], fill_opacity=0.9).move_to(p(0.075 * w, 0.28 * h))
-    buttons = VGroup(*[Rectangle(width=0.075 * w, height=0.12 * h, stroke_color=style.WARM[0], stroke_width=1.2).move_to(p(x * w, 0.25 * h))
+    led = Rectangle(width=0.035 * k, height=0.035 * k, stroke_width=0, fill_color=style.WARM[4], fill_opacity=0.9).move_to(low(0.075 * w, 0.28 * h))
+    buttons = VGroup(*[Rectangle(width=0.075 * w, height=0.12 * h, stroke_color=style.WARM[0], stroke_width=1.2).move_to(low(x * w, 0.25 * h))
                        for x in (0.13, 0.215)])
     ports = VGroup(*[RoundedRectangle(corner_radius=0.02 * k, width=0.042 * w, height=0.22 * h, stroke_color=style.ASH, stroke_width=1.0)
-                     .move_to(p(x * w, 0.2 * h)) for x in (0.672, 0.738)])
+                     .move_to(low(x * w, 0.2 * h)) for x in (0.672, 0.738)])
     return VGroup(top, side, side_band, front, band, front_strip, door, lip, caps, ridges, led, buttons, ports).move_to(at)
 
 
