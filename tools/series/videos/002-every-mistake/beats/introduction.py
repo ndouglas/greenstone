@@ -221,7 +221,8 @@ def player(scene) -> None:
     leaving = away(scene)
     screen = screen_at(PLAYER, UP * 0.6)
     scene.add(screen)
-    pad = Pad(screen, DOWN * 3.0 + LEFT * 0.4, BUTTONS)
+    pad = Pad(screen, DOWN * 3.0, BUTTONS)
+    pad.set_x(screen.get_x())  # centred under the screen
     pad.level.set_value(0)
     scene.add(pad)
     scene.say("player", Succession(*fill(scene, "player",

@@ -3,7 +3,7 @@ catches three neurons inside, and leaves split into the spectrum (warm above, co
 settles beneath, then, after a pause, the episode's; then all of it fades to black. The theme plays under it."""
 
 import numpy as np
-from manim import (DOWN, LEFT, RIGHT, UP, Create, FadeIn, Line, Rectangle, RoundedRectangle, Scene, ValueTracker,
+from manim import (DOWN, LEFT, RIGHT, UP, Circle, Create, FadeIn, Line, Polygon, Rectangle, RoundedRectangle, Scene, ValueTracker,
                    VGroup, config, linear, rate_functions)
 
 from series import style
@@ -34,18 +34,28 @@ def episode_label(title: str) -> str:
 
 
 def cartridge() -> VGroup:
-    """A cartridge's outline, in glass: body, label recess, a glint, the slot's edge, the ridges of its grip."""
-    body = RoundedRectangle(corner_radius=0.08, width=W, height=H, stroke_color=style.TEXT, stroke_width=1.3,
-                            stroke_opacity=0.75, fill_color=style.TEXT, fill_opacity=0.035)
-    label = RoundedRectangle(corner_radius=0.05, width=W * 0.78, height=H * 0.5, stroke_color=style.TEXT,
-                             stroke_width=1.0, stroke_opacity=0.45, fill_opacity=0).shift(UP * H * 0.12)
-    ridges = VGroup(*[Line(LEFT * W * 0.36, RIGHT * W * 0.36, stroke_color=style.TEXT, stroke_width=0.8,
-                           stroke_opacity=0.35).shift(DOWN * (H * 0.22 + i * 0.09)) for i in range(5)])
-    glint = Line(UP * H * 0.45 + LEFT * W * 0.42, UP * H * 0.1 + LEFT * W * 0.1, stroke_color=style.TEXT,
-                 stroke_width=2.5, stroke_opacity=0.12)
-    slot = Line(LEFT * W * 0.3, RIGHT * W * 0.3, stroke_color=style.TEXT, stroke_width=1.0,
-                stroke_opacity=0.5).shift(UP * (H / 2 - 0.08))
-    return VGroup(body, label, ridges, glint, slot).move_to(CART)
+    """A Game Pak's front, in glass, as in its photographs: the outline narrowing above its bottom edge (the end
+    that goes in), the column of grip ridges down its left with a small tab at their foot, the label's recess
+    with its round mark, and the arrow pointing in. Measured as shares of a cartridge photographed without its
+    label (Evan-Amos, Wikimedia Commons, public domain)."""
+    def at(fx: float, fy: float) -> np.ndarray:
+        """A point fx across the front from its left, fy down from its top."""
+        return CART + np.array([(fx - 0.5) * W, (0.5 - fy) * H, 0.0])
+
+    def hair(width: float, opacity: float) -> dict:
+        return {"stroke_color": style.TEXT, "stroke_width": width, "stroke_opacity": opacity}
+    outline = Polygon(*[at(x, y) for x, y in ((0.035, 0.0), (0.965, 0.0), (0.965, 0.79), (0.91, 0.79), (0.91, 1.0),
+                                              (0.09, 1.0), (0.09, 0.79), (0.035, 0.79))],
+                      **hair(1.3, 0.75), fill_color=style.TEXT, fill_opacity=0.035)
+    column = Polygon(at(0.18, 0.02), at(0.38, 0.02), at(0.38, 0.87), at(0.18, 0.87), **hair(0.9, 0.4), fill_opacity=0)
+    ridges = VGroup(*[Line(at(0.18, y), at(0.38, y), **hair(0.8, 0.35 if y > 0.15 else 0.5))
+                      for y in np.r_[np.linspace(0.045, 0.135, 4), np.arange(0.17, 0.86, 0.036)]])
+    tab = RoundedRectangle(corner_radius=0.03, width=0.19 * W, height=0.09 * H, **hair(0.9, 0.4), fill_opacity=0).move_to(at(0.275, 0.925))
+    label = RoundedRectangle(corner_radius=0.03, width=0.44 * W, height=0.64 * H, **hair(1.0, 0.45), fill_opacity=0).move_to(at(0.62, 0.35))
+    mark = Circle(radius=0.012 * W, **hair(0.8, 0.4)).move_to(at(0.49, 0.57))
+    arrow = Polygon(at(0.46, 0.73), at(0.54, 0.73), at(0.5, 0.79), **hair(1.0, 0.45), fill_opacity=0)
+    glint = Line(at(0.44, 0.08), at(0.62, 0.3), stroke_color=style.TEXT, stroke_width=2.5, stroke_opacity=0.12)
+    return VGroup(outline, column, ridges, tab, label, mark, arrow, glint)
 
 
 def play_opening(scene: Scene, title: str, theme: str | None = None) -> None:

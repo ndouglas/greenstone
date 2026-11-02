@@ -76,7 +76,9 @@ def unseen(scene) -> None:
     for s in (a, b):
         s.scale(0.75)
     scene.add(a, b)
-    pads = [Pad(s, s.get_bottom() + DOWN * 0.75 + RIGHT * 0.2, BUTTONS).scale(0.6) for s in (a, b)]
+    pads = [Pad(s, s.get_bottom() + DOWN * 0.75, BUTTONS).scale(0.6) for s in (a, b)]
+    for p, s in zip(pads, (a, b)):
+        p.set_x(s.get_x())  # centred under its screen
     for p in pads:
         p.level.set_value(0)
     scene.add(*pads)
