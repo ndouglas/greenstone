@@ -13,6 +13,7 @@
   "batch_perceptron_lowest_spoken": "eighty-three percent",
   "batch_perceptron_median": "85%",
   "batch_perceptron_median_spoken": "eighty-five percent",
+  "batch_perceptron_pull_share_lowest": 0.78,
   "batch_perceptron_steps": 300,
   "batch_perceptron_steps_spoken": "three hundred",
   "batch_perceptron_steps_without_moving": 0,

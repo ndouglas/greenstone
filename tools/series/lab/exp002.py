@@ -94,7 +94,8 @@ def check_claims(perceptron_rate_free: bool, batch_is_least_squares: bool, codes
     if not hidden_fraction:
         raise AssertionError("the game's finer part of Mario's position didn't vary at a point")
     if not batch_steps_differ:
-        raise AssertionError("the batch perceptron's steps shrank, or the batch square trick's didn't")
+        raise AssertionError("the batch perceptron's steps shrank or its pulls came near cancelling, "
+                             "or the batch square trick's steps didn't shrink")
 
 
 def scroll_moments(r: Recording) -> tuple[np.ndarray, np.ndarray]:
@@ -344,6 +345,17 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     numbers["batch_square_last_step_to_first"] = float(f"{square_steps[-1] / square_steps[0]:.1e}")
     batch_steps_differ = bool(perceptron_steps.min() > 0.5 * np.median(perceptron_steps)
                               and square_steps[-1] < 1e-6 * square_steps[0])
+    # How near its pulls come to cancelling: over its last hundred steps,
+    # the size of their sum against the sum of their sizes (1: all one
+    # way; 0: cancelled).
+    xb, sign = np.c_[z, np.ones(len(z))], np.where(y == 1, 1.0, -1.0)
+    shares = []
+    for l in lines[-100:]:
+        wrong = rules.says(l, z) != y
+        pulls = xb[wrong] * sign[wrong, None]
+        shares.append(np.linalg.norm(pulls.sum(0)) / np.linalg.norm(pulls, axis=1).sum())
+    numbers["batch_perceptron_pull_share_lowest"] = round(float(min(shares)), 2)
+    batch_steps_differ = batch_steps_differ and min(shares) > 0.5
     numbers["batch_perceptron_weights_in_nudges"] = round(float(
         np.median(np.linalg.norm(v[1:], axis=1)) / np.median(np.linalg.norm(np.diff(v, axis=0), axis=1))), 1)
     # Remembering instead of settling: the best line a run passed through
