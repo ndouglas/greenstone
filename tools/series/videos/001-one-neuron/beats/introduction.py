@@ -3,7 +3,7 @@
 import re
 
 import numpy as np
-from manim import (DOWN, LEFT, ORIGIN, RIGHT, UP, AnimationGroup, Circle, Create, FadeIn, FadeOut, Line, Rectangle,
+from manim import (DOWN, LEFT, ORIGIN, RIGHT, UP, AnimationGroup, Circle, Create, FadeIn, FadeOut, Line,
                    Restore, RoundedRectangle, Succession, UpdateFromAlphaFunc, ValueTracker, VGroup, Wait, config,
                    linear, smooth)
 
@@ -15,6 +15,7 @@ from series.homebrew.chase import make as chase
 from series.memory import MemoryGrid
 from series.pacing import STILLNESS
 from series.recording import Film, Recording
+from series.props import nes
 from series.screen import Screen
 from series.web import Web
 
@@ -29,21 +30,6 @@ def held(scene, line_id: str) -> float:
     """How long a line holds the screen: its voice and the stillness after it."""
     line = next(l for l in scene.video.lines if l.id == line_id)
     return scene.voices[line_id].seconds + (line.pause if line.pause is not None else STILLNESS)
-
-
-def nes(at: np.ndarray, width: float = 3.2) -> VGroup:
-    """The console in hairlines: its body, the darker front stripe, the cartridge door, two buttons, two ports."""
-    k = width / 3.2
-    body = RoundedRectangle(corner_radius=0.06 * k, width=3.2 * k, height=1.15 * k, stroke_color=style.ASH,
-                            stroke_width=1.4)
-    stripe = Line(LEFT * 1.6 * k, RIGHT * 1.6 * k, stroke_color=style.ASH, stroke_width=1.0).shift(DOWN * 0.18 * k)
-    door = Rectangle(width=1.7 * k, height=0.42 * k, stroke_color=style.ASH, stroke_width=1.2).shift(
-        UP * 0.2 * k + RIGHT * 0.15 * k)
-    buttons = VGroup(*[Rectangle(width=0.22 * k, height=0.09 * k, stroke_color=style.WARM[0], stroke_width=1.2).shift(
-        LEFT * (1.15 - 0.32 * i) * k + DOWN * 0.38 * k) for i in range(2)])
-    ports = VGroup(*[Rectangle(width=0.18 * k, height=0.2 * k, stroke_color=style.ASH, stroke_width=1.0).shift(
-        RIGHT * (0.3 + 0.35 * i) * k + DOWN * 0.38 * k) for i in range(2)])
-    return VGroup(body, stripe, door, buttons, ports).move_to(at)
 
 
 def about(scene) -> None:

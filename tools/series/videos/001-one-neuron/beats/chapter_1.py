@@ -20,8 +20,9 @@ from series.lab.data import load
 from series.lab.exp001 import features, in_play, label
 from series.memory import MemoryGrid
 from series.overlays import LABEL_INSET, SettingLine, feet_line
-from series.recording import DATA, LAG, Recording
+from series.recording import DATA, Recording
 from series.records import APART, TAPE_H, TAPE_W, Tapes
+from series.props import Pad, tick
 from series.screen import Screen
 
 RING = 0.55
@@ -338,12 +339,6 @@ def never_see(scene) -> None:
         Wait(1.0)))
 
 
-def tick(at: np.ndarray, size: float = 0.2) -> VMobject:
-    """A check mark."""
-    return VMobject(stroke_color=style.WARM[1], stroke_width=2.0).set_points_as_corners(
-        [at + size * np.array(p) for p in ((-0.5, 0.0, 0), (-0.15, -0.4, 0), (0.55, 0.45, 0))])
-
-
 def why_key(scene) -> None:
     """Every answer can be checked: ticks fill under the scorecard. Then a question the memory holds no answer
     to, beside an empty square."""
@@ -408,7 +403,6 @@ def depth(scene) -> None:
 
 
 SESSIONS = DATA / "smb1"  # sessions 1-3 of the random player; the footage is session 1's
-BUTTON_A, BUTTON_B, BUTTON_UP, BUTTON_DOWN, BUTTON_LEFT, BUTTON_RIGHT = 0x01, 0x02, 0x10, 0x20, 0x40, 0x80  # src/nes/bus
 FAST = 8  # the fast-forward
 SESSION_FRAMES = 18000
 NUMBERS = json.loads((Path(__file__).parents[1] / "numbers.json").read_text())
@@ -417,40 +411,6 @@ OFFSET = 33  # a depth's row on screen is depth + 33 (see overlays.feet_line)
 SWEEP_END = 206  # the depth at the bottom row of the screen
 CHOOSE_START = 9680  # session 1: on the floor, jumping often; the next restart is 28 s on
 NICK = 0.004  # a left-out moment's least width, as a share of its tape: most are one frame
-
-
-class Pad(VGroup):
-    """The controller as hairlines, the d-pad a cross and B and A two rings, each key lighting while the
-    program holds it down for the picture on screen."""
-
-    def __init__(self, screen: Screen, at: np.ndarray, key: float = 0.44):
-        super().__init__()
-        self.screen = screen
-        self.buttons = np.fromfile(SESSIONS / "1" / "buttons.u8", dtype=np.uint8)
-        self.level = ValueTracker(1.0)
-        cross = at + LEFT * 1.3
-        self.keys = {bit: Square(key).move_to(cross + direction * key)
-                     for bit, direction in ((BUTTON_UP, UP), (BUTTON_DOWN, DOWN), (BUTTON_LEFT, LEFT), (BUTTON_RIGHT, RIGHT))}
-        self.hub = Square(key, stroke_width=0, fill_opacity=0).move_to(cross)
-        for bit, x in ((BUTTON_B, 0.65), (BUTTON_A, 1.75)):
-            self.keys[bit] = Circle(radius=0.36).move_to(at + RIGHT * x)
-        self.names = VGroup(*[serif(name, style.ASH, 0.36).next_to(self.keys[bit], DOWN, buff=0.18)
-                              for name, bit in (("B", BUTTON_B), ("A", BUTTON_A))])
-        self.add(self.hub, *self.keys.values(), self.names)
-        self.add_updater(lambda m: m.draw())
-        self.draw()
-
-    def held(self) -> int:
-        """The buttons pressed during the frame whose RAM the picture shows (the picture trails it by LAG)."""
-        return int(self.buttons[max(self.screen.frame() - LAG["smb1"], 0)])
-
-    def draw(self) -> None:
-        held, level = self.held(), self.level.get_value()
-        for bit, key in self.keys.items():
-            on = bool(held & bit)
-            key.set_stroke(style.WARM[1] if on else style.ASH, width=1.4, opacity=level)
-            key.set_fill(style.WARM[1], opacity=0.75 * level if on else 0)
-        self.names.set_opacity(level)
 
 
 class Restarts(VGroup):
@@ -507,7 +467,7 @@ def recording(scene) -> None:
     """The memory goes; the controller lights beside the game as the random player presses its buttons."""
     screen, grid = scene.kept["screen"], scene.kept.pop("grid")
     feet = scene.kept.pop("feet")
-    pad = Pad(screen, RIGHT * 3.0 + UP * 0.4)
+    pad = Pad(screen, RIGHT * 3.0 + UP * 0.4, SESSIONS / "1" / "buttons.u8")
     pad.level.set_value(0)
     scene.add(pad)
     scene.kept["pad"] = pad
