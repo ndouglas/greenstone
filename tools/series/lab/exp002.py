@@ -197,14 +197,6 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     put("right_ahead_true_yes", ahead[(said == 1) & (yt == 1)].mean())
     put("right_ahead_false_yes", ahead[(said == 1) & (yt == 0)].mean())
     put("right_ahead_missed_yes", ahead[(said == 0) & (yt == 1)].mean())
-    # The same, at the test points that hold both answers: the same two
-    # numbers, the screen moving or not.
-    _, at, count = np.unique(xt, axis=0, return_inverse=True, return_counts=True)
-    at = at.ravel()
-    moved = np.bincount(at, weights=yt, minlength=len(count))
-    mixed = ((moved > 0) & (moved < count))[at]
-    put("right_ahead_mixed_yes", ahead[mixed & (yt == 1)].mean())
-    put("right_ahead_mixed_no", ahead[mixed & (yt == 0)].mean())
 
     # Why no border can be perfect: the game keeps position and speed as
     # whole numbers, and many spots on Mario's map hold moments with both answers.
@@ -215,6 +207,13 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     put_int("spots", len(spots))
     put_int("spots_with_both", both.sum())
     put("in_spots_with_both", both[owner].mean())
+    # At those same points (the moments learned from): how much of the
+    # next half second he held Right, when the screen moved and when not.
+    ahead_train = np.concatenate([right_ahead(r, scroll_moments(r)[0])
+                                  for r in [load(data_root / "smb1" / s) for s in TRAIN]])
+    mixed = both[owner]
+    put("right_ahead_mixed_yes", ahead_train[mixed & (y == 1)].mean())
+    put("right_ahead_mixed_no", ahead_train[mixed & (y == 0)].mean())
     # The best any answer could do on these moments: each spot's commoner answer.
     put("best_possible", np.maximum(landed, per_spot - landed).sum() / len(y))
     put_int("most_in_one_spot", per_spot.max())
