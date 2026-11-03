@@ -219,6 +219,14 @@ class Landscapes(unittest.TestCase):
         self.assertLess(rules.turn([exact, rules.Line(np.array([np.cos(angles[i]), np.sin(angles[i])]), 0.0)]), 1.0)
         self.assertAlmostEqual(offsets[j], exact.b / np.linalg.norm(exact.w), delta=0.02)
 
+    def test_mistakes_by_sorting_match_the_landscape(self):
+        x, y = mostly()
+        angles = np.radians(np.arange(0, 360, 7.5))
+        offsets = np.linspace(-2, 2, 81) + 1e-7  # off the points' own projections, where a tie decides
+        mistakes, _ = rules.landscape(x, y, angles, offsets)
+        counted = rules.mistakes_at(x, y, angles, offsets)
+        np.testing.assert_array_equal(np.rint(counted * len(y)), np.rint(mistakes * len(y)))
+
     def test_right_by_too_much_counts_right_answers_past_their_target(self):
         x = np.array([[3.0], [0.5], [-3.0], [-0.5]])
         y = np.array([1, 1, 1, 0])

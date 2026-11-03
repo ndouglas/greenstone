@@ -226,6 +226,22 @@ def landscape(x: np.ndarray, y: np.ndarray, angles: np.ndarray, offsets: np.ndar
     return mistakes, squared
 
 
+def mistakes_at(x: np.ndarray, y: np.ndarray, angles: np.ndarray, offsets: np.ndarray) -> np.ndarray:
+    """The share of mistakes of every border, as `landscape` scores them, but by sorting: for each angle,
+    the moments are sorted along it once, and every offset's count is then a lookup. Cheap enough to look
+    at the staircase as finely as its real ledges."""
+    out = np.empty((len(angles), len(offsets)))
+    yes = y == 1
+    for i, a in enumerate(angles):
+        p = x @ np.array([np.cos(a), np.sin(a)])
+        py, pn = np.sort(p[yes]), np.sort(p[~yes])
+        # says yes where p + offset > 0: a yes at or below -offset is missed, a no above it is a false yes
+        missed = np.searchsorted(py, -offsets, side="right")
+        false_yes = len(pn) - np.searchsorted(pn, -offsets, side="right")
+        out[i] = (missed + false_yes) / len(y)
+    return out
+
+
 def right_by_too_much(line: Line, x: np.ndarray, y: np.ndarray) -> np.ndarray:
     """Moments the line answers right, but whose sum overshoots the square
     trick's target: the square trick still pulls the line toward them."""

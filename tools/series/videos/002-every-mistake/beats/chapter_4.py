@@ -14,7 +14,9 @@ from series.sheet import Camera
 from beats.common import FILM, NUMBERS, Do, Succession, away, fill, new_map, voice
 from beats.chapter_1 import counter
 from beats.chapter_2 import _ends, percent
-from beats.sheets import MISTAKES, SheetPicture, at_share, border, lowest, spot
+from beats.sheets import (LEDGE, LEDGE_MISTAKES, MISTAKES, MOMENTS, TOP, GroundPicture, across_of, at_share, border,
+                          INK, exact, height_key, ledge_ground, lowest, pin, spot, staircase_ground, tag, up_of)
+from series.terrain import View
 
 REST = FILM["batch_square"][-1]
 SEARCH = FILM["search"]
@@ -104,9 +106,31 @@ def small_map(line=SEARCH):
     return new_map(at=MAP_AT, width=5.4, height=3.3, line=line)
 
 
-def flat_sheet() -> SheetPicture:
-    s = SheetPicture(MISTAKES, smooth=False, lift=0.0, flat=1.0, size=(7.0, 4.4), camera=Camera(pitch=1.0))
+FLAT_VIEW = View(yaw=0.0, pitch=1.2, distance=13.0, target=(0.0, 0.1, 0.0))
+STAIRS_VIEW = View(yaw=0.55, pitch=0.62, distance=12.5, target=(0.0, 0.2, 0.35))
+STAIRS_AT, STAIRS_SIZE = LEFT * 0.9 + DOWN * 0.25, (10.6, 6.6)
+KEY_AT = RIGHT * 5.6 + DOWN * 0.1
+
+
+def flat_sheet() -> GroundPicture:
+    s = GroundPicture([staircase_ground()], FLAT_VIEW, size=(7.0, 4.4), lift=0.0, flat=1.0, floor=False)
     return s.move_to(SHEET_AT)
+
+
+def chapter_key():
+    """Heights on the chapter's one scale: the share of the moments a border gets wrong."""
+    return height_key(0.0, TOP, [(0.0, "none"), (0.25, "25%"), (0.5, "50%"), (0.75, "75%"), (1.0, "all")],
+                      "moments wrong").move_to(KEY_AT)
+
+
+def close_key(g):
+    low = g.colours[0] * MOMENTS
+    ticks = [(g.colours[0] + d / MOMENTS, f"{int(round(low + d)):,}") for d in (0, 25, 50, 75, 100, 125)]
+    return height_key(g.colours[0], g.colours[1], ticks, "mistakes").move_to(KEY_AT)
+
+
+def stretched(g) -> VGroup:
+    return tag(f"close up: heights stretched ×{g.stretch:g}", style.ASH, 0.26).to_corner(UP + LEFT, buff=0.4)
 
 
 def map_intro(scene) -> None:
@@ -161,35 +185,70 @@ def sheet_beat(scene) -> None:
 
 
 def staircase(scene) -> None:
+    """The flat sheet rises into ground while the camera comes round: true heights, on the chapter's scale."""
     k = scene.kept
     s = k["sheet"]
-    height = serif("height: mistakes", style.ASH, 0.3).next_to(s, UP, buff=0.1)
+    key = chapter_key()
     talk = voice(scene, "staircase")
-    scene.say("staircase", Succession(FadeOut(VGroup(k["marker"], k["best"], k["label"]), run_time=0.3),
-                                      FadeIn(height, run_time=0.3),
-                                      s.rise(0.0, 1.0, 1.0, 0.0).set_run_time(max(talk - 0.6, 1.0))))
-    k.update(height=height)
+    s.floor = True
+    scene.say("staircase", Succession(away(scene, s, run_time=0.4),
+                                      s.fly(STAIRS_VIEW, lift=(0.0, 1.0), flat=(1.0, 0.0), place=(STAIRS_AT, STAIRS_SIZE),
+                                            run_time=max(talk - 1.2, 2.0)),
+                                      FadeIn(key, run_time=0.6)))
+    scene.kept = {"stairs": s, "key": key}
 
 
-def close_window() -> tuple:
-    i, j = np.unravel_index(np.argmin(MISTAKES), MISTAKES.shape)
-    return (slice(i - 50, i + 50), slice(j - 50, j + 50)), (i, j)
+def _patch():
+    fine = ledge_ground(np.radians(4), 0.12, cells=400, stretch=1.0)
+    local = fine.colours
+    fine.colours = (0.0, TOP)  # on the chapter's colours until it's stretched
+    hole = (fine.across[0], fine.across[1], fine.up[0], fine.up[1])
+    return staircase_ground(hole=hole), fine, local
+
+
+def _on_ledge(s, ground: int = 1):
+    a, b = float(across_of(LEDGE[0])), float(up_of(LEDGE[1]))
+    dot = pin(style.WARM[2]).add_updater(lambda d: d.move_to(s.point(a, b, ground=ground)))
+    words = tag(f"the lowest ledge: {LEDGE_MISTAKES} mistakes", style.WARM[2])
+    words.add_updater(lambda w: w.next_to(dot, UP + RIGHT, buff=0.08))
+    return dot.update(), words.update()
+
+
+def close_view(fine, yaw: float = 0.35) -> View:
+    span = (fine.across[1] - fine.across[0]) * 8.0
+    return View(yaw=yaw, pitch=0.68, distance=span * 2.9, target=tuple(fine.world(float(across_of(LEDGE[0])), float(up_of(LEDGE[1])))))
+
+
+def full_frame() -> tuple[float, float]:
+    from manim import config
+    return config.frame_width, config.frame_height
 
 
 def staircase_2(scene) -> None:
-    """Closer, around the lowest ledge: flat ledges and sudden drops, the lowest ledge lit."""
-    window, (i, j) = close_window()
-    s = SheetPicture(MISTAKES, smooth=False, size=(10.0, 5.8), camera=Camera(pitch=0.72), window=window, cells=(100, 100))
-    h = MISTAKES[window]
-    s.glow = np.isclose(h, h.min())[::1, ::1][:100, :100]
-    s.redraw()
-    s.move_to(DOWN * 0.3)
-    note = serif("closer: around the lowest ledge", style.ASH, 0.28).to_edge(UP, buff=0.35)
-    low = Dot(s.point(0.505, 0.505), radius=0.07, color=style.WARM[2])
-    low_text = serif("the lowest ledge", style.WARM[2], 0.26).next_to(low, UP, buff=0.1)
-    scene.say("staircase-2", Succession(*fill(scene, "staircase-2", away(scene), FadeIn(s, run_time=1.0), FadeIn(note, run_time=0.4),
-                                               Wait(1.5), FadeIn(VGroup(low, low_text), run_time=0.5))))
-    scene.kept = {"close": s}
+    """Down toward the lowest ledge; there, the sheet's samples give way to the ground computed exactly; then
+    the heights are stretched (said on screen) so its ledges and drops show, and the camera comes slowly round."""
+    k = scene.kept
+    s, key = k["stairs"], k["key"]
+    _, fine, local = _patch()
+    near = close_view(fine)
+    mid = near.moved(distance=near.distance * 4.0, pitch=0.8)
+    close = GroundPicture([fine], mid, size=full_frame(), floor=False)
+    talk = voice(scene, "staircase-2")
+    note = stretched(type("g", (), {"stretch": 2})())
+    exactly = tag("here, every border counted exactly", style.ASH, 0.26).to_corner(UP + LEFT, buff=0.4)
+    new_key = close_key(type("g", (), {"colours": local})())
+    dot, words = _on_ledge(close, ground=0)
+    scene.say("staircase-2", Succession(s.fly(mid, place=(np.zeros(3), full_frame()), run_time=2.6),
+                                        AnimationGroup(FadeIn(close, run_time=0.8), FadeOut(s, run_time=0.8), FadeIn(exactly, run_time=0.8)),
+                                        close.fly(near, run_time=1.2),
+                                        AnimationGroup(close.fly(stretch=(1.0, 2.0), colours=((0.0, TOP), local), run_time=1.4),
+                                                       FadeOut(key, run_time=0.5), FadeIn(new_key, run_time=1.0),
+                                                       FadeOut(exactly, run_time=0.4), FadeIn(note, run_time=0.8)),
+                                        FadeIn(VGroup(dot, words), run_time=0.4),
+                                        close.fly(near.moved(yaw=near.yaw + 0.7), run_time=max(talk - 6.4, 1.5), rate_func=linear)))
+    dot.clear_updaters()
+    words.clear_updaters()
+    scene.kept = {"close": close}
 
 
 def big_drops(scene) -> None:
@@ -219,31 +278,108 @@ def big_drops(scene) -> None:
     m.border.clear_updaters()
 
 
+def share_of(g, i: float, j: float) -> tuple[float, float]:
+    na, no = g.value.shape
+    return (g.across[0] + (i + 0.5) / na * (g.across[1] - g.across[0]), g.up[0] + (j + 0.5) / no * (g.up[1] - g.up[0]))
+
+
 def no_slope(scene) -> None:
-    window, _ = close_window()
-    s = SheetPicture(MISTAKES, smooth=False, size=(10.0, 5.8), camera=Camera(pitch=0.72), window=window, cells=(100, 100))
-    s.move_to(DOWN * 0.3)
-    spot_at = s.point(0.3, 0.62)
-    marker = Dot(spot_at, radius=0.08, color=style.TEXT)
-    arrows = VGroup(*[Arrow(spot_at, spot_at + 0.55 * np.array([np.cos(a), 0.55 * np.sin(a), 0]), buff=0.08, stroke_width=2,
-                            color=style.ASH, max_tip_length_to_length_ratio=0.3) for a in np.linspace(0, 2 * np.pi, 8, endpoint=False)])
-    level = serif("level, every way", style.TEXT, 0.28).next_to(marker, UP, buff=0.55)
-    scene.say("no-slope", Succession(*fill(scene, "no-slope", away(scene), FadeIn(s, run_time=0.6), FadeIn(marker, run_time=0.3),
-                                            Create(arrows, run_time=0.8), FadeIn(level, run_time=0.4))))
+    """A marker on a real ledge, with feelers shorter than the ledge: every one reads no change. Then it
+    steps off, once up and once down, and only then does the count change."""
+    _, fine, local = _patch()
+    fine.colours, fine.stretch = local, 2.0
+    s = GroundPicture([fine], close_view(fine, yaw=0.9), size=full_frame(), floor=False)
+    v = fine.value
+    # the widest ledge near the lowest one: the cell whose level reaches furthest in every direction
+    dirs = [(np.cos(t), np.sin(t)) for t in np.linspace(0, 2 * np.pi, 8, endpoint=False)]
+    na, no = v.shape
+
+    def reach(i, j, d, limit=80):
+        for r in range(1, limit):
+            a, b = int(round(i + d[0] * r)), int(round(j + d[1] * r))
+            if not (0 <= a < na and 0 <= b < no) or v[a, b] != v[i, j]:
+                return r
+        return limit
+    best, where = 0, (na // 2, no // 2)
+    for i in range(40, na - 40, 6):
+        for j in range(40, no - 40, 6):
+            if v[i, j] > v.min() + 60 / MOMENTS:
+                continue
+            r = min(reach(i, j, d) for d in dirs)
+            if r > best:
+                best, where = r, (i, j)
+    i, j = where
+    cell = (fine.across[1] - fine.across[0]) * 8.0 / na  # a cell's width, in world units
+    s.view = View(yaw=0.9, pitch=0.75, distance=best * cell * 16, target=tuple(fine.world(*share_of(fine, i, j))))
+    s.redraw()
+    share = lambda a, b: (fine.across[0] + (a + 0.5) / na * (fine.across[1] - fine.across[0]),
+                          fine.up[0] + (b + 0.5) / no * (fine.up[1] - fine.up[0]))
+    here = s.point(*share(i, j), ground=0)
+    marker = pin(style.TEXT, 0.1).move_to(here)
+    length = 0.6 * best
+    feelers = VGroup(*[Arrow(here, s.point(*share(i + d[0] * length, j + d[1] * length), ground=0), buff=0.14, stroke_width=4,
+                             color=INK, max_tip_length_to_length_ratio=0.22, max_stroke_width_to_length_ratio=8) for d in dirs])
+    zeros = VGroup(*[tag("0", style.TEXT, 0.24).move_to(f.get_end() + 0.26 * (f.get_end() - here) / max(np.linalg.norm(f.get_end() - here), 1e-6))
+                     for f in feelers])
+    level = tag("no change, every way", style.TEXT).next_to(marker, UP, buff=1.0)
+    count = int(round(v[i, j] * MOMENTS))
+    reading = tag(f"here: {count:,} mistakes", style.TEXT).to_corner(UP + RIGHT, buff=0.4)
+
+    def walk(d):
+        """Off the ledge in direction d: to the first cell that isn't level with it, and its change."""
+        r = reach(i, j, d) + 3  # a little way past the edge, onto the next ledge
+        a, b = int(round(i + d[0] * r)), int(round(j + d[1] * r))
+        return (a, b), int(round((v[a, b] - v[i, j]) * MOMENTS))
+    offs = [walk(d) for d in dirs]
+    up_ = next(((c, n) for c, n in offs if n > 0), None)
+    down = next(((c, n) for c, n in offs if n < 0), None)
+    steps = []
+    for found in (up_, down):
+        if found is None:
+            continue
+        (a, b), change = found
+        to = s.point(*share(a, b), ground=0)
+        sign = "+" if change > 0 else "\N{MINUS SIGN}"
+        label = tag(f"{sign}{abs(change)} mistakes", style.WARM[1] if change > 0 else style.WARM[2]).next_to(to, RIGHT, buff=0.15)
+        glide = lambda p, q, t: UpdateFromAlphaFunc(marker, lambda m, a: m.move_to(p + (q - p) * a), run_time=t)
+        steps += [glide(here, to, 0.7), FadeIn(label, run_time=0.3), Wait(0.9), FadeOut(label, run_time=0.3), glide(to, here, 0.5)]
+    key = close_key(fine)
+    scene.say("no-slope", Succession(*fill(scene, "no-slope", away(scene), FadeIn(s, run_time=0.6), FadeIn(key, run_time=0.4),
+                                            FadeIn(stretched(fine), run_time=0.4), FadeIn(VGroup(marker, reading), run_time=0.3),
+                                            Create(feelers, run_time=0.8), FadeIn(zeros, run_time=0.4), FadeIn(level, run_time=0.4),
+                                            Wait(1.2), FadeOut(VGroup(feelers, zeros, level), run_time=0.4), *steps)))
+    scene.kept = {"close": s, "key": key}
 
 
 def staircase_outro(scene) -> None:
-    s = SheetPicture(MISTAKES, smooth=False, size=(10.0, 6.0), camera=Camera(pitch=0.9))
-    s.move_to(DOWN * 0.2)
-    a, b = lowest(MISTAKES)
+    """Back out over the whole staircase, coming round as it goes: the lowest ledge, and where the square
+    trick rests, off it."""
+    _, fine, local = _patch()
+    fine.colours, fine.stretch = local, 2.0
+    near = close_view(fine, yaw=0.9)
+    mid = near.moved(distance=near.distance * 9.0, pitch=0.8)
+    close = GroundPicture([fine], near, size=full_frame(), floor=False)
+    s = GroundPicture([staircase_ground()], mid, size=full_frame())
+    far = View(yaw=-0.35, pitch=0.85, distance=13.0, target=(0.0, 0.25, 0.3))
     c, d = spot(REST)
-    low = Dot(s.point(a, b), radius=0.07, color=style.WARM[2])
-    rest = Dot(s.point(c, d), radius=0.07, color=style.COOL[2])
-    words = VGroup(serif("lowest ledge", style.WARM[2], 0.26).next_to(low, UP + LEFT, buff=0.05),
-                   serif("the square trick", style.COOL[2], 0.26).next_to(rest, DOWN + RIGHT, buff=0.05))
-    scene.say("staircase-outro", Succession(*fill(scene, "staircase-outro", away(scene), FadeIn(s, run_time=0.8),
-                                                   FadeIn(VGroup(low, words[0]), run_time=0.4), Wait(1.0),
-                                                   FadeIn(VGroup(rest, words[1]), run_time=0.4))))
+    rest_mistakes = int(round(exact([at_share(c, d)[0]], [at_share(c, d)[1]])[0, 0] * MOMENTS))
+    dot, words = _on_ledge(s, ground=0)
+    rest = pin(style.WARM[1]).add_updater(lambda m: m.move_to(s.point(c, d, ground=0)))
+    rest_words = tag(f"the square trick, at rest: {rest_mistakes:,} mistakes", style.WARM[1])
+    rest_words.add_updater(lambda w: w.next_to(rest, DOWN + RIGHT, buff=0.08))
+    key = chapter_key()
+    near_key = close_key(fine)
+    talk = voice(scene, "staircase-outro")
+    scene.say("staircase-outro", Succession(away(scene), FadeIn(close, run_time=0.5), FadeIn(near_key, run_time=0.3),
+                                            AnimationGroup(close.fly(mid, stretch=(2.0, 1.0), colours=(local, (0.0, TOP)), run_time=1.6),
+                                                           FadeOut(near_key, run_time=0.6), FadeIn(key, run_time=1.0)),
+                                            AnimationGroup(FadeIn(s, run_time=0.8), FadeOut(close, run_time=0.8)),
+                                            s.fly(far, run_time=max(talk - 9.5, 3.0)),
+                                            FadeIn(VGroup(dot.update(), words.update()), run_time=0.5), Wait(1.5),
+                                            FadeIn(VGroup(rest.update(), rest_words.update()), run_time=0.5),
+                                            s.fly(far.moved(yaw=far.yaw - 0.25), run_time=3.0, rate_func=linear)))
+    for m in (dot, words, rest, rest_words):
+        m.clear_updaters()
 
 
 BEATS = {"short": short, "short-2": short_2, "why-short": why_short, "how-far": how_far, "square-outro": square_outro,
