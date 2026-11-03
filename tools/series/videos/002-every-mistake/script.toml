@@ -105,7 +105,7 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "too-many"
-text = "Trying borders like that only works easily with two numbers; each extra number multiplies the borders to try. A neuron reading more of the two thousand and forty-eight numbers in the console's memory would have far too many borders to try."
+text = "Trying borders like that only works quickly with two numbers; each extra number multiplies the borders to try. A neuron reading more of the two thousand and forty-eight numbers in the console's memory would have far too many borders to try."
 board = "The map's two axes multiply into a crowd of axes; the sweeping borders blur into too many to draw"
 cite = ["exp001", "nesdev-memory"]
 
@@ -349,7 +349,7 @@ cite = ["widrow1960", "bishop2006"]
 
 [[section.line]]
 id = "target-over"
-text = "A total of three is right too, by plenty. But it's above its target by two, so this rule pulls it back down. Its miss is two and a half times the last one's, so, for numbers the same size, so is its pull. It gets corrected for being too right."
+text = "A total of three is right too, with room to spare. But it's above its target by two, so this rule pulls it back down. Its miss is two and a half times the last one's, so, for numbers the same size, so is its pull. It gets corrected for being too right."
 board = "A total of 3 against the same target: above by 2, pulled back down; beside the first, the two nudges drawn to scale"
 cite = ["widrow1960", "bishop2006"]
 pause = 3.0
@@ -441,8 +441,8 @@ cite = ["exp002"]
 
 [[section.line]]
 id = "why-short"
-text = "Is that because it pulls on moments it already gets right by plenty? We tried a version that stops pulling once a moment is beyond its target, on its own side. It scored {hinge}: a little closer, but still not the best border. We didn't find the whole reason."
-spoken = "Is that because it pulls on moments it already gets right by plenty? We tried a version that stops pulling once a moment is beyond its target, on its own side. It scored {hinge_spoken}: a little closer, but still not the best border. We didn't find the whole reason."
+text = "Is that because it pulls on moments it already gets right with room to spare? We tried a version that stops pulling once a moment is beyond its target, on its own side. It scored {hinge}: a little closer, but still not the best border. We didn't find the whole reason."
+spoken = "Is that because it pulls on moments it already gets right with room to spare? We tried a version that stops pulling once a moment is beyond its target, on its own side. It scored {hinge_spoken}: a little closer, but still not the best border. We didn't find the whole reason."
 board = "A dot deep on its correct side, its pull cut; the border barely moves"
 cite = ["exp002"]
 

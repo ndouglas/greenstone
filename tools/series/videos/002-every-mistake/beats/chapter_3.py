@@ -91,7 +91,7 @@ def target_over(scene) -> None:
     k = scene.kept
     over = Total(LEFT * 1.4 + DOWN * 0.2, scale=1.0, half=2.0, targets=(1.0,), label="another moment")
     arrow = miss_arrow(over, 3.0, 1.0, style.COOL[1])
-    words = VGroup(serif("total 3: right, by plenty", style.TEXT, 0.3),
+    words = VGroup(serif("total 3: right, with room to spare", style.TEXT, 0.3),
                    serif("above its target by 2: pulled down", style.COOL[1], 0.3),
                    serif("corrected for being too right", style.TEXT, 0.3)).arrange(DOWN, aligned_edge=LEFT, buff=0.14)
     words.move_to(RIGHT * 2.8 + UP * 0.6)
