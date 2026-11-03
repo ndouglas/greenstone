@@ -249,3 +249,22 @@ balances at zero, so it isn't pulled either way. Correct.
 **R3b (the batch perceptron).** Nate: it keeps moving. Right; the
 measured detail (`perceptron-rest-2`): it rocks between two borders,
 each move almost undoing the last, and its moves don't shrink.
+
+### Round 6: the R2 change, and R4 (on draft 25, after the redesigns)
+
+**R2 change.** Nate approved. Applied: `never-intro` now asks ("could
+any border, even a curved one, get all of Mario's moments right?");
+`spots` ends "A border can't split a point: whatever its shape, every
+moment at one of those points gets the same answer, so some of them are
+wrong." On screen: the other points dim, leaving unseen's own point
+(3.31 blocks, 0.81 pixels a frame: 6 moments the screen moved, 2 it
+didn't), and a curved border bends below it (all 8 get yes: the 2 are
+wrong), then above it (all 8 get no: the 6 are wrong).
+
+**R4 (why pull back on a total of three).** Nate: it's aiming to
+minimize the sum of the squared distances of the moments' values from
+the line. Half right: it does minimize a sum of squares, but each miss is
+measured from the moment's target (+1 or −1), not from the border. A
+total of 3 is far from the border and right, but 2 over its target, so it
+is pulled down; a total of 0 sits on the border and is pulled. Follow-up
+asked.

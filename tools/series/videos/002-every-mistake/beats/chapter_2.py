@@ -2,7 +2,7 @@
 does to its score."""
 
 import numpy as np
-from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Circle, Rectangle, RoundedRectangle, Create, FadeIn, FadeOut, Line, Mobject, UpdateFromAlphaFunc,
+from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Circle, Rectangle, RoundedRectangle, Create, FadeIn, FadeOut, Line, Mobject, Transform, UpdateFromAlphaFunc,
                    ValueTracker, VGroup, VMobject, Wait, linear)
 
 from series import style
@@ -22,6 +22,7 @@ from beats.chapter_1 import counter
 # first the player keeps holding Right and the screen moves 23 frames on; in the second he lets go, Mario slides
 # to a stop, and the screen holds still for 58 frames, well past the half second the beat shows.
 SAME_YES, SAME_NO = 13473, 13020
+SAME_POINT = (53 / 16, 13 / 16)  # in blocks and pixels a frame
 LAST = 10
 
 
@@ -66,9 +67,42 @@ def spots(scene) -> None:
     tally = VGroup(in_line(numeral(f"{NUMBERS['spots']:,}", style.TEXT, 0.36), serif("points on the whole map", style.ASH, 0.3)),
                    in_line(numeral(f"{NUMBERS['spots_with_both']}", style.TEXT, 0.36), serif("of them held both answers", style.ASH, 0.3))
                    ).arrange(DOWN, aligned_edge=LEFT, buff=0.12).to_corner(UP + RIGHT, buff=0.3)
+    # one point holding both answers (unseen's pair's), alone, and a border bending first one way round it, then
+    # the other: whichever side it lands on, every moment there gets that side's answer
+    focus = (pts[keep, 0] == SAME_POINT[0]) & (pts[keep, 1] == SAME_POINT[1])
+    yes, no = int(mv[keep][focus][0]), int(st[keep][focus][0])
+    x0p, y0p = SAME_POINT
+
+    def edge(xs):  # the border, straight, through the point
+        return y0p - 0.22 * (np.asarray(xs) - x0p)
+
+    def bend(side: float) -> VMobject:
+        xs = np.linspace(x0, x1, 120)
+        ys = np.clip(edge(xs) + side * 0.26 * np.exp(-((xs - x0p) / 0.22) ** 2), y0, y1)
+        curve = VMobject(stroke_color=style.WARM[2], stroke_width=2.2)
+        curve.set_points_smoothly([close.page((x, y)) for x, y in zip(xs, ys)])
+        return curve
+    under, over = bend(-1), bend(1)  # the point above the border (the yes side), then below it
+    spot = close.page(SAME_POINT)
+    here = serif(f"this point: {yes} moments the screen moved, {no} it didn't", style.TEXT, 0.28)
+    here.move_to(close.page((3.45, 0.32)))  # an empty corner, well below the border
+    pointer = Line(here.get_top() + UP * 0.06, spot + DOWN * 0.12, stroke_color=style.ASH, stroke_width=1.2)
+    sides = VGroup(serif("yes", style.WARM[1], 0.28).move_to(close.page((2.25, float(edge(2.25)) + 0.12))),
+                   serif("no", style.COOL[1], 0.28).move_to(close.page((2.25, float(edge(2.25)) - 0.12))))
+    verdict_yes = serif(f"all {yes + no} get yes: the {no} that didn't move are wrong", style.WARM[1], 0.28)
+    verdict_no = serif(f"all {yes + no} get no: the {yes} that moved are wrong", style.COOL[1], 0.28)
+    for v in (verdict_yes, verdict_no):
+        v.next_to(here, DOWN, buff=0.14).align_to(here, LEFT)
     talk = voice(scene, "spots")
-    scene.say("spots", Succession(away(scene), FadeIn(grid, run_time=0.8), FadeIn(close, run_time=0.8),
-                                  Wait(talk * 0.5), FadeIn(tally[0], run_time=0.5), Wait(0.8), FadeIn(tally[1], run_time=0.5)))
+    text = next(l for l in scene.video.lines if l.id == "spots").text
+    turn = talk * text.index("A border") / len(text)  # when the last sentence starts
+    scene.say("spots", Succession(
+        away(scene), FadeIn(grid, run_time=0.8), FadeIn(close, run_time=0.8),
+        Wait(talk * 0.36), FadeIn(tally[0], run_time=0.5), Wait(0.8), FadeIn(tally[1], run_time=0.5),
+        Wait(max(turn - talk * 0.36 - 3.4, 0.1)),
+        AnimationGroup(close.fade_points(~focus, 0.18), FadeOut(tally), FadeIn(here, pointer), run_time=0.8),
+        Create(under, run_time=1.0), FadeIn(sides, run_time=0.4), FadeIn(verdict_yes, run_time=0.4), Wait(1.4),
+        AnimationGroup(Transform(under, over), FadeOut(verdict_yes), run_time=1.2), FadeIn(verdict_no, run_time=0.4)))
 
 
 def unseen(scene) -> None:

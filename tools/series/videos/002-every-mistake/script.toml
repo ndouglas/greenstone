@@ -231,15 +231,15 @@ title = "It never settles"
 [[section.line]]
 id = "never-intro"
 role = "intro"
-text = "With the troublemakers back, no border of any shape could get all of Mario's moments right, so the rule always has a mistake to react to."
+text = "With the troublemakers back, could any border, even a curved one, get all of Mario's moments right?"
 board = "Mario's map; a straight border, then a wiggly one, each still leaving wrong dots"
 cite = ["exp002"]
 
 [[section.line]]
 id = "spots"
-text = "The two numbers we read come in whole pixels and sixteenths of a pixel a frame, like a clock that only shows whole minutes, so the moments sit on just {spots} points of the map. At {spots_with_both} of those points, the very same two numbers sometimes led to the screen moving, and sometimes didn't."
-spoken = "The two numbers we read come in whole pixels and sixteenths of a pixel a frame, like a clock that only shows whole minutes, so the moments sit on just {spots_spoken} points of the map. At {spots_with_both_spoken} of those points, the very same two numbers sometimes led to the screen moving, and sometimes didn't."
-board = "Mario's map zoomed in: dots stacked on a grid; the points holding both colours outlined"
+text = "The two numbers we read come in whole pixels and sixteenths of a pixel a frame, like a clock that only shows whole minutes, so the moments sit on just {spots} points of the map. At {spots_with_both} of those points, the very same two numbers sometimes led to the screen moving, and sometimes didn't. A border can't split a point: whatever its shape, every moment at one of those points gets the same answer, so some of them are wrong."
+spoken = "The two numbers we read come in whole pixels and sixteenths of a pixel a frame, like a clock that only shows whole minutes, so the moments sit on just {spots_spoken} points of the map. At {spots_with_both_spoken} of those points, the very same two numbers sometimes led to the screen moving, and sometimes didn't. A border can't split a point: whatever its shape, every moment at one of those points gets the same answer, so some of them are wrong."
+board = "Mario's map zoomed in: dots stacked on a grid; the points holding both colours outlined; one of them alone, a curved border bending first one way round it, then the other, its wrong moments counted each time"
 cite = ["exp002", "datacrystal-smb1"]
 pause = 3.0
 
