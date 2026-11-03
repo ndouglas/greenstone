@@ -2,7 +2,7 @@
 does to its score."""
 
 import numpy as np
-from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Circle, Create, FadeIn, FadeOut, Line, Mobject, UpdateFromAlphaFunc,
+from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Circle, Rectangle, RoundedRectangle, Create, FadeIn, FadeOut, Line, Mobject, UpdateFromAlphaFunc,
                    ValueTracker, VGroup, VMobject, Wait, linear)
 
 from series import style
@@ -154,16 +154,88 @@ def bounded(scene) -> None:
                                     FadeIn(edge_text, run_time=0.4), grow.set_run_time(max(talk - 1.8, 1.0))))
 
 
+def _spots(x: np.ndarray, y: np.ndarray) -> tuple:
+    """A map's points: each different (position, speed), its moments of each answer, and which point each
+    moment is at."""
+    spots, owner = np.unique(x, axis=0, return_inverse=True)
+    owner = owner.ravel()
+    moved = np.bincount(owner, weights=y, minlength=len(spots)).astype(int)
+    return spots, moved, np.bincount(owner, minlength=len(spots)) - moved, owner
+
+
+def towards(m: Mobject, to: np.ndarray | None = None, scale: float = 1.0, fade: bool = False, run_time: float = 0.5,
+            by: np.ndarray | None = None) -> UpdateFromAlphaFunc:
+    """Move (and shrink, and fade) a mobject to a spot, or `by` a shift; it sets out from wherever it is when the
+    move begins."""
+    began: dict = {}
+
+    def update(d, a: float) -> None:
+        if not began:
+            began.update(at=d.get_center(), copy=d.copy())
+        end = began["at"] + by if to is None else to
+        d.become(began["copy"]).scale(1 + (scale - 1) * a).move_to(began["at"] + (end - began["at"]) * a)
+        if fade:
+            d.set_opacity(1 - a)
+    return UpdateFromAlphaFunc(m, update, run_time=run_time)
+
+
 def exam(scene) -> None:
-    learned = VGroup(*[serif(f"recording {n}", style.TEXT, 0.3) for n in (1, 2, 4, 5)]).arrange(DOWN, buff=0.12)
-    tested = VGroup(*[serif(f"recording {n}", style.WARM[2], 0.3) for n in (3, 6)]).arrange(DOWN, buff=0.12)
-    heads = VGroup(serif("learned from", style.ASH, 0.32), serif("the exam: never learned from", style.ASH, 0.32))
-    learned.move_to(LEFT * 3.0)
-    tested.move_to(RIGHT * 3.0)
-    heads[0].next_to(learned, UP, buff=0.3)
-    heads[1].next_to(tested, UP, buff=0.3)
-    scene.say("exam", Succession(*fill(scene, "exam", away(scene), FadeIn(VGroup(heads[0], learned), run_time=0.6),
-                                        FadeIn(VGroup(heads[1], tested), run_time=0.6))))
+    """The six recordings as tapes, each as long as its moments: 1, 2, 4 and 5 pour into the map it learns
+    from; 3 and 6 into an exam map behind glass. After a pass, its border is copied across, the exam's points
+    with a wrong moment are ringed, and the score is read off."""
+    names = ("1", "2", "4", "5", "3", "6")
+    sizes = np.r_[FILM["train_sizes"], FILM["test_sizes"]]
+    longest = float(sizes.max())
+    tapes = VGroup()
+    for k, (name, n) in enumerate(zip(names, sizes)):
+        y = 2.3 - k * 0.78 - (0.35 if k >= 4 else 0)
+        strip = Rectangle(width=2.0 * n / longest, height=0.32, stroke_color=style.ASH, stroke_width=1.0,
+                          fill_color=style.WARM[2] if k >= 4 else style.ASH, fill_opacity=0.25)
+        strip.move_to([-6.8 + strip.width / 2, y, 0])
+        label = serif(f"recording {name}", style.TEXT, 0.24).next_to(strip, UP, buff=0.06).align_to(strip, LEFT)
+        count = numeral(f"{n:,} moments", style.ASH, 0.2).next_to(strip, RIGHT, buff=0.1)
+        tapes.add(VGroup(strip, label, count))
+    learn = new_map(at=LEFT * 1.0 + DOWN * 0.3, width=3.7, height=2.6, line=np.zeros(3), mark=False)
+    spots, moved, still, owner = _spots(FILM["xt"], FILM["yt"])
+    test = PointMap(spots, moved, still, at=RIGHT * 4.4 + DOWN * 0.3, width=3.7, height=2.6, line=np.zeros(3), mark=False)
+    for m in (learn, test):
+        m.level[:] = 0.0
+        m.redraw_dots(force=True)
+    glass = RoundedRectangle(corner_radius=0.18, width=5.0, height=4.0, stroke_color=style.ASH, stroke_width=1.2,
+                             fill_color=style.TEXT, fill_opacity=0.035).move_to(test.get_center() + LEFT * 0.25 + DOWN * 0.1)
+    heads = VGroup(serif("what it learns from", style.ASH, 0.3).next_to(learn, UP, buff=0.35),
+                   serif("the exam: never learned from", style.WARM[2], 0.3).next_to(glass, UP, buff=0.15))
+    _, _, _, learn_owner = _spots(FILM["x"], FILM["y"])
+    ends = np.cumsum(np.r_[0, FILM["train_sizes"]])
+    test_ends = np.cumsum(np.r_[0, FILM["test_sizes"]])
+
+    def pour(k: int):
+        """Tape k goes into its map, and the points its moments are at light."""
+        m, (a, z), owners = (learn, (ends[k], ends[k + 1]), learn_owner) if k < 4 else \
+            (test, (test_ends[k - 4], test_ends[k - 3]), owner)
+        strip = tapes[k][0].copy()
+
+        def light() -> None:
+            m.level[np.unique(owners[a:z])] = 1.0
+            m.redraw_dots()
+        return Succession(towards(strip, m.get_center(), 0.15, True, run_time=0.45), Do(light), Wait(0.05))
+    first = FILM["run_ends"][0]
+    wrong = np.zeros(len(spots), bool)
+    said = (FILM["xt"] @ first[:2] + first[2] > 0).astype(int)
+    wrong[np.unique(owner[said != FILM["yt"]])] = True
+    score = FILM["run_scores"][0] * 100
+
+    def ring() -> None:
+        test.ring[:] = wrong
+        test.redraw_dots()
+    copy = learn.border.copy()
+    result = serif(f"after pass 1: {score:.0f}% right on the exam", style.TEXT, 0.3).next_to(glass, DOWN, buff=0.2)
+    scene.say("exam", Succession(*fill(scene, "exam", away(scene), FadeIn(tapes, run_time=0.4), FadeIn(learn, test, glass, heads, run_time=0.4),
+                                        *[pour(k) for k in range(6)], Do(lambda: learn.set_line(first)),
+                                        Do(lambda: copy.become(learn.border.copy())),
+                                        towards(copy, by=test.at - learn.at, run_time=0.6),
+                                        Do(lambda: test.set_line(first)), FadeOut(copy, run_time=0.1), Do(ring), Wait(0.3),
+                                        FadeIn(result, run_time=0.4))))
 
 
 def score_chart(at=RIGHT * 3.3 + DOWN * 0.2) -> Chart:

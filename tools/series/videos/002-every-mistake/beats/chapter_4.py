@@ -2,7 +2,7 @@
 sheet of every border, raised by its mistakes into a staircase."""
 
 import numpy as np
-from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Arrow, Circle, Create, Dot, FadeIn, FadeOut, Line,
+from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, LaggedStart, Restore, Arrow, Circle, Create, Dot, FadeIn, FadeOut, Line,
                    Rectangle, UpdateFromAlphaFunc, ValueTracker, VGroup, Wait, linear)
 
 from series import style
@@ -14,7 +14,7 @@ from series.sheet import Camera
 from beats.common import FILM, NUMBERS, Do, Succession, away, fill, new_map, voice
 from beats.chapter_1 import counter
 from beats.chapter_2 import _ends, percent
-from beats.sheets import (LEDGE, LEDGE_MISTAKES, MISTAKES, MOMENTS, TOP, GroundPicture, across_of, at_share, border,
+from beats.sheets import (Tiles, LEDGE, LEDGE_MISTAKES, MISTAKES, MOMENTS, TOP, GroundPicture, across_of, at_share, border,
                           INK, exact, height_key, ledge_ground, lowest, pin, spot, staircase_ground, tag, up_of)
 from series.terrain import View
 
@@ -134,28 +134,63 @@ def stretched(g) -> VGroup:
 
 
 def map_intro(scene) -> None:
+    """The sheet of borders dealt out from the map: tiny maps, each with one real border, its yes side warm."""
     m = small_map()
     s = flat_sheet()
-    label = serif("borders", style.ASH, 0.34).next_to(s, UP, buff=0.1)
+    tiles = Tiles(s)
+    label = serif("borders: each tile one ruler on Mario's map", style.ASH, 0.3).next_to(s, UP, buff=0.15)
+    centre = m.page((2.5, 1.3))
+    deal = []
+    for tile in sorted(tiles.group, key=lambda t: (t.cell[1], t.cell[0])):
+        tile.save_state()
+        tile.scale(0.25).move_to(centre).set_opacity(0)
+        deal.append(Restore(tile))
     scene.say("map-intro", Succession(*fill(scene, "map-intro", away(scene), FadeIn(m, run_time=0.5),
-                                             FadeIn(s, run_time=0.8), FadeIn(label, run_time=0.4))))
-    scene.kept = {"map": m, "sheet": s, "label": label}
+                                             LaggedStart(*deal, lag_ratio=0.03, run_time=2.4), FadeIn(label, run_time=0.4))))
+    scene.kept = {"map": m, "sheet": s, "tiles": tiles, "label": label}
+
+
+def sides(m, v) -> tuple[np.ndarray, np.ndarray]:
+    """Where to write yes and no on the map: either side of the border's middle, a little way off it."""
+    a, z = m.border_ends()
+    mid = (np.asarray(a) + np.asarray(z)) / 2 if np.any(a != z) else np.array([2.5, 1.3])
+    n = np.asarray(v[:2], float) / (np.linalg.norm(v[:2]) or 1)
+    clamp = lambda p: np.clip(p, [0.35, 0.2], [4.65, 2.4])
+    return m.page(clamp(mid + n * 0.55)), m.page(clamp(mid - n * 0.55))
 
 
 def map_axes(scene) -> None:
-    """A ruler on Mario's map: turned about the middle (half a turn swaps its yes and no sides), then slid."""
-    m = scene.kept["map"]
+    """A ruler on Mario's map: turned about the middle (half a turn swaps its yes and no sides), then slid. The
+    tile holding that ruler lights as it goes."""
+    k = scene.kept
+    m, tiles = k["map"], k["tiles"]
     angle, offset = ValueTracker(np.radians(420)), ValueTracker(0.0)
     middle = Dot(m.page((2.5, 1.25)), radius=0.05, color=style.TEXT)
-    m.border.add_updater(lambda _: m.set_line(border(angle.get_value(), offset.get_value())))
+    yes, no = tag("yes", style.WARM[1]), tag("no", style.COOL[1])
+    lit = {"tile": None}
+
+    def follow(_) -> None:
+        v = border(angle.get_value(), offset.get_value())
+        m.set_line(v)
+        y, n = sides(m, v)
+        yes.move_to(y)
+        no.move_to(n)
+        t = tiles.at(across_of(angle.get_value()), up_of(offset.get_value()))
+        if t is not lit["tile"]:
+            if lit["tile"] is not None:
+                lit["tile"].frame.set_stroke(style.ASH, 0.8)
+            t.frame.set_stroke(style.WARM[0], 3.0)
+            lit["tile"] = t
+    m.border.add_updater(follow)
+    follow(None)
     talk = voice(scene, "map-axes")
-    t = (talk - 1.0) / 3
-    scene.say("map-axes", Succession(FadeIn(middle, run_time=0.4),
+    t = (talk - 1.4) / 3
+    scene.say("map-axes", Succession(FadeIn(middle, run_time=0.4), FadeIn(yes, no, run_time=0.4), Wait(0.6),
                                      UpdateFromAlphaFunc(angle, lambda v, a: v.set_value(np.radians(420 + 180 * a)), run_time=t * 1.6),
                                      UpdateFromAlphaFunc(angle, lambda v, a: v.set_value(np.radians(600 - 180 * a)), run_time=t * 0.6),
                                      UpdateFromAlphaFunc(offset, lambda v, a: v.set_value(0.8 * np.sin(np.pi * a * 2)), run_time=t * 0.8)))
     m.border.clear_updaters()
-    scene.kept.update(middle=middle)
+    k.update(middle=middle, yes_no=VGroup(yes, no))
 
 
 def sheet_beat(scene) -> None:
@@ -172,8 +207,12 @@ def sheet_beat(scene) -> None:
     best = Dot(s.point(a, b, 0.0), radius=0.07, color=style.WARM[2])
     best_text = serif("the best border we found", style.WARM[2], 0.26).next_to(best, DOWN, buff=0.1)
     talk = voice(scene, "sheet")
-    t = talk - 2.0
-    scene.say("sheet", Succession(FadeIn(marker, run_time=0.3), FadeIn(axes, run_time=0.4),
+    t = talk - 3.2
+    sheet_label = serif("the sheet of borders: every spot one ruler", style.ASH, 0.3).move_to(k["label"])
+    melt = AnimationGroup(FadeIn(s), FadeOut(k["tiles"].group), FadeOut(k.pop("yes_no")), FadeOut(k["label"]),
+                          FadeIn(sheet_label), run_time=1.2)
+    k["label"] = sheet_label
+    scene.say("sheet", Succession(melt, FadeIn(marker, run_time=0.3), FadeIn(axes, run_time=0.4),
                                   UpdateFromAlphaFunc(across, lambda v, al: v.set_value(0.3 + 0.95 * al), run_time=t * 0.5),
                                   UpdateFromAlphaFunc(up, lambda v, al: v.set_value(0.5 + 0.25 * np.sin(2 * np.pi * al)), run_time=t * 0.2),
                                   UpdateFromAlphaFunc(across, lambda v, al: v.set_value(1.25 + (a + 1 - 1.25) * al), run_time=t * 0.15),

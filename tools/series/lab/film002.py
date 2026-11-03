@@ -59,9 +59,13 @@ def square_misses(v: np.ndarray, xb: np.ndarray, t: np.ndarray) -> np.ndarray:
 
 
 def compute(data_root: Path = DATA) -> dict:
-    x, y = scroll_data([load(data_root / "smb1" / s) for s in TRAIN])
-    xt, yt = scroll_data([load(data_root / "smb1" / s) for s in TEST])
+    learn, exam = [load(data_root / "smb1" / s) for s in TRAIN], [load(data_root / "smb1" / s) for s in TEST]
+    x, y = scroll_data(learn)
+    xt, yt = scroll_data(exam)
     film: dict = {"x": x, "y": y, "xt": xt, "yt": yt, "mark": LINE / SIXTEENTHS}
+    # each recording's moments, in TRAIN's then TEST's order
+    film["train_sizes"] = np.array([len(scroll_data([r])[1]) for r in learn])
+    film["test_sizes"] = np.array([len(scroll_data([r])[1]) for r in exam])
 
     spots, owner, per_spot = np.unique(x, axis=0, return_inverse=True, return_counts=True)
     owner = owner.ravel()

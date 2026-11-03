@@ -248,3 +248,51 @@ class GroundPicture(ImageMobject):
                 return
             m.redraw()
         return UpdateFromAlphaFunc(self, update, run_time=run_time, rate_func=rate_func)
+
+
+BOX = [np.array(c, float) for c in ((0, 0), (5, 0), (5, 2.6), (0, 2.6))]  # Mario's map: blocks across, speed up
+
+
+class Tiles:
+    """The sheet of borders as what it is: a grid of tiny Mario maps laid on a flat sheet picture, each map one
+    real border (the ruler at its column's turn and its row's slide), its yes side washed warm and its no side
+    cool. Each tile is a VGroup in `tiles[column][row]`, drawn exactly where the sheet shows that cell."""
+
+    def __init__(self, sheet: "GroundPicture", columns: int = 12, rows: int = 7, gap: float = 0.12):
+        from manim import Polygon, VGroup
+        from series import style
+        from series.bordermap import clip
+        self.sheet, self.columns, self.rows = sheet, columns, rows
+        self.group = VGroup()
+        self.tiles = []
+        for i in range(columns):
+            column = []
+            for j in range(rows):
+                a0, a1 = (i + gap / 2) / columns, (i + 1 - gap / 2) / columns
+                u0, u1 = (j + gap / 2) / rows, (j + 1 - gap / 2) / rows
+                v = border(*at_share((i + 0.5) / columns, (j + 0.5) / rows))
+
+                def page(p, a0=a0, a1=a1, u0=u0, u1=u1):
+                    return sheet.point(a0 + (a1 - a0) * p[0] / 5, u0 + (u1 - u0) * p[1] / 2.6, 0.0)
+                tile = VGroup()
+                for lo, hi, colour in ((0, 1e9, style.WARM[1]), (-1e9, 0, style.COOL[1])):
+                    side = clip(BOX, v[:2], v[2], lo, hi)
+                    if len(side) >= 3:
+                        tile.add(Polygon(*[page(p) for p in side], stroke_width=0, fill_color=colour, fill_opacity=0.5))
+                tile.frame = Polygon(*[page(p) for p in BOX], stroke_color=style.ASH, stroke_width=0.8, fill_opacity=0)
+                tile.add(tile.frame)
+                along = np.array([-v[1], v[0]])
+                ends = sorted(clip(BOX, v[:2], v[2], -1e-9, 1e-9), key=lambda p: p @ along)
+                if len(ends) >= 2:
+                    from manim import Line
+                    tile.add(Line(page(ends[0]), page(ends[-1]), stroke_color=style.TEXT, stroke_width=1.4))
+                tile.cell = (i, j)
+                column.append(tile)
+                self.group.add(tile)
+            self.tiles.append(column)
+
+    def at(self, across: float, up: float):
+        """The tile holding a spot on the sheet."""
+        i = int(np.floor((across % 1.0) * self.columns)) % self.columns
+        j = min(max(int(np.floor(up * self.rows)), 0), self.rows - 1)
+        return self.tiles[i][j]
