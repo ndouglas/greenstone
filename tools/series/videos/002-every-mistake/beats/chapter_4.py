@@ -277,6 +277,30 @@ def staircase_2(scene) -> None:
     exactly = tag("here, every border counted exactly", style.ASH, 0.26).to_corner(UP + LEFT, buff=0.4)
     new_key = close_key(type("g", (), {"colours": local})())
     dot, words = _on_ledge(close, ground=0)
+    # a bead walks across the ledges at the lowest ledge's slide, turning the ruler on a small map as it goes:
+    # level between crossings, a step at each
+    turns = LEDGE[0] + np.radians(np.linspace(-1.0, 1.0, 641))
+    heights = exact(turns, [LEDGE[1]])[:, 0]
+    bead = pin(style.TEXT, 0.07)
+    count = tag("", style.TEXT)
+    inset = new_map(at=LEFT * 4.4 + DOWN * 2.35, width=3.6, height=1.75, line=border(turns[0], LEDGE[1]), mark=False)
+    shown = {"n": None}
+
+    lowest_at = int(np.argmin(heights))  # the lowest ledge is a sliver: the bead stops on it a while
+
+    def walk(_, a: float) -> None:
+        last = len(turns) - 1
+        i = int(a / 0.45 * lowest_at) if a < 0.45 else lowest_at if a < 0.62 else \
+            int(lowest_at + (a - 0.62) / 0.38 * (last - lowest_at))
+        i = min(i, last)
+        bead.move_to(close.point(float(across_of(turns[i])), float(up_of(LEDGE[1])), heights[i], ground=0))
+        inset.set_line(border(turns[i], LEDGE[1]))
+        n = int(round(heights[i] * MOMENTS))
+        if n != shown["n"]:
+            count.become(tag(f"{n:,} mistakes", style.TEXT))
+            shown["n"] = n
+        count.next_to(bead, UP, buff=0.15)
+    walk(None, 0.0)
     scene.say("staircase-2", Succession(s.fly(mid, place=(np.zeros(3), full_frame()), run_time=2.6),
                                         AnimationGroup(FadeIn(close, run_time=0.8), FadeOut(s, run_time=0.8), FadeIn(exactly, run_time=0.8)),
                                         close.fly(near, run_time=1.2),
@@ -284,10 +308,11 @@ def staircase_2(scene) -> None:
                                                        FadeOut(key, run_time=0.5), FadeIn(new_key, run_time=1.0),
                                                        FadeOut(exactly, run_time=0.4), FadeIn(note, run_time=0.8)),
                                         FadeIn(VGroup(dot, words), run_time=0.4),
-                                        close.fly(near.moved(yaw=near.yaw + 0.7), run_time=max(talk - 6.4, 1.5), rate_func=linear)))
+                                        AnimationGroup(FadeIn(inset), FadeIn(bead, count), FadeOut(words), run_time=0.4),
+                                        UpdateFromAlphaFunc(bead, walk, run_time=max(talk - 6.8, 1.5), rate_func=linear)))
     dot.clear_updaters()
     words.clear_updaters()
-    scene.kept = {"close": close}
+    scene.kept = {"close": close, "inset": inset}
 
 
 def big_drops(scene) -> None:
