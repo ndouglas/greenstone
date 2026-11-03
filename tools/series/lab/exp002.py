@@ -9,6 +9,7 @@ Usage: cd tools && series/.venv/bin/python -m series.lab.exp002
 """
 
 import json
+import time
 from pathlib import Path
 
 import numpy as np
@@ -16,7 +17,7 @@ import numpy as np
 from series.lab import rules
 from series.lab.data import load
 from series.lab.data import Recording, check_rate
-from series.lab.exp001 import DATA, best_line, check_recording, percent, spoken_number
+from series.lab.exp001 import CUTS, DATA, DIRECTIONS, best_line, check_recording, percent, spoken_number
 from series.script import REPO, VIDEOS
 
 OUT = VIDEOS / "002-every-mistake" / "numbers.json"
@@ -178,7 +179,14 @@ def run(data_root: Path = DATA, out: Path = OUT, maps: Path = MAPS) -> dict:
     put_int("line_blocks", LINE / SIXTEENTHS)
     put_int("soon_frames", SOON)
 
+    started = time.perf_counter()
     w, b, _ = best_line(x, y)
+    # How big the search is: every border it tried, and how long it took on this computer. With each extra
+    # number the border's direction needs one more dial, turned a degree at a time through half a turn (all
+    # it needs), so the same search tries this many times as many borders.
+    numbers["search_seconds"] = round(time.perf_counter() - started, 1)
+    numbers["search_borders"] = DIRECTIONS * CUTS
+    numbers["extra_dial_settings"] = 180
     search = rules.Line(w, b)
     put("search", rules.accuracy(search, zt, yt))
     # The best border, written as blocks + k × speed > c.

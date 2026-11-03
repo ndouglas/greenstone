@@ -107,13 +107,13 @@ cite = ["exp002"]
 id = "too-many"
 text = "Trying borders like that only works quickly with two numbers; each extra number multiplies the borders to try. A neuron reading more of the two thousand and forty-eight numbers in the console's memory would have far too many borders to try."
 board = "The map's two axes multiply into a crowd of axes; the sweeping borders blur into too many to draw"
-cite = ["exp001", "nesdev-memory"]
+cite = ["exp001", "exp002", "nesdev-memory", "wiki-pyramid", "wiki-everest", "nasa-earth", "nasa-sun", "wiki-universe"]
 
 [[section.line]]
 id = "no-fast-way"
 text = "And in general, no known method finds the border with the fewest mistakes quickly."
 board = "A clock spinning beside the crowd of borders"
-cite = ["hoffgen1995"]
+cite = ["hoffgen1995", "exp002", "planck2018"]
 
 [[section.line]]
 id = "learn"

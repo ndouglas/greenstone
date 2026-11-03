@@ -250,7 +250,10 @@ def agreed_cut(cuts: list[float]) -> int | None:
     return int(cuts[0]) if len(set(cuts)) == 1 else None
 
 
-def best_line(x: np.ndarray, y: np.ndarray, angles: int = 360) -> tuple[np.ndarray, float, float]:
+DIRECTIONS, CUTS = 360, 199  # the search: a degree apart round a full turn, and this many cuts along each
+
+
+def best_line(x: np.ndarray, y: np.ndarray, angles: int = DIRECTIONS) -> tuple[np.ndarray, float, float]:
     """The best straight line through two inputs: every direction tried, and
     for each, every cut along it. Returns w, b (in the inputs' own units)
     and its accuracy."""
@@ -260,7 +263,7 @@ def best_line(x: np.ndarray, y: np.ndarray, angles: int = 360) -> tuple[np.ndarr
     for theta in np.linspace(0, 2 * np.pi, angles, endpoint=False):
         d = np.array([np.cos(theta), np.sin(theta)])
         s = z @ d
-        for cut in np.quantile(s, np.linspace(0.005, 0.995, 199)):
+        for cut in np.quantile(s, np.linspace(0.005, 0.995, CUTS)):
             a = float(((s > cut).astype(int) == y).mean())
             if a > best[0]:
                 best = (a, d, float(cut))

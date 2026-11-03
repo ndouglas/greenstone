@@ -117,3 +117,39 @@ title = "Toward a modern theory of adaptive networks: Expectation and prediction
 authors = "R. S. Sutton and A. G. Barto"
 year = 1981
 url = "https://doi.org/10.1037/0033-295X.88.2.135"
+
+[nasa-earth]
+title = "Earth Fact Sheet (NASA Goddard Space Flight Center; accessed 2026): volumetric mean radius 6,371 km"
+authors = "D. R. Williams"
+year = 2026
+url = "https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html"
+
+[nasa-sun]
+title = "Sun Fact Sheet (NASA Goddard Space Flight Center; accessed 2026): volumetric mean radius 695,700 km"
+authors = "D. R. Williams"
+year = 2026
+url = "https://nssdc.gsfc.nasa.gov/planetary/factsheet/sunfact.html"
+
+[planck2018]
+title = "Planck 2018 results. VI. Cosmological parameters. Astronomy & Astrophysics, 641, A6 (the universe's age, 13.8 billion years)"
+authors = "Planck Collaboration"
+year = 2020
+url = "https://doi.org/10.1051/0004-6361/201833910"
+
+[wiki-everest]
+title = "Mount Everest (Wikipedia; accessed 2026): 8,849 m, the 2020 survey"
+authors = "Wikipedia contributors"
+year = 2026
+url = "https://en.wikipedia.org/wiki/Mount_Everest"
+
+[wiki-pyramid]
+title = "Great Pyramid of Giza (Wikipedia; accessed 2026): about 139 m tall, 230 m a side"
+authors = "Wikipedia contributors"
+year = 2026
+url = "https://en.wikipedia.org/wiki/Great_Pyramid_of_Giza"
+
+[wiki-universe]
+title = "Observable universe (Wikipedia; accessed 2026): about 8.8 × 10^26 m across"
+authors = "Wikipedia contributors"
+year = 2026
+url = "https://en.wikipedia.org/wiki/Observable_universe"

@@ -5,7 +5,7 @@ import json
 
 import numpy as np
 from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Arc, Circle, Create, Dot, FadeIn, FadeOut, Line,
-                   UpdateFromAlphaFunc, ValueTracker, VGroup, Wait, linear, smooth)
+                   UpdateFromAlphaFunc, ValueTracker, VGroup, VMobject, Wait, linear, smooth)
 
 from series import style
 from series.bordermap import BorderMap
@@ -265,76 +265,94 @@ def search_2(scene) -> None:
         FadeIn(marks[0:2], run_time=0.6), Wait(1.4), FadeIn(marks[2:4], run_time=0.6), FadeIn(yes, run_time=0.5))))
 
 
+RUNGS = (2, 3, 5, 7, 10, 14, 16, 40)  # numbers read, at each of which the heap passes a known thing
+
+
+def rungs(a: float, stops=RUNGS) -> float:
+    """Numbers read, part way through: an equal time from each rung to the next, easing between."""
+    k = min(a * (len(stops) - 1), len(stops) - 1 - 1e-9)
+    i, f = int(k), k - int(k)
+    f = f * f * (3 - 2 * f)
+    return stops[i] + (stops[i + 1] - stops[i]) * f
+
+
 def too_many(scene) -> None:
-    """Two numbers lit in the console's memory, then more and more: each one another way for a border to turn."""
+    """The memory's numbers lit one by one, two first (the map's), then in address order; beside it, one grain of
+    sand for every border the same search would try, heaped, and the camera pulling back past things we know."""
     from series.memory import MemoryGrid
     from beats.common import recording
+    from beats.scale import Heap, borders, count
     leaving = away(scene)
-    grid = MemoryGrid(recording(), columns=64, width=8.6, at=UP * 0.4)
+    grid = MemoryGrid(recording(), columns=64, width=5.8, at=LEFT * 3.7 + UP * 0.9)
+    image, rows = grid.image, 2048 // 64
     two = [0x0755, 0x0057]
-    counter = VGroup()
-    shown = ValueTracker(2)
+    order = two + [a for a in range(2048) if a not in two][:RUNGS[-1] - 2]
+    squares = VGroup(*[Dot([image.get_left()[0] + (a % 64 + 0.5) * image.width / 64,
+                            image.get_top()[1] - (a // 64 + 0.5) * image.height / rows, 0], radius=0.05, color=style.WARM[0])
+                       for a in order])
+    n = ValueTracker(2.0)
+    pile = Heap(RIGHT * 3.4 + DOWN * 2.0, width=6.4)
+    grain = serif("one grain of sand, a millimetre across, for each border", style.ASH, 0.26).move_to(RIGHT * 3.4 + UP * 3.1)
+    words = VGroup()
+    share = serif(f"{RUNGS[-1]} numbers: {RUNGS[-1] / 2048:.0%} of the console's memory", style.TEXT, 0.3).move_to(LEFT * 3.7 + DOWN * 3.3)
 
     def draw(_) -> None:
-        n = int(shown.get_value())
-        text = f"{n} numbers read"
-        if getattr(counter, "text_", None) != text:
-            swap(counter, serif(text, style.WARM[2], 0.4).move_to(DOWN * 3.0))
-            counter.text_ = text
-    counter.add_updater(draw)
-    draw(counter)
-    squares = VGroup()
-    rng = np.random.default_rng(5)
-    order = two + [int(a) for a in rng.permutation(2048) if a not in two][:400]
-    image, rows = grid.image, 2048 // 64
-    for a in order:
-        r, c = divmod(a, 64)
-        squares.add(Dot([image.get_left()[0] + (c + 0.5) * image.width / 64,
-                         image.get_top()[1] - (r + 0.5) * image.height / rows, 0], radius=0.045, color=style.WARM[0]))
-    lit = ValueTracker(0)
-
-    def light(_) -> None:
-        k = int(lit.get_value())
-        for i, s in enumerate(squares):
-            s.set_opacity(1.0 if i < k else 0.0)
-    squares.add_updater(light)
-    light(squares)
-    scene.add(squares)
+        k = int(round(n.get_value()))
+        for i, d in enumerate(squares):
+            d.set_opacity(1.0 if i < k else 0.0)
+        pile.show(n.get_value())
+        text = (f"{k} numbers read", f"{count(borders(k))} borders to try")
+        if getattr(words, "text_", None) != text:
+            swap(words, VGroup(serif(text[0], style.WARM[0], 0.36), serif(text[1], style.WARM[2], 0.36))
+                 .arrange(DOWN, buff=0.18).move_to(LEFT * 3.7 + DOWN * 2.3))
+            words.text_ = text
+    words.add_updater(draw)
+    draw(words)
     talk = voice(scene, "too-many")
     scene.say("too-many", Succession(
-        leaving, FadeIn(grid, run_time=0.8),
-        UpdateFromAlphaFunc(lit, lambda m, a: m.set_value(2 * a + 0.01), run_time=0.6), FadeIn(counter, run_time=0.4),
-        Wait(talk * 0.35),
-        AnimationGroup(UpdateFromAlphaFunc(lit, lambda m, a: m.set_value(2 + (len(order) - 2) * a ** 2), rate_func=linear),
-                       UpdateFromAlphaFunc(shown, lambda m, a: m.set_value(2 + (len(order) - 2) * a ** 2), rate_func=linear),
-                       run_time=max(talk * 0.65 - 1.8, 0.5))))
+        leaving, FadeIn(grid, run_time=0.6), FadeIn(VGroup(squares, words), run_time=0.4),
+        AnimationGroup(FadeIn(pile, run_time=0.6), FadeIn(grain, run_time=0.6)), Wait(1.2),
+        UpdateFromAlphaFunc(n, lambda m, a: m.set_value(rungs(a)), run_time=max(talk - 5.0, 3.0), rate_func=linear),
+        FadeIn(share, run_time=0.4)))
+    words.clear_updaters()
+    scene.kept = {"words": words}
 
 
 def no_fast_way(scene) -> None:
-    clock = VGroup(Circle(radius=0.9, stroke_color=style.ASH, stroke_width=1.4))
-    hand = Line(np.zeros(3), UP * 0.75, stroke_color=style.WARM[0], stroke_width=2.0)
-    slow = Line(np.zeros(3), UP * 0.5, stroke_color=style.TEXT, stroke_width=2.0)
-    for k in range(12):
-        a = 2 * np.pi * k / 12
-        clock.add(Line(0.8 * np.array([np.sin(a), np.cos(a), 0]), 0.9 * np.array([np.sin(a), np.cos(a), 0]),
-                       stroke_color=style.ASH, stroke_width=1.0))
-    face = VGroup(clock, slow, hand).move_to(RIGHT * 3.6)
-    rng = np.random.default_rng(2)
-    crowd = VGroup(*[Line(LEFT * 2.6, RIGHT * 2.6, stroke_color=style.WARM[2], stroke_width=0.6, stroke_opacity=0.25)
-                     .rotate(rng.uniform(0, np.pi)).shift(LEFT * 2.6 + RIGHT * rng.uniform(-1, 1) + UP * rng.uniform(-1.4, 1.4))
-                     for _ in range(70)])
-    centre = face[0][0].get_center()
+    """The time the same search would take on this computer, on a ribbon of spans we know, as numbers are added:
+    past a lifetime at six, past the age of the universe at ten."""
+    from beats.scale import AGE, YEAR, seconds, span
+    left, right, y = -6.3, 6.3, -0.4
+    top = np.log10(AGE * YEAR * 8)
+
+    def x_of(s: float) -> float:
+        return left + (right - left) * np.log10(max(s, 1.0)) / top
+    axis = Line([left, y, 0], [right, y, 0], stroke_color=style.ASH, stroke_width=1.4)
+    marks = VGroup()
+    for s, name in ((1, "a second"), (60, "a minute"), (86400, "a day"), (YEAR, "a year"), (80 * YEAR, "a lifetime"),
+                    (5000 * YEAR, "all of written history"), (AGE * YEAR, "the age of the universe")):
+        t = Line([x_of(s), y - 0.12, 0], [x_of(s), y + 0.12, 0], stroke_color=style.ASH, stroke_width=1.4)
+        marks.add(t, serif(name, style.ASH, 0.24).rotate(0.6).next_to(t, DOWN, buff=0.1).shift(RIGHT * 0.25))
+    n = ValueTracker(2.0)
+    bar = VMobject()
+    words = VGroup()
+
+    def draw(_) -> None:
+        s = seconds(n.get_value())
+        bar.become(Line([x_of(1.0), y, 0], [x_of(s), y, 0], stroke_color=style.WARM[2], stroke_width=9))
+        k = int(n.get_value() + 1e-6)
+        text = f"{k} numbers: {span(seconds(k))}"
+        if getattr(words, "text_", None) != text:
+            swap(words, serif(text, style.WARM[2], 0.34).move_to([np.clip(x_of(seconds(k)), -4.2, 4.2), y + 0.75, 0]))
+            words.text_ = text
+    bar.add_updater(draw)
+    draw(bar)
+    note = serif("how long the same search would take, on this computer", style.ASH, 0.28).move_to(UP * 2.4)
     talk = voice(scene, "no-fast-way")
-    spin = UpdateFromAlphaFunc(hand, lambda m, a: m.become(Line(centre, centre + 0.75 * np.array(
-        [np.sin(a * 24 * np.pi), np.cos(a * 24 * np.pi), 0]), stroke_color=style.WARM[0], stroke_width=2.0)),
-        run_time=talk, rate_func=linear)
-    turn = UpdateFromAlphaFunc(slow, lambda m, a: m.become(Line(centre, centre + 0.5 * np.array(
-        [np.sin(a * 2 * np.pi), np.cos(a * 2 * np.pi), 0]), stroke_color=style.TEXT, stroke_width=2.0)),
-        run_time=talk, rate_func=linear)
-    spin.set_run_time(talk - 2.1)
-    turn.set_run_time(talk - 2.1)
-    scene.say("no-fast-way", Succession(away(scene), AnimationGroup(FadeIn(face), FadeIn(crowd), run_time=1.5),
-                                        AnimationGroup(spin, turn)))
+    scene.say("no-fast-way", Succession(away(scene), FadeIn(VGroup(axis, marks, note), run_time=0.6), FadeIn(VGroup(bar, words), run_time=0.3),
+                                        UpdateFromAlphaFunc(n, lambda m, a: m.set_value(rungs(a, (2, 3, 4, 5, 6, 7, 8, 9, 10))),
+                                                            run_time=max(talk - 1.2, 2.5), rate_func=linear)))
+    bar.clear_updaters()
 
 
 def learn(scene) -> None:
