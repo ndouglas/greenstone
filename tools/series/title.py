@@ -54,6 +54,7 @@ def wall(tiles: list[Mobject]) -> Group:
     width, height = config.frame_width, config.frame_height
     row_h = (height - 2 * GAP) / 3
     pool = tiles or [Rectangle(width=1, height=1, stroke_width=0, fill_color=style.WARM[0], fill_opacity=0.08)]
+    clips = [t.clip for t in pool if isinstance(t, ClipTile)]
     rows, k = Group(), 0
     for fractions in ROWS:
         row = Group()
@@ -62,8 +63,12 @@ def wall(tiles: list[Mobject]) -> Group:
             # scaled evenly to fit inside it, never stretched.
             slot = Rectangle(width=f * width * 1.25, height=row_h, stroke_width=0, fill_opacity=0)
             picture = pool[k % len(pool)].copy()
-            if isinstance(picture, ClipTile):  # each tile its own point in the loop, so the seams ripple
+            if isinstance(picture, ClipTile):  # each tile its own point in its clip, so the changes ripple
                 picture.elapsed = (k * PHASE % 1) * picture.clip.seconds
+                picture.started = False
+                # then the section's other beats in turn, from the one after its own, so neighbours differ
+                own = next(i for i, c in enumerate(clips) if c is picture.clip)
+                picture.after = clips[own + 1:] + clips[:own]
                 picture.advance(0)
             k += 1
             picture.scale(min(slot.width / picture.width, slot.height / picture.height) * 0.92)

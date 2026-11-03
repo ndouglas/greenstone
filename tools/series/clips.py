@@ -17,7 +17,8 @@ CLIP_SECONDS = 2.5
 CLIP_FPS = 30
 SHRINK = 4
 # Seconds a clip takes to fade out at its loop's end, and in again at its start.
-FADE = 0.2
+FADE = 0.2  # seconds of a clip: its fade up at the start, and each crossfade into the next
+SPEED = 0.5  # a title wall plays its clips at half speed, so each is seen whole and calmly
 
 
 class Capture:
@@ -91,25 +92,48 @@ def load_clip(path: Path) -> Clip:
 
 
 class ClipTile(ImageMobject):
-    """A clip, looping, fading through black at each seam; `phase` (0 to 1)
-    starts it partway, so a wall's tiles don't all blink at once."""
+    """A clip played at SPEED, from `phase` (0 to 1) of the way in, so a wall's tiles don't all change at once.
+    It fades up from black only at its very start; at each clip's end it crossfades into the next of `after`
+    (other beats' clips, in turn; its own again once they're done), so it never restarts in place."""
 
-    def __init__(self, clip: Clip, phase: float = 0.0, **kwargs):
+    def __init__(self, clip: Clip, phase: float = 0.0, after: list[Clip] | None = None, **kwargs):
         self.clip, self.elapsed = clip, phase * clip.seconds
+        self.after = list(after or [])
+        self.started = phase == 0  # a tile that starts partway is already up
         super().__init__(self.picture(), **kwargs)
         self.add_updater(ClipTile.advance)
 
     def __deepcopy__(self, memo: dict) -> "ClipTile":
         memo[id(self.clip)] = self.clip  # copies share the frames
+        for c in self.after:
+            memo[id(c)] = c
         return super().__deepcopy__(memo)
 
+    def following(self) -> Clip:
+        """The clip it crossfades into next."""
+        return self.after[0] if self.after else self.clip
+
+    @staticmethod
+    def frame(clip: Clip, t: float) -> np.ndarray:
+        return clip.frames[min(max(int(t * clip.fps), 0), len(clip.frames) - 1)].astype(float)
+
     def picture(self) -> np.ndarray:
-        length = self.clip.seconds
-        t = self.elapsed % length
-        index = min(int(t * self.clip.fps), len(self.clip.frames) - 1)
-        light = max(0.0, min(1.0, t / FADE, (length - t) / FADE))
-        return change_to_rgba_array((self.clip.frames[index] * light).astype(np.uint8))
+        t, length = self.elapsed, self.clip.seconds
+        frame = self.frame(self.clip, t)
+        into = t - (length - FADE)  # how far into the crossfade, once it has begun
+        if into > 0:
+            w = min(into / FADE, 1.0)
+            frame = frame * (1 - w) + self.frame(self.following(), into) * w
+        if self.started:
+            frame = frame * max(0.0, min(1.0, t / FADE))
+        return change_to_rgba_array(frame.astype(np.uint8))
 
     def advance(self, dt: float) -> None:
-        self.elapsed += dt
+        self.elapsed += dt * SPEED
+        if self.elapsed >= self.clip.seconds:  # the next clip has already played its first FADE, crossfading in
+            self.elapsed = self.elapsed - self.clip.seconds + FADE
+            nxt = self.following()
+            if self.after:
+                self.after = self.after[1:] + [self.clip]
+            self.clip, self.started = nxt, False
         self.pixel_array = self.picture()

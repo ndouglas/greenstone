@@ -575,8 +575,10 @@ class Sections(unittest.TestCase):
             (d / "stills" / "chapter-1").mkdir(parents=True)
             red = np.zeros((36, 64, 3), np.uint8)
             red[..., 0] = 220
-            if clip:
-                save_clip([red] * 45, 30, d / "stills" / "chapter-1" / "i1.mp4")
+            if clip:  # a clip whose red brightens as it plays
+                ramp = [np.dstack([np.full((36, 64), v, np.uint8), red[..., 1], red[..., 2]])
+                        for v in np.linspace(40, 220, 45).astype(np.uint8)]
+                save_clip(ramp, 30, d / "stills" / "chapter-1" / "i1.mp4")
             else:
                 Image.fromarray(red).save(d / "stills" / "chapter-1" / "i1.png")
 
@@ -595,7 +597,7 @@ class Sections(unittest.TestCase):
             return frames[..., 0].astype(float).mean(axis=(1, 2))
 
         still, playing = title_light(clip=False), title_light(clip=True)
-        # The clips fade through black at their seams; a still only drifts.
+        # The clips play (and crossfade back into their start); a still only drifts.
         self.assertGreater(np.ptp(playing), 2 * np.ptp(still))
 
     def test_a_title_wall_prefers_a_clip_to_a_still(self):

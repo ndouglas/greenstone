@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-from series.clips import CLIP_SECONDS, FADE, Capture, ClipTile, load_clip, save_clip
+from series.clips import CLIP_SECONDS, FADE, SPEED, Capture, ClipTile, load_clip, save_clip
 
 H, W = 36, 64
 
@@ -62,18 +62,37 @@ class TestSaveLoad(unittest.TestCase):
 
 
 class TestClipTile(unittest.TestCase):
-    def clip(self, path=None):
+    def clip(self, level=200, path=None):
         path = path or Path(tempfile.mkdtemp()) / "c.mp4"
-        save_clip([np.full((H, W, 3), 200, np.uint8)] * 30, 30, path)
+        save_clip([np.full((H, W, 3), level, np.uint8)] * 30, 30, path)
         return load_clip(path)
 
-    def test_fades_through_black_at_the_seam(self):
+    def test_fades_up_from_black_at_its_start(self):
         tile = ClipTile(self.clip())
-        self.assertLess(tile.pixel_array[..., :3].mean(), 20)  # the loop's start
-        tile.update(FADE * 2)
-        self.assertGreater(tile.pixel_array[..., :3].mean(), 180)
-        tile.update(1.0 - FADE * 2 - 0.01)  # just before the loop's end
         self.assertLess(tile.pixel_array[..., :3].mean(), 20)
+        tile.update(FADE * 2 / SPEED)
+        self.assertGreater(tile.pixel_array[..., :3].mean(), 180)
+
+    def test_plays_at_half_speed(self):
+        tile = ClipTile(self.clip())
+        tile.update(0.6)
+        self.assertAlmostEqual(tile.elapsed, 0.6 * SPEED)
+
+    def test_crossfades_into_the_next_clip_instead_of_restarting(self):
+        first, second = self.clip(200), self.clip(60)
+        tile = ClipTile(first, after=[second])
+        tile.update((first.seconds - FADE / 2) / SPEED)  # half way through the crossfade
+        self.assertTrue(80 < tile.pixel_array[..., :3].mean() < 180)
+        tile.update(FADE / SPEED)  # past the first clip's end
+        self.assertIs(tile.clip, second)
+        self.assertLess(abs(tile.pixel_array[..., :3].mean() - 60), 10)  # no dip to black at the change
+
+    def test_comes_back_to_its_own_clip_after_the_others(self):
+        first, second = self.clip(200), self.clip(60)
+        tile = ClipTile(first, after=[second])
+        tile.update(first.seconds / SPEED + 0.01)
+        tile.update(second.seconds / SPEED)
+        self.assertIs(tile.clip, first)
 
     def test_a_phase_starts_it_partway(self):
         tile = ClipTile(self.clip(), phase=0.5)
@@ -83,7 +102,7 @@ class TestClipTile(unittest.TestCase):
         tile = ClipTile(self.clip())
         copy = tile.copy()
         self.assertIs(copy.clip.frames, tile.clip.frames)
-        copy.update(0.5)
+        copy.update(0.5 / SPEED)
         self.assertGreater(copy.pixel_array[..., :3].mean(), 180)
         self.assertLess(tile.pixel_array[..., :3].mean(), 20)
 
