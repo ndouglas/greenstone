@@ -10,15 +10,17 @@ from series.chart import Chart
 from series.ember import in_line, numeral, serif, swap
 from series.pointmap import PointMap
 from series.props import Pad
+from series.lab.exp002 import POSITION, SCROLL, SOON, SPEED
 from series.records import ScoreBars
 
 from beats.common import (BOTH, BUTTONS, FILM, NUMBERS, Do, Readout, Succession, arrive_held, away, blocks, fill,
-                          new_map, pause, resume, screen_at, show, speed, voice)
+                          new_map, pause, recording, resume, screen_at, show, speed, voice)
 from beats.chapter_1 import counter
 
-# Two moments at one point of the map (2.94 blocks, 0.75 pixels a frame), from the footage's session: in the
-# first the player keeps holding Right and the screen moves; in the second he lets go, and it doesn't.
-SAME_YES, SAME_NO = 601, 9105
+# Two moments at one point of the map (3.31 blocks, 0.81 pixels a frame), from the footage's session: in the
+# first the player keeps holding Right and the screen moves 23 frames on; in the second he lets go, Mario slides
+# to a stop, and the screen holds still for 58 frames, well past the half second the beat shows.
+SAME_YES, SAME_NO = 13473, 13020
 LAST = 10
 
 
@@ -71,6 +73,7 @@ def spots(scene) -> None:
 def unseen(scene) -> None:
     """The same point twice: in one the player holds Right and the screen moves; in the other he lets go."""
     leaving = away(scene)
+    _check_pair()
     a = screen_at(SAME_YES + 1, LEFT * 3.4 + UP * 0.9)
     b = screen_at(SAME_NO + 1, RIGHT * 3.4 + UP * 0.9)
     for s in (a, b):
@@ -96,7 +99,21 @@ def unseen(scene) -> None:
         FadeIn(verdicts, run_time=0.5), Wait(0.6), FadeIn(held, run_time=0.6)))
 
 
-NUMBERS_POINT = "2.94 blocks in, 0.75 pixels a frame"
+NUMBERS_POINT = "3.31 blocks in, 0.81 pixels a frame"
+
+
+def _check_pair() -> None:
+    """The two moments sit at NUMBERS_POINT, and the half second shown proves each verdict with frames to spare:
+    one screen scrolls inside it, the other doesn't scroll for a while after it."""
+    ram = recording().ram
+    a, b = ram[SAME_YES], ram[SAME_NO]
+    point = f"{a[POSITION] / 16:.2f} blocks in, {np.int8(a[SPEED]) / 16:.2f} pixels a frame"
+    if (a[POSITION], a[SPEED]) != (b[POSITION], b[SPEED]) or point != NUMBERS_POINT:
+        raise ValueError(f"unseen's two moments aren't both at {NUMBERS_POINT} (the first is at {point})")
+    if not (ram[SAME_YES:SAME_YES + SOON - 3, SCROLL] != 0).any():
+        raise ValueError("unseen's first screen doesn't scroll in time to show it")
+    if (ram[SAME_NO:SAME_NO + SOON * 3 // 2, SCROLL] != 0).any():
+        raise ValueError("unseen's second screen scrolls too soon after the half second shown")
 
 
 def always_wrong(scene) -> None:
