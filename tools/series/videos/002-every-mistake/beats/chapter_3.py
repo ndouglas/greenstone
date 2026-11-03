@@ -2,17 +2,22 @@
 that cancel at the bottom, and a step too big."""
 
 import numpy as np
-from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Arrow, Circle, Create, Dot, FadeIn, FadeOut, ImageMobject,
-                   Line, Square, UpdateFromAlphaFunc, ValueTracker, VGroup, Wait, linear, smooth)
+from manim import (DOWN, LEFT, RIGHT, UL, UP, UR, AnimationGroup, Arrow, Circle, Create, DashedLine, Dot, FadeIn, FadeOut, Group,
+                   Line, Square, UpdateFromAlphaFunc, ValueTracker, VGroup, VMobject, Wait, linear,
+                   smooth)
 
 from series import style
 from series.chart import Chart
 from series.ember import in_line, numeral, serif, swap
 from series.knobs import Knobs, Total
-from series.sheet import Camera, Sheet
 
 from beats.common import FILM, NUMBERS, Do, Succession, away, fill, new_map, voice
 from beats.chapter_1 import BEFORE, SCALES, counter, example_dot, example_map
+from beats import valley
+from beats.sheets import INK, GroundPicture, height_key, pin, tag
+from series.terrain import View
+
+PICTURE = (14.2, 8.0)  # the valley's picture: the whole frame
 
 RATE = 0.1  # the batch square trick's step (exp002's BATCH_RATE)
 X, Y = FILM["x"], FILM["y"]
@@ -185,59 +190,144 @@ def downhill(scene) -> None:
     scene.kept = {"chart": c, "curve": curve}
 
 
-def valley_image(size=(9.0, 5.6), pitch=0.85) -> tuple:
-    sheet = Sheet(FILM["valley"])
-    camera = Camera(pitch=pitch)
-    return sheet, camera, ImageMobject(sheet.render(camera, 1.0, size, smooth=True)).set(width=size[0])
+def valley_picture(grounds, view) -> GroundPicture:
+    return GroundPicture(grounds, view, size=PICTURE, floor=valley.FLOOR)
+
+
+def on_valley(pic: GroundPicture, w, height: float | None = None) -> np.ndarray:
+    """Where knob settings (position, speed; one or many) sit on the drawn valley, or at a height over them."""
+    w = np.asarray(w, float)
+    a, u = valley.shares(w[..., 0], w[..., 1])
+    return pic.point(a, u, valley.miss(w[..., 0], w[..., 1]) if height is None else np.full(a.shape, height))
+
+
+def path_on(pic: GroundPicture, ws: np.ndarray, colour: str, width: float = 2.0) -> VMobject:
+    """A path of knob settings, level at the height of its first: a move turns the knobs, and only then does
+    the miss change."""
+    line = VMobject(stroke_color=colour, stroke_width=width)
+    line.set_points_as_corners(on_valley(pic, ws, float(valley.miss(*ws[0]))))
+    return line
+
+
+def nudge_arrow(pic: GroundPicture, start, end, colour: str = style.WARM[1]) -> VGroup:
+    """A move, level at its start's height, and a plumb line from its end to the ground: where it lands."""
+    h = float(valley.miss(*start))
+    a, z, land = on_valley(pic, start), on_valley(pic, end, h), on_valley(pic, end)
+    under = Arrow(a, z, buff=0, color=INK, stroke_width=9, max_tip_length_to_length_ratio=0.25, tip_length=0.28)
+    return VGroup(under, Arrow(a, z, buff=0, color=colour, stroke_width=4.5, max_tip_length_to_length_ratio=0.25, tip_length=0.22),
+                  DashedLine(z, land, stroke_color=colour, stroke_width=1.8, dash_length=0.06), Dot(land, radius=0.05, color=colour))
+
+
+SPOTS = ((-0.6, 0.5), (0.7, 0.6), (-0.15, -0.85))  # three spots up the valley's sides, as turns from rest
+SPRAY = 300  # of the moments' own nudges, drawn at one spot
+
+
+def valley_key() -> Group:
+    return height_key(0.0, valley.HIGHEST, [(0, "0"), (5, "5"), (10, "10"), (15, "15")], "total squared miss",
+                      height=3.0).move_to(RIGHT * 6.0 + DOWN * 0.2)
 
 
 def downhill_2(scene) -> None:
-    """Both weights turned at once, the bias held: a valley. An arrow from one spot, pointing where the
-    added-up nudge points: down it."""
-    sheet, camera, image = valley_image()
-    image.move_to(DOWN * 0.4)
-    grid = FILM["valley_turns"]
-    n = len(grid)
-    i, j = 12, 46  # a spot up the valley's side
-    w = np.array([REST[0] + grid[i], REST[1] + grid[j], REST[2]])
-    pull = XB.T @ (T - XB @ w) / len(T)  # the added-up nudge, per step
-    d = pull[:2] / np.linalg.norm(pull[:2])
-    a = (i + 0.5) / n, (j + 0.5) / n
-    b = np.clip(np.array(a) + d * np.array([1, 1]) * 0.12, 0, 1)
-    start = sheet.at(*a, 1.0, camera) + image.get_center()
-    end = sheet.at(*b, 1.0, camera) + image.get_center()
-    arrow = Arrow(start, end, buff=0, color=style.WARM[1], stroke_width=3, max_tip_length_to_length_ratio=0.3)
-    axes = VGroup(serif("position knob →", style.ASH, 0.28).next_to(image, DOWN, buff=0.05),
-                  serif("speed knob, into the picture", style.ASH, 0.28).next_to(image, LEFT, buff=-1.2).shift(UP * 1.8))
-    words = serif("the added-up nudge: downhill", style.WARM[1], 0.3).next_to(arrow, UP, buff=0.12)
-    scene.say("downhill-2", Succession(*fill(scene, "downhill-2", away(scene), FadeIn(image, run_time=1.2), FadeIn(axes, run_time=0.4),
-                                              Wait(1.6), Create(arrow, run_time=0.8), FadeIn(words, run_time=0.4))))
+    """The U, side on, swept out along the speed knob into a valley (both knobs turned, the bias held). At three
+    spots, every moment's real nudge, laid tip to tail: the chain always ends downhill."""
+    k = getattr(scene, "kept", None) or {}
+    rows = list(range(3, 122, 4)) + [121]
+    slices = [valley.ground(rows=r) for r in rows]
+    pic = valley_picture([slices[0]], valley.SIDE)
+
+    def sweep(m, a: float) -> None:
+        m.grounds = [slices[min(int(a * len(slices)), len(slices) - 1)]]
+        m.view = valley.SIDE.between(valley.VALLEY, smooth(a))
+        m.redraw()
+    knobs = VGroup(tag("position knob", style.ASH), tag("speed knob", style.ASH))
+    held = tag("bias held still", style.TEXT).to_corner(UP + LEFT, buff=0.5)
+    key = valley_key()
+    u = [m for m in k.values() if m is not None]  # downhill's U gives way to the same U, side on
+    steps = [away(scene, *u), AnimationGroup(FadeIn(pic), *[FadeOut(m) for m in u], run_time=0.8),
+             UpdateFromAlphaFunc(pic, sweep, run_time=3.0, rate_func=linear)]
+
+    def place_knobs() -> None:
+        r = valley.REST
+        knobs[0].move_to(on_valley(pic, [r[0], r[1] - 1.0]) + DOWN * 0.45)
+        knobs[1].move_to(on_valley(pic, [r[0] - 1.0, r[1]]) + LEFT * 1.0)
+    steps += [Do(place_knobs), FadeIn(knobs, run_time=0.4), FadeIn(held, run_time=0.4), FadeIn(key, run_time=0.4)]
+    marks = VGroup()
+    for n, d in enumerate(SPOTS):
+        w = valley.REST[:2] + np.array(d)
+        links = valley.chain(*w)
+        dot = pin(style.TEXT).move_to(on_valley(pic, w))
+        chain = path_on(pic, links[::4], style.WARM[0], 1.4)
+        arrow = nudge_arrow(pic, links[0], links[-1])
+        if n == 0:
+            nudges = w + valley.RATE * valley.pulls(*w)[np.linspace(0, valley.MOMENTS - 1, SPRAY).astype(int)]
+            level = float(valley.miss(*w))
+            spray = VGroup(*[Line(on_valley(pic, w), on_valley(pic, e, level), stroke_color=style.TEXT, stroke_width=0.8,
+                                  stroke_opacity=0.35) for e in nudges])
+            say = tag("each moment's own nudge (300 of 10,720)", style.TEXT).move_to(UP * 3.2)
+            sum_say = tag("all 10,720, tip to tail (drawn 1/10,720 size): one move", style.WARM[0]).move_to(UP * 3.2)
+            steps += [FadeIn(dot, run_time=0.3), Create(spray, run_time=1.0, lag_ratio=0.02), FadeIn(say, run_time=0.3),
+                      Wait(0.8), AnimationGroup(FadeOut(spray), FadeOut(say), FadeIn(sum_say), run_time=0.5),
+                      Create(chain, run_time=1.6, rate_func=linear), FadeIn(arrow, run_time=0.4), FadeOut(sum_say, run_time=0.3)]
+        else:
+            steps += [FadeIn(dot, run_time=0.2), Create(chain, run_time=0.8, rate_func=linear), FadeIn(arrow, run_time=0.3)]
+        marks.add(dot, chain, arrow)
+    always = tag("added up: always downhill", style.WARM[1]).move_to(UP * 3.2)
+    steps += [FadeIn(always, run_time=0.4)]
+    scene.say("downhill-2", Succession(*fill(scene, "downhill-2", *steps)))
+    scene.kept = {"valley": pic, "key": key, "held": held, "knobs": knobs, "marks": VGroup(marks, always)}
+
+
+BOTTOM = View(yaw=-0.5, pitch=1.1, distance=8.0, target=(0.0, 0.0, 0.05), fov=28)
+LOOP = 100  # the bottom's chain, drawn this many times larger than the chains up the sides
 
 
 def balance(scene) -> None:
-    """At the bottom, every moment still pulls each knob, some up and some down; added up, nothing."""
-    miss = T - XB @ REST
+    """At the bottom: every moment's pull, tip to tail, ends where it began. Then the same pulls on each knob,
+    added up for real: a tug of war at a standstill."""
+    k = scene.kept
+    pic = k["valley"]
+    r = valley.REST
+    links = r[:2] + (valley.chain(*r[:2]) - r[:2]) * LOOP
+    bottom = pin(style.WARM[0])
+    loop = VMobject(stroke_color=style.WARM[0], stroke_width=1.6)
+    start = tag("the lowest spot", style.WARM[0])
+    note = tag(f"every moment's pull, tip to tail (drawn {LOOP}× larger): it ends where it began", style.TEXT).move_to(UP * 3.2)
+
+    def place() -> None:
+        bottom.move_to(on_valley(pic, r[:2]))
+        loop.set_points_as_corners(on_valley(pic, links[::3]))
+        start.next_to(bottom, DOWN, buff=0.25)
+    miss = valley.T - valley.XB @ r
+    pulls = [miss * valley.XB[:, i] for i in range(3)]
+    sums = [(float(p[p > 0].sum()), float(p[p < 0].sum())) for p in pulls]
+    longest = max(u for u, _ in sums)
     rows = VGroup()
-    for k, name in enumerate(("position knob", "speed knob", "bias")):
-        pulls = miss * XB[:, k] / len(T)
-        up, down = pulls[pulls > 0].sum(), pulls[pulls < 0].sum()
-        top = max(up, -down)
-        bar_up = Line(ORIGIN_ROW(k), ORIGIN_ROW(k) + RIGHT * 2.4 * up / top, stroke_color=style.WARM[1], stroke_width=8)
-        bar_down = Line(ORIGIN_ROW(k), ORIGIN_ROW(k) + LEFT * 2.4 * -down / top, stroke_color=style.COOL[1], stroke_width=8)
-        label = serif(name, style.ASH, 0.3).next_to(ORIGIN_ROW(k) + LEFT * 2.6, LEFT, buff=0.2)
-        ups = numeral(f"+{up:.3f}", style.WARM[1], 0.28).next_to(bar_up, RIGHT, buff=0.12)
-        downs = numeral(style.number(down, 3), style.COOL[1], 0.28).next_to(bar_down, LEFT, buff=0.12).shift(DOWN * 0.3)
-        net = numeral(f"= {style.number(up + down, 3)}", style.TEXT, 0.32).move_to(ORIGIN_ROW(k) + RIGHT * 4.4)
-        rows.add(VGroup(label, bar_down, bar_up, ups, downs, net))
-    mid = Line(UP * 2.2, DOWN * 1.6, stroke_color=style.ASH, stroke_width=1.0)
-    head = serif("at the bottom: every moment's pull, added up", style.TEXT, 0.32).to_edge(UP, buff=0.4)
-    scene.say("balance", Succession(*fill(scene, "balance", away(scene), FadeIn(head, run_time=0.4), Create(mid, run_time=0.3),
-                                           *[AnimationGroup(FadeIn(r[0]), Create(r[1]), Create(r[2]), FadeIn(r[3]), FadeIn(r[4]), run_time=0.8) for r in rows],
-                                           Wait(1.0), FadeIn(VGroup(*[r[5] for r in rows]), run_time=0.6))))
-
-
-def ORIGIN_ROW(k: int) -> np.ndarray:
-    return np.array([0.0, 1.3 - 1.3 * k, 0.0])
+    for i, (name, (up, down)) in enumerate(zip(("position knob", "speed knob", "bias"), sums)):
+        y = UP * (1.2 - 1.5 * i)
+        half = 4.0 * up / longest
+        rope = Line(y + LEFT * 4.0, y + RIGHT * 4.0, stroke_color=style.ASH, stroke_width=1.0, stroke_opacity=0.5)
+        ups = Line(y, y + RIGHT * half, stroke_color=style.WARM[1], stroke_width=9)
+        downs = Line(y, y + LEFT * 4.0 * -down / longest, stroke_color=style.COOL[1], stroke_width=9)
+        knot = Dot(y, radius=0.09, color=style.TEXT)
+        label = serif(name, style.ASH, 0.3).next_to(y + LEFT * 4.0, LEFT, buff=1.1)
+        up_n = numeral(f"+{up:,.0f}", style.WARM[1], 0.3).next_to(ups.get_end(), UR, buff=0.1)
+        down_n = numeral(f"\N{MINUS SIGN}{-down:,.0f}", style.COOL[1], 0.3)
+        down_n.next_to(downs.get_end(), UL, buff=0.1)
+        net = numeral(f"= {style.number(up + down, 3)}", style.TEXT, 0.34).next_to(y + RIGHT * 4.0, RIGHT, buff=0.35)
+        rows.add(VGroup(label, rope, downs, ups, knot, up_n, down_n, net))
+    rows.shift(DOWN * 0.3)
+    head = serif("at the lowest spot: each knob's pulls, added up", style.TEXT, 0.32).to_edge(UP, buff=0.5)
+    ends = serif("pulling up (warm) and pulling down (cool), in squared-miss units", style.ASH, 0.26).next_to(rows, DOWN, buff=0.4)
+    valley_marks = Group(pic, k["key"], k["held"], k["knobs"], bottom, loop, start, note)
+    scene.say("balance", Succession(*fill(scene, "balance", away(scene, pic, k["key"], k["held"]),
+                                           AnimationGroup(pic.fly(BOTTOM), FadeOut(k["key"]), run_time=2.0),
+                                           Do(place), FadeIn(bottom, run_time=0.3),
+                                           FadeIn(start, run_time=0.3), FadeIn(note, run_time=0.3),
+                                           Create(loop, run_time=2.2, rate_func=linear), Wait(0.8),
+                                           AnimationGroup(*[FadeOut(m) for m in valley_marks], run_time=0.5), FadeIn(head, run_time=0.4),
+                                           *[AnimationGroup(FadeIn(r_[0]), FadeIn(r_[1]), Create(r_[2]), Create(r_[3]), FadeIn(r_[4]),
+                                                            FadeIn(r_[5]), FadeIn(r_[6]), run_time=0.6) for r_ in rows],
+                                           FadeIn(ends, run_time=0.3), Wait(0.6), FadeIn(VGroup(*[r_[7] for r_ in rows]), run_time=0.6))))
 
 
 def swing_chart() -> Chart:
@@ -294,24 +384,66 @@ def u_value(w0: float) -> float:
     return float(((T - XB @ v) ** 2).mean())
 
 
+def glide(m, to: np.ndarray) -> UpdateFromAlphaFunc:
+    began: dict = {}
+
+    def update(d, a: float) -> None:
+        began.setdefault("at", d.get_center())
+        d.move_to(began["at"] + (to - began["at"]) * a)
+    return UpdateFromAlphaFunc(m, update)
+
+
 def too_big(scene) -> None:
-    """A ball on the U, the position knob alone moved by twice the step: each jump crosses the bottom and lands
-    higher up the other side."""
-    c = u_chart(at=DOWN * 0.3)
+    """The U, the position knob alone (the others held at the bottom). Each move is an arrow along the knob: the
+    step times the added-up nudge; a plumb line drops (or climbs) from its end to the curve. With twice the step
+    that settled, each landing is past the bottom and higher than the move began."""
+    near = 0.8
+    c = Chart((REST[0] - near, REST[0] + near), (0, 8), "position knob", "total squared miss", width=8.4, height=4.8,
+              at=DOWN * 0.35, x_ticks=[round(REST[0] - 0.5, 1), round(REST[0], 1), round(REST[0] + 0.5, 1)], y_ticks=[0, 4, 8])
     turns, u = FILM["u_turns"], FILM["u_position"]
-    curve = c.series(REST[0] + turns, u, style.WARM[0])
+    inside = np.abs(turns) <= near
+    curve = c.series(REST[0] + turns[inside], u[inside], style.WARM[0])
     path = jumps(2 * RATE, REST[0] - 0.12, 8)
-    path = path[np.abs(path - REST[0]) <= 1.0]
-    ball = Dot(c.point(path[0], u_value(path[0])), radius=0.08, color=style.TEXT)
-    note = serif("one knob alone, twice the step that settled", style.ASH, 0.28).next_to(c, UP, buff=0.25)
-    hops = []
-    for p, q in zip(path[:-1], path[1:]):
-        a, b = c.point(p, u_value(p)), c.point(q, u_value(q))
-        hops.append(UpdateFromAlphaFunc(ball, lambda d, t, a=a, b=b: d.move_to(a + (b - a) * t + UP * 1.2 * np.sin(np.pi * t)),
-                                        run_time=0.7))
-    talk = voice(scene, "too-big")
-    scene.say("too-big", Succession(away(scene), FadeIn(c, run_time=0.4), Create(curve, run_time=0.6), FadeIn(note, run_time=0.3),
-                                    FadeIn(ball, run_time=0.2), Wait(max(talk - 1.5 - 0.7 * len(hops), 0.1)), *hops))
+    path = path[np.abs(path - REST[0]) <= near]
+    settled = jumps(RATE, path[0], 1)
+    ball = Dot(c.point(path[0], u_value(path[0])), radius=0.09, color=style.TEXT)
+
+    def move(p: float, q: float, colour: str, width: float = 4.0, opacity: float = 1.0) -> tuple:
+        h = u_value(p)
+        arrow = Arrow(c.point(p, h), c.point(q, h), buff=0, color=colour, stroke_width=width, stroke_opacity=opacity,
+                      max_tip_length_to_length_ratio=0.2, tip_length=0.2)
+        arrow.get_tip().set_opacity(opacity)
+        plumb = DashedLine(c.point(q, h), c.point(q, u_value(q)), stroke_color=colour, stroke_width=1.6, dash_length=0.06,
+                           stroke_opacity=opacity)
+        return arrow, plumb
+    ghost_arrow, ghost_plumb = move(settled[0], settled[1], style.ASH, 3.0, 0.55)
+    ghost = VGroup(ghost_arrow, ghost_plumb, Dot(c.point(settled[1], u_value(settled[1])), radius=0.06, color=style.ASH))
+    ghost_words = serif("the step that settled", style.ASH, 0.26).next_to(ghost_arrow, DOWN, buff=0.12)
+    note = serif("one knob alone, twice the step that settled", style.TEXT, 0.3).next_to(c, UP, buff=0.3)
+    steps = [away(scene), FadeIn(c, run_time=0.4), Create(curve, run_time=0.6), FadeIn(ball, run_time=0.2),
+             Create(ghost_arrow, run_time=0.4), Create(ghost_plumb, run_time=0.3), FadeIn(ghost[2], ghost_words, run_time=0.3),
+             Wait(0.4), FadeIn(note, run_time=0.3)]
+    level = None
+    for n, (p, q) in enumerate(zip(path[:-1], path[1:])):
+        arrow, plumb = move(p, q, style.WARM[1])
+        h, landing = u_value(p), c.point(q, u_value(q))
+        new_level = DashedLine(c.point(REST[0] - near, h), c.point(REST[0] + near, h), stroke_color=style.ASH,
+                               stroke_width=1.0, dash_length=0.05, stroke_opacity=0.7)
+        tick = Line(c.point(REST[0] - near, u_value(q)), c.point(REST[0] - near, u_value(q)) + RIGHT * 0.18,
+                    stroke_color=style.WARM[1], stroke_width=2.5)
+        trail = Dot(landing, radius=0.045, color=style.WARM[1])
+        quick = 0.6 if n < 2 else 0.4
+        steps += [FadeIn(new_level, run_time=0.15) if level is None else AnimationGroup(FadeOut(level), FadeIn(new_level), run_time=0.2),
+                  Create(arrow, run_time=quick * 0.6), Create(plumb, run_time=quick * 0.4),
+                  AnimationGroup(glide(ball, landing), FadeIn(trail), FadeIn(tick), run_time=0.2),
+                  AnimationGroup(FadeOut(arrow), FadeOut(plumb), run_time=0.15)]
+        level = new_level
+        if n == 0:
+            higher = serif("lands higher than it began", style.WARM[1], 0.26).next_to(landing, UR, buff=0.1)
+            steps += [FadeIn(higher, run_time=0.3), Wait(0.6)]
+        if n == 2:
+            steps += [FadeOut(higher, run_time=0.2)]
+    scene.say("too-big", Succession(*fill(scene, "too-big", *steps)))
 
 
 def too_big_2(scene) -> None:

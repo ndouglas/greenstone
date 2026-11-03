@@ -146,6 +146,7 @@ uniform sampler2D value_tex;
 uniform float colour_low, colour_high, flatness, contour, fog_near, fog_far, lips, drop;
 uniform vec3 sun, eye, fog_colour, flat_colour, glow_colour;
 uniform int wrap_across, is_floor;
+uniform vec2 grid;
 in vec2 v_at; in float v_h; in float v_c; in vec3 v_n; in vec3 v_world;
 out vec4 colour;
 
@@ -159,8 +160,9 @@ void main() {
     vec3 n = normalize(v_n);
     vec3 base;
     if (is_floor == 1) {
-        // the floor at zero: dark, with a faint grid (an eighth of a turn across, a sixth of the slide up)
-        vec2 g = v_at * vec2(8.0, 6.0);
+        // the floor at zero: dark, with a faint grid (by default an eighth of a turn across, a sixth of the
+        // slide up)
+        vec2 g = v_at * grid;
         vec2 d = abs(fract(g - 0.5) - 0.5) / fwidth(g);
         float line = 1.0 - smoothstep(0.0, 1.2, min(d.x, d.y));
         base = mix(%(FLOOR)s, %(FLOOR)s * 2.4, line * 0.6);
@@ -266,29 +268,31 @@ def _steps(v: np.ndarray, wrap: bool, base: float = 0.0, hole: np.ndarray | None
     return np.concatenate([corners[:, [0, 1, 2, 0, 2, 3]], n], -1).reshape(-1, 7).astype("f4")
 
 
-def _smooth(v: np.ndarray, wrap: bool, base: float = 0.0) -> np.ndarray:
-    """One surface through every cell's middle, with a skirt down to the floor at its near edge."""
+def _smooth(v: np.ndarray, wrap: bool, base: float = 0.0, span: tuple[float, float] = (WIDE, DEEP)) -> np.ndarray:
+    """One surface through every cell's middle, with skirts down to `base` along its open edges. `span` is
+    the patch's size in world units, for its slopes."""
     na, no = v.shape
     u = (np.arange(na) + 0.5) / na
     w = (np.arange(no) + 0.5) / no
     if wrap:  # close the turn: one more column, the first again, one turn on
         v = np.vstack([v, v[:1]])
         u = np.r_[u, 1 + u[0]]
-    gx = np.gradient(v, u * WIDE, axis=0)
-    gy = np.gradient(v, w * DEEP, axis=1)
+    gx = np.gradient(v, u * span[0], axis=0)
+    gy = np.gradient(v, w * span[1], axis=1)
     n = np.stack([-gx, -gy, np.ones_like(v)], -1)  # in value units; scaled in `Ground` by the height scale
     U, W = np.meshgrid(u, w, indexing="ij")
     grid = np.stack([U, W, v, v, n[..., 0], n[..., 1], n[..., 2]], -1)
-    quads = np.stack([grid[:-1, :-1], grid[1:, :-1], grid[1:, 1:], grid[:-1, 1:]], 2).reshape(-1, 4, 7)
-    near = grid[:, 0]
-    floor = near.copy()
-    floor[:, 2] = base
-    floor[:, 4:] = [0, -1, 0]
-    near = near.copy()
-    near[:, 4:] = [0, -1, 0]
-    skirt = np.stack([floor[:-1], floor[1:], near[1:], near[:-1]], 1)
-    quads = np.concatenate([quads, skirt])
-    return quads[:, [0, 1, 2, 0, 2, 3]].reshape(-1, 7).astype("f4")
+    quads = [np.stack([grid[:-1, :-1], grid[1:, :-1], grid[1:, 1:], grid[:-1, 1:]], 2).reshape(-1, 4, 7)]
+    edges = [(grid[:, 0], (0, -1, 0)), (grid[:, -1], (0, 1, 0))]  # near and far
+    if not wrap:
+        edges += [(grid[0], (-1, 0, 0)), (grid[-1], (1, 0, 0))]
+    for edge, normal in edges:
+        top = edge.copy()
+        top[:, 4:] = normal
+        floor = top.copy()
+        floor[:, 2] = base
+        quads.append(np.stack([floor[:-1], floor[1:], top[1:], top[:-1]], 1))
+    return np.concatenate(quads)[:, [0, 1, 2, 0, 2, 3]].reshape(-1, 7).astype("f4")
 
 
 class Ground:
@@ -330,7 +334,8 @@ class Ground:
 
     def _build(self, ctx, program):
         if self.smooth:
-            mesh = _smooth(self.value, self.wrap, self.base)
+            span = ((self.across[1] - self.across[0]) * WIDE, (self.up[1] - self.up[0]) * DEEP)
+            mesh = _smooth(self.value, self.wrap, self.base, span)
         else:
             mask = None
             if self.hole is not None:
@@ -358,10 +363,11 @@ _FLOOR_MESH = np.array([[0, 0, -0.004, 0, 0, 0, 1], [1, 0, -0.004, 0, 0, 0, 1], 
 
 
 def render(grounds: list[Ground], view: View, pixels: tuple[int, int], lift: float = 1.0, flat: float = 0.0,
-           floor: bool = True, fog: tuple[float, float] = (14.0, 30.0), lips: float = 1.6) -> np.ndarray:
+           floor: bool | tuple = True, fog: tuple[float, float] = (14.0, 30.0), lips: float = 1.6) -> np.ndarray:
     """The grounds seen from `view`, as an RGBA picture `pixels` wide and tall; transparent where nothing
     is drawn. `lift` scales every height (0 lays the ground flat on the floor); `flat` (0 to 1) blends every
-    colour toward one plain colour, for a sheet before it means anything."""
+    colour toward one plain colour, for a sheet before it means anything. `floor` may instead be (across from,
+    to, up from, to, grid lines across, grid lines up): a floor under that patch alone."""
     ctx, program = _context()
     W, H = pixels
     msaa = ctx.framebuffer(ctx.renderbuffer((W, H), samples=SAMPLES), ctx.depth_renderbuffer((W, H), samples=SAMPLES))
@@ -389,7 +395,9 @@ def render(grounds: list[Ground], view: View, pixels: tuple[int, int], lift: flo
         _GL["blank"].use(1)
         _GL["blank_f"].use(2)
         program["is_floor"].value = 1
-        program["patch"].value = (0.0, 1.0, 0.0, 1.0)
+        patch = tuple(floor) if isinstance(floor, tuple) else (0.0, 1.0, 0.0, 1.0, 8.0, 6.0)
+        program["patch"].value = patch[:4]
+        program["grid"].value = patch[4:6]
         program["scale"].value = 1.0
         program["contour"].value = 0.0
         program["base"].value, program["stretch"].value = 0.0, 1.0

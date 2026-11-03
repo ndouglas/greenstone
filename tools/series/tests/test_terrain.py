@@ -32,3 +32,22 @@ class Terrain(unittest.TestCase):
     def test_a_view_part_way_keeps_its_distance_by_ratio(self):
         a, b = View(distance=10.0), View(distance=0.1)
         self.assertAlmostEqual(a.between(b, 0.5).distance, 1.0)
+
+    def test_a_floor_can_lie_under_one_patch_alone(self):
+        view = View(yaw=0.0, pitch=1.5, distance=11.0, target=(0.0, 0.0, 0.0))
+        size, pixels = (8.0, 4.5), (320, 180)
+        image = render([], view, pixels, floor=(0.4, 0.6, 0.4, 0.6, 2.0, 2.0))
+
+        def alpha(across, up):
+            x, y, _ = view.project(world(across, up, 0.0, 1.0), size)
+            return image[int(round(pixels[1] / 2 - y / size[1] * pixels[1])), int(round(pixels[0] / 2 + x / size[0] * pixels[0])), 3]
+        self.assertEqual(alpha(0.5, 0.5), 255)
+        self.assertEqual(alpha(0.2, 0.5), 0)
+
+    def test_a_smooth_patch_is_closed_down_to_its_base_on_every_side(self):
+        g = Ground(np.full((6, 6), 0.5), top=1.0, smooth=True, across=(0.3, 0.7))
+        view = View(yaw=1.5708, pitch=0.05, distance=11.0, target=(0.0, 0.0, 0.2))  # side on, from its left
+        size, pixels = (8.0, 4.5), (320, 180)
+        image = render([g], view, pixels, floor=False)
+        x, y, _ = view.project(g.world(0.3, 0.5, 0.15), size)  # half way down its left side
+        self.assertEqual(image[int(round(pixels[1] / 2 - y / size[1] * pixels[1])), int(round(pixels[0] / 2 + x / size[0] * pixels[0])), 3], 255)
