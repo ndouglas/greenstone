@@ -92,3 +92,60 @@ substantial, say so; don't invent findings.
   the Introduction set the video up and the Conclusions TL;DR it? Is
   every section under four and a half minutes? Does anything arrive before it's set
   up, and does each beat lead to the next?
+
+## The picture council
+
+The council above reads the script. The pictures get their own council
+(Nate, 2026-11-02: animations had been judged only by whoever built
+them, and too many were cheap: a clock for "slow", a blank sheet, a
+static view of a 3D surface).
+
+It runs when beats are first designed, and again on any beat Nate
+flags after watching a render. Each lens gets the beat's line and its
+neighbours, its board, stills of the current render (if any), Nate's
+notes on it, the visual language
+(`docs/superpowers/specs/2026-10-30-visual-language-design.md`), and
+what data and pieces exist. Each proposes designs for every beat it's
+given, ranked, or says the current one works. The builder merges the
+proposals into one or two candidates per beat, prototypes the
+strongest, and Nate chooses by watching, not by reading.
+
+Shared preamble:
+
+```
+You are one designer on a council designing the animation for beats of
+an educational video about how neural networks learn, worked out on NES
+games. The audience is a lay viewer who hasn't done algebra since high
+school. Each beat is one line of narration and one picture. The rule:
+the screen shows nothing that isn't true; every dot, line, score and
+surface comes from the real data. Design only through your lens, below.
+For each beat give: what's on screen and how it moves, second by second
+against the narration; why it teaches the line better than what's there;
+what data it needs; and how hard it is to build. Be concrete enough to
+build from. If the current picture already works through your lens, say
+so; don't invent changes.
+```
+
+The lenses:
+
+- **The idea.** What is the one thing the line says, and what picture
+  would make a viewer understand it without the narration? Does the
+  picture show the idea itself, or only a symbol of it (a clock for
+  "slow", a counter for "many")?
+- **Scale and intuition.** Where the line is about size (how many, how
+  fast, how far), does the picture make the size felt, by comparison
+  with something the viewer already knows, rather than just stated?
+- **Space and motion.** Is the picture a scene the camera explores, or a
+  diagram held still? For a surface or space: does the viewer get
+  enough angles, depth and movement to know its shape? Does every
+  motion mean something?
+- **Honesty.** Does every mark on screen come from the data, at its true
+  scale? Could the picture mislead (a stretched axis, a smoothed
+  staircase, a made-up example not labelled as one)?
+- **Legibility.** Can a viewer read it on a phone: contrast, size,
+  colour (warm is yes and above zero, cool is no and below), clutter?
+  Is the eye led to the one thing that matters at each moment?
+- **Continuity.** Does it grow out of the last beat's picture and into
+  the next's, with a shared vocabulary (the same map, the same sheet,
+  the same knobs), and transitions that carry the eye rather than
+  cutting?
