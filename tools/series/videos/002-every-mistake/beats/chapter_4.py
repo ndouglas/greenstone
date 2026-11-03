@@ -399,7 +399,7 @@ def staircase_outro(scene) -> None:
     mid = near.moved(distance=near.distance * 9.0, pitch=0.8)
     close = GroundPicture([fine], near, size=full_frame(), floor=False)
     s = GroundPicture([staircase_ground()], mid, size=full_frame())
-    far = View(yaw=-0.35, pitch=0.85, distance=13.0, target=(0.0, 0.25, 0.3))
+    far = OUTRO_FAR
     c, d = spot(REST)
     rest_mistakes = int(round(exact([at_share(c, d)[0]], [at_share(c, d)[1]])[0, 0] * MOMENTS))
     dot, words = _on_ledge(s, ground=0)
@@ -416,9 +416,14 @@ def staircase_outro(scene) -> None:
                                             s.fly(far, run_time=max(talk - 9.5, 3.0)),
                                             FadeIn(VGroup(dot.update(), words.update()), run_time=0.5), Wait(1.5),
                                             FadeIn(VGroup(rest.update(), rest_words.update()), run_time=0.5),
-                                            s.fly(far.moved(yaw=far.yaw - 0.25), run_time=3.0, rate_func=linear)))
+                                            s.fly(OUTRO_END, run_time=3.0, rate_func=linear)))
     for m in (dot, words, rest, rest_words):
         m.clear_updaters()
+    scene.kept = {"stairs": s, "key": key, "pins": VGroup(dot, words, rest, rest_words)}
+
+
+OUTRO_FAR = View(yaw=-0.35, pitch=0.85, distance=13.0, target=(0.0, 0.25, 0.3))
+OUTRO_END = OUTRO_FAR.moved(yaw=OUTRO_FAR.yaw - 0.25)  # where chapter 4 leaves the sheet, and chapter 5 finds it
 
 
 BEATS = {"short": short, "short-2": short_2, "why-short": why_short, "how-far": how_far, "square-outro": square_outro,

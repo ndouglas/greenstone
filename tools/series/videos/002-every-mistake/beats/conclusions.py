@@ -8,11 +8,11 @@ from series import style
 from series.ember import serif
 from series.pointmap import PointMap
 from series.records import ScoreBars
-from series.sheet import Camera
 
 from beats.common import FILM, NUMBERS, Succession, away, fill, new_map
 from beats.chapter_2 import _ends, percent
-from beats.sheets import MISTAKES, SQUARED, SheetPicture, lowest, spot
+from beats.chapter_5 import bowl_picture, over_bowl, pair
+from beats.sheets import pin, spot, tag
 
 REST = FILM["batch_square"][-1]
 
@@ -34,11 +34,11 @@ def tldr(scene) -> None:
 
 
 def tldr_2(scene) -> None:
-    s = SheetPicture(SQUARED, smooth=True, size=(9.6, 5.8), camera=Camera(pitch=0.9)).move_to(DOWN * 0.2)
-    a, b = lowest(SQUARED)
-    low = Dot(s.point(a, b), radius=0.08, color=style.COOL[2])
-    words = serif(f"the square trick settles here: {NUMBERS['batch_square']}", style.COOL[2], 0.3).next_to(low, UP, buff=0.4)
-    scene.say("tldr-2", Succession(*fill(scene, "tldr-2", away(scene), FadeIn(s, run_time=0.8), FadeIn(low, run_time=0.3),
+    b = bowl_picture(over_bowl())
+    c, d = spot(REST)
+    low = pin(style.WARM[1]).move_to(b.point(c, d))
+    words = tag(f"the square trick settles here: {NUMBERS['batch_square']}", style.WARM[1]).next_to(low, UP, buff=0.3)
+    scene.say("tldr-2", Succession(*fill(scene, "tldr-2", away(scene), FadeIn(b, run_time=0.8), FadeIn(low, run_time=0.3),
                                           FadeIn(words, run_time=0.4))))
 
 
@@ -53,15 +53,11 @@ def tldr_3(scene) -> None:
 
 
 def tldr_4(scene) -> None:
-    stairs = SheetPicture(MISTAKES, smooth=False, size=(6.6, 4.2), camera=Camera(pitch=0.95)).move_to(LEFT * 3.5 + DOWN * 0.3)
-    bowl = SheetPicture(SQUARED, smooth=True, size=(6.6, 4.2), camera=Camera(pitch=0.95)).move_to(RIGHT * 3.5 + DOWN * 0.3)
-    a, b = lowest(MISTAKES)
-    c, d = lowest(SQUARED)
-    marks = VGroup(Dot(stairs.point(a, b), radius=0.07, color=style.WARM[2]), Dot(bowl.point(c, d), radius=0.07, color=style.COOL[2]))
-    words = VGroup(serif(f"lowest ledge: {NUMBERS['stairs_bottom']}", style.WARM[2], 0.3).next_to(stairs, DOWN, buff=0.3),
-                   serif(f"bottom of the bowl: {NUMBERS['bowl_bottom']}", style.COOL[2], 0.3).next_to(bowl, DOWN, buff=0.3))
-    scene.say("tldr-4", Succession(*fill(scene, "tldr-4", away(scene), FadeIn(Group(stairs, bowl), run_time=0.8),
-                                          FadeIn(marks, run_time=0.4), FadeIn(words, run_time=0.4))))
+    stairs, bowl, marks = pair()
+    words = VGroup(tag(f"the lowest ledge: {NUMBERS['stairs_bottom']}", style.WARM[2]).next_to(stairs, DOWN, buff=0.05),
+                   tag(f"the bottom of the bowl: {NUMBERS['bowl_bottom']}", style.WARM[1]).next_to(bowl, DOWN, buff=0.05))
+    scene.say("tldr-4", Succession(*fill(scene, "tldr-4", away(scene), FadeIn(stairs, bowl, run_time=0.8),
+                                          FadeIn(marks[0], marks[2], run_time=0.4), FadeIn(words, run_time=0.4))))
 
 
 def inside(scene) -> None:
