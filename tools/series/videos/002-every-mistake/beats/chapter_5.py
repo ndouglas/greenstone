@@ -2,8 +2,8 @@
 shelf and its bowl, the two bottoms, and the perceptron added up, rocking."""
 
 import numpy as np
-from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Dot, FadeIn, FadeOut, Group, Line, Succession,
-                   UpdateFromAlphaFunc, ValueTracker, VGroup, Wait, linear)
+from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Dot, FadeIn, FadeOut, Group, Line, UpdateFromAlphaFunc,
+                   ValueTracker, VGroup, Wait, linear)
 
 from series import style
 from series.chart import Chart
@@ -11,7 +11,7 @@ from series.ember import numeral, serif
 from series.knobs import Knobs
 from series.sheet import Camera
 
-from beats.common import FILM, NUMBERS, away, fill, new_map, voice
+from beats.common import FILM, NUMBERS, Succession, away, fill, new_map, voice
 from beats.chapter_1 import counter
 from beats.chapter_2 import _ends, percent
 from beats.sheets import MISTAKES, SQUARED, SheetPicture, lowest, spot

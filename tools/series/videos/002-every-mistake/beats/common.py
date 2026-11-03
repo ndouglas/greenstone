@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Callable
 
+import manim
 import numpy as np
 from manim import (DOWN, LEFT, RIGHT, UP, Animation, Arrow, FadeOut, Line, Mobject, UpdateFromAlphaFunc,
                    ValueTracker, VGroup, Wait, linear, smooth)
@@ -51,6 +52,35 @@ def fill(scene, line_id: str, *steps: Animation) -> list[Animation]:
     steps = [prepare_animation(s) for s in steps]
     used = sum(s.run_time for s in steps)
     return [*steps, Wait(max(voice(scene, line_id) - used, 1e-3))]
+
+
+class Succession(manim.Succession):
+    """Manim's Succession, except that each step's objects come on screen when that step begins, not all at once
+    when the sequence starts (Manim adds every object a sequence animates as it starts, so a border animated in
+    a later step showed before its map had faded in). Beats import this one, not Manim's."""
+
+    def is_introducer(self) -> bool:
+        return True  # so the scene adds nothing up front
+
+    def _setup_scene(self, scene) -> None:
+        self.scene = scene
+
+    def update_active_animation(self, index: int) -> None:
+        if self.scene is not None and index < len(self.animations):
+            bring(self.scene, self.animations[index])
+        super().update_active_animation(index)
+
+
+def bring(scene, animation: Animation) -> None:
+    """Put on screen what a step animates and isn't there yet (as the scene does for a whole play)."""
+    if isinstance(animation, manim.AnimationGroup) and not isinstance(animation, Succession):
+        for part in animation.animations:
+            bring(scene, part)
+        return
+    if animation.is_introducer() or animation.mobject is None:
+        return
+    if animation.mobject not in scene.get_mobject_family_members():
+        scene.add(animation.mobject)
 
 
 class Do(Animation):

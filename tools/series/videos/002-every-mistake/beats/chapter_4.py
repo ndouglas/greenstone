@@ -3,7 +3,7 @@ sheet of every border, raised by its mistakes into a staircase."""
 
 import numpy as np
 from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Arrow, Circle, Create, Dot, FadeIn, FadeOut, Line,
-                   Rectangle, Succession, UpdateFromAlphaFunc, ValueTracker, VGroup, Wait, linear)
+                   Rectangle, UpdateFromAlphaFunc, ValueTracker, VGroup, Wait, linear)
 
 from series import style
 from series.ember import in_line, numeral, serif, swap
@@ -11,7 +11,7 @@ from series.lab import rules
 from series.records import ScoreBars
 from series.sheet import Camera
 
-from beats.common import FILM, NUMBERS, Do, away, fill, new_map, voice
+from beats.common import FILM, NUMBERS, Do, Succession, away, fill, new_map, voice
 from beats.chapter_1 import counter
 from beats.chapter_2 import _ends, percent
 from beats.sheets import MISTAKES, SheetPicture, at_share, border, lowest, spot

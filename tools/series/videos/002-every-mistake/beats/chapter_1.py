@@ -2,8 +2,8 @@
 Mario's moments; the step that doesn't matter; and the guarantee, checked."""
 
 import numpy as np
-from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Circle, Create, Dot, FadeIn, FadeOut, Group, Line, Rectangle,
-                   RoundedRectangle, Succession, UpdateFromAlphaFunc, ValueTracker, VGroup, Wait, linear)
+from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Circle, Create, Dot, FadeIn, FadeOut, Group, Line,
+                   Rectangle, RoundedRectangle, UpdateFromAlphaFunc, ValueTracker, VGroup, Wait, linear)
 
 from series import style
 from series.ember import in_line, numeral, serif, swap
@@ -11,8 +11,7 @@ from series.knobs import Knobs, Total
 from series.lab import rules
 from series.pointmap import PointMap
 
-from beats.common import FILM, NUMBERS, Do, away, fill, new_map, voice
-
+from beats.common import FILM, NUMBERS, Do, Succession, away, fill, new_map, voice
 STEP = 0.05  # the examples' step: big enough to see
 EXAMPLE = np.array([4.0, 1.0])  # rule-wrong's moment: four blocks in, one pixel a frame
 BEFORE = np.array([0.3, 0.6, -1.9])  # weights that get it wrong: total −0.1, so no

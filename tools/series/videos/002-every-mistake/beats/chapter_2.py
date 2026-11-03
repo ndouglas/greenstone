@@ -2,8 +2,8 @@
 does to its score."""
 
 import numpy as np
-from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Circle, Create, FadeIn, FadeOut, Line,
-                   Succession, UpdateFromAlphaFunc, ValueTracker, VGroup, VMobject, Wait, linear)
+from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Circle, Create, FadeIn, FadeOut, Line, Mobject, UpdateFromAlphaFunc,
+                   ValueTracker, VGroup, VMobject, Wait, linear)
 
 from series import style
 from series.chart import Chart
@@ -12,8 +12,8 @@ from series.pointmap import PointMap
 from series.props import Pad
 from series.records import ScoreBars
 
-from beats.common import (BOTH, BUTTONS, FILM, NUMBERS, Do, Readout, arrive_held, away, blocks, fill, new_map, pause,
-                          resume, screen_at, show, speed, voice)
+from beats.common import (BOTH, BUTTONS, FILM, NUMBERS, Do, Readout, Succession, arrive_held, away, blocks, fill,
+                          new_map, pause, resume, screen_at, show, speed, voice)
 from beats.chapter_1 import counter
 
 # Two moments at one point of the map (2.94 blocks, 0.75 pixels a frame), from the footage's session: in the
@@ -249,11 +249,12 @@ def remember(scene) -> None:
 
     def swing(_, al: float) -> None:
         m.set_line(ends[min(int(al * 60) % 30, 29)])
-    scene.say("remember", AnimationGroup(away(scene), Succession(
-        FadeIn(m, run_time=0.5), Wait(1.0), Create(kept, run_time=0.6), FadeIn(kept_text, run_time=0.3),
-        FadeIn(bars, run_time=0.5), bars.bar(float(np.mean(FILM["pocket_scores"]) * 100), "with a memory").set_run_time(1.2),
-        FadeIn(words, run_time=0.5), Wait(max(talk - 4.6, 0.1))),
-        UpdateFromAlphaFunc(m.border, swing, run_time=talk, rate_func=linear)))
+    scene.say("remember", Succession(away(scene), FadeIn(m, run_time=0.5), AnimationGroup(
+        UpdateFromAlphaFunc(Mobject(), swing, rate_func=linear),
+        Succession(Wait(1.0), Create(kept, run_time=0.6), FadeIn(kept_text, run_time=0.3), FadeIn(bars, run_time=0.5),
+                   bars.bar(float(np.mean(FILM["pocket_scores"]) * 100), "with a memory").set_run_time(1.2),
+                   FadeIn(words, run_time=0.5), Wait(max(talk - 5.1, 0.1))),
+        run_time=talk - 1.0)))
     scene.kept = {"map": m}
 
 

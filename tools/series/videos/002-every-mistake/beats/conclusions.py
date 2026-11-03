@@ -2,7 +2,7 @@
 search, the staircase, and what's next."""
 
 import numpy as np
-from manim import DOWN, LEFT, RIGHT, UP, Create, Dot, FadeIn, Group, Line, Succession, VGroup, Wait
+from manim import DOWN, LEFT, RIGHT, UP, Create, Dot, FadeIn, Group, Line, VGroup, Wait
 
 from series import style
 from series.ember import serif
@@ -10,7 +10,7 @@ from series.pointmap import PointMap
 from series.records import ScoreBars
 from series.sheet import Camera
 
-from beats.common import FILM, NUMBERS, away, fill, new_map
+from beats.common import FILM, NUMBERS, Succession, away, fill, new_map
 from beats.chapter_2 import _ends, percent
 from beats.sheets import MISTAKES, SQUARED, SheetPicture, lowest, spot
 

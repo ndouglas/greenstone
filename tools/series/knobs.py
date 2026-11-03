@@ -34,6 +34,13 @@ class Dial(VGroup):
         self.add(self.ring, self.zero, self.arc, self.needle, self.hub, self.name, self.number)
         self.set_value(value)
 
+    def centre(self) -> np.ndarray:
+        """Where the dial is now (it may have been moved or scaled since it was made)."""
+        return self.ring.get_center()
+
+    def size(self) -> float:
+        return self.ring.width / 2
+
     def turn(self) -> float:
         """The needle's angle from straight up, clockwise, for the current value."""
         return SWEEP * math.tanh(self.value / self.scale_)
@@ -42,17 +49,18 @@ class Dial(VGroup):
         self.value = float(value)
         colour = style.temperature(self.value)
         t = self.turn()
-        tip = self.at + RADIUS * 0.82 * np.array([math.sin(t), math.cos(t), 0.0])
-        self.needle.put_start_and_end_on(self.at, tip if abs(t) > 1e-9 else self.at + UP * RADIUS * 0.82)
+        at, r = self.centre(), self.size()
+        tip = at + r * 0.82 * np.array([math.sin(t), math.cos(t), 0.0])
+        self.needle.put_start_and_end_on(at, tip if abs(t) > 1e-9 else at + UP * r * 0.82)
         self.needle.set_stroke(color=colour if self.value else style.TEXT)
-        new = Arc(radius=RADIUS, arc_center=self.at, start_angle=math.pi / 2, angle=-t if abs(t) > 1e-4 else -1e-4,
+        new = Arc(radius=r, arc_center=at, start_angle=math.pi / 2, angle=-t if abs(t) > 1e-4 else -1e-4,
                   stroke_width=3.2, stroke_color=colour, stroke_opacity=0.9 if abs(t) > 1e-4 else 0)
         self.arc.become(new)
         text = reading(self.value)
         if text != self.shown:
-            swap(self.number, numeral(text, colour if self.value else style.TEXT, 0.32))
+            swap(self.number, numeral(text, colour if self.value else style.TEXT, 0.32 * r / RADIUS))
             self.shown = text
-        self.number.next_to(self.ring, DOWN, buff=0.06)
+        self.number.next_to(self.ring, DOWN, buff=0.06 * r / RADIUS)
 
 
 class Total(VGroup):
@@ -81,21 +89,25 @@ class Total(VGroup):
         self.add(self.axis, self.ticks, self.bar, self.zero, self.zero_text, self.name, self.number)
         self.set_value(0.0)
 
+    def centre(self) -> np.ndarray:
+        """Where zero is now (the bar may have been moved or scaled since it was made)."""
+        return self.axis.get_center()
+
     def y(self, value: float) -> float:
         """Height above zero on the page: in proportion near zero, squeezed far from it so big totals fit."""
-        return self.half * math.tanh(value / (2 * self.scale_))
+        return self.axis.height / 2 * math.tanh(value / (2 * self.scale_))
 
     def set_value(self, value: float) -> None:
         self.value = float(value)
-        y = self.y(self.value)
+        y, at = self.y(self.value), self.centre()
         colour = style.temperature(self.value)
-        self.bar.stretch_to_fit_height(max(abs(y), 1e-3)).move_to(self.at + UP * y / 2)
+        self.bar.stretch_to_fit_height(max(abs(y), 1e-3)).move_to(at + UP * y / 2)
         self.bar.set_fill(colour, opacity=0.85 if self.value else 0)
         text = reading(self.value)
         if text != self.shown:
             swap(self.number, numeral(text, colour if self.value else style.TEXT, 0.32))
             self.shown = text
-        self.number.next_to(self.at + UP * y, LEFT, buff=0.3)
+        self.number.next_to(at + UP * y, LEFT, buff=0.3)
 
 
 class Knobs(VGroup):

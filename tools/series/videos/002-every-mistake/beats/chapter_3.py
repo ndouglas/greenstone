@@ -3,7 +3,7 @@ that cancel at the bottom, and a step too big."""
 
 import numpy as np
 from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Arrow, Circle, Create, Dot, FadeIn, FadeOut, ImageMobject,
-                   Line, Square, Succession, UpdateFromAlphaFunc, ValueTracker, VGroup, Wait, linear, smooth)
+                   Line, Square, UpdateFromAlphaFunc, ValueTracker, VGroup, Wait, linear, smooth)
 
 from series import style
 from series.chart import Chart
@@ -11,7 +11,7 @@ from series.ember import in_line, numeral, serif, swap
 from series.knobs import Knobs, Total
 from series.sheet import Camera, Sheet
 
-from beats.common import FILM, NUMBERS, Do, away, fill, new_map, voice
+from beats.common import FILM, NUMBERS, Do, Succession, away, fill, new_map, voice
 from beats.chapter_1 import BEFORE, SCALES, counter, example_dot, example_map
 
 RATE = 0.1  # the batch square trick's step (exp002's BATCH_RATE)
@@ -49,8 +49,9 @@ def target(scene) -> None:
 
 def miss_arrow(total: Total, value: float, aim: float, colour: str) -> Arrow:
     """From the total to its target, beside the bar: the miss, and the way the pull goes."""
-    x = total.at[0] + 0.55
-    return Arrow([x, total.at[1] + total.y(value), 0], [x, total.at[1] + total.y(aim), 0], buff=0, stroke_width=2.4,
+    at = total.centre()
+    x = at[0] + 0.55
+    return Arrow([x, at[1] + total.y(value), 0], [x, at[1] + total.y(aim), 0], buff=0, stroke_width=2.4,
                  color=colour, max_tip_length_to_length_ratio=0.25)
 
 

@@ -5,7 +5,7 @@ import json
 
 import numpy as np
 from manim import (DOWN, LEFT, RIGHT, UP, AnimationGroup, Arc, Circle, Create, Dot, FadeIn, FadeOut, Line,
-                   Succession, UpdateFromAlphaFunc, ValueTracker, VGroup, Wait, linear, smooth)
+                   UpdateFromAlphaFunc, ValueTracker, VGroup, Wait, linear, smooth)
 
 from series import style
 from series.bordermap import BorderMap
@@ -18,9 +18,9 @@ from series.recording import DATA
 from series.records import ScoreBars
 from series.script import VIDEOS
 
-from beats.common import (BOTH, BUTTONS, FILM, MARK, NUMBERS, BlockRuler, Do, MarkOnScreen, Readout, arrive_held, show, tween,
-                          SpeedArrowRight, away, blocks, fill, legend, new_map, pause, resume, screen_at, speed, voice)
-
+from beats.common import (BOTH, BUTTONS, FILM, MARK, NUMBERS, BlockRuler, Do, MarkOnScreen, Readout, arrive_held,
+                          show, tween, SpeedArrowRight, Succession, away, blocks, fill, legend, new_map, pause,
+                          resume, screen_at, speed, voice)
 START = 1  # the footage's first life: Mario walks, then holds B and runs
 # A life that walks to the mark without running, from two frames in (the picture trails the RAM by one, and the
 # life's first frame still shows the last life's position); the screen starts to move 76 frames on.
@@ -331,8 +331,10 @@ def no_fast_way(scene) -> None:
     turn = UpdateFromAlphaFunc(slow, lambda m, a: m.become(Line(centre, centre + 0.5 * np.array(
         [np.sin(a * 2 * np.pi), np.cos(a * 2 * np.pi), 0]), stroke_color=style.TEXT, stroke_width=2.0)),
         run_time=talk, rate_func=linear)
-    scene.say("no-fast-way", AnimationGroup(away(scene), FadeIn(face, run_time=0.6), FadeIn(crowd, run_time=1.5),
-                                            spin, turn))
+    spin.set_run_time(talk - 2.1)
+    turn.set_run_time(talk - 2.1)
+    scene.say("no-fast-way", Succession(away(scene), AnimationGroup(FadeIn(face), FadeIn(crowd), run_time=1.5),
+                                        AnimationGroup(spin, turn)))
 
 
 def learn(scene) -> None:
