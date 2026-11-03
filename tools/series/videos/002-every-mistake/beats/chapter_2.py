@@ -10,11 +10,12 @@ from series.chart import Chart
 from series.ember import in_line, numeral, serif, swap
 from series.pointmap import PointMap
 from series.props import Pad
+from series.footage import NES_FPS
 from series.lab.exp002 import POSITION, SCROLL, SOON, SPEED
 from series.records import ScoreBars
 
 from beats.common import (BOTH, BUTTONS, FILM, NUMBERS, Do, Readout, Succession, arrive_held, away, blocks, fill,
-                          new_map, pause, recording, resume, screen_at, show, speed, voice)
+                          hold, new_map, pause, play_frames, recording, resume, screen_at, show, speed, voice)
 from beats.chapter_1 import counter
 
 # Two moments at one point of the map (3.31 blocks, 0.81 pixels a frame), from the footage's session: in the
@@ -91,11 +92,11 @@ def unseen(scene) -> None:
     held = VGroup(serif(f"at points like this, Right held: {NUMBERS['right_ahead_mixed_yes']} of the next half second when it moved,"
                         f" {NUMBERS['right_ahead_mixed_no']} when it didn't", style.ASH, 0.26)).next_to(verdicts, DOWN, buff=0.3)
     talk = voice(scene, "unseen")
-    watch = 30 / 60 / 0.5
+    watch = SOON / NES_FPS / 0.5  # the half second, at half speed
     scene.say("unseen", Succession(
         leaving, AnimationGroup(arrive_held(a), arrive_held(b), run_time=0.6), FadeIn(same, run_time=0.4),
         AnimationGroup(*[UpdateFromAlphaFunc(p.level, lambda t, al: t.set_value(al)) for p in pads], run_time=0.4),
-        Wait(max(talk * 0.3, 0.1)), resume(a, 0.5), resume(b, 0.5), Wait(watch), pause(a), pause(b),
+        Wait(max(talk * 0.3, 0.1)), AnimationGroup(play_frames(a, SOON, watch), play_frames(b, SOON, watch)), hold(a, b),
         FadeIn(verdicts, run_time=0.5), Wait(0.6), FadeIn(held, run_time=0.6)))
 
 

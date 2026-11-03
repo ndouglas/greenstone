@@ -15,6 +15,7 @@ from series.lab.film002 import load_film
 from series.pacing import STILLNESS
 from series.pointmap import PointMap
 from series.recording import DATA, Recording
+from series.footage import NES_FPS
 from series.screen import Arrival, Screen
 
 FILM = load_film()
@@ -241,6 +242,23 @@ def resume(screen: Screen, speed: float = 1.0) -> Do:
         screen.game.speed = speed
         screen.game.resume_updating()
     return Do(go)
+
+
+def play_frames(screen: Screen, frames: int, run_time: float) -> Animation:
+    """Play exactly `frames` frames of held footage from its first frame, over `run_time`, then hold the last:
+    for a beat whose claim is about what happens within a number of frames, which time-based playing overshoots
+    (each instant step of a Succession takes a whole video frame)."""
+    game = screen.game
+
+    def step(_, alpha: float) -> None:
+        game.elapsed = alpha * frames / NES_FPS
+        game.pixel_array = game.picture(game.index())
+    return UpdateFromAlphaFunc(game, step, run_time=run_time, rate_func=linear, suspend_mobject_updating=False)
+
+
+def hold(*screens: Screen) -> Do:
+    """Pause several screens on the same frame (separate pauses land a video frame apart)."""
+    return Do(lambda: [s.game.suspend_updating() for s in screens])
 
 
 def pause(screen: Screen) -> Do:
