@@ -65,7 +65,7 @@ def short_2(scene) -> None:
 
 
 def why_short(scene) -> None:
-    m = new_map(at=LEFT * 2.4 + DOWN * 0.3, width=7.2, height=4.3, line=SEARCH)
+    m = new_map(at=LEFT * 3.9 + DOWN * 0.3, width=6.0, height=3.8, line=SEARCH)
     sq = line_on(m, REST, style.COOL[2], 2.0)
     hinge = line_on(m, FILM["hinge"], style.WARM[1], 2.0)
     bars = ScoreBars(percent("search"), "fewest mistakes", slots=3, at=np.array([3.7, -2.1, 0]))

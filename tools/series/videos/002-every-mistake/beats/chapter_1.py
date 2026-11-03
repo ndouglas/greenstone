@@ -179,7 +179,7 @@ def rule_name(scene) -> None:
 
 def mark_one() -> VGroup:
     """The Mark I's knob racks, drawn: a cabinet of rows of round knobs, each with its pointer and a small motor
-    box behind it. A drawing, not a likeness of any photograph."""
+    box behind it."""
     cabinet = RoundedRectangle(corner_radius=0.06, width=4.4, height=3.4, stroke_color=style.ASH, stroke_width=1.4)
     knobs = VGroup()
     rng = np.random.default_rng(1)
@@ -197,8 +197,7 @@ def mark_one() -> VGroup:
 def mark_one_beat(scene) -> None:
     rack = mark_one().move_to(LEFT * 2.6 + DOWN * 0.1)
     words = VGroup(serif("Mark I Perceptron", style.WARM[2], 0.4),
-                   serif("its weights: knobs turned by motors", style.TEXT, 0.32),
-                   serif("(a drawing)", style.ASH, 0.26)).arrange(DOWN, aligned_edge=LEFT, buff=0.14).move_to(RIGHT * 3.2 + UP * 0.6)
+                   serif("its weights: knobs turned by motors", style.TEXT, 0.32)).arrange(DOWN, aligned_edge=LEFT, buff=0.14).move_to(RIGHT * 3.2 + UP * 0.6)
     knobs = Knobs(RIGHT * 3.2 + DOWN * 1.6, values=(0.4, 0.7, -1.9), scales=SCALES)
     pointers = [g[2] for g in rack[1]]
     centres = [g[1].get_center() for g in rack[1]]
