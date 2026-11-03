@@ -74,8 +74,8 @@ def unseen(scene) -> None:
     """The same point twice: in one the player holds Right and the screen moves; in the other he lets go."""
     leaving = away(scene)
     _check_pair()
-    a = screen_at(SAME_YES + 1, LEFT * 3.4 + UP * 0.9)
-    b = screen_at(SAME_NO + 1, RIGHT * 3.4 + UP * 0.9)
+    a = screen_at(SAME_YES + 1, LEFT * 3.4 + UP * 1.2)
+    b = screen_at(SAME_NO + 1, RIGHT * 3.4 + UP * 1.2)
     for s in (a, b):
         s.scale(0.75)
     scene.add(a, b)
@@ -89,7 +89,7 @@ def unseen(scene) -> None:
     verdicts = VGroup(serif("the screen moved", style.WARM[1], 0.32).next_to(pads[0], DOWN, buff=0.25),
                       serif("it didn't", style.COOL[1], 0.32).next_to(pads[1], DOWN, buff=0.25))
     held = VGroup(serif(f"at points like this, Right held: {NUMBERS['right_ahead_mixed_yes']} of the next half second when it moved,"
-                        f" {NUMBERS['right_ahead_mixed_no']} when it didn't", style.ASH, 0.26)).move_to(DOWN * 3.6)
+                        f" {NUMBERS['right_ahead_mixed_no']} when it didn't", style.ASH, 0.26)).next_to(verdicts, DOWN, buff=0.3)
     talk = voice(scene, "unseen")
     watch = 30 / 60 / 0.5
     scene.say("unseen", Succession(
