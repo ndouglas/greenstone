@@ -20,7 +20,7 @@ from series.script import VIDEOS
 
 from beats.common import (BOTH, BUTTONS, FILM, MARK, NUMBERS, BlockRuler, Do, MarkOnScreen, Readout, arrive_held,
                           show, tween, SpeedArrowRight, Succession, away, blocks, fill, legend, new_map, pause,
-                          resume, screen_at, speed, voice)
+                          hold, play_frames, resume, screen_at, speed, voice)
 START = 1  # the footage's first life: Mario walks, then holds B and runs
 # A life that walks to the mark without running, from two frames in (the picture trails the RAM by one, and the
 # life's first frame still shows the last life's position); the screen starts to move 76 frames on.
@@ -145,9 +145,10 @@ def test_question(scene) -> None:
     answer.next_to(k["clock"], DOWN, buff=0.55)
     note = serif("a quarter of the game's speed", style.ASH, 0.26).next_to(screen.game, DOWN, buff=0.2)
     scene.say("test-question", Succession(
-        FadeIn(note, run_time=0.4), resume(screen, slow),
-        UpdateFromAlphaFunc(frames, lambda m, a: m.set_value(30 * a), run_time=watch, rate_func=linear),
-        pause(screen), Create(answer[0], run_time=0.4), FadeIn(answer[1], run_time=0.4),
+        FadeIn(note, run_time=0.4),
+        AnimationGroup(play_frames(screen, 30, watch),
+                       UpdateFromAlphaFunc(frames, lambda m, a: m.set_value(30 * a), run_time=watch, rate_func=linear)),
+        hold(screen), Create(answer[0], run_time=0.4), FadeIn(answer[1], run_time=0.4),
         Wait(max(voice(scene, "test-question") - watch - 1.25, 0.1))))
     scene.kept["answer"] = answer
 
