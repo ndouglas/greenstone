@@ -356,7 +356,7 @@ pause = 3.0
 
 [[section.line]]
 id = "square-why"
-text = "Added up over all the moments, small nudges shrink one number: every moment's miss, multiplied by itself, then all added up, so big misses count more. Call it the total squared miss."
+text = "Added up over all the moments, small nudges shrink one number: every moment's miss from its target, multiplied by itself, then all added up, so big misses count more. Call it the total squared miss."
 board = "Each moment's miss drawn as a square, the squares piling up into one total that shrinks as the border moves"
 cite = ["widrow1960", "bishop2006"]
 

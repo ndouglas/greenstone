@@ -146,7 +146,7 @@ def square_why(scene) -> None:
             x += side + 0.04
         m.set_line(v if step else path[1])
     lay(1)
-    note = serif("each square: one moment's miss, times itself", style.ASH, 0.26).next_to(row, UP, buff=0.18).align_to(row, LEFT)
+    note = serif("each square: one moment's miss from its target, times itself", style.ASH, 0.26).next_to(row, UP, buff=0.18).align_to(row, LEFT)
     talk = voice(scene, "square-why")
     scene.say("square-why", Succession(away(scene), FadeIn(m, run_time=0.5), FadeIn(squares, run_time=0.6),
                                        FadeIn(note, run_time=0.3), FadeIn(c, run_time=0.4),

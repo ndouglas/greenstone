@@ -268,3 +268,11 @@ measured from the moment's target (+1 or −1), not from the border. A
 total of 3 is far from the border and right, but 2 over its target, so it
 is pulled down; a total of 0 sits on the border and is pulled. Follow-up
 asked.
+
+**R4 follow-up.** Nate asked whether the phrasing was unclear: it was
+obvious once seen. His answer: the total-1 moment isn't pulled, the
+total-0 one is pulled up; unsure how hard. Right: miss 1, so one step
+times its number, a little more than the 0.2 moment's four fifths. The
+weak spot was `square-why`'s bare "every moment's miss", where a
+regression reader puts the line back in. Approved: it now says "every
+moment's miss from its target", and the on-screen note says the same.
