@@ -346,7 +346,10 @@ def settles_2(scene) -> None:
                    serif(f"the perceptron: {NUMBERS['perceptron_swing_points']}", style.COOL[1], 0.28)).arrange(DOWN, aligned_edge=LEFT, buff=0.1)
     names.next_to(c, UP, buff=0.3)
     talk = voice(scene, "settles-2")
-    scene.say("settles-2", Succession(away(scene), FadeIn(c, run_time=0.5), Wait(max(talk * 0.35, 0.1)),
+    text = next(l for l in scene.video.lines if l.id == "settles-2").text
+    turn = talk * text.index("So if") / len(text)  # the balance's bars stay while "each moment's own pull isn't"
+    score = talk * text.index("its score") / len(text)
+    scene.say("settles-2", Succession(Wait(turn), away(scene), FadeIn(c, run_time=0.5), Wait(max(score - turn - 1.0, 0.1)),
                                       grow_a.set_run_time(1.6), FadeIn(names[0], run_time=0.4), grow_b.set_run_time(1.6),
                                       FadeIn(names[1], run_time=0.4)))
 
