@@ -1,0 +1,17 @@
+[package]
+name = "greenstone-py"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "greenstone"
+crate-type = ["cdylib"]
+
+[dependencies]
+emu = { package = "greenstone", path = ".." }
+numpy = "0.30"
+pyo3 = { version = "0.30", features = ["extension-module"] }
+
+[profile.release]
+lto = true
